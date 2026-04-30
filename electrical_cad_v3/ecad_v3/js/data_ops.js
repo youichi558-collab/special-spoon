@@ -78,7 +78,7 @@ function exportDXF(){
   ls.push('0','SECTION','2','ENTITIES');
   if(state.frameObj){
     const fr=state.frameObj;
-    const{sc,wMM,hMM,mg,thMM,cols,rows}=fr;
+    const{sc,wMM,hMM,mg,thMM,cols=8,rows=4}=fr;
     const W=wMM*sc,H=hMM*sc,MG=mg*sc,TH=thMM*sc;
     const innerW=W-MG*2,innerH=H-MG*2,drawH=innerH-TH;
     const colW=innerW/cols,rowH=drawH/rows;
