@@ -4,28 +4,6 @@
 function autoWireNumber(){
   pushH();let n=1;state.wires.forEach(w=>{if(!w.wireNo){w.wireNo='W'+String(n).padStart(3,'0');}n++;});
   let html=`<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">${state.wires.length}本に線番を割付しました</p><table class="tbl"><tr><th>線番</th><th>始点</th><th>終点</th><th>レイヤー</th></tr>`;
-  // 寸法線・引出線をDXFに変換
-  state.elements.filter(e=>e.type==='dim').forEach(el=>{
-    const dx=el.x2-el.x1,dy=el.y2-el.y1,len=Math.hypot(dx,dy);
-    if(len<0.1)return;
-    const off=el.offset||30;
-    const ux=dx/len,uy=dy/len,px=-uy,py=ux;
-    const ax1=el.x1+px*off,ay1=el.y1+py*off,ax2=el.x2+px*off,ay2=el.y2+py*off;
-    // DXF DIMENSION エンティティ
-    ls.push('0','DIMENSION','8',el.layer||'寸法',
-      '10',((ax1+ax2)/2).toFixed(3),'20',(-(ay1+ay2)/2).toFixed(3),'30','0',
-      '11',((ax1+ax2)/2).toFixed(3),'21',(-(ay1+ay2)/2).toFixed(3),'31','0',
-      '70','32',
-      '13',el.x1.toFixed(3),'23',(-el.y1).toFixed(3),'33','0',
-      '14',el.x2.toFixed(3),'24',(-el.y2).toFixed(3),'34','0',
-      '1',el.dimText||'');
-    // 補助的にLINEも出力（互換性のため）
-    ls.push('0','LINE','8',el.layer||'寸法','10',ax1.toFixed(3),'20',(-ay1).toFixed(3),'30','0','11',ax2.toFixed(3),'21',(-ay2).toFixed(3),'31','0');
-    ls.push('0','LINE','8',el.layer||'寸法','10',el.x1.toFixed(3),'20',(-el.y1).toFixed(3),'30','0','11',ax1.toFixed(3),'21',(-ay1).toFixed(3),'31','0');
-    ls.push('0','LINE','8',el.layer||'寸法','10',el.x2.toFixed(3),'20',(-el.y2).toFixed(3),'30','0','11',ax2.toFixed(3),'21',(-ay2).toFixed(3),'31','0');
-    if(el.dimText)ls.push('0','TEXT','8',el.layer||'寸法','10',((ax1+ax2)/2).toFixed(3),'20',(-(ay1+ay2)/2-5).toFixed(3),'30','0','40','10','1',el.dimText,'72','1');
-  });
-
   state.wires.forEach(w=>{const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];const p0=pts[0],p1=pts[pts.length-1];html+=`<tr><td><span class="badge badge-b">${w.wireNo||'-'}</span></td><td>${Math.round(p0.x)},${Math.round(p0.y)}</td><td>${Math.round(p1.x)},${Math.round(p1.y)}</td><td>${w.layer||''}</td></tr>`;});
   html+='</table>';document.getElementById('wire-body').innerHTML=html;document.getElementById('wire-p').classList.add('open');draw();
 }
@@ -53,42 +31,102 @@ function showTerminals(){
 function exportTermCSV(){const terms=state.elements.filter(el=>el.type==='terminal');dl(['No,ラベル,端子番号,線番,メモ',...terms.map((t,i)=>`${i+1},${t.label||''},${t.terminals||''},${t.wireNo||''},${t.note||''}`)].join('\n'),'terminals.csv','text/csv');}
 
 // ================================================================
-// DXF・印刷（保存読込はedit.jsに統一）
+// DXF・印刷
 // ================================================================
+function buildSymBlocksDXF(){
+  const ls=[];
+  function bk(name,fn){
+    ls.push('0','BLOCK','8','0','2',name,'70','0','10','0','20','0','30','0','3',name,'1','');
+    fn();
+    ls.push('0','ENDBLK','8','0');
+  }
+  function LN(x1,y1,x2,y2){ls.push('0','LINE','8','0','10',x1.toFixed(3),'20',(-y1).toFixed(3),'30','0','11',x2.toFixed(3),'21',(-y2).toFixed(3),'31','0');}
+  function CIR(cx,cy,r){ls.push('0','CIRCLE','8','0','10',cx.toFixed(3),'20',(-cy).toFixed(3),'30','0','40',r.toFixed(3));}
+  function ARC(cx,cy,r,sa,ea){ls.push('0','ARC','8','0','10',cx.toFixed(3),'20',(-cy).toFixed(3),'30','0','40',r.toFixed(3),'50',sa.toFixed(3),'51',ea.toFixed(3));}
+  function RCT(x1,y1,x2,y2){ls.push('0','LWPOLYLINE','8','0','90','4','70','1','43','0','10',x1.toFixed(3),'20',(-y1).toFixed(3),'10',x2.toFixed(3),'20',(-y1).toFixed(3),'10',x2.toFixed(3),'20',(-y2).toFixed(3),'10',x1.toFixed(3),'20',(-y2).toFixed(3));}
+  function TXT(x,y,h,s){ls.push('0','TEXT','8','0','10',x.toFixed(3),'20',(-y).toFixed(3),'30','0','40',h.toFixed(3),'1',s,'72','1');}
+  bk('resistor',()=>{ LN(-32,0,-18,0); RCT(-18,-8,18,8); LN(18,0,32,0); });
+  bk('capacitor',()=>{ LN(-27,0,-6,0); LN(-6,-12,-6,12); LN(6,-12,6,12); LN(6,0,27,0); });
+  bk('inductor',()=>{ LN(-32,0,-22,0); for(let i=0;i<4;i++) ARC(-16+i*10,0,8,0,180); LN(22,0,32,0); });
+  bk('diode',()=>{ LN(-32,0,-12,0); LN(-12,-10,-12,10); LN(-12,10,12,0); LN(12,0,-12,-10); LN(12,-10,12,10); LN(12,0,32,0); });
+  bk('sw_no',()=>{ LN(-32,0,-14,0); CIR(-14,0,3); LN(-14,0,14,-9); CIR(14,0,3); LN(14,0,32,0); });
+  bk('push_no',()=>{ LN(-32,0,-14,0); CIR(-14,0,3); LN(-14,0,14,-9); CIR(14,0,3); LN(14,0,32,0); LN(0,-14,0,-9); LN(-6,-14,6,-14); });
+  bk('sw_nc',()=>{ LN(-32,0,-14,0); CIR(-14,0,3); LN(-14,0,14,5); CIR(14,0,3); LN(14,0,32,0); LN(0,-10,0,-2); });
+  bk('coil',()=>{ LN(-32,0,-20,0); RCT(-20,-14,20,14); LN(20,0,32,0); TXT(0,4,9,'CR'); });
+  bk('timer_coil',()=>{ LN(-32,0,-20,0); RCT(-20,-14,20,14); LN(20,0,32,0); TXT(0,0,9,'TIM'); CIR(0,10,4); });
+  bk('breaker',()=>{ LN(-32,0,-20,0); RCT(-20,-14,20,14); LN(20,0,32,0); TXT(0,4,9,'CB'); });
+  bk('motor',()=>{ CIR(0,0,20); LN(-32,0,-20,0); LN(20,0,32,0); TXT(0,5,14,'M'); });
+  bk('lamp',()=>{ CIR(0,0,18); LN(-11,-9,11,9); LN(11,-9,-11,9); LN(-32,0,-18,0); LN(18,0,32,0); });
+  bk('ground',()=>{ LN(0,-18,0,0); LN(-18,0,18,0); LN(-13,5,13,5); LN(-8,10,8,10); });
+  bk('battery',()=>{ LN(-36,0,-14,0); LN(-14,-9,-14,9); LN(-7,-6,-7,6); LN(0,-9,0,9); LN(7,-6,7,6); LN(14,-9,14,9); LN(14,0,36,0); });
+  bk('fuse',()=>{ LN(-32,0,-18,0); RCT(-18,-7,18,7); LN(-18,0,18,0); LN(18,0,32,0); });
+  bk('ac',()=>{ LN(-32,0,-20,0); CIR(0,0,19); LN(-14,0,-7,-13); LN(-7,-13,0,0); LN(0,0,7,13); LN(7,13,14,0); LN(19,0,32,0); });
+  bk('transformer',()=>{ LN(-32,0,-22,0); ARC(-16,0,7,0,180); ARC(-8,0,7,0,180); ARC(0,0,7,0,180); LN(0,-16,0,16); ARC(2,0,7,180,0); ARC(10,0,7,180,0); ARC(18,0,7,180,0); LN(26,0,32,0); });
+  bk('terminal',()=>{ LN(-20,0,20,0); RCT(-10,-8,10,8); LN(-4,-4,4,4); LN(4,-4,-4,4); });
+  return ls;
+}
+
 function exportDXF(){
   const ls=[];
   ls.push('0','SECTION','2','HEADER','9','$ACADVER','1','AC1015','9','$INSUNITS','70','4','0','ENDSEC');
   ls.push('0','SECTION','2','TABLES','0','TABLE','2','LAYER','70',String(LAYERS.length));
   LAYERS.forEach((l,i)=>ls.push('0','LAYER','2',l.name,'70','0','62',String(i+1),'6','CONTINUOUS'));
-  ls.push('0','ENDTAB','0','ENDSEC','0','SECTION','2','ENTITIES');
-  if(state.frameObj){const{sc,wMM,hMM,mg,thMM}=state.frameObj;const W=wMM*sc,H=hMM*sc,MG=mg*sc,TH=thMM*sc;addRect(ls,'図面枠',0,0,W,H);addRect(ls,'図面枠',MG,MG,W-MG,H-MG);addRect(ls,'図面枠',MG,H-MG-TH,W-MG,H-MG);if(state.frameObj.title)ls.push('0','TEXT','8','図面枠','10',String(MG+4),'20',String(-(H-MG-TH/2)),'30','0','40','12','1',state.frameObj.title);}
-  // 寸法線・引出線をDXFに変換
+  ls.push('0','ENDTAB','0','ENDSEC');
+  ls.push('0','SECTION','2','BLOCKS');
+  ls.push(...buildSymBlocksDXF());
+  ls.push('0','ENDSEC');
+  ls.push('0','SECTION','2','ENTITIES');
+  if(state.frameObj){
+    const fr=state.frameObj;
+    const{sc,wMM,hMM,mg,thMM,cols,rows}=fr;
+    const W=wMM*sc,H=hMM*sc,MG=mg*sc,TH=thMM*sc;
+    const innerW=W-MG*2,innerH=H-MG*2,drawH=innerH-TH;
+    const colW=innerW/cols,rowH=drawH/rows;
+    function ft(x,y,h,s){if(!s)return;ls.push('0','TEXT','8','図面枠','10',x.toFixed(2),'20',(-y).toFixed(2),'30','0','40',h.toFixed(2),'1',s,'72','1');}
+    function fl(x1,y1,x2,y2){ls.push('0','LINE','8','図面枠','10',x1.toFixed(2),'20',(-y1).toFixed(2),'30','0','11',x2.toFixed(2),'21',(-y2).toFixed(2),'31','0');}
+    addRect(ls,'図面枠',0,0,W,H);
+    addRect(ls,'図面枠',MG,MG,W-MG,H-MG);
+    addRect(ls,'図面枠',MG,MG+drawH,W-MG,MG+innerH);
+    for(let c=1;c<cols;c++){fl(MG+c*colW,0,MG+c*colW,MG);fl(MG+c*colW,MG+drawH,MG+c*colW,MG+innerH);}
+    for(let r=1;r<rows;r++){fl(0,MG+r*rowH,MG,MG+r*rowH);fl(MG+innerW,MG+r*rowH,W,MG+r*rowH);}
+    for(let c=0;c<cols;c++){ft(MG+c*colW+colW/2,MG-4,7,String.fromCharCode(65+c%26));}
+    for(let r=0;r<rows;r++){
+      ft(MG-6,MG+r*rowH+rowH/2+2,7,String(r+1));
+      ft(MG+innerW+3,MG+r*rowH+rowH/2+2,7,String(r+1));
+    }
+    const tbY=MG+drawH;
+    const cells=[
+      {x:0,y:0,w:.25,h:.5,key:'drawno',lbl:'図面番号'},
+      {x:.25,y:0,w:.35,h:.5,key:'title',lbl:'図面名称'},
+      {x:.6,y:0,w:.2,h:.5,key:'company',lbl:'会社名'},
+      {x:.8,y:0,w:.2,h:.5,key:'equip',lbl:'設備名'},
+      {x:0,y:.5,w:.12,h:.5,key:'author',lbl:'作成'},
+      {x:.12,y:.5,w:.12,h:.5,key:'approve',lbl:'承認'},
+      {x:.24,y:.5,w:.2,h:.5,key:'date',lbl:'日付'},
+      {x:.44,y:.5,w:.1,h:.5,key:'scale2',lbl:'縮尺'},
+      {x:.54,y:.5,w:.06,h:.5,key:'rev',lbl:'Rev'},
+    ];
+    cells.forEach(c=>{
+      const cx=MG+c.x*innerW,cy=tbY+c.y*TH,cw=c.w*innerW,ch=c.h*TH;
+      addRect(ls,'図面枠',cx,cy,cx+cw,cy+ch);
+      ft(cx+2,cy+4,6,c.lbl);
+      if(fr[c.key])ft(cx+3,cy+ch-4,9,fr[c.key]);
+    });
+  }
   state.elements.filter(e=>e.type==='dim').forEach(el=>{
     const dx=el.x2-el.x1,dy=el.y2-el.y1,len=Math.hypot(dx,dy);
     if(len<0.1)return;
     const off=el.offset||30;
     const ux=dx/len,uy=dy/len,px=-uy,py=ux;
     const ax1=el.x1+px*off,ay1=el.y1+py*off,ax2=el.x2+px*off,ay2=el.y2+py*off;
-    // DXF DIMENSION エンティティ
-    ls.push('0','DIMENSION','8',el.layer||'寸法',
-      '10',((ax1+ax2)/2).toFixed(3),'20',(-(ay1+ay2)/2).toFixed(3),'30','0',
-      '11',((ax1+ax2)/2).toFixed(3),'21',(-(ay1+ay2)/2).toFixed(3),'31','0',
-      '70','32',
-      '13',el.x1.toFixed(3),'23',(-el.y1).toFixed(3),'33','0',
-      '14',el.x2.toFixed(3),'24',(-el.y2).toFixed(3),'34','0',
-      '1',el.dimText||'');
-    // 補助的にLINEも出力（互換性のため）
+    ls.push('0','DIMENSION','8',el.layer||'寸法','10',((ax1+ax2)/2).toFixed(3),'20',(-(ay1+ay2)/2).toFixed(3),'30','0','11',((ax1+ax2)/2).toFixed(3),'21',(-(ay1+ay2)/2).toFixed(3),'31','0','70','32','13',el.x1.toFixed(3),'23',(-el.y1).toFixed(3),'33','0','14',el.x2.toFixed(3),'24',(-el.y2).toFixed(3),'34','0','1',el.dimText||'');
     ls.push('0','LINE','8',el.layer||'寸法','10',ax1.toFixed(3),'20',(-ay1).toFixed(3),'30','0','11',ax2.toFixed(3),'21',(-ay2).toFixed(3),'31','0');
     ls.push('0','LINE','8',el.layer||'寸法','10',el.x1.toFixed(3),'20',(-el.y1).toFixed(3),'30','0','11',ax1.toFixed(3),'21',(-ay1).toFixed(3),'31','0');
     ls.push('0','LINE','8',el.layer||'寸法','10',el.x2.toFixed(3),'20',(-el.y2).toFixed(3),'30','0','11',ax2.toFixed(3),'21',(-ay2).toFixed(3),'31','0');
     if(el.dimText)ls.push('0','TEXT','8',el.layer||'寸法','10',((ax1+ax2)/2).toFixed(3),'20',(-(ay1+ay2)/2-5).toFixed(3),'30','0','40','10','1',el.dimText,'72','1');
   });
-
   state.wires.forEach(w=>{const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];const layer=w.layer||'配線';for(let i=0;i<pts.length-1;i++)ls.push('0','LINE','8',layer,'10',pts[i].x.toFixed(2),'20',(-pts[i].y).toFixed(2),'30','0','11',pts[i+1].x.toFixed(2),'21',(-pts[i+1].y).toFixed(2),'31','0');if(w.wireNo){const mp=pts[Math.floor(pts.length/2)];ls.push('0','TEXT','8',layer,'10',mp.x.toFixed(2),'20',(-mp.y+8).toFixed(2),'30','0','40','8','1',w.wireNo,'72','1');}});
-  state.elements.forEach(el=>{const layer=el.layer||'回路';if(el.type==='text')ls.push('0','TEXT','8',layer,'10',el.x.toFixed(2),'20',(-el.y).toFixed(2),'30','0','40',String(el.fs||14),'1',el.text);else if(el.type==='rect')addRect(ls,layer,el.x,el.y,el.x+el.w,el.y+el.h);else if(el.type==='circle')ls.push('0','CIRCLE','8',layer,'10',el.x.toFixed(2),'20',(-el.y).toFixed(2),'30','0','40',el.r.toFixed(2));else if(el.type==='fline')ls.push('0','LINE','8',layer,'10',el.x1.toFixed(2),'20',(-el.y1).toFixed(2),'30','0','11',el.x2.toFixed(2),'21',(-el.y2).toFixed(2),'31','0');else{const d=getDef(el.type);ls.push('0','INSERT','8',layer,'2',el.type,'10',el.x.toFixed(3),'20',(-el.y).toFixed(3),'30','0','50',String(el.rot||0),'41','1','42','1','66','1');
-      // ATTDEF/ATTRIB でラベルを属性として出力
-      if(el.label){const lox=el.labelOffX||0,loy=el.labelOffY||(d.h/2+15);const rot=(el.rot||0)*Math.PI/180;const lx=el.x+lox*Math.cos(rot)-loy*Math.sin(rot);const ly=el.y+lox*Math.sin(rot)+loy*Math.cos(rot);ls.push('0','ATTRIB','8',layer,'10',lx.toFixed(3),'20',(-ly).toFixed(3),'30','0','40','10','1',el.label,'2','LABEL','70','0','72','1');}
-      ls.push('0','SEQEND','8',layer);}});
+  state.elements.forEach(el=>{const layer=el.layer||'回路';if(el.type==='text')ls.push('0','TEXT','8',layer,'10',el.x.toFixed(2),'20',(-el.y).toFixed(2),'30','0','40',String(el.fs||14),'1',el.text);else if(el.type==='rect')addRect(ls,layer,el.x,el.y,el.x+el.w,el.y+el.h);else if(el.type==='circle')ls.push('0','CIRCLE','8',layer,'10',el.x.toFixed(2),'20',(-el.y).toFixed(2),'30','0','40',el.r.toFixed(2));else if(el.type==='fline')ls.push('0','LINE','8',layer,'10',el.x1.toFixed(2),'20',(-el.y1).toFixed(2),'30','0','11',el.x2.toFixed(2),'21',(-el.y2).toFixed(2),'31','0');else{const d=getDef(el.type);ls.push('0','INSERT','8',layer,'2',el.type,'10',el.x.toFixed(3),'20',(-el.y).toFixed(3),'30','0','50',String(el.rot||0),'41','1','42','1','66','1');if(el.label){const lox=el.labelOffX||0,loy=el.labelOffY||(d.h/2+15);const rot=(el.rot||0)*Math.PI/180;const lx=el.x+lox*Math.cos(rot)-loy*Math.sin(rot);const ly=el.y+lox*Math.sin(rot)+loy*Math.cos(rot);ls.push('0','ATTRIB','8',layer,'10',lx.toFixed(3),'20',(-ly).toFixed(3),'30','0','40','10','1',el.label,'2','LABEL','70','0','72','1');}ls.push('0','SEQEND','8',layer);}});
   ls.push('0','ENDSEC','0','EOF');
   dl(ls.join('\n'),'circuit.dxf','application/dxf');
 }
@@ -126,161 +164,3 @@ function parseDXF(text){
 function readEnt(pairs,start){const e={_end:start+1};let i=start+1;while(i<pairs.length){const{code,val}=pairs[i];if(code===0)break;if(e[String(code)]===undefined)e[String(code)]=val;i++;}e._end=i;return e;}
 function readPoly(pairs,start){const e={_end:start+1,pts:[]};let i=start+1,cx=null;while(i<pairs.length){const{code,val}=pairs[i];if(code===0&&i>start+1)break;if(e[String(code)]===undefined&&code!==10&&code!==20)e[String(code)]=val;if(code===10)cx=+val||0;if(code===20&&cx!==null){e.pts.push({x:cx,y:-(+val||0)});cx=null;}i++;}e._end=i;return e;}
 function mapBlock(name){const n=name.toLowerCase();const m=[['coil','coil'],['relay','coil'],['timer','timer_coil'],['motor','motor'],['breaker','breaker'],['mccb','breaker'],['cb','breaker'],['nf','breaker'],['fuse','fuse'],['lamp','lamp'],['sw_no','sw_no'],['sw_nc','sw_nc'],['terminal','terminal'],['tb','terminal'],['transformer','transformer']];for(const[k,v]of m)if(n.includes(k))return v;return'text';}
-
-// キーボードショートカットはedit.jsに統一
-
-// ================================================================
-// PDF出力
-// ================================================================
-function calcPageBounds(pg) {
-  if (pg.frameObj) {
-    const f = pg.frameObj;
-    const W = (f.wMM || f.w || 297) * (f.sc || 1);
-    const H = (f.hMM || f.h || 210) * (f.sc || 1);
-    return { minX:0, minY:0, maxX:W, maxY:H };
-  }
-  let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
-  const pad = 40;
-  (pg.elements||[]).forEach(el => {
-    const d = getDef(el.type) || {};
-    const hw=(d.w||20)/2, hh=(d.h||20)/2;
-    if      (el.type==='rect')   { minX=Math.min(minX,el.x); minY=Math.min(minY,el.y); maxX=Math.max(maxX,el.x+(el.w||0)); maxY=Math.max(maxY,el.y+(el.h||0)); }
-    else if (el.type==='circle') { minX=Math.min(minX,el.x-(el.r||0)); minY=Math.min(minY,el.y-(el.r||0)); maxX=Math.max(maxX,el.x+(el.r||0)); maxY=Math.max(maxY,el.y+(el.r||0)); }
-    else if (el.type==='dim' || el.type==='leader') {
-      // 寸法線・引出線はoffsetぶん余分にとる
-      const off = (el.offset||30) + 20;
-      minX=Math.min(minX,el.x1,el.x2)-off; minY=Math.min(minY,el.y1,el.y2)-off;
-      maxX=Math.max(maxX,el.x1,el.x2)+off; maxY=Math.max(maxY,el.y1,el.y2)+off;
-    }
-    else if (el.x1!=null)        { minX=Math.min(minX,el.x1,el.x2); minY=Math.min(minY,el.y1,el.y2); maxX=Math.max(maxX,el.x1,el.x2); maxY=Math.max(maxY,el.y1,el.y2); }
-    else if (el.x!=null)         { minX=Math.min(minX,el.x-hw); minY=Math.min(minY,el.y-hh); maxX=Math.max(maxX,el.x+hw); maxY=Math.max(maxY,el.y+hh); }
-  });
-  (pg.wires||[]).forEach(w => {
-    (w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}]).forEach(p => {
-      minX=Math.min(minX,p.x); minY=Math.min(minY,p.y);
-      maxX=Math.max(maxX,p.x); maxY=Math.max(maxY,p.y);
-    });
-  });
-  if (!isFinite(minX)) return { minX:0, minY:0, maxX:297, maxY:210 };
-  return { minX:minX-pad, minY:minY-pad, maxX:maxX+pad, maxY:maxY+pad };
-}
-
-function exportPDF() {
-  document.getElementById('pdf-opt-p').classList.add('open');
-}
-
-function runExportPDF() {
-  closeFP('pdf-opt-p');
-  if (!window.jspdf?.jsPDF) {
-    alert('PDF出力ライブラリが読み込まれていません。\nネット接続を確認してページを再読み込みしてください。');
-    return;
-  }
-  const { jsPDF } = window.jspdf;
-  const dpi = parseInt(document.getElementById('pdf-dpi').value) || 150;
-  const fmt = document.getElementById('pdf-fmt').value || 'png';
-
-  // 現在の状態を保存
-  const origPage = state.currentPage;
-  const origPan  = { ...state.pan };
-  const origZoom = state.zoom;
-  const origDark = state.darkMode;
-  const origSelEls   = new Set(state.sel.els);
-  const origSelWires = new Set(state.sel.wires);
-  const origCv  = cv;
-  const origCtx = ctx;
-
-  // 出力用に準備
-  state.pdfMode  = true;
-  state.darkMode = false;
-  document.body.classList.remove('dk');
-  state.sel.els.clear();
-  state.sel.wires.clear();
-
-  let pdf = null;
-
-  try {
-    for (let idx = 0; idx < state.pages.length; idx++) {
-      const pg = state.pages[idx];
-      state.currentPage = idx;
-
-      const b = calcPageBounds(pg);
-      const contentW = b.maxX - b.minX;
-      const contentH = b.maxY - b.minY;
-      if (contentW < 1 || contentH < 1) continue;
-
-      // PDFページサイズ（mm）
-      let pdfW, pdfH;
-      if (pg.frameObj) {
-        pdfW = pg.frameObj.wMM || pg.frameObj.w || 297;
-        pdfH = pg.frameObj.hMM || pg.frameObj.h || 210;
-      } else {
-        pdfW = contentW >= contentH ? 297 : 210;
-        pdfH = contentW >= contentH ? 210 : 297;
-      }
-
-      // オフスクリーンキャンバスを指定DPIで生成
-      const offW = Math.round(pdfW * dpi / 25.4);
-      const offH = Math.round(pdfH * dpi / 25.4);
-      const offCanvas = document.createElement('canvas');
-      offCanvas.width  = offW;
-      offCanvas.height = offH;
-      const offCtx = offCanvas.getContext('2d');
-      offCtx.fillStyle = '#ffffff';
-      offCtx.fillRect(0, 0, offW, offH);
-
-      // グローバルcv・ctxをオフスクリーンに差し替え
-      cv  = offCanvas;
-      ctx = offCtx;
-
-      // physScale: 実際のキャンバス倍率（ピクセル/ワールド単位）
-      // refZoom:   線幅計算用の基準倍率（physScale * 96 / dpi = 画面96dpi相当）
-      // これにより線幅が常に同じ物理サイズになる
-      const physScale = Math.min(offW / contentW, offH / contentH);
-      const refZoom   = physScale * 96 / dpi;
-      state.pdfDpi  = dpi;
-      state.pdfZoom = physScale;
-      state.zoom    = refZoom;
-      state.pan.x   = (offW - physScale * contentW) / 2 - physScale * b.minX;
-      state.pan.y   = (offH - physScale * contentH) / 2 - physScale * b.minY;
-
-      draw();
-
-      // グローバルを元に戻す
-      cv  = origCv;
-      ctx = origCtx;
-
-      // PDF生成・ページ追加
-      if (!pdf) {
-        pdf = new jsPDF({ unit:'mm', format:[pdfW, pdfH], orientation: pdfW>=pdfH ? 'l' : 'p' });
-      } else {
-        pdf.addPage([pdfW, pdfH], pdfW>=pdfH ? 'l' : 'p');
-      }
-
-      const imgData = fmt === 'png'
-        ? offCanvas.toDataURL('image/png')
-        : offCanvas.toDataURL('image/jpeg', 0.95);
-      pdf.addImage(imgData, fmt.toUpperCase(), 0, 0, pdfW, pdfH);
-    }
-
-    if (pdf) {
-      const fname = (state.saveFileName || '回路図') + '.pdf';
-      pdf.save(fname);
-    } else {
-      alert('出力できるページがありませんでした。');
-    }
-  } finally {
-    state.pdfMode = false;
-    state.pdfZoom = 0;
-    state.pdfDpi  = 96;
-    cv  = origCv;
-    ctx = origCtx;
-    state.currentPage = origPage;
-    state.pan         = origPan;
-    state.zoom        = origZoom;
-    state.darkMode    = origDark;
-    if (origDark) document.body.classList.add('dk');
-    state.sel.els   = origSelEls;
-    state.sel.wires = origSelWires;
-    draw();
-  }
-}
