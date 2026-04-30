@@ -1,0 +1,185 @@
+// ================================================================
+// input.js — マウスイベントを正規化してtools/selectに渡す
+// input.jsはデータを直接変更しない
+// ================================================================
+
+// ----------------------------------------------------------------
+// 座標変換（world ↔ canvas）
+// ----------------------------------------------------------------
+function tc(wx, wy) { // world → canvas
+  return { x: wx * state.zoom + state.pan.x, y: wy * state.zoom + state.pan.y };
+}
+function tw(cx, cy) { // canvas → world
+  return { x: (cx - state.pan.x) / state.zoom, y: (cy - state.pan.y) / state.zoom };
+}
+function snap(v)   { return Math.round(v / state.G) * state.G; }
+function snapPt(wx, wy) { return { x: snap(wx), y: snap(wy) }; }
+
+function resize() {
+  cv.width  = cwEl.clientWidth;
+  cv.height = cwEl.clientHeight;
+}
+window.addEventListener('resize', () => { resize(); draw(); });
+
+// ----------------------------------------------------------------
+// ズーム・パン
+// ----------------------------------------------------------------
+function doZoom(factor, cx, cy) {
+  const r = cv.getBoundingClientRect();
+  const ox = cx ?? cv.width  / 2;
+  const oy = cy ?? cv.height / 2;
+  const wx = (ox - state.pan.x) / state.zoom;
+  const wy = (oy - state.pan.y) / state.zoom;
+  state.zoom = Math.max(0.05, Math.min(20, state.zoom * factor));
+  state.pan.x = ox - wx * state.zoom;
+  state.pan.y = oy - wy * state.zoom;
+  draw();
+}
+
+function resetView() {
+  state.zoom = 1;
+  state.pan  = state.frameObj ? { x:20, y:20 } : { x:60, y:60 };
+  draw();
+}
+
+cv.addEventListener('wheel', e => {
+  e.preventDefault();
+  const r = cv.getBoundingClientRect();
+  doZoom(e.deltaY < 0 ? 1.12 : 1/1.12, e.clientX - r.left, e.clientY - r.top);
+}, { passive: false });
+
+// ----------------------------------------------------------------
+// マウスイベント
+// ----------------------------------------------------------------
+cv.addEventListener('mousedown', e => {
+  const r  = cv.getBoundingClientRect();
+  const cx = e.clientX - r.left;
+  const cy = e.clientY - r.top;
+  const {x: wx, y: wy} = tw(cx, cy);
+
+  state.mouse.down    = true;
+  state.mouse.button  = e.button;
+  state.mouse.startCx = cx; state.mouse.startCy = cy;
+  state.mouse.startWx = wx; state.mouse.startWy = wy;
+  state.mouse.cx = cx; state.mouse.cy = cy;
+  state.mouse.wx = wx; state.mouse.wy = wy;
+
+  // 中ボタン → パン開始
+  if (e.button === 1) {
+    state.mouse.panning   = true;
+    state.mouse.panOrigin = { x: state.pan.x, y: state.pan.y };
+    return;
+  }
+
+  // 右ボタン → パン開始（mouseupでdragMovedなければコンテキストメニュー）
+  if (e.button === 2) {
+    state.mouse.panning   = true;
+    state.mouse.panOrigin = { x: state.pan.x, y: state.pan.y };
+    state.mouse.dragMoved = false;
+    cv.style.cursor = 'grabbing';
+    return;
+  }
+
+  // 左ボタン → 現在ツールに委譲
+  currentTool().onDown(wx, wy, e);
+  draw();
+});
+
+cv.addEventListener('mousemove', e => {
+  const r  = cv.getBoundingClientRect();
+  const cx = e.clientX - r.left;
+  const cy = e.clientY - r.top;
+  const {x: wx, y: wy} = tw(cx, cy);
+
+  state.mouse.cx = cx; state.mouse.cy = cy;
+  state.mouse.wx = wx; state.mouse.wy = wy;
+
+  if (state.mouse.panning) {
+    const dx = cx - state.mouse.startCx;
+    const dy = cy - state.mouse.startCy;
+    if (Math.hypot(dx, dy) > 4) state.mouse.dragMoved = true;
+    state.pan.x = state.mouse.panOrigin.x + dx;
+    state.pan.y = state.mouse.panOrigin.y + dy;
+    draw();
+    return;
+  }
+
+  if (!state.mouse.down) {
+    // ホバー：スナップマーカー更新
+    state.snapPreview = getAllSnapPoints(wx, wy);
+    currentTool().onHover?.(wx, wy, e);
+    draw();
+    return;
+  }
+
+  currentTool().onMove(wx, wy, e);
+  draw();
+});
+
+cv.addEventListener('mouseup', e => {
+  const r  = cv.getBoundingClientRect();
+  const cx = e.clientX - r.left;
+  const cy = e.clientY - r.top;
+  const {x: wx, y: wy} = tw(cx, cy);
+
+  if (state.mouse.panning) {
+    state.mouse.panning = false;
+    state.mouse.down    = false;
+    cv.style.cursor = '';
+    // 右クリックでパン距離が小さい場合はコンテキストメニュー
+    if (e.button === 2 && !state.mouse.dragMoved) {
+      showCtx(e.clientX, e.clientY);
+    }
+    return;
+  }
+
+  if (e.button === 2) {
+    showCtx(e.clientX, e.clientY);
+    state.mouse.down = false;
+    return;
+  }
+
+  currentTool().onUp(wx, wy, e);
+  state.mouse.down   = false;
+  state.mouse.button = -1;
+  draw();
+});
+
+cv.addEventListener('mouseleave', () => {
+  state.snapPreview = null;
+  draw();
+});
+
+cv.addEventListener('contextmenu', e => e.preventDefault());
+
+// ----------------------------------------------------------------
+// ツール切り替え
+// ----------------------------------------------------------------
+function currentTool() {
+  return TOOLS[state.mode] || TOOLS.select;
+}
+
+function setMode(m, sym) {
+  state.mode     = m;
+  state.symType  = sym || null;
+  state.preview  = null;
+  state.wirePoints = [];
+  state.dimState = null;
+  document.querySelectorAll('.rb[id^=rb-]').forEach(b => b.classList.remove('on'));
+  document.getElementById('rb-' + (m === 'sym' ? 'sym' : m))?.classList.add('on');
+  updateHint();
+}
+
+function toggleOrtho() {
+  state.ortho = !state.ortho;
+  document.getElementById('rb-ortho')?.classList.toggle('on', state.ortho);
+  document.getElementById('s-hint').textContent = state.ortho ? '直交モード ON (F8でOFF)' : '';
+}
+function toggleSnapEnd() {
+  state.snapEnd = !state.snapEnd;
+  document.getElementById('rb-snapend')?.classList.toggle('on', state.snapEnd);
+}
+function toggleSnapMid() {
+  state.snapMid = !state.snapMid;
+  document.getElementById('rb-snapmid')?.classList.toggle('on', state.snapMid);
+}
