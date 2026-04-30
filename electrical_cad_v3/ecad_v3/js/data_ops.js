@@ -66,6 +66,7 @@ function buildSymBlocksDXF(){
   return ls;
 }
 
+function toUnicodeDXF(str){return[...str].map(c=>{const code=c.charCodeAt(0);return code>127?`\\U+${code.toString(16).toUpperCase().padStart(4,'0')}`:c;}).join('');}
 function exportDXF(){
   const ls=[];
   ls.push('0','SECTION','2','HEADER','9','$ACADVER','1','AC1015','9','$INSUNITS','70','4','0','ENDSEC');
@@ -82,7 +83,7 @@ function exportDXF(){
     const W=wMM*sc,H=hMM*sc,MG=mg*sc,TH=thMM*sc;
     const innerW=W-MG*2,innerH=H-MG*2,drawH=innerH-TH;
     const colW=innerW/cols,rowH=drawH/rows;
-    function ft(x,y,h,s){if(!s)return;ls.push('0','TEXT','8','図面枠','10',x.toFixed(2),'20',(-y).toFixed(2),'30','0','40',h.toFixed(2),'1',s,'72','1','11',x.toFixed(2),'21',(-y).toFixed(2),'31','0','73','2');}
+    function ft(x,y,h,s){if(!s)return;ls.push('0','TEXT','8','図面枠','10',x.toFixed(2),'20',(-y).toFixed(2),'30','0','40',h.toFixed(2),'1',toUnicodeDXF(s),'72','1','11',x.toFixed(2),'21',(-y).toFixed(2),'31','0','73','2');}
     function fl(x1,y1,x2,y2){ls.push('0','LINE','8','図面枠','10',x1.toFixed(2),'20',(-y1).toFixed(2),'30','0','11',x2.toFixed(2),'21',(-y2).toFixed(2),'31','0');}
     addRect(ls,'図面枠',0,0,W,H);
     addRect(ls,'図面枠',MG,MG,W-MG,H-MG);
