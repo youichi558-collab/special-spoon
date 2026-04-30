@@ -36,7 +36,7 @@ function exportTermCSV(){const terms=state.elements.filter(el=>el.type==='termin
 function buildSymBlocksDXF(){
   const ls=[];
   function bk(name,fn){
-    ls.push('0','BLOCK','8','0','2',name,'70','0','10','0','20','0','30','0','3',name,'1','');
+    ls.push('0','BLOCK','8','0','2',name,'70','1','10','0','20','0','30','0','3',name,'1','');
     fn();
     ls.push('0','ENDBLK','8','0');
   }
