@@ -35,7 +35,7 @@ function applyFrame(){
     equip:document.getElementById('f-equip').value,
     author:document.getElementById('f-author').value,
     approve:document.getElementById('f-approve').value,
-    date:document.getElementById('f-date').value || (state.frameObj?.date) || new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit'}).replace(/\//g,'-'),
+    date:document.getElementById('f-date').value,
     scale2:document.getElementById('f-scale2').value,
     rev:document.getElementById('f-rev').value,
     chghist:document.getElementById('f-chghist')?.value||'',
