@@ -297,7 +297,7 @@ function hitTest(wx, wy) {
     const el = state.elements[i];
     const d  = getDef(el.type);
     if (!d) continue;
-    if (el.type === 'text')   { if (Math.abs(wx-el.x)<40 && Math.abs(wy-el.y)<12) return el; }
+    if (el.type === 'text')   { const hw = Math.max(40, (el.text||'').length * (el.fs||14) * 0.6); const hh = (el.fs||14); if (wx>=el.x-4 && wx<=el.x+hw && wy>=el.y-hh && wy<=el.y+4) return el; }
     else if (el.type === 'fline') { if (distToSeg(wx,wy,el.x1,el.y1,el.x2,el.y2) < R) return el; }
     else if (el.type === 'rect')  { if (wx>=el.x&&wx<=el.x+el.w&&wy>=el.y&&wy<=el.y+el.h) return el; }
     else if (el.type === 'circle'){ if (Math.abs(Math.hypot(wx-el.x,wy-el.y)-el.r) < R) return el; }
