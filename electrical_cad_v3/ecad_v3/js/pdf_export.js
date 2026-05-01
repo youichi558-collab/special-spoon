@@ -343,7 +343,7 @@ function runExportPDF() {
 
           // 値テキスト
           const val = c.key === '_page'
-            ? `${idx+1} / ${state.pages.length}`
+            ? (fr.page || `${idx+1} / ${state.pages.length}`)
             : (fr[c.key] || '');
           if (val) {
             const valEl = { text: val, color: '#111111' };
@@ -363,6 +363,14 @@ function runExportPDF() {
             if (valRes) pdf.addImage(valRes.dataURL, 'PNG', cx+2, cy + ch - valRes.hMM * 0.8, valRes.wMM, valRes.hMM, '', 'FAST');
           }
         });
+
+        // セル描画後に枠線を再描画（線が切れるのを防ぐ）
+        pdf.setDrawColor(0);
+        pdf.setLineWidth(0.5);
+        pdf.rect(mg, mg, innerW, innerH, 'S');
+        pdf.rect(mg, tbY, innerW, thMM, 'S');
+        pdf.setLineWidth(0.7);
+        pdf.rect(0, 0, pdfW, pdfH, 'S');
       }
     }  // end for loop
 

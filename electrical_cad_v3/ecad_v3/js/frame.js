@@ -39,6 +39,7 @@ function applyFrame(){
     scale2:document.getElementById('f-scale2').value,
     rev:document.getElementById('f-rev').value,
     chghist:document.getElementById('f-chghist')?.value||'',
+    page:document.getElementById('f-page')?.value || (state.frameObj?.page) || '',
   };
   closeFP('frame-p');resetView();draw();
 }
@@ -72,7 +73,7 @@ function showFramePanel(){
     document.getElementById('frame-th').value=state.frameObj.thMM;
     document.getElementById('frame-cols').value=state.frameObj.cols;
     document.getElementById('frame-rows').value=state.frameObj.rows;
-    ['drawno','title','company','equip','author','approve','date','scale2','rev','chghist'].forEach(k=>{const el=document.getElementById('f-'+k);if(el)el.value=state.frameObj[k]||'';});
+    ['drawno','title','company','equip','author','approve','date','scale2','rev','chghist','page'].forEach(k=>{const el=document.getElementById('f-'+k);if(el)el.value=state.frameObj[k]||'';});
   }
   document.getElementById('frame-p').classList.add('open');
 }
@@ -154,7 +155,7 @@ function drawFrame(fr){
     ctx.fillText(c.lbl,cx+2/state.zoom,cy+9/state.zoom);
     ctx.fillStyle=state.darkMode?'#eee':'#111';ctx.font=`bold ${10/state.zoom}px sans-serif`;
     const val = c.key==='_page'
-      ? `${state.currentPage+1} / ${state.pages.length}`
+      ? (fr.page || `${state.currentPage+1} / ${state.pages.length}`)
       : (fr[c.key]||'');
     if (c.key==='chghist' && val) {
       // セル幅に収まるようフォントサイズを自動縮小
