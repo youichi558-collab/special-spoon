@@ -463,6 +463,7 @@ function runExportPDF() {
           }
         });
       }
+    }  // end for loop
 
     if (pdf) {
       pdf.save((state.saveFileName || '回路図') + '.pdf');
