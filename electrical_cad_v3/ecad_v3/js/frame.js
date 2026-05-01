@@ -157,19 +157,15 @@ function drawFrame(fr){
       ? `${state.currentPage+1} / ${state.pages.length}`
       : (fr[c.key]||'');
     if (c.key==='chghist' && val) {
-      // 折り返し描画
+      // セル幅に収まるようフォントサイズを自動縮小
       const maxW = cw - 6/state.zoom;
-      const lineH = 12/state.zoom;
-      let line='', lines=[], y0=cy+ch*0.45;
-      for (const ch2 of val) {
-        if (ch2==='\n') { lines.push(line); line=''; continue; }
-        if (ctx.measureText(line+ch2).width > maxW) { lines.push(line); line=ch2; }
-        else line+=ch2;
+      let fs = 10/state.zoom;
+      ctx.font = `bold ${fs}px sans-serif`;
+      while (ctx.measureText(val).width > maxW && fs > 4/state.zoom) {
+        fs -= 0.5/state.zoom;
+        ctx.font = `bold ${fs}px sans-serif`;
       }
-      if (line) lines.push(line);
-      const totalH = lines.length * lineH;
-      let ly = cy + (ch - totalH) / 2 + lineH * 0.8;
-      lines.forEach(l => { ctx.fillText(l, cx+3/state.zoom, ly); ly+=lineH; });
+      ctx.fillText(val, cx+3/state.zoom, cy+ch-5/state.zoom);
     } else {
       ctx.fillText(val, cx+3/state.zoom, cy+ch-5/state.zoom);
     }
