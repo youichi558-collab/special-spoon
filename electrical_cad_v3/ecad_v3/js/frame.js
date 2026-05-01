@@ -156,7 +156,23 @@ function drawFrame(fr){
     const val = c.key==='_page'
       ? `${state.currentPage+1} / ${state.pages.length}`
       : (fr[c.key]||'');
-    ctx.fillText(val,cx+3/state.zoom,cy+ch-5/state.zoom);
+    if (c.key==='chghist' && val) {
+      // 折り返し描画
+      const maxW = cw - 6/state.zoom;
+      const lineH = 12/state.zoom;
+      let line='', lines=[], y0=cy+ch*0.45;
+      for (const ch2 of val) {
+        if (ch2==='\n') { lines.push(line); line=''; continue; }
+        if (ctx.measureText(line+ch2).width > maxW) { lines.push(line); line=ch2; }
+        else line+=ch2;
+      }
+      if (line) lines.push(line);
+      const totalH = lines.length * lineH;
+      let ly = cy + (ch - totalH) / 2 + lineH * 0.8;
+      lines.forEach(l => { ctx.fillText(l, cx+3/state.zoom, ly); ly+=lineH; });
+    } else {
+      ctx.fillText(val, cx+3/state.zoom, cy+ch-5/state.zoom);
+    }
   });
 
 

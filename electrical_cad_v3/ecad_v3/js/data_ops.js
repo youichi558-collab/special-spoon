@@ -241,30 +241,50 @@ function rasterizeSymEl(el, s) {
 
 // テキスト要素をオフスクリーンキャンバスでラスタライズ（日本語対応）
 // fsMM: フォントサイズ(mm)。el.fsはスクリーンpx単位なので呼び出し側で変換すること
-function rasterizeTextEl(el, fsMM) {
+function rasterizeTextEl(el, fsMM, maxWidthMM) {
   const dpi = 200;
   const text = el.text || '';
   if (!text) return null;
   const pxPerMM = dpi / 25.4;
   const fsPx = fsMM * pxPerMM;
 
+  // 折り返し処理（日本語・改行対応）
+  function splitLines(text, maxPx) {
+    const result = [];
+    for (const paragraph of text.split('\n')) {
+      if (!maxPx) { result.push(paragraph); continue; }
+      const tmpC = document.createElement('canvas');
+      const tmpX = tmpC.getContext('2d');
+      tmpX.font = `${fsPx}px sans-serif`;
+      let line = '';
+      for (const ch of paragraph) {
+        if (tmpX.measureText(line + ch).width > maxPx) { result.push(line); line = ch; }
+        else line += ch;
+      }
+      result.push(line);
+    }
+    return result;
+  }
+
+  const maxPx = maxWidthMM ? (maxWidthMM - 2) * pxPerMM : null;
+  const lines = splitLines(text, maxPx);
+
   const tmpCv = document.createElement('canvas');
   tmpCv.width = 1; tmpCv.height = 1;
   const tmpCtx = tmpCv.getContext('2d');
   tmpCtx.font = `${fsPx}px sans-serif`;
-  const tw = tmpCtx.measureText(text).width;
-
-  const pxW = Math.max(4, Math.ceil(tw + 4));
-  const pxH = Math.max(4, Math.ceil(fsPx * 1.5));
+  const maxLineW = Math.max(...lines.map(l => tmpCtx.measureText(l).width));
+  const pxW = maxPx ? Math.ceil(maxPx + 4) : Math.max(4, Math.ceil(maxLineW + 4));
+  const lineH = fsPx * 1.4;
+  const pxH = Math.max(4, Math.ceil(lineH * lines.length + fsPx * 0.2));
 
   const oc = document.createElement('canvas');
   oc.width = pxW; oc.height = pxH;
   const octx = oc.getContext('2d');
-  // 背景透明（白で塗りつぶさない）
   octx.fillStyle = el.color || '#000000';
   octx.font = `${fsPx}px sans-serif`;
   octx.textBaseline = 'alphabetic';
-  octx.fillText(text, 2, fsPx);
+  lines.forEach((l, i) => octx.fillText(l, 2, fsPx + i * lineH));
   return { dataURL: oc.toDataURL('image/png'), wMM: pxW / pxPerMM, hMM: pxH / pxPerMM };
 }
 
@@ -476,7 +496,8 @@ function runExportPDF() {
             : (fr[c.key] || '');
           if (val) {
             const valEl = { text: val, color: '#111111' };
-            const valRes = rasterizeTextEl(valEl, valFsMM);
+            const maxW = c.key === 'chghist' ? cw - 2 : null;
+            const valRes = rasterizeTextEl(valEl, valFsMM, maxW);
             if (valRes) pdf.addImage(valRes.dataURL, 'PNG', cx+2, cy + ch - valRes.hMM * 0.8, valRes.wMM, valRes.hMM, '', 'FAST');
           }
         });
