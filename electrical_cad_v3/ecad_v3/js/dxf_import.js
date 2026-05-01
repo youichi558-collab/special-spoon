@@ -19,8 +19,13 @@ function parseDXF(text){
       break;
     }
   }
+  // ENTITIESセクションのみ処理
+  let inEntities=false;
   while(i<pairs.length){
     const{code,val}=pairs[i];
+    if(code===0&&val==='SECTION'){i++;if(i<pairs.length&&pairs[i].code===2&&pairs[i].val==='ENTITIES'){inEntities=true;i++;continue;}inEntities=false;i++;continue;}
+    if(code===0&&val==='ENDSEC'){inEntities=false;i++;continue;}
+    if(!inEntities){i++;continue;}
     if(code===0){
       if(val==='LINE'){const e=readEnt(pairs,i);if(e['8']==='図面枠'){i=e._end;continue;}const x1=+e['10']||0,y1=-(+e['20']||0),x2=+e['11']||0,y2=-(+e['21']||0);if(Math.hypot(x2-x1,y2-y1)>0.1){state.wires.push({id:genId('w'),x1,y1,x2,y2,pts:[{x:x1,y:y1},{x:x2,y:y2}],layer:e['8']||'配線',wireNo:null});lc++;}i=e._end;continue;}
       if(val==='CIRCLE'){const e=readEnt(pairs,i);if(e['8']==='図面枠'){i=e._end;continue;}const r=+e['40']||0;if(r>0){state.elements.push({id:genId('el'),type:'circle',x:+e['10']||0,y:-(+e['20']||0),r,layer:e['8']||'外形'});cc++;}i=e._end;continue;}
