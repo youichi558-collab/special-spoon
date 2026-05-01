@@ -48,7 +48,7 @@ function getAllSnapPoints(wx, wy) {
     }
   });
 
-  return best;
+  return best || { x: snap(wx), y: snap(wy), snapType: 'grid' };
 }
 
 function snapWirePoint(wx, wy, prevX, prevY) {
