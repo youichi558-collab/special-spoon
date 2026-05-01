@@ -251,10 +251,14 @@ function runExportPDF() {
         const fr = pg.frameObj;
         const mg = fr.mg || 10;
         const thMM = fr.thMM || 30;
+        const cols = fr.cols || 8;
+        const rows = fr.rows || 4;
         const innerW = pdfW - mg * 2;
         const innerH = pdfH - mg * 2;
         const drawH = innerH - thMM;
         const tbY = mg + drawH;
+        const colW = innerW / cols;
+        const rowH = drawH / rows;
 
         pdf.setDrawColor(0);
         pdf.setLineDashPattern([], 0);
@@ -265,6 +269,42 @@ function runExportPDF() {
         // 内枠
         pdf.setLineWidth(0.5);
         pdf.rect(mg, mg, innerW, innerH, 'S');
+
+        // ゾーン分割線（上下の余白部分）
+        pdf.setLineWidth(0.2);
+        pdf.setDrawColor(150, 150, 150);
+        for (let c = 1; c < cols; c++) {
+          const x = mg + c * colW;
+          pdf.line(x, 0, x, mg);
+          pdf.line(x, mg + drawH, x, mg + innerH);
+        }
+        for (let r = 1; r < rows; r++) {
+          const y = mg + r * rowH;
+          pdf.line(0, y, mg, y);
+          pdf.line(mg + innerW, y, pdfW, y);
+        }
+
+        // ゾーンラベル（列アルファベット・行番号）
+        const zoneFsMM = Math.min(mg * 0.45, 3.5);
+        for (let c = 0; c < cols; c++) {
+          const lbl = { text: String.fromCharCode(65 + c % 26), color: '#444444' };
+          const res = rasterizeTextEl(lbl, zoneFsMM);
+          if (res) {
+            const x = mg + c * colW + colW / 2 - res.wMM / 2;
+            pdf.addImage(res.dataURL, 'PNG', x, mg / 2 - res.hMM / 2, res.wMM, res.hMM, '', 'FAST');
+          }
+        }
+        for (let r = 0; r < rows; r++) {
+          const lbl = { text: String(r + 1), color: '#444444' };
+          const res = rasterizeTextEl(lbl, zoneFsMM);
+          if (res) {
+            const y = mg + r * rowH + rowH / 2 - res.hMM / 2;
+            pdf.addImage(res.dataURL, 'PNG', mg / 2 - res.wMM / 2, y, res.wMM, res.hMM, '', 'FAST');
+            pdf.addImage(res.dataURL, 'PNG', mg + innerW + mg / 2 - res.wMM / 2, y, res.wMM, res.hMM, '', 'FAST');
+          }
+        }
+
+        pdf.setDrawColor(0);
 
         // 表題欄外枠
         pdf.setLineWidth(0.5);
