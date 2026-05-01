@@ -12,10 +12,11 @@ function parseDXF(text){
   const lines=text.split(/\r?\n/).map(l=>l.trim());
   const pairs=[];for(let i=0;i<lines.length-1;i+=2){const code=parseInt(lines[i]);if(!isNaN(code))pairs.push({code,val:lines[i+1]});}
   let lc=0,cc=0,tc=0,ic=0;let i=0;
-  // frameObjをコメントから復元
+  // frameObjは最後に設定（ページ切り替え後に確実に設定するため）
+  let parsedFrameObj = null;
   for(let j=0;j<pairs.length;j++){
-    if(pairs[j].code===999&&pairs[j].val.startsWith('ECAD_FRAME:')){
-      try{state.frameObj=JSON.parse(pairs[j].val.slice('ECAD_FRAME:'.length));}catch(e){}
+    if(pairs[j].code===999 && String(pairs[j].val).startsWith('ECAD_FRAME:')){
+      try{parsedFrameObj=JSON.parse(pairs[j].val.slice('ECAD_FRAME:'.length));}catch(e){console.warn('ECAD_FRAME parse error',e);}
       break;
     }
   }
@@ -35,6 +36,7 @@ function parseDXF(text){
     i++;
   }
   const total=lc+cc+tc+ic;
+  if(parsedFrameObj) state.frameObj = parsedFrameObj;
   document.getElementById('dxf-log-body').innerHTML=`<p style="font-size:11px;margin-bottom:8px">読込完了: <b>${total}</b>要素</p><table class="tbl"><tr><th>種別</th><th>件数</th></tr><tr><td>配線</td><td>${lc}</td></tr><tr><td>円</td><td>${cc}</td></tr><tr><td>テキスト</td><td>${tc}</td></tr><tr><td>シンボル</td><td>${ic}</td></tr></table>${total===0?'<p style="font-size:11px;color:var(--red);margin-top:6px">要素が読み込めませんでした</p>':''}`;
   document.getElementById('dxf-log-p').classList.add('open');draw();
 }
