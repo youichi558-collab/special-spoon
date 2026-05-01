@@ -328,6 +328,12 @@ function distToSeg(px,py,x1,y1,x2,y2) {
 function inBox(el, sx, sy, ex, ey) {
   const d = getDef(el.type);
   if (!d) return false;
+  if (el.type === 'text') {
+    const tw = (el.text||'').length * (el.fs||14) * 0.6;
+    const th = (el.fs||14);
+    // テキストの表示領域: x方向=el.x〜el.x+tw, y方向=el.y-th〜el.y
+    return el.x <= ex && el.x+tw >= sx && el.y-th <= ey && el.y >= sy;
+  }
   if (el.x != null) return el.x>=sx && el.x<=ex && el.y>=sy && el.y<=ey;
   if (el.x1 != null) return el.x1>=sx&&el.x1<=ex&&el.y1>=sy&&el.y1<=ey&&el.x2>=sx&&el.x2<=ex&&el.y2>=sy&&el.y2<=ey;
   return false;
@@ -407,7 +413,17 @@ function getGroupBounds(els, wires) {
     if (el.type==='rect') { minX=Math.min(minX,el.x); minY=Math.min(minY,el.y); maxX=Math.max(maxX,el.x+el.w); maxY=Math.max(maxY,el.y+el.h); }
     else if (el.type==='circle') { minX=Math.min(minX,el.x-el.r); minY=Math.min(minY,el.y-el.r); maxX=Math.max(maxX,el.x+el.r); maxY=Math.max(maxY,el.y+el.r); }
     else if (el.x1!=null) { minX=Math.min(minX,el.x1,el.x2); minY=Math.min(minY,el.y1,el.y2); maxX=Math.max(maxX,el.x1,el.x2); maxY=Math.max(maxY,el.y1,el.y2); }
-    else if (el.x!=null) { const d=getDef(el.type)||{}; const hw=(d.w||20)/2,hh=(d.h||20)/2; minX=Math.min(minX,el.x-hw); minY=Math.min(minY,el.y-hh); maxX=Math.max(maxX,el.x+hw); maxY=Math.max(maxY,el.y+hh); }
+    else if (el.x!=null) {
+      if (el.type==='text') {
+        const tw=(el.text||'').length*(el.fs||14)*0.6, th=(el.fs||14);
+        minX=Math.min(minX,el.x); minY=Math.min(minY,el.y-th);
+        maxX=Math.max(maxX,el.x+tw); maxY=Math.max(maxY,el.y);
+      } else {
+        const d=getDef(el.type)||{}; const hw=(d.w||20)/2,hh=(d.h||20)/2;
+        minX=Math.min(minX,el.x-hw); minY=Math.min(minY,el.y-hh);
+        maxX=Math.max(maxX,el.x+hw); maxY=Math.max(maxY,el.y+hh);
+      }
+    }
   });
   wires.forEach(w => (w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}]).forEach(p => { minX=Math.min(minX,p.x); minY=Math.min(minY,p.y); maxX=Math.max(maxX,p.x); maxY=Math.max(maxY,p.y); }));
   if (!isFinite(minX)) return null;
