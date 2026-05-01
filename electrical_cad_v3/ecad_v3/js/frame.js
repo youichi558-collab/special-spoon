@@ -38,6 +38,7 @@ function applyFrame(){
     date:document.getElementById('f-date').value,
     scale2:document.getElementById('f-scale2').value,
     rev:document.getElementById('f-rev').value,
+    chghist:document.getElementById('f-chghist')?.value||'',
   };
   closeFP('frame-p');resetView();draw();
 }
@@ -71,7 +72,7 @@ function showFramePanel(){
     document.getElementById('frame-th').value=state.frameObj.thMM;
     document.getElementById('frame-cols').value=state.frameObj.cols;
     document.getElementById('frame-rows').value=state.frameObj.rows;
-    ['drawno','title','company','equip','author','approve','date','scale2','rev'].forEach(k=>{const el=document.getElementById('f-'+k);if(el)el.value=state.frameObj[k]||'';});
+    ['drawno','title','company','equip','author','approve','date','scale2','rev','chghist'].forEach(k=>{const el=document.getElementById('f-'+k);if(el)el.value=state.frameObj[k]||'';});
   }
   document.getElementById('frame-p').classList.add('open');
 }
@@ -142,6 +143,7 @@ function drawFrame(fr){
     {x:.24,y:.5,w:.2,h:.5,key:'date',lbl:'日付'},
     {x:.44,y:.5,w:.1,h:.5,key:'scale2',lbl:'縮尺'},
     {x:.54,y:.5,w:.06,h:.5,key:'rev',lbl:'Rev'},
+    {x:.6,y:.5,w:.2,h:.5,key:'chghist',lbl:'変更履歴'},
     {x:.8,y:.5,w:.2,h:.5,key:'_page',lbl:'ページ'},
   ];
   ctx.lineWidth=0.5/state.zoom;ctx.strokeStyle=state.darkMode?'#888':'#888';
