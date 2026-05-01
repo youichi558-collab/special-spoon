@@ -260,8 +260,7 @@ function rasterizeTextEl(el, fsMM) {
   const oc = document.createElement('canvas');
   oc.width = pxW; oc.height = pxH;
   const octx = oc.getContext('2d');
-  octx.fillStyle = '#ffffff';
-  octx.fillRect(0, 0, pxW, pxH);
+  // 背景透明（白で塗りつぶさない）
   octx.fillStyle = el.color || '#000000';
   octx.font = `${fsPx}px sans-serif`;
   octx.textBaseline = 'alphabetic';
