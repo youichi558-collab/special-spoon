@@ -4,9 +4,26 @@
 // ================================================================
 function loadDXF(input){
   const f=input.files[0];if(!f)return;
-  let idx=0;const encs=['UTF-8','Shift-JIS','iso-8859-1'];
-  function tryNext(){if(idx>=encs.length)return;const rd=new FileReader();rd.onload=e=>{if((e.target.result.match(/\ufffd/g)||[]).length>10&&idx<encs.length-1){idx++;tryNext();return;}parseDXF(e.target.result);};rd.onerror=()=>{idx++;tryNext();};rd.readAsText(f,encs[idx++]);}
-  tryNext();input.value='';
+  const rd=new FileReader();
+  rd.onload=e=>{
+    const buf=e.target.result;
+    const u8=new Uint8Array(buf);
+    // Shift-JIS判定：0x81-0x9F または 0xE0-0xFC で始まる2バイト文字が多ければShift-JIS
+    let sjisScore=0;
+    for(let i=0;i<u8.length-1;i++){
+      const b=u8[i];
+      if((b>=0x81&&b<=0x9F)||(b>=0xE0&&b<=0xFC)){
+        const b2=u8[i+1];
+        if(b2>=0x40&&b2<=0xFC&&b2!==0x7F){sjisScore++;i++;}
+      }
+    }
+    const enc=sjisScore>5?'Shift-JIS':'UTF-8';
+    const rd2=new FileReader();
+    rd2.onload=e2=>parseDXF(e2.target.result);
+    rd2.readAsText(f,enc);
+  };
+  rd.readAsArrayBuffer(f);
+  input.value='';
 }
 function parseDXF(text){
   const lines=text.split(/\r?\n/).map(l=>l.trim());
