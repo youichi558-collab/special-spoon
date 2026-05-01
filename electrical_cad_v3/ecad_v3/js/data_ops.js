@@ -209,15 +209,13 @@ function rasterizeSymEl(el, s) {
   const dpi = 200;
   const def = getDef(el.type) || { w:40, h:40 };
   const pad = 10;
-  const wW = (def.w||40) + pad*2;  // world units (canvas content width)
+  const wW = (def.w||40) + pad*2;
   const hW = (def.h||40) + pad*2;
-  // 均一なズームでcanvasを作成（アスペクト比を保つ）
   const zoom = s * dpi / 25.4;
   const pxW = Math.max(4, Math.round(wW * zoom));
   const pxH = Math.max(4, Math.round(hW * zoom));
-  // PDF上の表示サイズもcanvasと同じアスペクト比で
-  const dispW = wW * s;  // mm
-  const dispH = hW * s;  // mm
+  const dispW = wW * s;
+  const dispH = hW * s;
 
   const oc = document.createElement('canvas');
   oc.width = pxW; oc.height = pxH;
@@ -227,7 +225,9 @@ function rasterizeSymEl(el, s) {
 
   const origCv = cv, origCtx = ctx, origZoom = state.zoom;
   cv = oc; ctx = octx;
-  state.zoom = zoom;
+  // zoom=1にするとdrawSym内の N/state.zoom がN pxになりcanvasスケールで拡大される
+  // → フォントが適切なサイズになる
+  state.zoom = 1;
 
   octx.save();
   octx.translate(pxW/2, pxH/2);
@@ -400,6 +400,19 @@ function runExportPDF() {
           // 電気シンボル: ラスタライズ（アスペクト比修正済み）
           const res = rasterizeSymEl(el, s);
           pdf.addImage(res.dataURL, 'PNG', tx(el.x)-res.dispW/2, ty(el.y)-res.dispH/2, res.dispW, res.dispH, '', 'FAST');
+
+          // シンボルラベル（el.label）を別途描画
+          if (el.label) {
+            const def2 = getDef(el.type) || { w:64, h:34 };
+            const lox = el.labelOffX || 0;
+            const loy = el.labelOffY || (def2.h/2+15);
+            const rot = (el.rot||0) * Math.PI/180;
+            const lx = el.x + lox*Math.cos(rot) - loy*Math.sin(rot);
+            const ly = el.y + lox*Math.sin(rot) + loy*Math.cos(rot);
+            const lblEl2 = { text: el.label, fs: 11, color: '#555555' };
+            const lblRes2 = rasterizeTextEl(lblEl2, s);
+            if (lblRes2) pdf.addImage(lblRes2.dataURL, 'PNG', tx(lx) - lblRes2.wMM/2, ty(ly) - lblRes2.hMM*0.72, lblRes2.wMM, lblRes2.hMM, '', 'FAST');
+          }
         }
       });
 
@@ -450,14 +463,14 @@ function runExportPDF() {
           pdf.rect(cx, cy, cw, ch, 'S');
 
           // ラベルテキスト（小さめ）
-          const lblEl = { text: c.lbl, fs: 6, color: '#777777' };
+          const lblEl = { text: c.lbl, fs: 3.5, color: '#777777' };
           const lblRes = rasterizeTextEl(lblEl, 1);
           if (lblRes) pdf.addImage(lblRes.dataURL, 'PNG', cx+1, cy+1, lblRes.wMM, lblRes.hMM, '', 'FAST');
 
           // 値テキスト（大きめ）
           const val = fr[c.key] || '';
           if (val) {
-            const valEl = { text: val, fs: 9, color: '#111111' };
+            const valEl = { text: val, fs: 6, color: '#111111' };
             const valRes = rasterizeTextEl(valEl, 1);
             if (valRes) pdf.addImage(valRes.dataURL, 'PNG', cx+2, cy + ch - valRes.hMM * 0.8, valRes.wMM, valRes.hMM, '', 'FAST');
           }
