@@ -209,11 +209,15 @@ function rasterizeSymEl(el, s) {
   const dpi = 200;
   const def = getDef(el.type) || { w:40, h:40 };
   const pad = 10;
-  const wW = (def.w||40) + pad*2;
+  const wW = (def.w||40) + pad*2;  // world units (canvas content width)
   const hW = (def.h||40) + pad*2;
-  const pxW = Math.max(4, Math.round(wW * s * dpi / 25.4));
-  const pxH = Math.max(4, Math.round(hW * s * dpi / 25.4));
-  const zoom = pxW / wW;
+  // 均一なズームでcanvasを作成（アスペクト比を保つ）
+  const zoom = s * dpi / 25.4;
+  const pxW = Math.max(4, Math.round(wW * zoom));
+  const pxH = Math.max(4, Math.round(hW * zoom));
+  // PDF上の表示サイズもcanvasと同じアスペクト比で
+  const dispW = wW * s;  // mm
+  const dispH = hW * s;  // mm
 
   const oc = document.createElement('canvas');
   oc.width = pxW; oc.height = pxH;
@@ -232,22 +236,26 @@ function rasterizeSymEl(el, s) {
   octx.restore();
 
   cv = origCv; ctx = origCtx; state.zoom = origZoom;
-  return oc.toDataURL('image/png');
+  return { dataURL: oc.toDataURL('image/png'), dispW, dispH };
 }
 
 // テキスト要素をオフスクリーンキャンバスでラスタライズ（日本語対応）
 function rasterizeTextEl(el, s) {
   const dpi = 200;
-  const fs = el.fs || 14;
+  const fs = (el.fs || 14) * s;  // PDF上のフォントサイズ(mm)
   const text = el.text || '';
-  const zoom = dpi / 25.4;
+  if (!text) return null;
+  const pxPerMM = dpi / 25.4;
+  const fsPx = fs * pxPerMM;
+
   const tmpCv = document.createElement('canvas');
   tmpCv.width = 1; tmpCv.height = 1;
   const tmpCtx = tmpCv.getContext('2d');
-  tmpCtx.font = `${fs * zoom}px sans-serif`;
+  tmpCtx.font = `${fsPx}px sans-serif`;
   const tw = tmpCtx.measureText(text).width;
+
   const pxW = Math.max(4, Math.ceil(tw + 4));
-  const pxH = Math.max(4, Math.ceil(fs * zoom * 1.4));
+  const pxH = Math.max(4, Math.ceil(fsPx * 1.5));
 
   const oc = document.createElement('canvas');
   oc.width = pxW; oc.height = pxH;
@@ -255,10 +263,10 @@ function rasterizeTextEl(el, s) {
   octx.fillStyle = '#ffffff';
   octx.fillRect(0, 0, pxW, pxH);
   octx.fillStyle = el.color || '#000000';
-  octx.font = `${fs * zoom}px sans-serif`;
-  octx.textBaseline = 'top';
-  octx.fillText(text, 2, 0);
-  return { dataURL: oc.toDataURL('image/png'), wMM: pxW / zoom, hMM: pxH / zoom };
+  octx.font = `${fsPx}px sans-serif`;
+  octx.textBaseline = 'alphabetic';
+  octx.fillText(text, 2, fsPx);  // baselineをfsPxに合わせる
+  return { dataURL: oc.toDataURL('image/png'), wMM: pxW / pxPerMM, hMM: pxH / pxPerMM };
 }
 
 function runExportPDF() {
@@ -383,25 +391,78 @@ function runExportPDF() {
         } else if (el.type==='text') {
           // テキスト: キャンバスラスタライズ（日本語対応）
           const res = rasterizeTextEl(el, s);
-          pdf.addImage(res.dataURL, 'PNG', tx(el.x), ty(el.y) - res.hMM * 0.8, res.wMM, res.hMM, '', 'FAST');
+          if (res) {
+            // el.x, el.y はbaselineの左端
+            pdf.addImage(res.dataURL, 'PNG', tx(el.x)-2*s, ty(el.y) - res.hMM * 0.72, res.wMM, res.hMM, '', 'FAST');
+          }
 
         } else if (el.type!=='dim' && el.type!=='leader') {
-          // 電気シンボル: ラスタライズ
-          const def = getDef(el.type) || {w:40,h:40};
-          const sw = (def.w||40)*s, sh = (def.h||40)*s;
-          const imgData = rasterizeSymEl(el, s);
-          pdf.addImage(imgData, 'PNG', tx(el.x)-sw/2, ty(el.y)-sh/2, sw, sh, '', 'FAST');
+          // 電気シンボル: ラスタライズ（アスペクト比修正済み）
+          const res = rasterizeSymEl(el, s);
+          pdf.addImage(res.dataURL, 'PNG', tx(el.x)-res.dispW/2, ty(el.y)-res.dispH/2, res.dispW, res.dispH, '', 'FAST');
         }
       });
 
-      // ---- 図面枠ボーダー（ベクター） ----
+      // ---- 図面枠・表題欄（ベクター＋ラスタライズテキスト） ----
       if (pg.frameObj) {
+        const fr = pg.frameObj;
+        const mg = fr.mg || 10;
+        const thMM = fr.thMM || 30;
+        const innerW = pdfW - mg * 2;
+        const innerH = pdfH - mg * 2;
+        const drawH = innerH - thMM;
+        const tbY = mg + drawH;
+
         pdf.setDrawColor(0);
-        pdf.setLineWidth(0.5);
         pdf.setLineDashPattern([], 0);
-        pdf.rect(5, 5, pdfW-10, pdfH-10, 'S');
+
+        // 外枠
+        pdf.setLineWidth(0.7);
+        pdf.rect(0, 0, pdfW, pdfH, 'S');
+        // 内枠
+        pdf.setLineWidth(0.5);
+        pdf.rect(mg, mg, innerW, innerH, 'S');
+
+        // 表題欄外枠
+        pdf.setLineWidth(0.5);
+        pdf.rect(mg, tbY, innerW, thMM, 'S');
+
+        // 表題欄セル
+        const cells = [
+          {x:0,y:0,w:.25,h:.5,key:'drawno',lbl:'図面番号'},
+          {x:.25,y:0,w:.35,h:.5,key:'title',lbl:'図面名称'},
+          {x:.6,y:0,w:.2,h:.5,key:'company',lbl:'会社名'},
+          {x:.8,y:0,w:.2,h:.5,key:'equip',lbl:'設備名'},
+          {x:0,y:.5,w:.12,h:.5,key:'author',lbl:'作成'},
+          {x:.12,y:.5,w:.12,h:.5,key:'approve',lbl:'承認'},
+          {x:.24,y:.5,w:.2,h:.5,key:'date',lbl:'日付'},
+          {x:.44,y:.5,w:.1,h:.5,key:'scale2',lbl:'縮尺'},
+          {x:.54,y:.5,w:.06,h:.5,key:'rev',lbl:'Rev'},
+        ];
+
+        pdf.setLineWidth(0.2);
+        pdf.setDrawColor(100, 100, 100);
+        cells.forEach(c => {
+          const cx = mg + c.x * innerW;
+          const cy = tbY + c.y * thMM;
+          const cw = c.w * innerW;
+          const ch = c.h * thMM;
+          pdf.rect(cx, cy, cw, ch, 'S');
+
+          // ラベルテキスト（小さめ）
+          const lblEl = { text: c.lbl, fs: 6, color: '#777777' };
+          const lblRes = rasterizeTextEl(lblEl, 1);
+          if (lblRes) pdf.addImage(lblRes.dataURL, 'PNG', cx+1, cy+1, lblRes.wMM, lblRes.hMM, '', 'FAST');
+
+          // 値テキスト（大きめ）
+          const val = fr[c.key] || '';
+          if (val) {
+            const valEl = { text: val, fs: 9, color: '#111111' };
+            const valRes = rasterizeTextEl(valEl, 1);
+            if (valRes) pdf.addImage(valRes.dataURL, 'PNG', cx+2, cy + ch - valRes.hMM * 0.8, valRes.wMM, valRes.hMM, '', 'FAST');
+          }
+        });
       }
-    }
 
     if (pdf) {
       pdf.save((state.saveFileName || '回路図') + '.pdf');
