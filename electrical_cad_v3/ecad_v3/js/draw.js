@@ -299,7 +299,7 @@ function drawPreview() {
 // ----------------------------------------------------------------
 function drawSnapMarker() {
   const sp = state.snapPreview;
-  if (!sp || state.mode !== 'wire') return;
+  if (!sp) return;
   const stype = sp.snapType || 'grid';
   ctx.save();
   if (stype === 'endpoint') {
@@ -312,8 +312,17 @@ function drawSnapMarker() {
     ctx.beginPath(); ctx.moveTo(sp.x, sp.y-s); ctx.lineTo(sp.x+s, sp.y); ctx.lineTo(sp.x, sp.y+s); ctx.lineTo(sp.x-s, sp.y); ctx.closePath();
     ctx.fill(); ctx.stroke();
   } else {
-    ctx.beginPath(); ctx.arc(sp.x, sp.y, 4/state.zoom, 0, Math.PI*2);
-    ctx.strokeStyle = '#0067c0'; ctx.lineWidth = 1.5/state.zoom; ctx.stroke();
+    // グリッドスナップ：クロスヘアカーソル
+    const s = 8/state.zoom;
+    const g = 3/state.zoom;
+    ctx.strokeStyle = state.darkMode ? 'rgba(150,180,255,0.8)' : 'rgba(0,80,180,0.7)';
+    ctx.lineWidth = 1/state.zoom;
+    // 縦線（中央に隙間）
+    ctx.beginPath(); ctx.moveTo(sp.x, sp.y-s); ctx.lineTo(sp.x, sp.y-g); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sp.x, sp.y+g); ctx.lineTo(sp.x, sp.y+s); ctx.stroke();
+    // 横線（中央に隙間）
+    ctx.beginPath(); ctx.moveTo(sp.x-s, sp.y); ctx.lineTo(sp.x-g, sp.y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sp.x+g, sp.y); ctx.lineTo(sp.x+s, sp.y); ctx.stroke();
   }
   ctx.restore();
 }
