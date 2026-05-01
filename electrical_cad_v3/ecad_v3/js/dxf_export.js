@@ -57,7 +57,7 @@ function exportDXF(){
     addRect(ls,'図面枠',0,0,W,H);
     addRect(ls,'図面枠',MG,MG,W-MG,H-MG);
     addRect(ls,'図面枠',MG,MG+drawH,W-MG,MG+innerH);
-    for(let c=1;c<cols;c++){fl(MG+c*colW,0,MG+c*colW,MG);fl(MG+c*colW,MG+drawH,MG+c*colW,MG+innerH);}
+    for(let c=1;c<cols;c++){fl(MG+c*colW,0,MG+c*colW,MG);fl(MG+c*colW,MG+innerH,MG+c*colW,H);}
     for(let r=1;r<rows;r++){fl(0,MG+r*rowH,MG,MG+r*rowH);fl(MG+innerW,MG+r*rowH,W,MG+r*rowH);}
     for(let c=0;c<cols;c++){ft(MG+c*colW+colW/2,MG-4,7,String.fromCharCode(65+c%26));}
     for(let r=0;r<rows;r++){

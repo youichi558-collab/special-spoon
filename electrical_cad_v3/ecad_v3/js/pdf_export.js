@@ -349,7 +349,7 @@ function runExportPDF() {
             const valEl = { text: val, color: '#111111' };
             // 変更履歴はセル幅に収まるようフォントサイズを自動縮小
             let fsMM2 = valFsMM;
-            if (c.key === 'chghist') {
+            if (c.key === 'chghist' || c.key === '_page') {
               const testC = document.createElement('canvas');
               const testX = testC.getContext('2d');
               const pxPerMM = 200/25.4;
