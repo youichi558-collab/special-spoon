@@ -143,8 +143,8 @@ function drawFrame(fr){
     {x:.24,y:.5,w:.2,h:.5,key:'date',lbl:'日付'},
     {x:.44,y:.5,w:.1,h:.5,key:'scale2',lbl:'縮尺'},
     {x:.54,y:.5,w:.06,h:.5,key:'rev',lbl:'Rev'},
-    {x:.6,y:.5,w:.2,h:.5,key:'chghist',lbl:'変更履歴'},
-    {x:.8,y:.5,w:.2,h:.5,key:'_page',lbl:'ページ'},
+    {x:.6,y:.5,w:.35,h:.5,key:'chghist',lbl:'変更履歴'},
+    {x:.95,y:.5,w:.05,h:.5,key:'_page',lbl:'ページ'},
   ];
   ctx.lineWidth=0.5/state.zoom;ctx.strokeStyle=state.darkMode?'#888':'#888';
   cells.forEach(c=>{
