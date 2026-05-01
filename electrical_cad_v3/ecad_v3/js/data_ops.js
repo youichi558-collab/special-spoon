@@ -454,6 +454,8 @@ function runExportPDF() {
 
         pdf.setLineWidth(0.2);
         pdf.setDrawColor(100, 100, 100);
+        const lblFsMM = thMM * 0.12;   // ラベル: セル高の約12%
+        const valFsMM = thMM * 0.22;   // 値: セル高の約22%
         cells.forEach(c => {
           const cx = mg + c.x * innerW;
           const cy = tbY + c.y * thMM;
@@ -461,16 +463,16 @@ function runExportPDF() {
           const ch = c.h * thMM;
           pdf.rect(cx, cy, cw, ch, 'S');
 
-          // ラベルテキスト（小さめ）
-          const lblEl = { text: c.lbl, fs: 3.5, color: '#777777' };
-          const lblRes = rasterizeTextEl(lblEl, 1);
+          // ラベルテキスト
+          const lblEl = { text: c.lbl, color: '#777777' };
+          const lblRes = rasterizeTextEl(lblEl, lblFsMM);
           if (lblRes) pdf.addImage(lblRes.dataURL, 'PNG', cx+1, cy+1, lblRes.wMM, lblRes.hMM, '', 'FAST');
 
-          // 値テキスト（大きめ）
+          // 値テキスト
           const val = fr[c.key] || '';
           if (val) {
-            const valEl = { text: val, fs: 6, color: '#111111' };
-            const valRes = rasterizeTextEl(valEl, 1);
+            const valEl = { text: val, color: '#111111' };
+            const valRes = rasterizeTextEl(valEl, valFsMM);
             if (valRes) pdf.addImage(valRes.dataURL, 'PNG', cx+2, cy + ch - valRes.hMM * 0.8, valRes.wMM, valRes.hMM, '', 'FAST');
           }
         });
