@@ -450,6 +450,7 @@ function runExportPDF() {
           {x:.24,y:.5,w:.2,h:.5,key:'date',lbl:'日付'},
           {x:.44,y:.5,w:.1,h:.5,key:'scale2',lbl:'縮尺'},
           {x:.54,y:.5,w:.06,h:.5,key:'rev',lbl:'Rev'},
+          {x:.8,y:.5,w:.2,h:.5,key:'_page',lbl:'ページ'},
         ];
 
         pdf.setLineWidth(0.2);
@@ -469,7 +470,9 @@ function runExportPDF() {
           if (lblRes) pdf.addImage(lblRes.dataURL, 'PNG', cx+1, cy+1, lblRes.wMM, lblRes.hMM, '', 'FAST');
 
           // 値テキスト
-          const val = fr[c.key] || '';
+          const val = c.key === '_page'
+            ? `${idx+1} / ${state.pages.length}`
+            : (fr[c.key] || '');
           if (val) {
             const valEl = { text: val, color: '#111111' };
             const valRes = rasterizeTextEl(valEl, valFsMM);

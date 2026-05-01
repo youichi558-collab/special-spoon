@@ -142,6 +142,7 @@ function drawFrame(fr){
     {x:.24,y:.5,w:.2,h:.5,key:'date',lbl:'日付'},
     {x:.44,y:.5,w:.1,h:.5,key:'scale2',lbl:'縮尺'},
     {x:.54,y:.5,w:.06,h:.5,key:'rev',lbl:'Rev'},
+    {x:.8,y:.5,w:.2,h:.5,key:'_page',lbl:'ページ'},
   ];
   ctx.lineWidth=0.5/state.zoom;ctx.strokeStyle=state.darkMode?'#888':'#888';
   cells.forEach(c=>{
@@ -150,7 +151,10 @@ function drawFrame(fr){
     ctx.fillStyle=state.darkMode?'#888':'#777';ctx.font=`${8/state.zoom}px sans-serif`;ctx.textAlign='left';
     ctx.fillText(c.lbl,cx+2/state.zoom,cy+9/state.zoom);
     ctx.fillStyle=state.darkMode?'#eee':'#111';ctx.font=`bold ${10/state.zoom}px sans-serif`;
-    ctx.fillText(fr[c.key]||'',cx+3/state.zoom,cy+ch-5/state.zoom);
+    const val = c.key==='_page'
+      ? `${state.currentPage+1} / ${state.pages.length}`
+      : (fr[c.key]||'');
+    ctx.fillText(val,cx+3/state.zoom,cy+ch-5/state.zoom);
   });
 
 
