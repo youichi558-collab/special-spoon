@@ -270,18 +270,18 @@ function runExportPDF() {
         pdf.setLineWidth(0.5);
         pdf.rect(mg, mg, innerW, innerH, 'S');
 
-        // ゾーン分割線（上下の余白部分）
+        // ゾーン分割線（余白部分のみ、表題欄内には描かない）
         pdf.setLineWidth(0.2);
         pdf.setDrawColor(150, 150, 150);
         for (let c = 1; c < cols; c++) {
           const x = mg + c * colW;
-          pdf.line(x, 0, x, mg);
-          pdf.line(x, mg + drawH, x, mg + innerH);
+          pdf.line(x, 0, x, mg);                    // 上余白
+          pdf.line(x, mg + innerH, x, pdfH);        // 下余白（内枠の下〜用紙端）
         }
         for (let r = 1; r < rows; r++) {
           const y = mg + r * rowH;
-          pdf.line(0, y, mg, y);
-          pdf.line(mg + innerW, y, pdfW, y);
+          pdf.line(0, y, mg, y);                     // 左余白
+          pdf.line(mg + innerW, y, pdfW, y);         // 右余白
         }
 
         // ゾーンラベル（列アルファベット・行番号）

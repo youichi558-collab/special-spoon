@@ -113,9 +113,17 @@ function drawFrame(fr){
     ctx.strokeStyle=state.darkMode?'#555':'#999';ctx.lineWidth=0.5/state.zoom;
     ctx.fillStyle=state.darkMode?'#aaa':'#666';
     ctx.font=`${9/state.zoom}px sans-serif`;ctx.textAlign='center';
-    for(let c=1;c<cols;c++){ctx.beginPath();ctx.moveTo(MGpx+c*colW,MGpx);ctx.lineTo(MGpx+c*colW,MGpx+drawH);ctx.stroke();}
-    for(let r=1;r<rows;r++){ctx.beginPath();ctx.moveTo(MGpx,MGpx+r*rowH);ctx.lineTo(MGpx+innerW,MGpx+r*rowH);ctx.stroke();}
-    // 列ラベル (A,B,C...) - 上側のみ（下は表題欄と重なるため省略）
+    // 列分割線：上余白と下余白のみ（内枠の外）
+    for(let c=1;c<cols;c++){
+      ctx.beginPath();ctx.moveTo(MGpx+c*colW,0);ctx.lineTo(MGpx+c*colW,MGpx);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(MGpx+c*colW,MGpx+innerH);ctx.lineTo(MGpx+c*colW,H);ctx.stroke();
+    }
+    // 行分割線：左余白と右余白のみ
+    for(let r=1;r<rows;r++){
+      ctx.beginPath();ctx.moveTo(0,MGpx+r*rowH);ctx.lineTo(MGpx,MGpx+r*rowH);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(MGpx+innerW,MGpx+r*rowH);ctx.lineTo(W,MGpx+r*rowH);ctx.stroke();
+    }
+    // 列ラベル (A,B,C...)
     for(let c=0;c<cols;c++){
       const lbl=String.fromCharCode(65+c%26);
       ctx.fillText(lbl,MGpx+c*colW+colW/2,MGpx-3/state.zoom);
