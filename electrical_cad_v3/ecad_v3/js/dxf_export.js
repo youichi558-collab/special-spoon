@@ -45,6 +45,10 @@ function exportDXF(){
   ls.push('0','SECTION','2','BLOCKS');
   ls.push(...buildSymBlocksDXF());
   ls.push('0','ENDSEC');
+  // frameObjをコメントとして保存（読込時に復元）
+  if(state.frameObj){
+    ls.push('999','ECAD_FRAME:'+JSON.stringify(state.frameObj));
+  }
   ls.push('0','SECTION','2','ENTITIES');
   if(state.frameObj){
     const fr=state.frameObj;

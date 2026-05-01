@@ -12,12 +12,19 @@ function parseDXF(text){
   const lines=text.split(/\r?\n/).map(l=>l.trim());
   const pairs=[];for(let i=0;i<lines.length-1;i+=2){const code=parseInt(lines[i]);if(!isNaN(code))pairs.push({code,val:lines[i+1]});}
   let lc=0,cc=0,tc=0,ic=0;let i=0;
+  // frameObjをコメントから復元
+  for(let j=0;j<pairs.length;j++){
+    if(pairs[j].code===999&&pairs[j].val.startsWith('ECAD_FRAME:')){
+      try{state.frameObj=JSON.parse(pairs[j].val.slice('ECAD_FRAME:'.length));}catch(e){}
+      break;
+    }
+  }
   while(i<pairs.length){
     const{code,val}=pairs[i];
     if(code===0){
       if(val==='LINE'){const e=readEnt(pairs,i);const x1=+e['10']||0,y1=-(+e['20']||0),x2=+e['11']||0,y2=-(+e['21']||0);if(Math.hypot(x2-x1,y2-y1)>0.1){state.wires.push({id:genId('w'),x1,y1,x2,y2,pts:[{x:x1,y:y1},{x:x2,y:y2}],layer:e['8']||'配線',wireNo:null});lc++;}i=e._end;continue;}
       if(val==='CIRCLE'){const e=readEnt(pairs,i);const r=+e['40']||0;if(r>0){state.elements.push({id:genId('el'),type:'circle',x:+e['10']||0,y:-(+e['20']||0),r,layer:e['8']||'外形'});cc++;}i=e._end;continue;}
-      if(val==='TEXT'||val==='MTEXT'){const e=readEnt(pairs,i);let t=(e['1']||e['3']||'').replace(/\\[A-Za-z][^;]*;/g,'').replace(/[{}]/g,'').replace(/\\P/g,' ').trim();const h=+e['40']||12;if(t)state.elements.push({id:genId('el'),type:'text',x:+e['10']||0,y:-(+e['20']||0),text:t,fs:Math.max(8,Math.min(72,h)),layer:e['8']||'注記'});tc++;i=e._end;continue;}
+      if(val==='TEXT'||val==='MTEXT'){const e=readEnt(pairs,i);let t=fromUnicodeDXF((e['1']||e['3']||'').replace(/\\[A-Za-z][^;]*;/g,'').replace(/[{}]/g,'').replace(/\\P/g,' ').trim());const h=+e['40']||12;if(t)state.elements.push({id:genId('el'),type:'text',x:+e['10']||0,y:-(+e['20']||0),text:t,fs:Math.max(8,Math.min(72,h)),layer:e['8']||'注記'});tc++;i=e._end;continue;}
       if(val==='INSERT'){const e=readEnt(pairs,i);const bname=e['2']||'';const mapped=mapBlock(bname);if(mapped){const def=getDef(mapped);state.elements.push({id:genId('el'),type:mapped,x:+e['10']||0,y:-(+e['20']||0),label:def?.label||bname,layer:e['8']||'回路',rot:+e['50']||0,flipH:false,flipV:false});ic++;}i=e._end;continue;}
       if(val==='LWPOLYLINE'){const e=readPoly(pairs,i);if(e.pts&&e.pts.length>=2){const p=e.pts,minX=Math.min(...p.map(v=>v.x)),minY=Math.min(...p.map(v=>v.y)),maxX=Math.max(...p.map(v=>v.x)),maxY=Math.max(...p.map(v=>v.y));if(maxX-minX>0.1&&maxY-minY>0.1)state.elements.push({id:genId('el'),type:'rect',x:minX,y:minY,w:maxX-minX,h:maxY-minY,layer:e['8']||'外形'});else if(maxX-minX>0.1||maxY-minY>0.1)state.wires.push({x1:p[0].x,y1:p[0].y,x2:p[p.length-1].x,y2:p[p.length-1].y,pts:p,layer:e['8']||'配線',wireNo:null});}i=e._end;continue;}
       if(val==='ARC'){const e=readEnt(pairs,i);const r=+e['40']||0;if(r>0){state.elements.push({id:genId('el'),type:'circle',x:+e['10']||0,y:-(+e['20']||0),r,layer:e['8']||'外形'});cc++;}i=e._end;continue;}
@@ -33,7 +40,7 @@ function parseDXF(text){
 }
 function readEnt(pairs,start){const e={_end:start+1};let i=start+1;while(i<pairs.length){const{code,val}=pairs[i];if(code===0)break;if(e[String(code)]===undefined)e[String(code)]=val;i++;}e._end=i;return e;}
 function readPoly(pairs,start){const e={_end:start+1,pts:[]};let i=start+1,cx=null;while(i<pairs.length){const{code,val}=pairs[i];if(code===0&&i>start+1)break;if(e[String(code)]===undefined&&code!==10&&code!==20)e[String(code)]=val;if(code===10)cx=+val||0;if(code===20&&cx!==null){e.pts.push({x:cx,y:-(+val||0)});cx=null;}i++;}e._end=i;return e;}
-function mapBlock(name){const n=name.toLowerCase();const m=[
+function fromUnicodeDXF(str){return str.replace(/\\U\+([0-9A-Fa-f]{4})/g,(_,h)=>String.fromCharCode(parseInt(h,16)));}const n=name.toLowerCase();const m=[
   ['coil','coil'],['relay','coil'],['timer','timer_coil'],
   ['motor','motor'],['breaker','breaker'],['mccb','breaker'],
   ['cb','breaker'],['nf','breaker'],['fuse','fuse'],
