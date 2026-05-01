@@ -240,13 +240,13 @@ function rasterizeSymEl(el, s) {
 }
 
 // テキスト要素をオフスクリーンキャンバスでラスタライズ（日本語対応）
-function rasterizeTextEl(el, s) {
+// fsMM: フォントサイズ(mm)。el.fsはスクリーンpx単位なので呼び出し側で変換すること
+function rasterizeTextEl(el, fsMM) {
   const dpi = 200;
-  const fs = (el.fs || 14) * s;  // PDF上のフォントサイズ(mm)
   const text = el.text || '';
   if (!text) return null;
   const pxPerMM = dpi / 25.4;
-  const fsPx = fs * pxPerMM;
+  const fsPx = fsMM * pxPerMM;
 
   const tmpCv = document.createElement('canvas');
   tmpCv.width = 1; tmpCv.height = 1;
@@ -265,7 +265,7 @@ function rasterizeTextEl(el, s) {
   octx.fillStyle = el.color || '#000000';
   octx.font = `${fsPx}px sans-serif`;
   octx.textBaseline = 'alphabetic';
-  octx.fillText(text, 2, fsPx);  // baselineをfsPxに合わせる
+  octx.fillText(text, 2, fsPx);
   return { dataURL: oc.toDataURL('image/png'), wMM: pxW / pxPerMM, hMM: pxH / pxPerMM };
 }
 
@@ -389,10 +389,10 @@ function runExportPDF() {
           pdf.setLineDashPattern([], 0);
 
         } else if (el.type==='text') {
-          // テキスト: キャンバスラスタライズ（日本語対応）
-          const res = rasterizeTextEl(el, s);
+          // テキスト: el.fsはスクリーンpx → 0.35mm/px で変換（72dpi相当）
+          const fsMM = (el.fs || 14) * 0.35;
+          const res = rasterizeTextEl(el, fsMM);
           if (res) {
-            // el.x, el.y はbaselineの左端
             pdf.addImage(res.dataURL, 'PNG', tx(el.x)-2*s, ty(el.y) - res.hMM * 0.72, res.wMM, res.hMM, '', 'FAST');
           }
 
@@ -401,7 +401,7 @@ function runExportPDF() {
           const res = rasterizeSymEl(el, s);
           pdf.addImage(res.dataURL, 'PNG', tx(el.x)-res.dispW/2, ty(el.y)-res.dispH/2, res.dispW, res.dispH, '', 'FAST');
 
-          // シンボルラベル（el.label）を別途描画
+          // シンボルラベル（el.label）を別途描画 — 3.5mm固定
           if (el.label) {
             const def2 = getDef(el.type) || { w:64, h:34 };
             const lox = el.labelOffX || 0;
@@ -409,8 +409,8 @@ function runExportPDF() {
             const rot = (el.rot||0) * Math.PI/180;
             const lx = el.x + lox*Math.cos(rot) - loy*Math.sin(rot);
             const ly = el.y + lox*Math.sin(rot) + loy*Math.cos(rot);
-            const lblEl2 = { text: el.label, fs: 11, color: '#555555' };
-            const lblRes2 = rasterizeTextEl(lblEl2, s);
+            const lblEl2 = { text: el.label, color: '#555555' };
+            const lblRes2 = rasterizeTextEl(lblEl2, 3.5);
             if (lblRes2) pdf.addImage(lblRes2.dataURL, 'PNG', tx(lx) - lblRes2.wMM/2, ty(ly) - lblRes2.hMM*0.72, lblRes2.wMM, lblRes2.hMM, '', 'FAST');
           }
         }
