@@ -35,7 +35,7 @@ const state = {
   symType:  null,      // 配置中のシンボルtype
   ortho:    false,     // 直交モード
   snapEnd:  true,      // 端点スナップ
-  snapMid:  false,      // 中点スナップ
+  snapMid:  true,      // 中点スナップ
 
   // 作業中の仮データ（確定したらentitiesへ）
   preview: null,       // { type, ...} 仮描画中のエンティティ
