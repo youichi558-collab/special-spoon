@@ -26,13 +26,13 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc) {
         if (s.t==='L') { ctx.beginPath(); ctx.moveTo(s.x1,s.y1); ctx.lineTo(s.x2,s.y2); ctx.stroke(); }
         else if (s.t==='C') { ctx.beginPath(); ctx.arc(s.cx,s.cy,s.r,0,Math.PI*2); ctx.stroke(); }
         else if (s.t==='R') { ctx.strokeRect(s.x,s.y,s.w,s.h); }
-        else if (s.t==='T') { ctx.font=`${(s.fs||14)/zoom}px sans-serif`; ctx.textAlign='center'; ctx.fillText(s.text,s.x,s.y); }
+        else if (s.t==='T') { ctx.font=`${s.fs||14}px sans-serif`; ctx.textAlign='center'; ctx.fillText(s.text,s.x,s.y); }
       });
     } else {
       // フォールバック: 矩形+ラベル
       ctx.strokeRect(-cS.w/2,-cS.h/2,cS.w,cS.h);
-      ctx.font=`bold ${11/zoom}px sans-serif`; ctx.textAlign='center';
-      ctx.fillText(cS.label||type, 0, 4/zoom);
+      ctx.font=`bold ${11}px sans-serif`; ctx.textAlign='center';
+      ctx.fillText(cS.label||type, 0, 4);
     }
     if (isSel) {
       ctx.strokeStyle='#0067c0'; ctx.lineWidth=1/zoom;
@@ -128,8 +128,8 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc) {
     ctx.beginPath(); ctx.moveTo(-32,0); ctx.lineTo(-20,0); ctx.stroke();
     ctx.strokeRect(-20,-14,40,28);
     ctx.beginPath(); ctx.moveTo(20,0); ctx.lineTo(32,0); ctx.stroke();
-    ctx.font=`${9/zoom}px sans-serif`; ctx.textAlign='center';
-    ctx.fillText(type==='coil'?'CR':'TIM', 0, type==='timer_coil'?-2:4/zoom);
+    ctx.font=`${9}px sans-serif`; ctx.textAlign='center';
+    ctx.fillText(type==='coil'?'CR':'TIM', 0, type==='timer_coil'?-2:4);
     if (type==='timer_coil') {
       // タイマー記号: コイル下部に半円
       ctx.beginPath(); ctx.arc(0,14,6,Math.PI,0); ctx.stroke();
@@ -140,14 +140,14 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc) {
     ctx.beginPath(); ctx.moveTo(-32,0); ctx.lineTo(-20,0); ctx.stroke();
     ctx.strokeRect(-20,-14,40,28);
     ctx.beginPath(); ctx.moveTo(20,0); ctx.lineTo(32,0); ctx.stroke();
-    ctx.font=`${9/zoom}px sans-serif`; ctx.textAlign='center'; ctx.fillText('CB',0,4/zoom);
+    ctx.font=`${9}px sans-serif`; ctx.textAlign='center'; ctx.fillText('CB',0,4);
 
   } else if (type==='motor') {
     // JIS C 0617: 電動機 = 円+M
     ctx.beginPath(); ctx.arc(0,0,20,0,Math.PI*2); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(-32,0); ctx.lineTo(-20,0); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(20,0); ctx.lineTo(32,0); ctx.stroke();
-    ctx.font=`bold ${14/zoom}px sans-serif`; ctx.textAlign='center'; ctx.fillText('M',0,5/zoom);
+    ctx.font=`bold ${14}px sans-serif`; ctx.textAlign='center'; ctx.fillText('M',0,5/zoom);
 
   } else if (type==='lamp') {
     // JIS C 0617-13: 表示灯 = 円+X

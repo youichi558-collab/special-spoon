@@ -116,7 +116,7 @@ function drawWires() {
     // 線番
     if (w.wireNo) {
       const mp  = pts[Math.floor(pts.length/2)];
-      const fs  = 10/state.zoom;
+      const fs  = 10;
       ctx.font  = `bold ${fs}px sans-serif`; ctx.textAlign = 'center';
       const tw2 = ctx.measureText(w.wireNo).width;
       ctx.fillStyle = state.darkMode ? '#252525' : '#fff';
@@ -187,7 +187,7 @@ function drawElements() {
 function drawTextEl(el, sel, lc) {
   ctx.save();
   ctx.fillStyle = sel ? '#0067c0' : (el.color || lc);
-  ctx.font      = `${(el.fs||14)/state.zoom}px sans-serif`;
+  ctx.font      = `${el.fs||14}px sans-serif`;
   ctx.fillText(el.text, el.x, el.y);
   if (sel) {
     const m = ctx.measureText(el.text);
@@ -258,15 +258,15 @@ function drawSymEl(el, sel, lc) {
     const ly  = el.y + lox*Math.sin(rot) + loy*Math.cos(rot);
     ctx.save();
     ctx.fillStyle = state.darkMode ? '#aaa' : '#555';
-    ctx.font = `${11/state.zoom}px sans-serif`; ctx.textAlign = 'center';
+    ctx.font = `${11}px sans-serif`; ctx.textAlign = 'center';
     ctx.fillText(el.label, lx, ly);
     ctx.restore();
   }
   if (el.refLabel) {
     const d = getDef(el.type) || { h:34 };
     ctx.save(); ctx.fillStyle = '#744da9';
-    ctx.font = `${9/state.zoom}px sans-serif`; ctx.textAlign = 'center';
-    ctx.fillText('→'+el.refLabel, el.x, el.y-d.h/2-5/state.zoom);
+    ctx.font = `${9}px sans-serif`; ctx.textAlign = 'center';
+    ctx.fillText('→'+el.refLabel, el.x, el.y-d.h/2-5);
     ctx.restore();
   }
 }
@@ -394,8 +394,8 @@ function drawLeaderEl(el, isSel) {
     ctx.beginPath(); ctx.moveTo(el.x1,el.y1); ctx.lineTo(el.x1+ux*a+uy*a*0.3,el.y1+uy*a-ux*a*0.3); ctx.lineTo(el.x1+ux*a-uy*a*0.3,el.y1+uy*a+ux*a*0.3); ctx.closePath(); ctx.fill();
   }
   if (el.leaderText) {
-    const fs=11/state.zoom; ctx.font=`${fs}px sans-serif`; ctx.textAlign='left'; ctx.fillStyle=c;
-    ctx.fillText(el.leaderText, bx+4/state.zoom, by-3/state.zoom);
+    const fs=11; ctx.font=`${fs}px sans-serif`; ctx.textAlign='left'; ctx.fillStyle=c;
+    ctx.fillText(el.leaderText, bx+4, by-3);
   }
   ctx.restore();
 }
@@ -404,8 +404,8 @@ function drawDimPreview(ts) {
   ctx.save(); ctx.strokeStyle='#744da9'; ctx.fillStyle='#744da9'; ctx.lineWidth=1/state.zoom; ctx.setLineDash([4/state.zoom,3/state.zoom]);
   if (ts.type==='dim_prev1') {
     ctx.beginPath(); ctx.moveTo(ts.x1,ts.y1); ctx.lineTo(ts.x2,ts.y2); ctx.stroke();
-    ctx.setLineDash([]); ctx.font=`${10/state.zoom}px sans-serif`; ctx.textAlign='center';
-    ctx.fillText(String(Math.round(Math.hypot(ts.x2-ts.x1,ts.y2-ts.y1))), (ts.x1+ts.x2)/2, (ts.y1+ts.y2)/2-6/state.zoom);
+    ctx.setLineDash([]); ctx.font=`${10}px sans-serif`; ctx.textAlign='center';
+    ctx.fillText(String(Math.round(Math.hypot(ts.x2-ts.x1,ts.y2-ts.y1))), (ts.x1+ts.x2)/2, (ts.y1+ts.y2)/2-6);
     ctx.beginPath(); ctx.arc(ts.x1,ts.y1,4/state.zoom,0,Math.PI*2); ctx.fill();
   } else if (ts.type==='dim_prev2') {
     ctx.setLineDash([]); drawDimEl({...ts,layer:'',offsetSign:ts.offsetSign||1}, false);
