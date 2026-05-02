@@ -112,7 +112,7 @@ function drawFrame(fr){
   if (!state.pdfMode) {
     ctx.strokeStyle=state.darkMode?'#555':'#999';ctx.lineWidth=0.5/state.zoom;
     ctx.fillStyle=state.darkMode?'#aaa':'#666';
-    ctx.font=`${9/state.zoom}px sans-serif`;ctx.textAlign='center';
+    ctx.font=`${9}px sans-serif`;ctx.textAlign='center';
     // 列分割線：上余白と下余白のみ（内枠の外）
     for(let c=1;c<cols;c++){
       ctx.beginPath();ctx.moveTo(MGpx+c*colW,0);ctx.lineTo(MGpx+c*colW,MGpx);ctx.stroke();
@@ -126,13 +126,13 @@ function drawFrame(fr){
     // 列ラベル (A,B,C...)
     for(let c=0;c<cols;c++){
       const lbl=String.fromCharCode(65+c%26);
-      ctx.fillText(lbl,MGpx+c*colW+colW/2,MGpx-3/state.zoom);
+      ctx.fillText(lbl,MGpx+c*colW+colW/2,MGpx-3);
     }
     // 行ラベル (1,2,3...)
     ctx.textAlign='center';
     for(let r=0;r<rows;r++){
-      ctx.fillText(String(r+1),MGpx-8/state.zoom,MGpx+r*rowH+rowH/2+4/state.zoom);
-      ctx.fillText(String(r+1),MGpx+innerW+8/state.zoom,MGpx+r*rowH+rowH/2+4/state.zoom);
+      ctx.fillText(String(r+1),MGpx-8,MGpx+r*rowH+rowH/2+4);
+      ctx.fillText(String(r+1),MGpx+innerW+8,MGpx+r*rowH+rowH/2+4);
     }
   }
 
@@ -159,24 +159,24 @@ function drawFrame(fr){
   cells.forEach(c=>{
     const cx=MGpx+c.x*innerW,cy=tbY+c.y*TH,cw=c.w*innerW,ch=c.h*TH;
     ctx.strokeRect(cx,cy,cw,ch);
-    ctx.fillStyle=state.darkMode?'#888':'#777';ctx.font=`${8/state.zoom}px sans-serif`;ctx.textAlign='left';
-    ctx.fillText(c.lbl,cx+2/state.zoom,cy+9/state.zoom);
-    ctx.fillStyle=state.darkMode?'#eee':'#111';ctx.font=`bold ${10/state.zoom}px sans-serif`;
+    ctx.fillStyle=state.darkMode?'#888':'#777';ctx.font=`${8}px sans-serif`;ctx.textAlign='left';
+    ctx.fillText(c.lbl,cx+2,cy+9);
+    ctx.fillStyle=state.darkMode?'#eee':'#111';ctx.font=`bold ${10}px sans-serif`;
     const val = c.key==='_page'
       ? (fr.page || `${state.currentPage+1} / ${state.pages.length}`)
       : (fr[c.key]||'');
     if (c.key==='chghist' && val) {
       // セル幅に収まるようフォントサイズを自動縮小
       const maxW = cw - 6/state.zoom;
-      let fs = 10/state.zoom;
+      let fs = 10;
       ctx.font = `bold ${fs}px sans-serif`;
-      while (ctx.measureText(val).width > maxW && fs > 4/state.zoom) {
-        fs -= 0.5/state.zoom;
+      while (ctx.measureText(val).width > maxW && fs > 4) {
+        fs -= 0.5;
         ctx.font = `bold ${fs}px sans-serif`;
       }
-      ctx.fillText(val, cx+3/state.zoom, cy+ch-5/state.zoom);
+      ctx.fillText(val, cx+3, cy+ch-5);
     } else {
-      ctx.fillText(val, cx+3/state.zoom, cy+ch-5/state.zoom);
+      ctx.fillText(val, cx+3, cy+ch-5);
     }
   });
 
