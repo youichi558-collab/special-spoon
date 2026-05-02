@@ -26,7 +26,8 @@ function loadDXF(input){
   input.value='';
 }
 function parseDXF(text){
-  const lines=text.split(/\r?\n/).map(l=>l.trim());
+  const lines=text.split(/?
+/).map(l=>l.trim());
   const pairs=[];for(let i=0;i<lines.length-1;i+=2){const code=parseInt(lines[i]);if(!isNaN(code))pairs.push({code,val:lines[i+1]});}
   let lc=0,cc=0,tc=0,ic=0;let i=0;
   let parsedFrameObj=null;
@@ -36,6 +37,27 @@ function parseDXF(text){
       break;
     }
   }
+
+  // 既存要素がある場合は確認してクリア
+  const hasContent = state.elements.length > 0 || state.wires.length > 0;
+  if(hasContent){
+    const replace = confirm('既存の図面にDXFを追加しますか?
+「OK」= 追加  「キャンセル」= 現在の内容を消してから読込');
+    if(!replace){
+      pushH();
+      state.page.elements = [];
+      state.page.wires = [];
+      state.sel.els.clear(); state.sel.wires.clear();
+    }
+  }
+
+  // 枠レイヤー判定（文字化け対策で複数パターン対応）
+  function isFrameLayer(layerName){
+    if(!layerName) return false;
+    const n = layerName.toLowerCase();
+    return n === '図面枠' || n.includes('frame') || n.includes('border') || n.includes('図面') || n === 'defpoints';
+  }
+
   // ENTITIESセクションのみ処理
   let inEntities=false;
   while(i<pairs.length){
@@ -44,19 +66,19 @@ function parseDXF(text){
     if(code===0&&val==='ENDSEC'){inEntities=false;i++;continue;}
     if(!inEntities){i++;continue;}
     if(code===0){
-      if(val==='LINE'){const e=readEnt(pairs,i);if(e['8']==='図面枠'){i=e._end;continue;}const x1=+e['10']||0,y1=-(+e['20']||0),x2=+e['11']||0,y2=-(+e['21']||0);if(Math.hypot(x2-x1,y2-y1)>0.1){state.wires.push({id:genId('w'),x1,y1,x2,y2,pts:[{x:x1,y:y1},{x:x2,y:y2}],layer:e['8']||'配線',wireNo:null});lc++;}i=e._end;continue;}
-      if(val==='CIRCLE'){const e=readEnt(pairs,i);if(e['8']==='図面枠'){i=e._end;continue;}const r=+e['40']||0;if(r>0){state.elements.push({id:genId('el'),type:'circle',x:+e['10']||0,y:-(+e['20']||0),r,layer:e['8']||'外形'});cc++;}i=e._end;continue;}
-      if(val==='TEXT'||val==='MTEXT'){const e=readEnt(pairs,i);if(e['8']==='図面枠'){i=e._end;continue;}let t=fromUnicodeDXF((e['1']||e['3']||'').replace(/\\[A-Za-z][^;]*;/g,'').replace(/[{}]/g,'').replace(/\\P/g,' ').trim());const h=+e['40']||12;if(t)state.elements.push({id:genId('el'),type:'text',x:+e['10']||0,y:-(+e['20']||0),text:t,fs:Math.max(8,Math.min(72,h)),layer:e['8']||'注記'});tc++;i=e._end;continue;}
+      if(val==='LINE'){const e=readEnt(pairs,i);if(isFrameLayer(e['8'])){i=e._end;continue;}const x1=+e['10']||0,y1=-(+e['20']||0),x2=+e['11']||0,y2=-(+e['21']||0);if(Math.hypot(x2-x1,y2-y1)>0.1){state.wires.push({id:genId('w'),x1,y1,x2,y2,pts:[{x:x1,y:y1},{x:x2,y:y2}],layer:e['8']||'配線',wireNo:null});lc++;}i=e._end;continue;}
+      if(val==='CIRCLE'){const e=readEnt(pairs,i);if(isFrameLayer(e['8'])){i=e._end;continue;}const r=+e['40']||0;if(r>0){state.elements.push({id:genId('el'),type:'circle',x:+e['10']||0,y:-(+e['20']||0),r,layer:e['8']||'外形'});cc++;}i=e._end;continue;}
+      if(val==='TEXT'||val==='MTEXT'){const e=readEnt(pairs,i);if(isFrameLayer(e['8'])){i=e._end;continue;}let t=fromUnicodeDXF((e['1']||e['3']||'').replace(/\[A-Za-z][^;]*;/g,'').replace(/[{}]/g,'').replace(/\P/g,' ').trim());const h=+e['40']||12;if(t)state.elements.push({id:genId('el'),type:'text',x:+e['10']||0,y:-(+e['20']||0),text:t,fs:Math.max(8,Math.min(72,h)),layer:e['8']||'注記'});tc++;i=e._end;continue;}
       if(val==='INSERT'){const e=readEnt(pairs,i);const bname=e['2']||'';const mapped=mapBlock(bname);if(mapped){const def=getDef(mapped);state.elements.push({id:genId('el'),type:mapped,x:+e['10']||0,y:-(+e['20']||0),label:def?.label||bname,layer:e['8']||'回路',rot:+e['50']||0,flipH:false,flipV:false});ic++;}i=e._end;continue;}
-      if(val==='LWPOLYLINE'){const e=readPoly(pairs,i);if(e['8']==='図面枠'){i=e._end;continue;}if(e.pts&&e.pts.length>=2){const p=e.pts,minX=Math.min(...p.map(v=>v.x)),minY=Math.min(...p.map(v=>v.y)),maxX=Math.max(...p.map(v=>v.x)),maxY=Math.max(...p.map(v=>v.y));if(maxX-minX>0.1&&maxY-minY>0.1)state.elements.push({id:genId('el'),type:'rect',x:minX,y:minY,w:maxX-minX,h:maxY-minY,layer:e['8']||'外形'});else if(maxX-minX>0.1||maxY-minY>0.1)state.wires.push({id:genId('w'),x1:p[0].x,y1:p[0].y,x2:p[p.length-1].x,y2:p[p.length-1].y,pts:p,layer:e['8']||'配線',wireNo:null});}i=e._end;continue;}
-      if(val==='ARC'){const e=readEnt(pairs,i);const r=+e['40']||0;if(r>0){state.elements.push({id:genId('el'),type:'circle',x:+e['10']||0,y:-(+e['20']||0),r,layer:e['8']||'外形'});cc++;}i=e._end;continue;}
-      if(val==='ELLIPSE'){const e=readEnt(pairs,i);const r=Math.abs(+e['40']||0)*Math.hypot(+e['11']||0,+e['21']||0);if(r>0){state.elements.push({id:genId('el'),type:'circle',x:+e['10']||0,y:-(+e['20']||0),r,layer:e['8']||'外形'});cc++;}i=e._end;continue;}
-      if(val==='SPLINE'){const e=readPoly(pairs,i);if(e.pts&&e.pts.length>=2){for(let k=0;k<e.pts.length-1;k++){state.wires.push({id:genId('w'),x1:e.pts[k].x,y1:e.pts[k].y,x2:e.pts[k+1].x,y2:e.pts[k+1].y,pts:[e.pts[k],e.pts[k+1]],layer:e['8']||'外形',wireNo:null});lc++;}}i=e._end;continue;}
+      if(val==='LWPOLYLINE'){const e=readPoly(pairs,i);if(isFrameLayer(e['8'])){i=e._end;continue;}if(e.pts&&e.pts.length>=2){const p=e.pts,minX=Math.min(...p.map(v=>v.x)),minY=Math.min(...p.map(v=>v.y)),maxX=Math.max(...p.map(v=>v.x)),maxY=Math.max(...p.map(v=>v.y));if(maxX-minX>0.1&&maxY-minY>0.1)state.elements.push({id:genId('el'),type:'rect',x:minX,y:minY,w:maxX-minX,h:maxY-minY,layer:e['8']||'外形'});else if(maxX-minX>0.1||maxY-minY>0.1)state.wires.push({id:genId('w'),x1:p[0].x,y1:p[0].y,x2:p[p.length-1].x,y2:p[p.length-1].y,pts:p,layer:e['8']||'配線',wireNo:null});}i=e._end;continue;}
+      if(val==='ARC'){const e=readEnt(pairs,i);if(isFrameLayer(e['8'])){i=e._end;continue;}const r=+e['40']||0;if(r>0){state.elements.push({id:genId('el'),type:'circle',x:+e['10']||0,y:-(+e['20']||0),r,layer:e['8']||'外形'});cc++;}i=e._end;continue;}
+      if(val==='ELLIPSE'){const e=readEnt(pairs,i);if(isFrameLayer(e['8'])){i=e._end;continue;}const r=Math.abs(+e['40']||0)*Math.hypot(+e['11']||0,+e['21']||0);if(r>0){state.elements.push({id:genId('el'),type:'circle',x:+e['10']||0,y:-(+e['20']||0),r,layer:e['8']||'外形'});cc++;}i=e._end;continue;}
+      if(val==='SPLINE'){const e=readPoly(pairs,i);if(isFrameLayer(e['8'])){i=e._end;continue;}if(e.pts&&e.pts.length>=2){for(let k=0;k<e.pts.length-1;k++){state.wires.push({id:genId('w'),x1:e.pts[k].x,y1:e.pts[k].y,x2:e.pts[k+1].x,y2:e.pts[k+1].y,pts:[e.pts[k],e.pts[k+1]],layer:e['8']||'外形',wireNo:null});lc++;}}i=e._end;continue;}
       if(val==='DIMENSION'){const e=readEnt(pairs,i);const x=((+e['13']||0)+(+e['14']||0))/2,y=-(((+e['23']||0)+(+e['24']||0))/2);state.elements.push({id:genId('el'),type:'dim',x1:+e['13']||0,y1:-(+e['23']||0),x2:+e['14']||0,y2:-(+e['24']||0),dimText:e['1']||'',offset:30,arrowSz:8,layer:e['8']||'寸法',x,y});i=e._end;continue;}
     }
     i++;
   }
-  const total=lc+cc+tc+ic;
+    const total=lc+cc+tc+ic;
   if(parsedFrameObj) state.frameObj=parsedFrameObj;
   // DXFで出現したレイヤーをLAYERSに自動登録
   const allLayers = new Set([
