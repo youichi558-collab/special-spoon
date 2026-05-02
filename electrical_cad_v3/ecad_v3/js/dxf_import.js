@@ -145,6 +145,27 @@ function parseDXF(text){
   }
   const total=lc+cc+tc+ic;
   if(parsedFrameObj)state.frameObj=parsedFrameObj;
+
+  // 枠レイヤー要素を後処理で除去（エンコーディング不一致でフィルタが効かなかった場合の安全網）
+  // frameObjがある場合: 枠関連レイヤーは不要
+  // frameObjがない場合: ECAdフレームなし→枠テキストはすべて除去対象
+  function looksLikeFrameLayer(name) {
+    if (!name) return false;
+    // 文字コード関係なく、よく使われる枠レイヤー名のパターンを幅広くカバー
+    const n = name.toLowerCase();
+    return n.includes('frame') || n.includes('border') || n.includes('defpoint') ||
+           // 日本語系（UTF-8/Shift-JIS両方に対応するため部分一致）
+           name.includes('枠') || name.includes('図面') ||
+           // Shift-JIS文字化けパターン（「図面枠」がShift-JISで化けた場合）
+           /[\x80-\xff]/.test(name);
+  }
+  // 枠レイヤー要素を除去
+  const beforeCount = state.page.elements.length;
+  state.page.elements = state.page.elements.filter(el => !looksLikeFrameLayer(el.layer));
+  state.page.wires    = state.page.wires.filter(w   => !looksLikeFrameLayer(w.layer));
+  const removedCount = beforeCount - state.page.elements.length;
+  if (removedCount > 0) console.log(`DXF import: ${removedCount}個の枠レイヤー要素を除去`);
+
   // DXFで出現したレイヤーをLAYERSに自動登録
   const allLayers=new Set([...state.elements.map(e=>e.layer),...state.wires.map(w=>w.layer)]);
   allLayers.forEach(name=>{if(name&&!LAYERS.find(l=>l.name===name)){LAYERS.push({name,color:'#228844',visible:true,active:false});}});
