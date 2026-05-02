@@ -301,3 +301,42 @@ function toggleDark() {
   document.body.classList.toggle('dk', state.darkMode);
   draw();
 }
+
+// ----------------------------------------------------------------
+// パネル表示切替
+// ----------------------------------------------------------------
+function toggleLeftPanel() {
+  const lp = document.getElementById('lp');
+  if (lp) lp.classList.toggle('hide');
+  resize(); draw();
+}
+
+function toggleRightPanel() {
+  const rp = document.getElementById('rp');
+  if (rp) rp.classList.toggle('hide');
+  resize(); draw();
+}
+
+function toggleExpand() {
+  document.body.classList.toggle('fullscreen');
+  const label = document.getElementById('exp-label');
+  if (label) label.textContent = document.body.classList.contains('fullscreen') ? '元に戻す' : '大画面';
+  resize(); draw();
+}
+
+function toggleAI() {
+  const p = document.getElementById('ai-panel');
+  if (p) p.style.display = p.style.display === 'none' ? 'flex' : 'none';
+}
+
+function saveApiKey() {
+  const key = document.getElementById('ai-key')?.value?.trim();
+  if (key) { state.apiKey = key; alert('APIキーを保存しました'); }
+}
+
+function sendAI() {
+  const input = document.getElementById('ai-input');
+  if (!input?.value?.trim()) return;
+  alert('AI機能は現在準備中です');
+  input.value = '';
+}

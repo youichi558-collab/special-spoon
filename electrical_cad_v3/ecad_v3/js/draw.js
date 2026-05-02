@@ -237,7 +237,16 @@ function drawFlineEl(el, sel, lc) {
 }
 
 function drawSymEl(el, sel, lc) {
-  drawSym(el.type, el.x, el.y, sel, el.rot||0, el.flipH, el.flipV, el.color||lc);
+  const sc = el.scale || 1;
+  if (sc !== 1) {
+    ctx.save();
+    ctx.translate(el.x, el.y);
+    ctx.scale(sc, sc);
+    drawSym(el.type, 0, 0, sel, el.rot||0, el.flipH, el.flipV, el.color||lc);
+    ctx.restore();
+  } else {
+    drawSym(el.type, el.x, el.y, sel, el.rot||0, el.flipH, el.flipV, el.color||lc);
+  }
   if (el.label) {
     const d   = getDef(el.type) || { w:64, h:34 };
     const lox = el.labelOffX || 0;

@@ -9,6 +9,8 @@ function hitTest(wx, wy) {
     const d  = getDef(el.type);
     if (!d) continue;
     if (el.type === 'text')   { const hw = Math.min(200, (el.text||'').length * (el.fs||14) * 0.55); const hh = (el.fs||14) * 0.8; if (wx>=el.x && wx<=el.x+hw && wy>=el.y-hh && wy<=el.y+2) return el; }
+    else if (el.type === 'dim')    { if (distToSeg(wx,wy,el.x1,el.y1,el.x2,el.y2) < R) return el; }
+    else if (el.type === 'leader') { if (distToSeg(wx,wy,el.x1,el.y1,el.bx,el.by) < R || distToSeg(wx,wy,el.bx,el.by,el.x2,el.y2) < R) return el; }
     else if (el.type === 'fline') { if (distToSeg(wx,wy,el.x1,el.y1,el.x2,el.y2) < R) return el; }
     else if (el.type === 'rect')  { if (wx>=el.x&&wx<=el.x+el.w&&wy>=el.y&&wy<=el.y+el.h) return el; }
     else if (el.type === 'circle'){ if (Math.abs(Math.hypot(wx-el.x,wy-el.y)-el.r) < R) return el; }

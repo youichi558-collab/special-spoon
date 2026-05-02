@@ -71,13 +71,14 @@ function getGroupBounds(els, wires) {
 }
 
 function startElResize(el, hid, e) {
+  pushH();
   state.resize = { el, handle: hid, orig: JSON.parse(JSON.stringify(el)) };
   const r = cv.getBoundingClientRect();
   const onMove = e2 => {
     const {x:wx,y:wy} = tw(e2.clientX-r.left, e2.clientY-r.top);
     applyElResize(wx, wy); draw(); drawResizeHandles(el);
   };
-  const onUp = () => { if (state.resize.el) pushH(); state.resize = {el:null,handle:'',orig:null}; document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); draw(); updateResizeHandles(); };
+  const onUp = () => { state.resize = {el:null,handle:'',orig:null}; document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); draw(); updateResizeHandles(); };
   document.addEventListener('mousemove', onMove);
   document.addEventListener('mouseup', onUp);
 }
@@ -101,12 +102,13 @@ function applyElResize(wx, wy) {
 }
 
 function startGroupResize(hid, e, bounds) {
+  pushH();
   const elRefs   = state.elements.filter(el => state.sel.els.has(el.id));
   const wireRefs = state.wires.filter(w    => state.sel.wires.has(w.id));
   state.groupResize = { active:true, handle:hid, orig:{ bounds:{...bounds}, els:elRefs.map(el=>JSON.parse(JSON.stringify(el))), wires:wireRefs.map(w=>JSON.parse(JSON.stringify(w))), elRefs, wireRefs } };
   const r = cv.getBoundingClientRect();
   const onMove = e2 => { const {x:wx,y:wy}=tw(e2.clientX-r.left,e2.clientY-r.top); applyGroupResize(wx,wy); draw(); drawGroupResizeHandles(); };
-  const onUp = () => { if (state.groupResize.active) pushH(); state.groupResize={active:false,handle:'',orig:null}; document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); draw(); updateResizeHandles(); };
+  const onUp = () => { state.groupResize={active:false,handle:'',orig:null}; document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); draw(); updateResizeHandles(); };
   document.addEventListener('mousemove', onMove);
   document.addEventListener('mouseup', onUp);
 }

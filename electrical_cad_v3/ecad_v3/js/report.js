@@ -10,12 +10,13 @@ function autoWireNumber(){
 }
 function exportWireCSV(){const rows=['線番,始点X,始点Y,終点X,終点Y,レイヤー',...state.wires.map(w=>{const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];const p0=pts[0],p1=pts[pts.length-1];return`${w.wireNo||''},${Math.round(p0.x)},${Math.round(p0.y)},${Math.round(p1.x)},${Math.round(p1.y)},${w.layer||''}`;})];dl(rows.join('\n'),'wire_numbers.csv','text/csv');}
 function showBOM(){
-  const counts={};state.elements.forEach(el=>{if(['text','rect','circle','fline'].includes(el.type))return;const k=`${el.type}|${el.label}`;if(!counts[k])counts[k]={type:el.type,label:el.label||'',count:0,jis:getDef(el.type)?.jis||''};counts[k].count++;});
+  const skip=['text','rect','circle','fline','dim','leader'];
+  const counts={};state.elements.forEach(el=>{if(skip.includes(el.type))return;const name=el.partRef||el.label||el.type;const k=`${el.type}|${name}`;if(!counts[k])counts[k]={type:el.type,label:name,count:0,jis:getDef(el.type)?.jis||''};counts[k].count++;});
   const rows=Object.values(counts);
-  let html=rows.length?`<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">合計 ${state.elements.filter(e=>!['text','rect','circle','fline'].includes(e.type)).length} 個</p><table class="tbl"><tr><th>記号</th><th>種別</th><th>JIS</th><th>数量</th></tr>${rows.map(r=>`<tr><td>${r.label}</td><td>${r.type}</td><td style="color:var(--acc)">${r.jis}</td><td style="font-weight:600">${r.count}</td></tr>`).join('')}</table>`:'<p style="font-size:11px;color:var(--fg3)">配置されたシンボルがありません</p>';
+  let html=rows.length?`<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">合計 ${state.elements.filter(e=>!skip.includes(e.type)).length} 個</p><table class="tbl"><tr><th>記号</th><th>種別</th><th>JIS</th><th>数量</th></tr>${rows.map(r=>`<tr><td>${r.label}</td><td>${r.type}</td><td style="color:var(--acc)">${r.jis}</td><td style="font-weight:600">${r.count}</td></tr>`).join('')}</table>`:'<p style="font-size:11px;color:var(--fg3)">配置されたシンボルがありません</p>';
   document.getElementById('bom-body').innerHTML=html;document.getElementById('bom-p').classList.add('open');
 }
-function exportBOMCSV(){const counts={};state.elements.forEach(el=>{if(['text','rect','circle','fline'].includes(el.type))return;const k=`${el.type}|${el.label}`;if(!counts[k])counts[k]={type:el.type,label:el.label||'',count:0,jis:getDef(el.type)?.jis||''};counts[k].count++;});dl(['記号,種別,JIS規格,数量',...Object.values(counts).map(r=>`${r.label},${r.type},${r.jis},${r.count}`)].join('\n'),'bom.csv','text/csv');}
+function exportBOMCSV(){const skip=['text','rect','circle','fline','dim','leader'];const counts={};state.elements.forEach(el=>{if(skip.includes(el.type))return;const name=el.partRef||el.label||el.type;const k=`${el.type}|${name}`;if(!counts[k])counts[k]={type:el.type,label:name,count:0,jis:getDef(el.type)?.jis||''};counts[k].count++;});dl(['記号,種別,JIS規格,数量',...Object.values(counts).map(r=>`${r.label},${r.type},${r.jis},${r.count}`)].join('\n'),'bom.csv','text/csv');}
 function showRefPanel(){
   const coils=state.elements.filter(el=>getDef(el.type)?.isCoil);
   const contacts=state.elements.filter(el=>getDef(el.type)?.isContact||el.refCoil);

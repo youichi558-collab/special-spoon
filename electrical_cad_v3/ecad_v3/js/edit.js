@@ -188,18 +188,22 @@ function clearAll() {
 // ----------------------------------------------------------------
 function rotateSel(deg) {
   const skipTypes = ['text','rect','circle','fline'];
-  state.elements.filter(el => state.sel.els.has(el.id) && !skipTypes.includes(el.type))
-    .forEach(el => { el.rot = ((el.rot||0) + deg) % 360; });
-  pushH(); draw(); updateRightPanel();
+  const targets = state.elements.filter(el => state.sel.els.has(el.id) && !skipTypes.includes(el.type));
+  if (!targets.length) return;
+  pushH();
+  targets.forEach(el => { el.rot = ((el.rot||0) + deg) % 360; });
+  draw(); updateRightPanel();
 }
 
 function flipSel(axis) {
-  state.elements.filter(el => state.sel.els.has(el.id))
-    .forEach(el => {
-      if (axis === 'h') el.flipH = !el.flipH;
-      else              el.flipV = !el.flipV;
-    });
-  pushH(); draw(); updateRightPanel();
+  const targets = state.elements.filter(el => state.sel.els.has(el.id));
+  if (!targets.length) return;
+  pushH();
+  targets.forEach(el => {
+    if (axis === 'h') el.flipH = !el.flipH;
+    else              el.flipV = !el.flipV;
+  });
+  draw(); updateRightPanel();
 }
 
 // ----------------------------------------------------------------
@@ -209,18 +213,20 @@ function groupSelected() {
   const elIds   = [...state.sel.els];
   const wireIds = [...state.sel.wires];
   if (!elIds.length && !wireIds.length) return;
+  pushH();
   const id = genId('g');
   state.page.groups = state.page.groups || [];
   state.page.groups.push({ id, elIds, wireIds });
-  pushH(); draw();
+  draw();
 }
 
 function ungroupSelected() {
+  pushH();
   state.page.groups = (state.page.groups || []).filter(g =>
     !g.elIds.some(id => state.sel.els.has(id)) &&
     !g.wireIds.some(id => state.sel.wires.has(id))
   );
-  pushH(); draw();
+  draw();
 }
 
 // ----------------------------------------------------------------
@@ -270,6 +276,7 @@ document.addEventListener('keydown', e => {
   if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key) && state.sel.els.size) {
     e.preventDefault();
     const step = e.shiftKey ? state.G : 2;
+    pushH();
     state.elements.filter(el => state.sel.els.has(el.id)).forEach(el => {
       if (el.x != null) {
         if (e.key === 'ArrowLeft')  el.x -= step;
@@ -278,6 +285,6 @@ document.addEventListener('keydown', e => {
         if (e.key === 'ArrowDown')  el.y += step;
       }
     });
-    pushH(); draw();
+    draw();
   }
 });

@@ -29,6 +29,7 @@ const selectTool = {
 
     state.mouse.dragging  = true;
     state.mouse.dragMoved = false;
+    state.mouse.dragHistPushed = false;
     state.mouse.dragGroup = buildDragGroup();
     updateRightPanel();
   },
@@ -42,6 +43,10 @@ const selectTool = {
     if (!state.mouse.dragMoved && Math.hypot(dx, dy) < 2/state.zoom) return;
 
     state.mouse.dragMoved = true;
+    if (state.mouse.dragMoved && !state.mouse.dragHistPushed) {
+      pushH();
+      state.mouse.dragHistPushed = true;
+    }
     state.mouse.dragGroup.forEach(({ el, ox, oy, ox1, oy1, ox2, oy2, opts }) => {
       if (el.x != null) { el.x = snap(ox+dx); el.y = snap(oy+dy); }
       if (el.x1 != null) {
@@ -72,7 +77,6 @@ const selectTool = {
       return;
     }
     if (state.mouse.dragging) {
-      if (state.mouse.dragMoved) pushH();
       state.mouse.dragging  = false;
       state.mouse.dragGroup = [];
       updateResizeHandles();
@@ -135,6 +139,8 @@ const symTool = {
       flipH:  false,
       flipV:  false,
       label:  d.label || '',
+      partRef: state.pendingRef || '',
+      terminals: state.pendingTerm || '',
       layer:  activeLayer(),
       wireNo: '',
       note:   '',
