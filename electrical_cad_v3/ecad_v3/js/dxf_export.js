@@ -46,47 +46,11 @@ function exportDXF(){
   ls.push(...buildSymBlocksDXF());
   ls.push('0','ENDSEC');
   // frameObjをコメントとして保存（読込時に復元）
+  // 枠のLINE/TEXTエンティティは書かない（読込時に二重になるため）
   if(state.frameObj){
     ls.push('999','ECAD_FRAME:'+JSON.stringify(state.frameObj));
   }
   ls.push('0','SECTION','2','ENTITIES');
-  if(state.frameObj){
-    const fr=state.frameObj;
-    const{sc,wMM,hMM,mg,thMM,cols=8,rows=4}=fr;
-    const W=wMM*sc,H=hMM*sc,MG=mg*sc,TH=thMM*sc;
-    const innerW=W-MG*2,innerH=H-MG*2,drawH=innerH-TH;
-    const colW=innerW/cols,rowH=drawH/rows;
-    function ft(x,y,h,s){if(!s)return;ls.push('0','TEXT','8','図面枠','10',x.toFixed(2),'20',(-y).toFixed(2),'30','0','40',h.toFixed(2),'1',toUnicodeDXF(s),'72','1','11',x.toFixed(2),'21',(-y).toFixed(2),'31','0','73','2');}
-    function fl(x1,y1,x2,y2){ls.push('0','LINE','8','図面枠','10',x1.toFixed(2),'20',(-y1).toFixed(2),'30','0','11',x2.toFixed(2),'21',(-y2).toFixed(2),'31','0');}
-    addRect(ls,'図面枠',0,0,W,H);
-    addRect(ls,'図面枠',MG,MG,W-MG,H-MG);
-    addRect(ls,'図面枠',MG,MG+drawH,W-MG,MG+innerH);
-    for(let c=1;c<cols;c++){fl(MG+c*colW,0,MG+c*colW,MG);fl(MG+c*colW,MG+innerH,MG+c*colW,H);}
-    for(let r=1;r<rows;r++){fl(0,MG+r*rowH,MG,MG+r*rowH);fl(MG+innerW,MG+r*rowH,W,MG+r*rowH);}
-    for(let c=0;c<cols;c++){ft(MG+c*colW+colW/2,MG-4,7,String.fromCharCode(65+c%26));}
-    for(let r=0;r<rows;r++){
-      ft(MG-6,MG+r*rowH+rowH/2+2,7,String(r+1));
-      ft(MG+innerW+3,MG+r*rowH+rowH/2+2,7,String(r+1));
-    }
-    const tbY=MG+drawH;
-    const cells=[
-      {x:0,y:0,w:.25,h:.5,key:'drawno',lbl:'図面番号'},
-      {x:.25,y:0,w:.35,h:.5,key:'title',lbl:'図面名称'},
-      {x:.6,y:0,w:.2,h:.5,key:'company',lbl:'会社名'},
-      {x:.8,y:0,w:.2,h:.5,key:'equip',lbl:'設備名'},
-      {x:0,y:.5,w:.12,h:.5,key:'author',lbl:'作成'},
-      {x:.12,y:.5,w:.12,h:.5,key:'approve',lbl:'承認'},
-      {x:.24,y:.5,w:.2,h:.5,key:'date',lbl:'日付'},
-      {x:.44,y:.5,w:.1,h:.5,key:'scale2',lbl:'縮尺'},
-      {x:.54,y:.5,w:.06,h:.5,key:'rev',lbl:'Rev'},
-    ];
-    cells.forEach(c=>{
-      const cx=MG+c.x*innerW,cy=tbY+c.y*TH,cw=c.w*innerW,ch=c.h*TH;
-      addRect(ls,'図面枠',cx,cy,cx+cw,cy+ch);
-      ft(cx+2,cy+4,6,c.lbl);
-      if(fr[c.key])ft(cx+3,cy+ch-4,9,fr[c.key]);
-    });
-  }
   state.elements.filter(e=>e.type==='dim').forEach(el=>{
     const dx=el.x2-el.x1,dy=el.y2-el.y1,len=Math.hypot(dx,dy);
     if(len<0.1)return;
