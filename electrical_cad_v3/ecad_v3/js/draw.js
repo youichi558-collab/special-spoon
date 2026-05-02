@@ -162,7 +162,7 @@ function drawElements() {
     const lay = LAYERS.find(l => l.name === el.layer);
     if (lay && !lay.visible) return;
     // 枠レイヤーの要素はdrawFrame()が描画するのでスキップ
-    if (state.frameObj && el.layer && (el.layer==='図面枠'||el.layer.toLowerCase().includes('frame')||el.layer.toLowerCase().includes('border')||el.layer.toLowerCase().includes('図面')||/[^\x00-\x7F]/.test(el.layer))) return;
+    if (state.frameObj && el.layer && (el.layer==='図面枠'||el.layer.toLowerCase().includes('frame')||el.layer.toLowerCase().includes('border')||el.layer==='defpoints')) return;
     const sel = state.sel.els.has(el.id);
     const lc  = lay ? lay.color : fgC();
 

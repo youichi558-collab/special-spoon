@@ -151,13 +151,9 @@ function parseDXF(text){
   // frameObjがない場合: ECAdフレームなし→枠テキストはすべて除去対象
   function looksLikeFrameLayer(name) {
     if (!name) return false;
-    // 文字コード関係なく、よく使われる枠レイヤー名のパターンを幅広くカバー
     const n = name.toLowerCase();
-    return n.includes('frame') || n.includes('border') || n.includes('defpoint') ||
-           // 日本語系（UTF-8/Shift-JIS両方に対応するため部分一致）
-           name.includes('枠') || name.includes('図面') ||
-           // 非ASCII文字を含む（文字化けした日本語レイヤー名）
-           /[^\x00-\x7F]/.test(name);
+    // 「図面枠」固定文字列 または ASCII枠レイヤー名のみ（日本語レイヤーは対象外）
+    return name === '図面枠' || n === 'frame' || n === 'border' || n === 'defpoints' || n.startsWith('frame_');
   }
   // 枠レイヤー要素を除去
   const beforeCount = state.page.elements.length;

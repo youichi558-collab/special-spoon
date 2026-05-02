@@ -155,3 +155,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--acc);}
 .page-tab.active{background:var(--bg);color:var(--fg);font-weight:600;border-bottom-color:var(--bg);}
 .page-tab-add{padding:3px 10px;font-size:13px;border:1px solid var(--bd);border-radius:4px;cursor:pointer;background:var(--bg3);color:var(--fg3);}
 .page-tab-add:hover{background:var(--acc);color:#fff;}
+/* パネル表示切替 */
+#lp.hide{display:none!important;}
+#rp.hide{display:none!important;}
+/* 大画面モード */
+body.fullscreen #lp,body.fullscreen #rp{display:none!important;}
+body.fullscreen #cw-wrap{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:100;}
+body.fullscreen #toolbar{display:none!important;}
+body.fullscreen #page-bar{display:none!important;}

@@ -6,15 +6,17 @@ function hitTest(wx, wy) {
   const R = 8 / state.zoom;
   for (let i = state.elements.length-1; i >= 0; i--) {
     const el = state.elements[i];
-    const d  = getDef(el.type);
+    // getDef()に依存しない型を先に判定
+    if (el.type === 'text')   { const hw = Math.min(200, (el.text||'').length * (el.fs||14) * 0.55); const hh = (el.fs||14) * 0.8; if (wx>=el.x && wx<=el.x+hw && wy>=el.y-hh && wy<=el.y+2) return el; continue; }
+    if (el.type === 'dim')    { if (distToSeg(wx,wy,el.x1,el.y1,el.x2,el.y2) < R) return el; continue; }
+    if (el.type === 'leader') { if (distToSeg(wx,wy,el.x1,el.y1,el.bx,el.by) < R || distToSeg(wx,wy,el.bx,el.by,el.x2,el.y2) < R) return el; continue; }
+    if (el.type === 'fline')  { if (distToSeg(wx,wy,el.x1,el.y1,el.x2,el.y2) < R) return el; continue; }
+    if (el.type === 'rect')   { if (wx>=el.x&&wx<=el.x+el.w&&wy>=el.y&&wy<=el.y+el.h) return el; continue; }
+    if (el.type === 'circle') { if (Math.abs(Math.hypot(wx-el.x,wy-el.y)-el.r) < R) return el; continue; }
+    // シンボル系はgetDef()が必要
+    const d = getDef(el.type);
     if (!d) continue;
-    if (el.type === 'text')   { const hw = Math.min(200, (el.text||'').length * (el.fs||14) * 0.55); const hh = (el.fs||14) * 0.8; if (wx>=el.x && wx<=el.x+hw && wy>=el.y-hh && wy<=el.y+2) return el; }
-    else if (el.type === 'dim')    { if (distToSeg(wx,wy,el.x1,el.y1,el.x2,el.y2) < R) return el; }
-    else if (el.type === 'leader') { if (distToSeg(wx,wy,el.x1,el.y1,el.bx,el.by) < R || distToSeg(wx,wy,el.bx,el.by,el.x2,el.y2) < R) return el; }
-    else if (el.type === 'fline') { if (distToSeg(wx,wy,el.x1,el.y1,el.x2,el.y2) < R) return el; }
-    else if (el.type === 'rect')  { if (wx>=el.x&&wx<=el.x+el.w&&wy>=el.y&&wy<=el.y+el.h) return el; }
-    else if (el.type === 'circle'){ if (Math.abs(Math.hypot(wx-el.x,wy-el.y)-el.r) < R) return el; }
-    else { if (Math.abs(wx-el.x)<(d.w/2+R) && Math.abs(wy-el.y)<(d.h/2+R)) return el; }
+    if (Math.abs(wx-el.x)<(d.w/2+R) && Math.abs(wy-el.y)<(d.h/2+R)) return el;
   }
   return null;
 }
