@@ -7,15 +7,25 @@ function loadDXF(input){
   rd.onload=e=>{
     const buf=e.target.result;
     const u8=new Uint8Array(buf);
-    let sjisScore=0;
-    for(let i=0;i<u8.length-1;i++){
-      const b=u8[i];
-      if((b>=0x81&&b<=0x9F)||(b>=0xE0&&b<=0xFC)){
-        const b2=u8[i+1];
-        if(b2>=0x40&&b2<=0xFC&&b2!==0x7F){sjisScore++;i++;}
+
+    // まずASCII範囲でECAD_FRAMEマーカーを探す（自ツール出力はUTF-8確定）
+    const ascii=String.fromCharCode(...u8.slice(0,Math.min(u8.length,2000)));
+    const isOwnFile=ascii.includes('ECAD_FRAME');
+
+    let enc='UTF-8';
+    if(!isOwnFile){
+      // 外部ファイルはShift-JIS判定
+      let sjisScore=0;
+      for(let i=0;i<u8.length-1;i++){
+        const b=u8[i];
+        if((b>=0x81&&b<=0x9F)||(b>=0xE0&&b<=0xFC)){
+          const b2=u8[i+1];
+          if(b2>=0x40&&b2<=0xFC&&b2!==0x7F){sjisScore++;i++;}
+        }
       }
+      if(sjisScore>5)enc='Shift-JIS';
     }
-    const enc=sjisScore>5?'Shift-JIS':'UTF-8';
+
     const rd2=new FileReader();
     rd2.onload=e2=>parseDXF(e2.target.result);
     rd2.readAsText(f,enc);
