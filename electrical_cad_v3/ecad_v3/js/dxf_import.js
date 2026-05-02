@@ -156,21 +156,26 @@ function parseDXF(text){
   const total=lc+cc+tc+ic;
   if(parsedFrameObj)state.frameObj=parsedFrameObj;
 
-  // 枠レイヤー要素を後処理で除去（エンコーディング不一致でフィルタが効かなかった場合の安全網）
-  // frameObjがある場合: 枠関連レイヤーは不要
-  // frameObjがない場合: ECAdフレームなし→枠テキストはすべて除去対象
+  // 枠要素を除去（レイヤー名 + 位置の両方でフィルタ、エンコーディング不問）
   function looksLikeFrameLayer(name) {
     if (!name) return false;
     const n = name.toLowerCase();
-    // 「図面枠」固定文字列 または ASCII枠レイヤー名のみ（日本語レイヤーは対象外）
     return name === '図面枠' || n === 'frame' || n === 'border' || n === 'defpoints' || n.startsWith('frame_');
   }
-  // 枠レイヤー要素を除去
-  const beforeCount = state.page.elements.length;
-  state.page.elements = state.page.elements.filter(el => !looksLikeFrameLayer(el.layer));
-  state.page.wires    = state.page.wires.filter(w   => !looksLikeFrameLayer(w.layer));
-  const removedCount = beforeCount - state.page.elements.length;
-  if (removedCount > 0) console.log(`DXF import: ${removedCount}個の枠レイヤー要素を除去`);
+  function inFrameMargin(el) {
+    if (!parsedFrameObj) return false;
+    const fr = parsedFrameObj;
+    const sc = fr.sc || 1;
+    const W  = (fr.wMM || fr.w || 297) * sc;
+    const H  = (fr.hMM || fr.h || 210) * sc;
+    const mg = (fr.mg  || 10)  * sc;
+    const x  = el.x ?? el.x1 ?? null;
+    const y  = el.y ?? el.y1 ?? null;
+    if (x === null) return false;
+    return x < mg || x > W - mg || y < mg || y > H - mg;
+  }
+  state.page.elements = state.page.elements.filter(el => !looksLikeFrameLayer(el.layer) && !inFrameMargin(el));
+  state.page.wires    = state.page.wires.filter(w   => !looksLikeFrameLayer(w.layer)   && !inFrameMargin(w));
 
   // DXFで出現したレイヤーをLAYERSに自動登録
   const allLayers=new Set([...state.elements.map(e=>e.layer),...state.wires.map(w=>w.layer)]);
