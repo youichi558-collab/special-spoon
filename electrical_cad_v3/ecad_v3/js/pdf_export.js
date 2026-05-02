@@ -192,6 +192,8 @@ function runExportPDF() {
       (pg.elements||[]).forEach(el => {
         const lay = LAYERS.find(l => l.name===el.layer);
         if (lay && !lay.visible) return;
+        // 枠レイヤーの要素はframeObjが別途描画するのでスキップ
+        if (el.layer && (el.layer==='図面枠'||el.layer.toLowerCase().includes('frame')||el.layer.toLowerCase().includes('border')||el.layer.toLowerCase().includes('図面'))) return;
         const lc = lay ? lay.color : '#000000';
 
         if (el.type==='fline') {
