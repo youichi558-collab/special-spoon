@@ -165,14 +165,19 @@ function parseDXF(text){
   function inFrameMargin(el) {
     if (!parsedFrameObj) return false;
     const fr = parsedFrameObj;
-    const sc = fr.sc || 1;
-    const W  = (fr.wMM || fr.w || 297) * sc;
-    const H  = (fr.hMM || fr.h || 210) * sc;
-    const mg = (fr.mg  || 10)  * sc;
-    const x  = el.x ?? el.x1 ?? null;
-    const y  = el.y ?? el.y1 ?? null;
+    const sc  = fr.sc  || 1;
+    const W   = (fr.wMM  || fr.w  || 297) * sc;
+    const H   = (fr.hMM  || fr.h  || 210) * sc;
+    const mg  = (fr.mg   || 10)  * sc;
+    const thMM = (fr.thMM || 30) * sc;
+    const innerH = H - mg * 2;
+    const drawH  = innerH - thMM;
+    const tbY    = mg + drawH; // 表題欄の上端Y座標
+    const x = el.x ?? el.x1 ?? null;
+    const y = el.y ?? el.y1 ?? null;
     if (x === null) return false;
-    return x < mg || x > W - mg || y < mg || y > H - mg;
+    // 余白エリア（内枠の外）または表題欄エリア（内枠内の下部）
+    return x < mg || x > W - mg || y < mg || y > H - mg || y > tbY;
   }
   state.page.elements = state.page.elements.filter(el => !looksLikeFrameLayer(el.layer) && !inFrameMargin(el));
   state.page.wires    = state.page.wires.filter(w   => !looksLikeFrameLayer(w.layer)   && !inFrameMargin(w));
