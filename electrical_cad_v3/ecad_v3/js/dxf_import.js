@@ -156,8 +156,8 @@ function parseDXF(text){
     return n.includes('frame') || n.includes('border') || n.includes('defpoint') ||
            // 日本語系（UTF-8/Shift-JIS両方に対応するため部分一致）
            name.includes('枠') || name.includes('図面') ||
-           // Shift-JIS文字化けパターン（「図面枠」がShift-JISで化けた場合）
-           /[\x80-\xff]/.test(name);
+           // 非ASCII文字を含む（文字化けした日本語レイヤー名）
+           /[^\x00-\x7F]/.test(name);
   }
   // 枠レイヤー要素を除去
   const beforeCount = state.page.elements.length;
