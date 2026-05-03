@@ -269,7 +269,7 @@ function delCusSym(type) {
 function renderPageTabs() {
   const el = document.getElementById('page-tabs'); if (!el) return;
   el.innerHTML = state.pages.map((p,i) =>
-    `<div class="page-tab${i===state.currentPage?' active':''}" onclick="switchPage(${i})" ondblclick="renamePage(${i})">${p.name||('Sheet'+(i+1))}${p.dirty?'<span style="color:var(--red);margin-left:3px;font-size:10px">●</span>':''}</div>`
+    `<div class="page-tab${i===state.currentPage?' active':''}" onclick="switchPage(${i})" ondblclick="renamePage(${i})" style="display:flex;align-items:center;gap:4px">${p.name||('Sheet'+(i+1))}${p.dirty?'<span style="color:var(--red);font-size:10px">●</span>':''}${state.pages.length>1?`<span onclick="event.stopPropagation();deletePage(${i})" style="font-size:10px;color:var(--fg3);cursor:pointer;line-height:1" title="削除">×</span>`:''}</div>`
   ).join('') + `<div class="page-tab-add" onclick="addPage()">＋</div>`;
 }
 
@@ -294,6 +294,15 @@ function addPage() {
 function renamePage(idx) {
   const name = prompt('ページ名:', state.pages[idx].name || ('Sheet'+(idx+1)));
   if (name !== null && name.trim()) { state.pages[idx].name = name.trim(); renderPageTabs(); }
+}
+function deletePage(idx) {
+  if (state.pages.length <= 1) return;
+  const name = state.pages[idx].name || ('Sheet'+(idx+1));
+  if (!confirm(`「${name}」を削除しますか？`)) return;
+  pushH();
+  state.pages.splice(idx, 1);
+  const newIdx = Math.min(idx, state.pages.length - 1);
+  switchPage(newIdx);
 }
 
 // ----------------------------------------------------------------
