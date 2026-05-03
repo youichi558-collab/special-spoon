@@ -100,7 +100,7 @@ function renderLayers() {
             style="width:80px;font-size:12px;padding:2px 4px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
             onchange="applyLayerFontSize(${i},this.value)" oninput="if(!this.value){applyLayerFontSize(${i},null)}">
         </td>
-        <td style="padding:4px 8px;text-align:center;white-space:nowrap" onclick="event.stopPropagation()">
+        <td style="padding:4px 16px;text-align:center;white-space:nowrap;min-width:60px" onclick="event.stopPropagation()">
           <span onclick="renameLayer(${i})" title="名前変更" style="cursor:pointer;color:var(--fg3);margin-right:10px;font-size:16px">✏</span>
           ${LAYERS.length>1?`<span onclick="deleteLayer(${i})" title="削除" style="cursor:pointer;color:var(--red);font-size:16px">×</span>`:''}
         </td>
