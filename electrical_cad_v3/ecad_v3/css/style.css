@@ -165,3 +165,6 @@ body.fullscreen #rp,
 body.fullscreen #page-bar,
 body.fullscreen #sb{display:none!important;}
 body.fullscreen #cw{position:fixed;inset:0;z-index:100;width:100vw;height:100vh;}
+/* 大画面解除ボタン（常にキャンバス上に浮かぶ） */
+#fs-exit{display:none;position:fixed;top:8px;right:12px;z-index:200;padding:4px 10px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer;}
+body.fullscreen #fs-exit{display:block;}
