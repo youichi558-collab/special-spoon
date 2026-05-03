@@ -16,11 +16,13 @@ function switchLTab(name, el) {
   document.querySelectorAll('.lt').forEach(e => e.classList.remove('on'));
   el.classList.add('on');
   if (name === 'lay') {
-    // レイヤーはフローティングパネルで表示、サイドバーは非表示
     ['sym','lay','prt','cus'].forEach(n => document.getElementById('lt-'+n).style.display = 'none');
     const fp = document.getElementById('lay-float');
-    if (fp.style.display === 'none') { fp.style.display = 'block'; renderLayers(); }
-    else { fp.style.display = 'none'; }
+    const hidden = !fp || fp.style.display === '' || fp.style.display === 'none';
+    if (fp) {
+      fp.style.display = hidden ? 'block' : 'none';
+      if (hidden) renderLayers();
+    }
     return;
   }
   ['sym','lay','prt','cus'].forEach(n => document.getElementById('lt-'+n).style.display = n===name ? 'block' : 'none');
