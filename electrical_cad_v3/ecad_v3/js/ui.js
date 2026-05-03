@@ -300,9 +300,21 @@ function deletePage(idx) {
   const name = state.pages[idx].name || ('Sheet'+(idx+1));
   if (!confirm(`「${name}」を削除しますか？`)) return;
   pushH();
+  // 現在ページのデータを先に保存
+  state.pages[state.currentPage].elements = state.elements;
+  state.pages[state.currentPage].wires    = state.wires;
+  state.pages[state.currentPage].frameObj = state.frameObj;
+  // ページを削除
   state.pages.splice(idx, 1);
-  const newIdx = Math.min(idx, state.pages.length - 1);
-  switchPage(newIdx);
+  // currentPageのインデックスを補正
+  let newIdx = state.currentPage;
+  if (idx < state.currentPage) newIdx--;
+  if (newIdx >= state.pages.length) newIdx = state.pages.length - 1;
+  // switchPageを使わず直接切り替え
+  state.currentPage = newIdx;
+  const pg = state.pages[newIdx];
+  state.sel.els.clear(); state.sel.wires.clear();
+  renderPageTabs(); draw(); updateRightPanel();
 }
 
 // ----------------------------------------------------------------
