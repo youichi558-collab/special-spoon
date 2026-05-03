@@ -67,12 +67,12 @@ function renderLayers() {
         </td>
         <td style="padding:4px 4px" onclick="event.stopPropagation()">
           <input type="number" min="0.5" max="10" step="0.5" value="${l.lineWidth||1}"
-            style="width:48px;font-size:10px;padding:2px 3px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
+            style="width:60px;font-size:11px;padding:3px 4px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
             onchange="LAYERS[${i}].lineWidth=parseFloat(this.value)||1;draw()">
         </td>
         <td style="padding:4px 4px" onclick="event.stopPropagation()">
           <input type="number" min="6" max="72" step="1" value="${l.fontSize||14}"
-            style="width:48px;font-size:10px;padding:2px 3px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
+            style="width:60px;font-size:11px;padding:3px 4px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
             onchange="LAYERS[${i}].fontSize=parseInt(this.value)||14;draw()">
         </td>
         <td style="padding:4px 6px;text-align:center;white-space:nowrap" onclick="event.stopPropagation()">
