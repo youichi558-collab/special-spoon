@@ -34,6 +34,101 @@ function calcPageBounds(pg) {
   return { minX:minX-pad, minY:minY-pad, maxX:maxX+pad, maxY:maxY+pad };
 }
 
+// ================================================================
+// PDFプレビュー
+// ================================================================
+let _pvPage = 0;
+
+function showPDFPreview() {
+  _pvPage = state.currentPage;
+  _renderPVPage();
+  const ov = document.getElementById('pdf-preview-overlay');
+  ov.style.display = 'flex';
+}
+
+function closePDFPreview() {
+  document.getElementById('pdf-preview-overlay').style.display = 'none';
+}
+
+function pvChangePage(dir) {
+  _pvPage = Math.max(0, Math.min(state.pages.length - 1, _pvPage + dir));
+  _renderPVPage();
+}
+
+function _renderPVPage() {
+  const pvc = document.getElementById('pdf-preview-canvas');
+  const info = document.getElementById('pv-page-info');
+  if (!pvc) return;
+
+  const pg = state.pages[_pvPage];
+  if (!pg) return;
+  info.textContent = `${_pvPage + 1} / ${state.pages.length}  (${pg.name || 'Sheet'})`;
+
+  // ページ寸法
+  const fr = pg.frameObj;
+  let pageW, pageH;
+  if (fr) {
+    pageW = (fr.wMM || fr.w || 297) * (fr.sc || 1);
+    pageH = (fr.hMM || fr.h || 210) * (fr.sc || 1);
+  } else {
+    const b = calcPageBounds(pg);
+    pageW = b.maxX - b.minX;
+    pageH = b.maxY - b.minY;
+  }
+
+  // キャンバスサイズ（最大800px幅に収める）
+  const maxW = Math.min(window.innerWidth * 0.82, 1000);
+  const maxH = window.innerHeight * 0.78;
+  const sc = Math.min(maxW / pageW, maxH / pageH);
+  pvc.width  = Math.round(pageW * sc);
+  pvc.height = Math.round(pageH * sc);
+
+  const octx = pvc.getContext('2d');
+  octx.fillStyle = '#ffffff';
+  octx.fillRect(0, 0, pvc.width, pvc.height);
+
+  // 既存のdraw系グローバルを一時退避して描画
+  const origPage  = state.currentPage;
+  const origDark  = state.darkMode;
+  const origSelEls   = new Set(state.sel.els);
+  const origSelWires = new Set(state.sel.wires);
+  const origCv    = cv, origCtx = ctx;
+  const origZoom  = state.zoom;
+  const origPan   = { ...state.pan };
+
+  state.currentPage = _pvPage;
+  state.darkMode    = false;
+  document.body.classList.remove('dk');
+  state.sel.els.clear();
+  state.sel.wires.clear();
+
+  cv  = pvc;
+  ctx = octx;
+  state.zoom = sc;
+
+  // 座標原点をページ左上に合わせる
+  if (fr) {
+    state.pan = { x: 0, y: 0 };
+  } else {
+    const b = calcPageBounds(pg);
+    state.pan = { x: -b.minX * sc, y: -b.minY * sc };
+  }
+
+  draw();
+
+  // 復元
+  cv  = origCv;
+  ctx = origCtx;
+  state.zoom        = origZoom;
+  state.pan         = origPan;
+  state.currentPage = origPage;
+  state.darkMode    = origDark;
+  if (origDark) document.body.classList.add('dk');
+  state.sel.els   = origSelEls;
+  state.sel.wires = origSelWires;
+  draw();
+}
+
 function exportPDF() {
   document.getElementById('pdf-opt-p').classList.add('open');
 }
