@@ -129,7 +129,7 @@ function delCusSym(type) {
 function renderPageTabs() {
   const el = document.getElementById('page-tabs'); if (!el) return;
   el.innerHTML = state.pages.map((p,i) =>
-    `<div class="page-tab${i===state.currentPage?' active':''}" onclick="switchPage(${i})" ondblclick="renamePage(${i})">${p.name||('Sheet'+(i+1))}</div>`
+    `<div class="page-tab${i===state.currentPage?' active':''}" onclick="switchPage(${i})" ondblclick="renamePage(${i})">${p.name||('Sheet'+(i+1))}${p.dirty?'<span style="color:var(--red);margin-left:3px;font-size:10px">●</span>':''}</div>`
   ).join('') + `<div class="page-tab-add" onclick="addPage()">＋</div>`;
 }
 

@@ -13,6 +13,9 @@ function pushH() {
   state.hist.push(snap);
   if (state.hist.length > 80) state.hist.shift();
   state.redoHist = [];
+  // 現在ページを未保存マーク
+  state.pages[state.currentPage].dirty = true;
+  renderPageTabs();
 }
 
 function undo() {
@@ -44,26 +47,53 @@ function redo() {
 // ----------------------------------------------------------------
 // 保存・読込
 // ----------------------------------------------------------------
-function saveProject() {
+function _syncCurrentPage() {
   const p = state.page;
   p.elements = state.elements;
   p.wires    = state.wires;
   p.frameObj = state.frameObj;
+}
 
+function _pageFileName(pg, idx) {
+  const base = (state.saveFileName || '図面').replace(/[\\/:*?"<>|]/g, '_');
+  const name = (pg.name || ('Sheet'+(idx+1))).replace(/[\\/:*?"<>|]/g, '_');
+  return `${base}_${name}`;
+}
+
+function saveProject() {
+  // 現在ページのみ保存
+  _syncCurrentPage();
+  const pg = state.pages[state.currentPage];
   const data = {
-    version:      2,
+    version: 2,
     saveFileName: state.saveFileName,
-    customSymbols:state.customSymbols,
-    customParts:  state.customParts,
-    wireNoRule:   state.wireNoRule,
-    pages:        state.pages,
-    layers:       LAYERS,
+    customSymbols: state.customSymbols,
+    customParts:   state.customParts,
+    wireNoRule:    state.wireNoRule,
+    layers:        LAYERS,
+    pages: [pg],
   };
+  dl(JSON.stringify(data, null, 2), _pageFileName(pg, state.currentPage) + '.json', 'application/json');
+  pg.dirty = false;
+  renderPageTabs();
+}
 
-  const dt  = new Date();
-  const dts = `${dt.getFullYear()}${String(dt.getMonth()+1).padStart(2,'0')}${String(dt.getDate()).padStart(2,'0')}_${String(dt.getHours()).padStart(2,'0')}${String(dt.getMinutes()).padStart(2,'0')}`;
-  const base= (state.saveFileName || dts).replace(/[\\/:*?"<>|]/g, '_');
-  dl(JSON.stringify(data, null, 2), base + '.json', 'application/json');
+function saveAllProject() {
+  // 全ページまとめて保存
+  _syncCurrentPage();
+  const data = {
+    version: 2,
+    saveFileName: state.saveFileName,
+    customSymbols: state.customSymbols,
+    customParts:   state.customParts,
+    wireNoRule:    state.wireNoRule,
+    layers:        LAYERS,
+    pages: state.pages,
+  };
+  const base = (state.saveFileName || '図面').replace(/[\\/:*?"<>|]/g, '_');
+  dl(JSON.stringify(data, null, 2), base + '_all.json', 'application/json');
+  state.pages.forEach(p => p.dirty = false);
+  renderPageTabs();
 }
 
 function loadProject(input) {

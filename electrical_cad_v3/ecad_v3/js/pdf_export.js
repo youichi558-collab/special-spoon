@@ -133,6 +133,12 @@ function exportPDF() {
   document.getElementById('pdf-opt-p').classList.add('open');
 }
 
+function _pageFileBase(pg, idx) {
+  const base = (state.saveFileName || '図面').replace(/[\\/:*?"<>|]/g, '_');
+  const name = (pg.name || ('Sheet'+(idx+1))).replace(/[\\/:*?"<>|]/g, '_');
+  return `${base}_${name}`;
+}
+
 // シンボル要素をオフスクリーンキャンバスでラスタライズ → dataURL
 function rasterizeSymEl(el, s) {
   const dpi = 200;
@@ -194,7 +200,30 @@ function rasterizeTextEl(el, fsMM) {
 }
 
 function runExportPDF() {
+  // 現在ページのみ
   closeFP('pdf-opt-p');
+  const pg = state.pages[state.currentPage];
+  _exportPDFPages([state.currentPage], _pageFileBase(pg, state.currentPage) + '.pdf');
+}
+
+function runExportAllPDF() {
+  // 全ページ1ファイル
+  _syncCurrentPage();
+  const base = (state.saveFileName || '図面').replace(/[\\/:*?"<>|]/g, '_');
+  _exportPDFPages(state.pages.map((_,i)=>i), base + '_全ページ.pdf');
+}
+
+function runExportAllPDFSeparate() {
+  // 全ページ別ファイル（順番に連続ダウンロード）
+  _syncCurrentPage();
+  state.pages.forEach((pg, idx) => {
+    setTimeout(() => {
+      _exportPDFPages([idx], _pageFileBase(pg, idx) + '.pdf');
+    }, idx * 400);
+  });
+}
+
+function _exportPDFPages(indices, filename) {
   if (!window.jspdf?.jsPDF) {
     alert('PDF出力ライブラリが読み込まれていません。\nネット接続を確認してページを再読み込みしてください。');
     return;
@@ -247,7 +276,7 @@ function runExportPDF() {
   }
 
   try {
-    for (let idx = 0; idx < state.pages.length; idx++) {
+    for (const idx of indices) {
       const pg = state.pages[idx];
       state.currentPage = idx;
 
@@ -568,7 +597,7 @@ function runExportPDF() {
     }  // end for loop
 
     if (pdf) {
-      pdf.save((state.saveFileName || '回路図') + '.pdf');
+      pdf.save(filename);
     } else {
       alert('出力できるページがありませんでした。');
     }
