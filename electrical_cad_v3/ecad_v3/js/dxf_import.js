@@ -67,7 +67,7 @@ function parseDXF(text){
   function isFrameLayer(name){
     if(!name)return false;
     const n=name.toLowerCase();
-    return n==='図面枠'||n.includes('frame')||n.includes('border')||n.includes('図面')||n==='defpoints';
+    return n==='図面枠'||n.includes('frame')||n.includes('border')||n.includes('図面枠')||n==='defpoints';
   }
 
   // ENTITIESセクションのみ処理
@@ -183,8 +183,8 @@ function parseDXF(text){
     if (el.x1 !== undefined) return ptInFrame(el.x1, el.y1) || ptInFrame(el.x2, el.y2);
     return false;
   }
-  state.page.elements = state.page.elements.filter(el => !looksLikeFrameLayer(el.layer) && !inFrameMargin(el));
-  state.page.wires    = state.page.wires.filter(w   => !looksLikeFrameLayer(w.layer)   && !inFrameMargin(w));
+  state.page.elements = state.page.elements.filter(el => !looksLikeFrameLayer(el.layer));
+  state.page.wires    = state.page.wires.filter(w   => !looksLikeFrameLayer(w.layer));
 
   // DXFで出現したレイヤーをLAYERSに自動登録
   const allLayers=new Set([...state.elements.map(e=>e.layer),...state.wires.map(w=>w.layer)]);

@@ -57,6 +57,7 @@ function saveProject() {
     customParts:  state.customParts,
     wireNoRule:   state.wireNoRule,
     pages:        state.pages,
+    layers:       LAYERS,
   };
 
   const dt  = new Date();
@@ -79,6 +80,7 @@ function loadProject(input) {
         state.wireNoRule   = d.wireNoRule || state.wireNoRule;
         state.customSymbols= d.customSymbols || [];
         state.customParts  = d.customParts   || [];
+        if (d.layers && d.layers.length) { LAYERS.length = 0; d.layers.forEach(l => LAYERS.push(l)); }
       } else {
         // v1以前（旧形式）からのマイグレーション
         const pages = d.pages || [{ name:'Sheet1', elements: d.elements||[], wires: d.wires||[], frameObj: d.frameObj||null }];

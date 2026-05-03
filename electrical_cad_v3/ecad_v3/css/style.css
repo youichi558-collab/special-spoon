@@ -159,7 +159,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--acc);}
 #lp.hide{display:none!important;}
 #rp.hide{display:none!important;}
 /* 大画面モード */
-body.fullscreen #lp,body.fullscreen #rp{display:none!important;}
-body.fullscreen #cw-wrap{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:100;}
-body.fullscreen #toolbar{display:none!important;}
-body.fullscreen #page-bar{display:none!important;}
+body.fullscreen #ribbon,
+body.fullscreen #lp,
+body.fullscreen #rp,
+body.fullscreen #page-bar,
+body.fullscreen #sb{display:none!important;}
+body.fullscreen #cw{position:fixed;inset:0;z-index:100;width:100vw;height:100vh;}
