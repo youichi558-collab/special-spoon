@@ -21,7 +21,7 @@ function switchLTab(name, el) {
     const hidden = !fp || fp.style.display === '' || fp.style.display === 'none';
     if (fp) {
       fp.style.display = hidden ? 'block' : 'none';
-      if (hidden) renderLayers();
+      if (hidden) { renderLayers(); initLayFloat(); }
     }
     return;
   }
@@ -67,12 +67,12 @@ function renderLayers() {
         </td>
         <td style="padding:4px 4px" onclick="event.stopPropagation()">
           <input type="number" min="0.5" max="10" step="0.5" value="${l.lineWidth||1}"
-            style="width:60px;font-size:11px;padding:3px 4px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
+            style="width:68px;font-size:12px;padding:3px 4px;height:24px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
             onchange="LAYERS[${i}].lineWidth=parseFloat(this.value)||1;draw()">
         </td>
         <td style="padding:4px 4px" onclick="event.stopPropagation()">
           <input type="number" min="6" max="72" step="1" value="${l.fontSize||14}"
-            style="width:60px;font-size:11px;padding:3px 4px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
+            style="width:68px;font-size:12px;padding:3px 4px;height:24px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
             onchange="LAYERS[${i}].fontSize=parseInt(this.value)||14;draw()">
         </td>
         <td style="padding:4px 6px;text-align:center;white-space:nowrap" onclick="event.stopPropagation()">
@@ -450,25 +450,24 @@ function sendAI() {
 // ----------------------------------------------------------------
 // フローティングレイヤーパネル ドラッグ
 // ----------------------------------------------------------------
-(function() {
-  let dragging = false, ox = 0, oy = 0;
-  document.addEventListener('DOMContentLoaded', () => {
-    const title = document.getElementById('lay-float-title');
-    const panel = document.getElementById('lay-float');
-    if (!title || !panel) return;
-    title.addEventListener('mousedown', e => {
-      if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SPAN') return;
-      dragging = true;
-      const rect = panel.getBoundingClientRect();
-      ox = e.clientX - rect.left;
-      oy = e.clientY - rect.top;
-      e.preventDefault();
-    });
-    document.addEventListener('mousemove', e => {
-      if (!dragging) return;
-      panel.style.left = (e.clientX - ox) + 'px';
-      panel.style.top  = (e.clientY - oy) + 'px';
-    });
-    document.addEventListener('mouseup', () => { dragging = false; });
+let _layFloatDragging = false, _layFloatOx = 0, _layFloatOy = 0;
+function initLayFloat() {
+  const title = document.getElementById('lay-float-title');
+  const panel = document.getElementById('lay-float');
+  if (!title || !panel || title._dragInited) return;
+  title._dragInited = true;
+  title.addEventListener('mousedown', e => {
+    if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SPAN') return;
+    _layFloatDragging = true;
+    const rect = panel.getBoundingClientRect();
+    _layFloatOx = e.clientX - rect.left;
+    _layFloatOy = e.clientY - rect.top;
+    e.preventDefault();
   });
-})();
+  document.addEventListener('mousemove', e => {
+    if (!_layFloatDragging) return;
+    panel.style.left = (e.clientX - _layFloatOx) + 'px';
+    panel.style.top  = (e.clientY - _layFloatOy) + 'px';
+  });
+  document.addEventListener('mouseup', () => { _layFloatDragging = false; });
+}
