@@ -478,21 +478,25 @@ function sendAI() {
 // ----------------------------------------------------------------
 // フローティングレイヤーパネル ドラッグ
 // ----------------------------------------------------------------
-let _lfDrag = false, _lfOx = 0, _lfOy = 0;
+let _lfOx = 0, _lfOy = 0;
 function layFloatDown(e) {
   if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SPAN') return;
-  _lfDrag = true;
+  e.preventDefault();
+  e.stopPropagation();
   const p = document.getElementById('lay-float');
   const r = p.getBoundingClientRect();
   _lfOx = e.clientX - r.left;
   _lfOy = e.clientY - r.top;
-  e.preventDefault();
+  const title = e.currentTarget || e.target;
+  function onMove(ev) {
+    p.style.left = (ev.clientX - _lfOx) + 'px';
+    p.style.top  = (ev.clientY - _lfOy) + 'px';
+  }
+  function onUp() {
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+  }
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
 }
-document.addEventListener('mousemove', e => {
-  if (!_lfDrag) return;
-  const p = document.getElementById('lay-float');
-  p.style.left = (e.clientX - _lfOx) + 'px';
-  p.style.top  = (e.clientY - _lfOy) + 'px';
-});
-document.addEventListener('mouseup', () => { _lfDrag = false; });
 function initLayFloat() {}
