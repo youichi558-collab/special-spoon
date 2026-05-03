@@ -480,7 +480,7 @@ function sendAI() {
 // ----------------------------------------------------------------
 let _lfOx = 0, _lfOy = 0;
 function layFloatDown(e) {
-  if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SPAN') return;
+  if (e.target.tagName === 'BUTTON' || e.target.onclick) return;
   e.preventDefault();
   e.stopPropagation();
   const p = document.getElementById('lay-float');
