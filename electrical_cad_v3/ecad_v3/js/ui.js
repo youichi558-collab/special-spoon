@@ -15,19 +15,32 @@ function switchRibbon(name, el) {
 function switchLTab(name, el) {
   document.querySelectorAll('.lt').forEach(e => e.classList.remove('on'));
   el.classList.add('on');
-  if (name === 'lay') {
-    ['sym','lay','prt','cus'].forEach(n => document.getElementById('lt-'+n).style.display = 'none');
-    const fp = document.getElementById('lay-float');
-    const hidden = !fp || fp.style.display === '' || fp.style.display === 'none';
-    if (fp) {
-      fp.style.display = hidden ? 'block' : 'none';
-      if (hidden) { renderLayers(); initLayFloat(); }
-    }
-    return;
+  const panelMap = { sym:'sym-float', lay:'lay-float', prt:'prt-float' };
+  const fp = document.getElementById(panelMap[name]);
+  if (!fp) return;
+  const hidden = fp.style.display === 'none' || fp.style.display === '';
+  // 全パネルを閉じてから対象を開閉
+  if (hidden) {
+    fp.style.display = 'flex';
+    if (name === 'sym') renderSymFloat();
+    if (name === 'lay') { renderLayers(); }
+    if (name === 'prt') renderPartsFloat();
+  } else {
+    fp.style.display = 'none';
+    el.classList.remove('on');
   }
-  ['sym','lay','prt','cus'].forEach(n => document.getElementById('lt-'+n).style.display = n===name ? 'block' : 'none');
-  if (name==='prt') renderPartsAll();
-  if (name==='cus') renderCustomSymbols();
+}
+function closeLayFloat() {
+  document.getElementById('lay-float').style.display = 'none';
+  document.querySelectorAll('.lt').forEach(e => e.classList.remove('on'));
+}
+function closeSym() {
+  document.getElementById('sym-float').style.display = 'none';
+  document.querySelectorAll('.lt').forEach(e => e.classList.remove('on'));
+}
+function closePrt() {
+  document.getElementById('prt-float').style.display = 'none';
+  document.querySelectorAll('.lt').forEach(e => e.classList.remove('on'));
 }
 function closeLayFloat() {
   document.getElementById('lay-float').style.display = 'none';
@@ -533,3 +546,86 @@ function layFloatDown(e) {
   window.addEventListener('mouseup', onUp);
 }
 function initLayFloat() {}
+
+// ----------------------------------------------------------------
+// シンボルフローティングパネル
+// ----------------------------------------------------------------
+function renderSymFloat() {
+  const body = document.getElementById('sym-float-body');
+  if (!body) return;
+  // カテゴリーごとにグループ化
+  const cats = {};
+  BUILTIN_SYMS.forEach(s => { if (!cats[s.cat]) cats[s.cat]=[]; cats[s.cat].push(s); });
+  let html = '';
+  Object.entries(cats).forEach(([cat, syms]) => {
+    html += `<div style="font-size:9px;color:var(--fg3);font-weight:700;margin:6px 0 3px;text-transform:uppercase;letter-spacing:.06em">${cat}</div>`;
+    html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-bottom:4px">`;
+    syms.forEach(s => {
+      html += `<div class="sym-item" onclick="pickSym(this,'${s.type}')" style="flex-direction:column;align-items:center;padding:5px 3px;gap:3px">
+        ${s.svg}
+        <span style="font-size:9px;text-align:center;line-height:1.2">${s.label}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  // カスタムシンボル
+  if (state.customSymbols && state.customSymbols.length) {
+    html += `<div style="font-size:9px;color:var(--fg3);font-weight:700;margin:8px 0 3px;text-transform:uppercase;letter-spacing:.06em;border-top:1px solid var(--bd2);padding-top:6px">カスタム</div>`;
+    html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px">`;
+    state.customSymbols.forEach(s => {
+      html += `<div class="sym-item" onclick="pickSym(this,'${s.type}')" style="flex-direction:column;align-items:center;padding:5px 3px;gap:3px;position:relative">
+        <svg width="36" height="28" viewBox="-50 -30 100 60" style="overflow:visible">${s.paths||''}</svg>
+        <span style="font-size:9px;text-align:center;line-height:1.2">${s.label||s.type}</span>
+        <span onclick="event.stopPropagation();delCusSym('${s.type}')" style="position:absolute;top:2px;right:2px;font-size:9px;color:var(--red);cursor:pointer">×</span>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+  body.innerHTML = html;
+}
+function renderCustomSymbols() { renderSymFloat(); }
+
+// ----------------------------------------------------------------
+// 部品DBフローティングパネル
+// ----------------------------------------------------------------
+function renderPartsFloat() {
+  renderPartsTable2(allParts());
+}
+function renderPartsTable2(parts) {
+  const el = document.getElementById('parts-table2');
+  if (!el) return;
+  el.innerHTML = parts.map(p => `
+    <div style="padding:4px 3px;border-bottom:1px solid var(--bg4);cursor:pointer" onclick="placePart('${p.type}','${p.ref}','${p.terminals||''}')">
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-size:11px;font-weight:600;color:var(--fg)">${p.ref}</span>
+        ${p.custom?`<span onclick="event.stopPropagation();deletePart('${p.ref}')" style="font-size:9px;color:var(--red);cursor:pointer">×</span>`:''}
+      </div>
+      <div style="font-size:10px;color:var(--fg3)">${p.maker} ${p.volt||''} ${p.amp||''}</div>
+      ${p.contacts?`<div style="font-size:10px;color:var(--acc)">接点:${p.contacts}</div>`:''}
+    </div>`).join('');
+}
+function filterParts(q) {
+  const parts = allParts().filter(p => !q || p.ref.toLowerCase().includes(q.toLowerCase()) || p.maker.toLowerCase().includes(q.toLowerCase()));
+  renderPartsTable(parts);
+  renderPartsTable2(parts);
+}
+
+// ----------------------------------------------------------------
+// シンボル・部品DBパネル ドラッグ
+// ----------------------------------------------------------------
+function _makeFloatDrag(panelId) {
+  let ox = 0, oy = 0;
+  return function(e) {
+    if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SPAN' || e.target.tagName === 'INPUT') return;
+    e.preventDefault(); e.stopPropagation();
+    const p = document.getElementById(panelId);
+    const r = p.getBoundingClientRect();
+    ox = e.clientX - r.left; oy = e.clientY - r.top;
+    function onMove(ev) { p.style.left=(ev.clientX-ox)+'px'; p.style.top=(ev.clientY-oy)+'px'; }
+    function onUp() { window.removeEventListener('mousemove',onMove); window.removeEventListener('mouseup',onUp); }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+}
+function symFloatDown(e) { _makeFloatDrag('sym-float')(e); }
+function prtFloatDown(e) { _makeFloatDrag('prt-float')(e); }
