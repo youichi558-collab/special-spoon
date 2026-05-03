@@ -101,8 +101,8 @@ function renderLayers() {
             onchange="applyLayerFontSize(${i},this.value)" oninput="if(!this.value){applyLayerFontSize(${i},null)}">
         </td>
         <td style="padding:4px 8px;text-align:center;white-space:nowrap" onclick="event.stopPropagation()">
-          <span onclick="renameLayer(${i})" title="名前変更" style="cursor:pointer;color:var(--fg3);margin-right:8px;font-size:14px">✏</span>
-          ${LAYERS.length>1?`<span onclick="deleteLayer(${i})" title="削除" style="cursor:pointer;color:var(--red);font-size:14px">×</span>`:''}
+          <span onclick="renameLayer(${i})" title="名前変更" style="cursor:pointer;color:var(--fg3);margin-right:10px;font-size:16px">✏</span>
+          ${LAYERS.length>1?`<span onclick="deleteLayer(${i})" title="削除" style="cursor:pointer;color:var(--red);font-size:16px">×</span>`:''}
         </td>
       </tr>`).join('');
   }
@@ -616,7 +616,7 @@ function filterParts(q) {
 function _makeFloatDrag(panelId) {
   let ox = 0, oy = 0;
   return function(e) {
-    if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SPAN' || e.target.tagName === 'INPUT') return;
+    if (e.target.tagName === 'BUTTON' || e.target.onclick || e.target.tagName === 'INPUT') return;
     e.preventDefault(); e.stopPropagation();
     const p = document.getElementById(panelId);
     const r = p.getBoundingClientRect();
