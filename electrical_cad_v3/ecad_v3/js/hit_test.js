@@ -46,6 +46,9 @@ function distToSeg(px,py,x1,y1,x2,y2) {
 }
 
 function inBox(el, sx, sy, ex, ey, crossing) {
+  // ロック中レイヤーはスキップ
+  const _lay = LAYERS.find(l => l.name === el.layer);
+  if (_lay && _lay.locked) return false;
   // crossing=true: 部分重なりも選択（右→左ドラッグ）
   // crossing=false: 完全に内側のみ（左→右ドラッグ）
   if (el.type === 'text') {
@@ -88,6 +91,8 @@ function inBox(el, sx, sy, ex, ey, crossing) {
 }
 
 function wireInBox(w, sx, sy, ex, ey, crossing) {
+  const _lay = LAYERS.find(l => l.name === w.layer);
+  if (_lay && _lay.locked) return false;
   const pts = w.pts || [{ x:w.x1,y:w.y1 },{ x:w.x2,y:w.y2 }];
   return crossing
     ? pts.some(p => p.x>=sx && p.x<=ex && p.y>=sy && p.y<=ey)

@@ -132,6 +132,24 @@ function deleteLayer(i) {
   renderLayers();
   draw();
 }
+function bulkLayVis() {
+  const allVis = LAYERS.every(l => l.visible);
+  LAYERS.forEach(l => l.visible = !allVis);
+  renderLayers(); draw();
+}
+function bulkLayLock() {
+  const allLocked = LAYERS.every(l => l.locked);
+  LAYERS.forEach((l, i) => {
+    l.locked = !allLocked;
+    // 全ロック時はアクティブレイヤーを維持（ロック解除後に操作可能に）
+  });
+  if (!allLocked) {
+    // 全ロックになった→アクティブを最初のレイヤーに（ロックされているが表示上の問題なし）
+  } else {
+    // 全解除→アクティブレイヤーはそのまま
+  }
+  renderLayers();
+}
 function addLayer() {
   const n = prompt('レイヤー名:');
   if (!n) return;
