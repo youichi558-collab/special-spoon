@@ -3,11 +3,11 @@
 // ================================================================
 
 const LAYERS = [
-  { name: '回路', color: '#1d6fb5', visible: true, active: true  },
-  { name: '配線', color: '#0F6E56', visible: true, active: false },
-  { name: '注記', color: '#b45309', visible: true, active: false },
-  { name: '外形', color: '#444',    visible: true, active: false },
-  { name: '図面枠',color: '#222',   visible: true, active: false },
+  { name: '回路', color: '#1d6fb5', visible: true, locked: false, active: true  },
+  { name: '配線', color: '#0F6E56', visible: true, locked: false, active: false },
+  { name: '注記', color: '#b45309', visible: true, locked: false, active: false },
+  { name: '外形', color: '#444',    visible: true, locked: false, active: false },
+  { name: '図面枠',color: '#222',   visible: true, locked: false, active: false },
 ];
 
 const BUILTIN_PARTS = [

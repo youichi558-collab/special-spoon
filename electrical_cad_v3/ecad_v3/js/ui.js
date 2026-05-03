@@ -26,18 +26,68 @@ function switchLTab(name, el) {
 // ----------------------------------------------------------------
 function renderLayers() {
   document.getElementById('layer-list').innerHTML = LAYERS.map((l, i) => `
-    <div class="lr ${l.active?'al':''}" onclick="setActLayer(${i})">
-      <div class="lv" onclick="event.stopPropagation();togLayVis(${i})">${l.visible?'●':'○'}</div>
-      <div class="lc" style="background:${l.color}"></div>
-      <span class="ln">${l.name}</span>
+    <div class="lr ${l.active?'al':''}" onclick="setActLayer(${i})" style="opacity:${l.locked?0.6:1}">
+      <div class="lv" title="表示切替" onclick="event.stopPropagation();togLayVis(${i})">${l.visible?'●':'○'}</div>
+      <div class="lv" title="ロック切替" onclick="event.stopPropagation();togLayLock(${i})" style="color:${l.locked?'#e55':'#888'}">${l.locked?'🔒':'🔓'}</div>
+      <div class="lc" title="色変更" style="background:${l.color};cursor:pointer" onclick="event.stopPropagation();changeLayColor(${i})"></div>
+      <span class="ln" style="flex:1;text-decoration:${l.visible?'none':'line-through'}">${l.name}${l.locked?' [ロック]':''}</span>
+      <span onclick="event.stopPropagation();renameLayer(${i})" title="名前変更" style="cursor:pointer;font-size:10px;padding:0 3px;color:var(--fg3)">✏</span>
+      ${LAYERS.length>1?`<span onclick="event.stopPropagation();deleteLayer(${i})" title="削除" style="cursor:pointer;font-size:10px;padding:0 3px;color:var(--red)">×</span>`:''}
     </div>`).join('');
   document.getElementById('s-lay').textContent = LAYERS.find(l => l.active)?.name || '回路';
 }
 function setActLayer(i) { LAYERS.forEach((l,j) => l.active = j===i); renderLayers(); }
 function togLayVis(i)   { LAYERS[i].visible = !LAYERS[i].visible; renderLayers(); draw(); }
+function togLayLock(i)  {
+  if (LAYERS[i].active && !LAYERS[i].locked) {
+    const next = LAYERS.findIndex((l,j)=>j!==i&&!l.locked);
+    if (next>=0) { LAYERS.forEach((l,j)=>l.active=j===next); }
+  }
+  LAYERS[i].locked = !LAYERS[i].locked;
+  renderLayers();
+}
+function changeLayColor(i) {
+  const inp = document.createElement('input');
+  inp.type = 'color';
+  inp.value = LAYERS[i].color;
+  inp.oninput = () => { LAYERS[i].color = inp.value; renderLayers(); draw(); };
+  inp.click();
+}
+function renameLayer(i) {
+  const oldName = LAYERS[i].name;
+  const newName = prompt('レイヤー名:', oldName);
+  if (!newName || newName === oldName) return;
+  if (LAYERS.find((l,j)=>j!==i&&l.name===newName)) { alert('同じ名前のレイヤーが既にあります'); return; }
+  state.elements.forEach(el=>{ if(el.layer===oldName) el.layer=newName; });
+  state.wires.forEach(w=>{ if(w.layer===oldName) w.layer=newName; });
+  LAYERS[i].name = newName;
+  renderLayers();
+  draw();
+}
+function deleteLayer(i) {
+  const l = LAYERS[i];
+  const elCount = state.elements.filter(e=>e.layer===l.name).length;
+  const wCount  = state.wires.filter(w=>w.layer===l.name).length;
+  const total = elCount + wCount;
+  if (total > 0) {
+    if (!confirm(`レイヤー「${l.name}」には${total}個のオブジェクトがあります。\n削除すると別レイヤーに移動します。\n続けますか？`)) return;
+    const fallback = LAYERS.find((l2,j)=>j!==i)?.name || '回路';
+    state.elements.forEach(el=>{ if(el.layer===l.name) el.layer=fallback; });
+    state.wires.forEach(w=>{ if(w.layer===l.name) w.layer=fallback; });
+  } else {
+    if (!confirm(`レイヤー「${l.name}」を削除しますか？`)) return;
+  }
+  LAYERS.splice(i, 1);
+  if (!LAYERS.find(l=>l.active)) LAYERS[0].active = true;
+  renderLayers();
+  draw();
+}
 function addLayer() {
   const n = prompt('レイヤー名:');
-  if (n) { LAYERS.push({ name:n, color:'#888', visible:true, active:false }); renderLayers(); }
+  if (!n) return;
+  if (LAYERS.find(l=>l.name===n)) { alert('同じ名前のレイヤーが既にあります'); return; }
+  LAYERS.push({ name:n, color:'#888888', visible:true, locked:false, active:false });
+  renderLayers();
 }
 
 // ----------------------------------------------------------------

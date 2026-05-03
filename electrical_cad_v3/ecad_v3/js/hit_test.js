@@ -6,6 +6,8 @@ function hitTest(wx, wy) {
   const R = 8 / state.zoom;
   for (let i = state.elements.length-1; i >= 0; i--) {
     const el = state.elements[i];
+    const lay = LAYERS.find(l => l.name === el.layer);
+    if (lay && lay.locked) continue;
     // getDef()に依存しない型を先に判定
     if (el.type === 'text')   { const hw = Math.min(200, (el.text||'').length * (el.fs||14) * 0.55); const hh = (el.fs||14) * 0.8; if (wx>=el.x && wx<=el.x+hw && wy>=el.y-hh && wy<=el.y+2) return el; continue; }
     if (el.type === 'dim')    { if (distToSeg(wx,wy,el.x1,el.y1,el.x2,el.y2) < R) return el; continue; }
@@ -26,6 +28,8 @@ function hitTestWire(wx, wy) {
   const R = 6 / state.zoom;
   for (let i = state.wires.length-1; i >= 0; i--) {
     const w = state.wires[i];
+    const lay = LAYERS.find(l => l.name === w.layer);
+    if (lay && lay.locked) continue;
     const pts = w.pts || [{ x:w.x1,y:w.y1 },{ x:w.x2,y:w.y2 }];
     for (let j = 0; j < pts.length-1; j++) {
       if (distToSeg(wx,wy,pts[j].x,pts[j].y,pts[j+1].x,pts[j+1].y) < R) return w;
