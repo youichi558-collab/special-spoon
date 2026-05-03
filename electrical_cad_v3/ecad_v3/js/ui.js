@@ -67,12 +67,12 @@ function renderLayers() {
         </td>
         <td style="padding:4px 4px" onclick="event.stopPropagation()">
           <input type="number" min="0.5" max="10" step="0.5" value="${l.lineWidth||1}"
-            style="width:68px;font-size:12px;padding:3px 4px;height:24px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
+            style="width:80px;font-size:12px;padding:2px 4px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
             onchange="LAYERS[${i}].lineWidth=parseFloat(this.value)||1;draw()">
         </td>
         <td style="padding:4px 4px" onclick="event.stopPropagation()">
           <input type="number" min="6" max="72" step="1" value="${l.fontSize||14}"
-            style="width:68px;font-size:12px;padding:3px 4px;height:24px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
+            style="width:80px;font-size:12px;padding:2px 4px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
             onchange="LAYERS[${i}].fontSize=parseInt(this.value)||14;draw()">
         </td>
         <td style="padding:4px 6px;text-align:center;white-space:nowrap" onclick="event.stopPropagation()">
@@ -450,24 +450,21 @@ function sendAI() {
 // ----------------------------------------------------------------
 // フローティングレイヤーパネル ドラッグ
 // ----------------------------------------------------------------
-let _layFloatDragging = false, _layFloatOx = 0, _layFloatOy = 0;
-function initLayFloat() {
-  const title = document.getElementById('lay-float-title');
-  const panel = document.getElementById('lay-float');
-  if (!title || !panel || title._dragInited) return;
-  title._dragInited = true;
-  title.addEventListener('mousedown', e => {
-    if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SPAN') return;
-    _layFloatDragging = true;
-    const rect = panel.getBoundingClientRect();
-    _layFloatOx = e.clientX - rect.left;
-    _layFloatOy = e.clientY - rect.top;
-    e.preventDefault();
-  });
-  document.addEventListener('mousemove', e => {
-    if (!_layFloatDragging) return;
-    panel.style.left = (e.clientX - _layFloatOx) + 'px';
-    panel.style.top  = (e.clientY - _layFloatOy) + 'px';
-  });
-  document.addEventListener('mouseup', () => { _layFloatDragging = false; });
+let _lfDrag = false, _lfOx = 0, _lfOy = 0;
+function layFloatDown(e) {
+  if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SPAN') return;
+  _lfDrag = true;
+  const p = document.getElementById('lay-float');
+  const r = p.getBoundingClientRect();
+  _lfOx = e.clientX - r.left;
+  _lfOy = e.clientY - r.top;
+  e.preventDefault();
 }
+document.addEventListener('mousemove', e => {
+  if (!_lfDrag) return;
+  const p = document.getElementById('lay-float');
+  p.style.left = (e.clientX - _lfOx) + 'px';
+  p.style.top  = (e.clientY - _lfOy) + 'px';
+});
+document.addEventListener('mouseup', () => { _lfDrag = false; });
+function initLayFloat() {}
