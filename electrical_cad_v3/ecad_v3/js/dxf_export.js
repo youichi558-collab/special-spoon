@@ -39,8 +39,17 @@ function toUnicodeDXF(str){return[...str].map(c=>{const code=c.charCodeAt(0);ret
 function exportDXF(){
   const ls=[];
   ls.push('0','SECTION','2','HEADER','9','$ACADVER','1','AC1015','9','$INSUNITS','70','4','0','ENDSEC');
-  ls.push('0','SECTION','2','TABLES','0','TABLE','2','LAYER','70',String(LAYERS.length));
-  LAYERS.forEach((l,i)=>ls.push('0','LAYER','2',l.name,'70',String(l.locked?4:0),'62',String(i+1),'6','CONTINUOUS'));
+  // 線種テーブル
+  const ltypeMap = { solid:'CONTINUOUS', dashed:'DASHED', dotted:'DOT', dashdot:'DASHDOT' };
+  ls.push('0','SECTION','2','TABLES');
+  ls.push('0','TABLE','2','LTYPE','70','4');
+  ls.push('0','LTYPE','2','CONTINUOUS','70','0','3','Solid line','72','65','73','0','40','0.0');
+  ls.push('0','LTYPE','2','DASHED','70','0','3','Dashed','72','65','73','2','40','9.5','49','6.35','49','-3.175');
+  ls.push('0','LTYPE','2','DOT','70','0','3','Dot','72','65','73','2','40','3.175','49','0.0','49','-3.175');
+  ls.push('0','LTYPE','2','DASHDOT','70','0','3','Dash dot','72','65','73','4','40','12.7','49','6.35','49','-3.175','49','0.0','49','-3.175');
+  ls.push('0','ENDTAB');
+  ls.push('0','TABLE','2','LAYER','70',String(LAYERS.length));
+  LAYERS.forEach((l,i)=>ls.push('0','LAYER','2',l.name,'70',String(l.locked?4:0),'62',String(i+1),'6',ltypeMap[l.lineDash||'solid']||'CONTINUOUS'));
   ls.push('0','ENDTAB','0','ENDSEC');
   ls.push('0','SECTION','2','BLOCKS');
   ls.push(...buildSymBlocksDXF());
@@ -82,8 +91,17 @@ function exportAllDXF() {
 
   const ls = [];
   ls.push('0','SECTION','2','HEADER','9','$ACADVER','1','AC1015','9','$INSUNITS','70','4','0','ENDSEC');
-  ls.push('0','SECTION','2','TABLES','0','TABLE','2','LAYER','70',String(LAYERS.length));
-  LAYERS.forEach((l,i)=>ls.push('0','LAYER','2',l.name,'70',String(l.locked?4:0),'62',String(i+1),'6','CONTINUOUS'));
+  // 線種テーブル
+  const ltypeMap = { solid:'CONTINUOUS', dashed:'DASHED', dotted:'DOT', dashdot:'DASHDOT' };
+  ls.push('0','SECTION','2','TABLES');
+  ls.push('0','TABLE','2','LTYPE','70','4');
+  ls.push('0','LTYPE','2','CONTINUOUS','70','0','3','Solid line','72','65','73','0','40','0.0');
+  ls.push('0','LTYPE','2','DASHED','70','0','3','Dashed','72','65','73','2','40','9.5','49','6.35','49','-3.175');
+  ls.push('0','LTYPE','2','DOT','70','0','3','Dot','72','65','73','2','40','3.175','49','0.0','49','-3.175');
+  ls.push('0','LTYPE','2','DASHDOT','70','0','3','Dash dot','72','65','73','4','40','12.7','49','6.35','49','-3.175','49','0.0','49','-3.175');
+  ls.push('0','ENDTAB');
+  ls.push('0','TABLE','2','LAYER','70',String(LAYERS.length));
+  LAYERS.forEach((l,i)=>ls.push('0','LAYER','2',l.name,'70',String(l.locked?4:0),'62',String(i+1),'6',ltypeMap[l.lineDash||'solid']||'CONTINUOUS'));
   ls.push('0','ENDTAB','0','ENDSEC');
   ls.push('0','SECTION','2','BLOCKS');
   ls.push(...buildSymBlocksDXF());

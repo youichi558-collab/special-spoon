@@ -25,14 +25,32 @@ function switchLTab(name, el) {
 // レイヤー
 // ----------------------------------------------------------------
 function renderLayers() {
+  const dashLabels = { solid:'実線', dashed:'破線', dotted:'点線', dashdot:'一点鎖線' };
   document.getElementById('layer-list').innerHTML = LAYERS.map((l, i) => `
     <div class="lr ${l.active?'al':''}" onclick="setActLayer(${i})" style="opacity:${l.locked?0.6:1}">
-      <div class="lv" title="表示切替" onclick="event.stopPropagation();togLayVis(${i})">${l.visible?'●':'○'}</div>
-      <div class="lv" title="ロック切替" onclick="event.stopPropagation();togLayLock(${i})" style="color:${l.locked?'#e55':'#888'}">${l.locked?'🔒':'🔓'}</div>
-      <div class="lc" title="色変更" style="background:${l.color};cursor:pointer" onclick="event.stopPropagation();changeLayColor(${i})"></div>
-      <span class="ln" style="flex:1;text-decoration:${l.visible?'none':'line-through'}">${l.name}${l.locked?' [ロック]':''}</span>
-      <span onclick="event.stopPropagation();renameLayer(${i})" title="名前変更" style="cursor:pointer;font-size:10px;padding:0 3px;color:var(--fg3)">✏</span>
-      ${LAYERS.length>1?`<span onclick="event.stopPropagation();deleteLayer(${i})" title="削除" style="cursor:pointer;font-size:10px;padding:0 3px;color:var(--red)">×</span>`:''}
+      <div style="display:flex;align-items:center;gap:2px;width:100%">
+        <div class="lv" title="表示切替" onclick="event.stopPropagation();togLayVis(${i})">${l.visible?'●':'○'}</div>
+        <div class="lv" title="ロック切替" onclick="event.stopPropagation();togLayLock(${i})" style="color:${l.locked?'#e55':'#888'}">${l.locked?'🔒':'🔓'}</div>
+        <div class="lc" title="色変更" style="background:${l.color};cursor:pointer" onclick="event.stopPropagation();changeLayColor(${i})"></div>
+        <span class="ln" style="flex:1;text-decoration:${l.visible?'none':'line-through'};overflow:hidden;text-overflow:ellipsis">${l.name}</span>
+        <span onclick="event.stopPropagation();renameLayer(${i})" title="名前変更" style="cursor:pointer;font-size:10px;padding:0 2px;color:var(--fg3)">✏</span>
+        ${LAYERS.length>1?`<span onclick="event.stopPropagation();deleteLayer(${i})" title="削除" style="cursor:pointer;font-size:10px;padding:0 2px;color:var(--red)">×</span>`:''}
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;margin-top:3px;padding-left:4px" onclick="event.stopPropagation()">
+        <label style="font-size:9px;color:var(--fg3)">線種</label>
+        <select style="font-size:9px;padding:1px 2px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
+          onchange="LAYERS[${i}].lineDash=this.value;draw()">
+          ${['solid','dashed','dotted','dashdot'].map(d=>`<option value="${d}"${(l.lineDash||'solid')===d?' selected':''}>${dashLabels[d]}</option>`).join('')}
+        </select>
+        <label style="font-size:9px;color:var(--fg3)">太さ</label>
+        <input type="number" min="0.5" max="10" step="0.5" value="${l.lineWidth||1}"
+          style="width:36px;font-size:9px;padding:1px 2px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
+          onchange="LAYERS[${i}].lineWidth=parseFloat(this.value)||1;draw()">
+        <label style="font-size:9px;color:var(--fg3)">文字</label>
+        <input type="number" min="6" max="72" step="1" value="${l.fontSize||14}"
+          style="width:36px;font-size:9px;padding:1px 2px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
+          onchange="LAYERS[${i}].fontSize=parseInt(this.value)||14;draw()">
+      </div>
     </div>`).join('');
   document.getElementById('s-lay').textContent = LAYERS.find(l => l.active)?.name || '回路';
 }
@@ -86,7 +104,7 @@ function addLayer() {
   const n = prompt('レイヤー名:');
   if (!n) return;
   if (LAYERS.find(l=>l.name===n)) { alert('同じ名前のレイヤーが既にあります'); return; }
-  LAYERS.push({ name:n, color:'#888888', visible:true, locked:false, active:false });
+  LAYERS.push({ name:n, color:'#888888', visible:true, locked:false, active:false, lineWidth:1, lineDash:'solid', fontSize:14 });
   renderLayers();
 }
 

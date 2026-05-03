@@ -89,14 +89,14 @@ function drawWires() {
     if (lay && !lay.visible) return;
     const sel   = state.sel.wires.has(w.id);
     const color = sel ? '#0067c0' : (w.color || (lay ? lay.color : '#0F6E56'));
-    const lw    = w.lineWidth || 2;
+    const lw    = w.lineWidth || lay?.lineWidth || 2;
     const pts   = w.pts || [{ x:w.x1, y:w.y1 }, { x:w.x2, y:w.y2 }];
 
     ctx.save();
     ctx.strokeStyle = color;
     ctx.lineWidth   = (sel ? lw+0.5 : lw) / state.zoom;
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    applyLineStyle(ctx, w.lineStyle, state.zoom);
+    applyLineStyle(ctx, w.lineStyle || lay?.lineDash, state.zoom);
     ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
     pts.forEach(p => ctx.lineTo(p.x, p.y));
     ctx.stroke(); ctx.setLineDash([]);
@@ -167,13 +167,13 @@ function drawElements() {
     const lc  = lay ? lay.color : fgC();
 
     if (el.type === 'text') {
-      drawTextEl(el, sel, lc);
+      drawTextEl(el, sel, lc, lay);
     } else if (el.type === 'rect') {
-      drawRectEl(el, sel, lc);
+      drawRectEl(el, sel, lc, lay);
     } else if (el.type === 'circle') {
-      drawCircleEl(el, sel, lc);
+      drawCircleEl(el, sel, lc, lay);
     } else if (el.type === 'fline') {
-      drawFlineEl(el, sel, lc);
+      drawFlineEl(el, sel, lc, lay);
     } else if (el.type === 'dim') {
       drawDimEl(el, sel);
     } else if (el.type === 'leader') {
@@ -184,10 +184,10 @@ function drawElements() {
   });
 }
 
-function drawTextEl(el, sel, lc) {
+function drawTextEl(el, sel, lc, lay) {
   ctx.save();
   ctx.fillStyle = sel ? '#0067c0' : (el.color || lc);
-  ctx.font      = `${el.fs||14}px sans-serif`;
+  ctx.font      = `${el.fs || lay?.fontSize || 14}px sans-serif`;
   ctx.fillText(el.text, el.x, el.y);
   if (sel) {
     const m = ctx.measureText(el.text);
@@ -199,12 +199,12 @@ function drawTextEl(el, sel, lc) {
   ctx.restore();
 }
 
-function drawRectEl(el, sel, lc) {
+function drawRectEl(el, sel, lc, lay) {
   ctx.save();
   const c  = sel ? '#0067c0' : (el.color || lc);
-  const lw = el.lineWidth || 1.5;
+  const lw = el.lineWidth || lay?.lineWidth || 1.5;
   ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+0.5 : lw)/state.zoom;
-  applyLineStyle(ctx, el.lineStyle, state.zoom);
+  applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
   if (el.fillColor) { ctx.fillStyle = el.fillColor; ctx.fillRect(el.x, el.y, el.w, el.h); }
   ctx.strokeRect(el.x, el.y, el.w, el.h); ctx.setLineDash([]);
   if (sel) {
@@ -215,23 +215,23 @@ function drawRectEl(el, sel, lc) {
   ctx.restore();
 }
 
-function drawCircleEl(el, sel, lc) {
+function drawCircleEl(el, sel, lc, lay) {
   ctx.save();
   const c  = sel ? '#0067c0' : (el.color || lc);
-  const lw = el.lineWidth || 1.5;
+  const lw = el.lineWidth || lay?.lineWidth || 1.5;
   ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+0.5 : lw)/state.zoom;
-  applyLineStyle(ctx, el.lineStyle, state.zoom);
+  applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
   if (el.fillColor) { ctx.fillStyle = el.fillColor; ctx.beginPath(); ctx.arc(el.x, el.y, el.r, 0, Math.PI*2); ctx.fill(); }
   ctx.beginPath(); ctx.arc(el.x, el.y, el.r, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
   ctx.restore();
 }
 
-function drawFlineEl(el, sel, lc) {
+function drawFlineEl(el, sel, lc, lay) {
   ctx.save();
   const c  = sel ? '#0067c0' : (el.color || lc);
-  const lw = el.lineWidth || 1.5;
+  const lw = el.lineWidth || lay?.lineWidth || 1.5;
   ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+0.5 : lw)/state.zoom; ctx.lineCap = 'round';
-  applyLineStyle(ctx, el.lineStyle, state.zoom);
+  applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
   ctx.beginPath(); ctx.moveTo(el.x1, el.y1); ctx.lineTo(el.x2, el.y2); ctx.stroke(); ctx.setLineDash([]);
   if (el.arrowStart && el.arrowStart !== 'none') { const dx=el.x1-el.x2,dy=el.y1-el.y2,len=Math.hypot(dx,dy); if(len>0.1) drawLineEnd(ctx,el.x1,el.y1,dx/len,dy/len,el.arrowStart,10,c,state.zoom); }
   if (el.arrowEnd   && el.arrowEnd   !== 'none') { const dx=el.x2-el.x1,dy=el.y2-el.y1,len=Math.hypot(dx,dy); if(len>0.1) drawLineEnd(ctx,el.x2,el.y2,dx/len,dy/len,el.arrowEnd,  10,c,state.zoom); }
