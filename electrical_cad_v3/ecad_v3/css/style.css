@@ -55,7 +55,7 @@ body{font-family:'Segoe UI',sans-serif;font-size:12px;background:var(--bg);color
 /* ========= 左パネル ========= */
 #lp{width:52px;background:var(--bg2);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;}
 #lp-tabs{display:flex;flex-direction:column;flex-shrink:0;}
-.lt{padding:12px 4px;font-size:10px;text-align:center;cursor:pointer;color:var(--fg3);border-left:2px solid transparent;border-right:2px solid transparent;writing-mode:vertical-rl;letter-spacing:0.1em;}
+.lt{padding:12px 4px;font-size:10px;text-align:center;cursor:pointer;color:var(--fg3);border-left:2px solid transparent;border-right:2px solid transparent;writing-mode:vertical-rl;letter-spacing:0.1em;white-space:nowrap;}
 .lt.on{color:var(--acc);background:var(--abg);border-right-color:var(--acc);}
 #lp-body{flex:1;overflow-y:auto;padding:4px;}
 #lp-body h4{font-size:9px;color:var(--fg4);font-weight:700;margin:5px 0 2px;text-transform:uppercase;letter-spacing:.06em;}
