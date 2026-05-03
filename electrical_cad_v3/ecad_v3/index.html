@@ -487,8 +487,9 @@
 </div>
 <!-- フローティングレイヤーパネル -->
 <div id="lay-float" style="display:none;position:fixed;top:80px;left:200px;background:var(--bg2,#2a2a2a);border:1px solid var(--bd2,#444);border-radius:6px;box-shadow:0 4px 20px rgba(0,0,0,0.5);z-index:9999;min-width:400px;width:fit-content;">
-  <div id="lay-float-title" onmousedown="layFloatDown(event)" style="display:flex;align-items:center;padding:6px 10px;background:var(--bg3);border-bottom:1px solid var(--bd2);border-radius:6px 6px 0 0;cursor:move;user-select:none">
-    <span style="flex:1;font-size:12px;font-weight:600;color:var(--fg)">レイヤー</span>
+  <div id="lay-float-title" onmousedown="layFloatDown(event)" style="position:relative;display:flex;align-items:center;padding:6px 10px;background:var(--bg3);border-bottom:1px solid var(--bd2);border-radius:6px 6px 0 0;cursor:move;user-select:none">
+    <span style="position:absolute;left:50%;transform:translateX(-50%);font-size:12px;font-weight:600;color:var(--fg);pointer-events:none">レイヤー</span>
+    <div style="flex:1"></div>
     <span onclick="closeLayFloat()" style="cursor:pointer;font-size:14px;color:var(--fg3);padding:0 4px">×</span>
   </div>
   <div style="padding:4px 8px;border-bottom:1px solid var(--bd2)">
