@@ -13,9 +13,40 @@ function updateResizeHandles() {
 }
 
 function drawResizeHandles(el) {
+  let corners;
+  if (el.type === 'rect') {
+    // rect: 四隅をそのまま使う
+    const x=el.x, y=el.y, w=el.w||10, h=el.h||10;
+    corners = [[x,y,'nw'],[x+w,y,'ne'],[x+w,y+h,'se'],[x,y+h,'sw']];
+    corners.forEach(([wx,wy,hid]) => {
+      const cp = tc(wx, wy);
+      const div = document.createElement('div');
+      div.className = 'resize-handle';
+      div.style.left = (cp.x-4)+'px'; div.style.top = (cp.y-4)+'px';
+      div.dataset.handle = hid;
+      div.addEventListener('mousedown', ev => { ev.stopPropagation(); startElResize(el, hid, ev); });
+      document.getElementById('cw').appendChild(div);
+    });
+    return;
+  }
+  if (el.type === 'circle') {
+    // circle: 上下左右4点にハンドル
+    const r = (el.r||10)+8;
+    [[0,-r,'n'],[r,0,'e'],[0,r,'s'],[-r,0,'w']].forEach(([lx,ly,hid]) => {
+      const cp = tc(el.x+lx, el.y+ly);
+      const div = document.createElement('div');
+      div.className = 'resize-handle';
+      div.style.left = (cp.x-4)+'px'; div.style.top = (cp.y-4)+'px';
+      div.dataset.handle = hid;
+      div.addEventListener('mousedown', ev => { ev.stopPropagation(); startElResize(el, hid, ev); });
+      document.getElementById('cw').appendChild(div);
+    });
+    return;
+  }
   const d = getDef(el.type); if (!d || d.w === 0) return;
   const rot = (el.rot||0)*Math.PI/180;
-  const hw = d.w/2+8, hh = d.h/2+8;
+  const sc = el.scale||1;
+  const hw = d.w*sc/2+8, hh = d.h*sc/2+8;
   [[-hw,-hh,'nw'],[hw,-hh,'ne'],[hw,hh,'se'],[-hw,hh,'sw']].forEach(([lx,ly,hid]) => {
     const rx = lx*Math.cos(rot)-ly*Math.sin(rot);
     const ry = lx*Math.sin(rot)+ly*Math.cos(rot);

@@ -16,7 +16,8 @@ function hitTest(wx, wy) {
     // シンボル系はgetDef()が必要
     const d = getDef(el.type);
     if (!d) continue;
-    if (Math.abs(wx-el.x)<(d.w/2+R) && Math.abs(wy-el.y)<(d.h/2+R)) return el;
+    const sc = el.scale || 1;
+    if (Math.abs(wx-el.x)<(d.w*sc/2+R) && Math.abs(wy-el.y)<(d.h*sc/2+R)) return el;
   }
   return null;
 }
@@ -63,7 +64,7 @@ function buildDragGroup() {
   const selEls   = state.elements.filter(el => state.sel.els.has(el.id));
   const selWires = state.wires.filter(w    => state.sel.wires.has(w.id));
   selEls.forEach(el => {
-    if (el.x != null)  group.push({ el, ox: el.x, oy: el.y });
+    if (el.x != null)  group.push({ el, ox: el.x, oy: el.y, obx: el.bx, oby: el.by });
     if (el.x1 != null) group.push({ el, ox1: el.x1, oy1: el.y1, ox2: el.x2, oy2: el.y2 });
   });
   selWires.forEach(w => {

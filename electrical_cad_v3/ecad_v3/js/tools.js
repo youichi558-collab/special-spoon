@@ -47,8 +47,11 @@ const selectTool = {
       pushH();
       state.mouse.dragHistPushed = true;
     }
-    state.mouse.dragGroup.forEach(({ el, ox, oy, ox1, oy1, ox2, oy2, opts }) => {
-      if (el.x != null) { el.x = snap(ox+dx); el.y = snap(oy+dy); }
+    state.mouse.dragGroup.forEach(({ el, ox, oy, obx, oby, ox1, oy1, ox2, oy2, opts }) => {
+      if (el.x != null) {
+        el.x = snap(ox+dx); el.y = snap(oy+dy);
+        if (obx != null) { el.bx = snap(obx+dx); el.by = snap(oby+dy); }
+      }
       if (el.x1 != null) {
         if (opts) {
           el.pts = opts.map(p => ({ x: snap(p.x+dx), y: snap(p.y+dy) }));

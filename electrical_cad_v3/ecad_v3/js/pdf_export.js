@@ -42,9 +42,10 @@ function exportPDF() {
 function rasterizeSymEl(el, s) {
   const dpi = 200;
   const def = getDef(el.type) || { w:40, h:40 };
+  const sc  = el.scale || 1;
   const pad = 10;
-  const wW = (def.w||40) + pad*2;
-  const hW = (def.h||40) + pad*2;
+  const wW = (def.w * sc || 40) + pad*2;
+  const hW = (def.h * sc || 40) + pad*2;
   const zoom = s * dpi / 25.4;
   const pxW = Math.max(4, Math.round(wW * zoom));
   const pxH = Math.max(4, Math.round(hW * zoom));
@@ -59,13 +60,11 @@ function rasterizeSymEl(el, s) {
 
   const origCv = cv, origCtx = ctx, origZoom = state.zoom;
   cv = oc; ctx = octx;
-  // zoom=1にするとdrawSym内の N/state.zoom がN pxになりcanvasスケールで拡大される
-  // → フォントが適切なサイズになる
   state.zoom = 1;
 
   octx.save();
   octx.translate(pxW/2, pxH/2);
-  octx.scale(zoom, zoom);
+  octx.scale(zoom * sc, zoom * sc);
   drawSym(el.type, 0, 0, false, el.rot||0, el.flipH, el.flipV, '#000000');
   octx.restore();
 
@@ -135,6 +134,23 @@ function runExportPDF() {
     else                        pdf.setLineDashPattern([], 0);
   }
 
+  // 矢印を PDF に描画（ux/uy は矢印方向の単位ベクトル×s、size は mm）
+  function pdfArrow(pdf, x, y, ux, uy, size, color) {
+    const m = (color||'#000000').match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    if (m) pdf.setFillColor(parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16));
+    else   pdf.setFillColor(0,0,0);
+    const ax=ux/Math.hypot(ux,uy), ay=uy/Math.hypot(ux,uy);
+    const nx=-ay, ny=ax;
+    pdf.triangle(
+      x, y,
+      x - ax*size + nx*size*0.35,
+      y - ay*size + ny*size*0.35,
+      x - ax*size - nx*size*0.35,
+      y - ay*size - ny*size*0.35,
+      'F'
+    );
+  }
+
   try {
     for (let idx = 0; idx < state.pages.length; idx++) {
       const pg = state.pages[idx];
@@ -178,7 +194,8 @@ function runExportPDF() {
         const lay = LAYERS.find(l => l.name===w.layer);
         if (lay && !lay.visible) return;
         const lw  = w.lineWidth || 2;
-        applyColor(lay ? lay.color : '#000000');
+        const wColor = w.color || (lay ? lay.color : '#000000');
+        applyColor(wColor);
         pdf.setLineWidth(Math.max(0.05, lw * s));
         applyDash(w.lineStyle, s);
         const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
@@ -186,6 +203,25 @@ function runExportPDF() {
           pdf.line(tx(pts[i].x), ty(pts[i].y), tx(pts[i+1].x), ty(pts[i+1].y));
         }
         pdf.setLineDashPattern([], 0);
+
+        // arrowStart / arrowEnd
+        if (w.arrowStart && w.arrowStart !== 'none' && pts.length >= 2) {
+          const dx=pts[0].x-pts[1].x, dy=pts[0].y-pts[1].y, len=Math.hypot(dx,dy);
+          if (len>0.1) pdfArrow(pdf, tx(pts[0].x), ty(pts[0].y), dx/len*s, dy/len*s, 2.5, wColor);
+        }
+        if (w.arrowEnd && w.arrowEnd !== 'none' && pts.length >= 2) {
+          const p1=pts[pts.length-2], p2=pts[pts.length-1];
+          const dx=p2.x-p1.x, dy=p2.y-p1.y, len=Math.hypot(dx,dy);
+          if (len>0.1) pdfArrow(pdf, tx(p2.x), ty(p2.y), dx/len*s, dy/len*s, 2.5, wColor);
+        }
+
+        // wireNo
+        if (w.wireNo) {
+          const mp = pts[Math.floor(pts.length/2)];
+          const noEl = { text: w.wireNo, color: '#1e40af' };
+          const noRes = rasterizeTextEl(noEl, 2.8);
+          if (noRes) pdf.addImage(noRes.dataURL, 'PNG', tx(mp.x)-noRes.wMM/2, ty(mp.y)-noRes.hMM, noRes.wMM, noRes.hMM, '', 'FAST');
+        }
       });
 
       // ---- 要素 ----
@@ -198,18 +234,33 @@ function runExportPDF() {
 
         if (el.type==='fline') {
           const lw = el.lineWidth || 1.5;
-          applyColor(el.color || lc);
+          const fc = el.color || lc;
+          applyColor(fc);
           pdf.setLineWidth(Math.max(0.05, lw * s));
           applyDash(el.lineStyle, s);
           pdf.line(tx(el.x1), ty(el.y1), tx(el.x2), ty(el.y2));
           pdf.setLineDashPattern([], 0);
+          if (el.arrowStart && el.arrowStart !== 'none') {
+            const dx=el.x1-el.x2, dy=el.y1-el.y2, len=Math.hypot(dx,dy);
+            if (len>0.1) pdfArrow(pdf, tx(el.x1), ty(el.y1), dx/len*s, dy/len*s, 2.5, fc);
+          }
+          if (el.arrowEnd && el.arrowEnd !== 'none') {
+            const dx=el.x2-el.x1, dy=el.y2-el.y1, len=Math.hypot(dx,dy);
+            if (len>0.1) pdfArrow(pdf, tx(el.x2), ty(el.y2), dx/len*s, dy/len*s, 2.5, fc);
+          }
 
         } else if (el.type==='rect') {
           const lw = el.lineWidth || 1.5;
           applyColor(el.color || lc);
           pdf.setLineWidth(Math.max(0.05, lw * s));
           applyDash(el.lineStyle, s);
-          pdf.rect(tx(el.x), ty(el.y), tm(el.w||0), tm(el.h||0), 'S');
+          if (el.fillColor) {
+            const m = el.fillColor.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+            if (m) { pdf.setFillColor(parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16)); pdf.rect(tx(el.x), ty(el.y), tm(el.w||0), tm(el.h||0), 'FD'); }
+            else pdf.rect(tx(el.x), ty(el.y), tm(el.w||0), tm(el.h||0), 'S');
+          } else {
+            pdf.rect(tx(el.x), ty(el.y), tm(el.w||0), tm(el.h||0), 'S');
+          }
           pdf.setLineDashPattern([], 0);
 
         } else if (el.type==='circle') {
@@ -217,7 +268,13 @@ function runExportPDF() {
           applyColor(el.color || lc);
           pdf.setLineWidth(Math.max(0.05, lw * s));
           applyDash(el.lineStyle, s);
-          pdf.circle(tx(el.x), ty(el.y), tm(el.r||1), 'S');
+          if (el.fillColor) {
+            const m = el.fillColor.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+            if (m) { pdf.setFillColor(parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16)); pdf.circle(tx(el.x), ty(el.y), tm(el.r||1), 'FD'); }
+            else pdf.circle(tx(el.x), ty(el.y), tm(el.r||1), 'S');
+          } else {
+            pdf.circle(tx(el.x), ty(el.y), tm(el.r||1), 'S');
+          }
           pdf.setLineDashPattern([], 0);
 
         } else if (el.type==='text') {
@@ -228,7 +285,46 @@ function runExportPDF() {
             pdf.addImage(res.dataURL, 'PNG', tx(el.x)-2*s, ty(el.y) - res.hMM * 0.72, res.wMM, res.hMM, '', 'FAST');
           }
 
-        } else if (el.type!=='dim' && el.type!=='leader') {
+        } else if (el.type === 'dim') {
+          // 寸法線
+          const dx=el.x2-el.x1, dy=el.y2-el.y1, len=Math.hypot(dx,dy);
+          if (len >= 0.1) {
+            const sign=el.offsetSign||1, off=(el.offset||30)*sign;
+            const ux=dx/len, uy=dy/len, px=-uy*sign, py=ux*sign;
+            const ax1=el.x1+px*Math.abs(off), ay1=el.y1+py*Math.abs(off);
+            const ax2=el.x2+px*Math.abs(off), ay2=el.y2+py*Math.abs(off);
+            const dc = el.color || '#744da9';
+            applyColor(dc);
+            pdf.setLineWidth(Math.max(0.05, 0.3));
+            pdf.line(tx(el.x1), ty(el.y1), tx(ax1), ty(ay1));
+            pdf.line(tx(el.x2), ty(el.y2), tx(ax2), ty(ay2));
+            pdf.line(tx(ax1), ty(ay1), tx(ax2), ty(ay2));
+            pdfArrow(pdf, tx(ax1), ty(ay1),  ux*s,  uy*s, 2, dc);
+            pdfArrow(pdf, tx(ax2), ty(ay2), -ux*s, -uy*s, 2, dc);
+            const mx=(ax1+ax2)/2, my=(ay1+ay2)/2;
+            const txt = el.dimText || String(Math.round(len));
+            const dimEl = { text: txt, color: dc };
+            const dimRes = rasterizeTextEl(dimEl, 2.5);
+            if (dimRes) pdf.addImage(dimRes.dataURL, 'PNG', tx(mx)-dimRes.wMM/2, ty(my)-dimRes.hMM*0.9, dimRes.wMM, dimRes.hMM, '', 'FAST');
+          }
+
+        } else if (el.type === 'leader') {
+          // 引き出し線
+          const bx=el.bx??el.x2, by=el.by??el.y2;
+          const lc2 = el.color || '#744da9';
+          applyColor(lc2);
+          pdf.setLineWidth(Math.max(0.05, 0.3));
+          pdf.line(tx(el.x1), ty(el.y1), tx(bx), ty(by));
+          if (el.bx != null) pdf.line(tx(bx), ty(by), tx(el.x2), ty(el.y2));
+          const dx=bx-el.x1, dy=by-el.y1, len=Math.hypot(dx,dy);
+          if (len>0.1) pdfArrow(pdf, tx(el.x1), ty(el.y1), (bx-el.x1)/len*s, (by-el.y1)/len*s, 2, lc2);
+          if (el.leaderText) {
+            const ltEl = { text: el.leaderText, color: lc2 };
+            const ltRes = rasterizeTextEl(ltEl, 2.8);
+            if (ltRes) pdf.addImage(ltRes.dataURL, 'PNG', tx(bx)+0.5, ty(by)-ltRes.hMM*0.9, ltRes.wMM, ltRes.hMM, '', 'FAST');
+          }
+
+        } else {
           // 電気シンボル: ラスタライズ（アスペクト比修正済み）
           const res = rasterizeSymEl(el, s);
           pdf.addImage(res.dataURL, 'PNG', tx(el.x)-res.dispW/2, ty(el.y)-res.dispH/2, res.dispW, res.dispH, '', 'FAST');
