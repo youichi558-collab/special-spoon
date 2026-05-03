@@ -82,7 +82,7 @@ function placePart(type, ref, terminals) {
   setMode('sym', type);
   document.getElementById('s-hint').textContent = `「${ref}」→ クリックで配置`;
 }
-function showPartReg() { document.getElementById('part-reg-p').classList.add('open'); }
+function showPartReg() { openFP('part-reg-p'); }
 function saveCusPart() {
   const ref = document.getElementById('pr-ref').value.trim();
   if (!ref) { alert('型番を入力してください'); return; }
@@ -280,6 +280,12 @@ document.addEventListener('click', () => hideCtx());
 // ----------------------------------------------------------------
 // ユーティリティ
 // ----------------------------------------------------------------
+function openFP(id) {
+  const el = document.getElementById(id); if (!el) return;
+  const ribbonH = document.getElementById('ribbon')?.offsetHeight || 0;
+  el.style.top = `calc(50% + ${ribbonH / 2}px)`;
+  el.classList.add('open');
+}
 function closeFP(id) { document.getElementById(id)?.classList.remove('open'); }
 
 function updateHint() {

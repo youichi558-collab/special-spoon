@@ -75,7 +75,7 @@ function showFramePanel(){
     document.getElementById('frame-rows').value=state.frameObj.rows;
     ['drawno','title','company','equip','author','approve','date','scale2','rev','chghist','page'].forEach(k=>{const el=document.getElementById('f-'+k);if(el)el.value=state.frameObj[k]||'';});
   }
-  document.getElementById('frame-p').classList.add('open');
+  openFP('frame-p');
 }
 function drawFrame(fr){
   const {sc,wMM,hMM,mg,thMM,cols,rows}=fr;

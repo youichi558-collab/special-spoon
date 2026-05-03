@@ -130,7 +130,7 @@ function _renderPVPage() {
 }
 
 function exportPDF() {
-  document.getElementById('pdf-opt-p').classList.add('open');
+  openFP('pdf-opt-p');
 }
 
 function _pageFileBase(pg, idx) {
