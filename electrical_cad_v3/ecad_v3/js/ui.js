@@ -55,7 +55,7 @@ function renderLayers() {
         <td style="padding:4px 6px;text-align:center;cursor:pointer" onclick="bulkLayLock()" title="全ロック/解除切替">
           <span style="font-size:13px;color:${allLocked?'#e55':'var(--fg3)'}">${allLocked?'🔒':'🔓'}</span>
         </td>
-        <td colspan="6" style="padding:4px 6px;font-size:10px;color:var(--fg3)">← 一括切替</td>
+        <td colspan="6"></td>
       </tr>`;
     tbody.innerHTML = bulkRow + LAYERS.map((l, i) => `
       <tr style="background:${l.active?'var(--acc-dim,rgba(0,103,192,0.12))':'var(--bg2)'};border-bottom:1px solid var(--bd2);cursor:pointer" onclick="setActLayer(${i})">
