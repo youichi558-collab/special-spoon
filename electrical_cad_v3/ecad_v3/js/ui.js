@@ -164,7 +164,7 @@ function addLayer() {
   const n = prompt('レイヤー名:');
   if (!n) return;
   if (LAYERS.find(l=>l.name===n)) { alert('同じ名前のレイヤーが既にあります'); return; }
-  LAYERS.push({ name:n, color:'#888888', visible:true, locked:false, active:false, lineWidth:1, lineDash:'solid', fontSize:14 });
+  LAYERS.push({ name:n, color:'#888888', visible:true, locked:false, active:false, lineWidth:1, lineDash:'solid', fontSize:null });
   renderLayers();
 }
 
