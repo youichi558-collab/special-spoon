@@ -100,9 +100,9 @@ function renderLayers() {
             style="width:80px;font-size:12px;padding:2px 4px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
             onchange="applyLayerFontSize(${i},this.value)" oninput="if(!this.value){applyLayerFontSize(${i},null)}">
         </td>
-        <td style="padding:4px 16px;text-align:center;white-space:nowrap;min-width:60px" onclick="event.stopPropagation()">
-          <span onclick="renameLayer(${i})" title="名前変更" style="cursor:pointer;color:var(--fg3);margin-right:10px;font-size:16px">✏</span>
-          ${LAYERS.length>1?`<span onclick="deleteLayer(${i})" title="削除" style="cursor:pointer;color:var(--red);font-size:16px">×</span>`:''}
+        <td style="padding:4px 10px;text-align:center;white-space:nowrap" onclick="event.stopPropagation()">
+          <button onclick="renameLayer(${i})" title="名前変更" style="font-size:11px;padding:1px 6px;margin-right:4px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg3);color:var(--fg)">名前</button>
+          ${LAYERS.length>1?`<button onclick="deleteLayer(${i})" title="削除" style="font-size:11px;padding:1px 6px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg3);color:var(--red)">削除</button>`:''}
         </td>
       </tr>`).join('');
   }
