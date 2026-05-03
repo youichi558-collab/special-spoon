@@ -344,11 +344,17 @@ function drawSnapMarker() {
 function drawSelBox() {
   if (!state.mouse.selboxing) return;
   const { startCx, startCy, cx, cy } = state.mouse;
+  const crossing = cx < startCx; // 右→左 = 交差選択
   const x = Math.min(startCx, cx), y = Math.min(startCy, cy);
   const w = Math.abs(cx - startCx), h = Math.abs(cy - startCy);
   ctx.save();
-  ctx.strokeStyle = '#0067c0'; ctx.lineWidth = 1; ctx.setLineDash([4,3]);
-  ctx.fillStyle = 'rgba(0,103,192,0.05)';
+  if (crossing) {
+    ctx.strokeStyle = '#22aa44'; ctx.lineWidth = 1; ctx.setLineDash([4,3]);
+    ctx.fillStyle = 'rgba(34,170,68,0.05)';
+  } else {
+    ctx.strokeStyle = '#0067c0'; ctx.lineWidth = 1; ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(0,103,192,0.05)';
+  }
   ctx.fillRect(x, y, w, h); ctx.strokeRect(x, y, w, h);
   ctx.setLineDash([]); ctx.restore();
 }

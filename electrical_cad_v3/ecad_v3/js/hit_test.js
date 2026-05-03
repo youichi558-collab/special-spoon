@@ -45,22 +45,53 @@ function distToSeg(px,py,x1,y1,x2,y2) {
   return Math.hypot(px-(x1+t*dx), py-(y1+t*dy));
 }
 
-function inBox(el, sx, sy, ex, ey) {
-  const d = getDef(el.type);
-  if (!d) return false;
+function inBox(el, sx, sy, ex, ey, crossing) {
+  // crossing=true: 部分重なりも選択（右→左ドラッグ）
+  // crossing=false: 完全に内側のみ（左→右ドラッグ）
   if (el.type === 'text') {
-    const tw = (el.text||'').length * (el.fs||14) * 0.6;
-    const th = (el.fs||14);
-    return el.x <= ex && el.x+tw >= sx && el.y-th <= ey && el.y >= sy;
+    const x2 = el.x + Math.min(200, (el.text||'').length * (el.fs||14) * 0.55);
+    const y1 = el.y - (el.fs||14) * 0.8, y2 = el.y + 2;
+    return crossing
+      ? el.x<=ex && x2>=sx && y1<=ey && y2>=sy
+      : el.x>=sx && x2<=ex && y1>=sy && y2<=ey;
   }
-  if (el.x != null) return el.x>=sx && el.x<=ex && el.y>=sy && el.y<=ey;
-  if (el.x1 != null) return el.x1>=sx&&el.x1<=ex&&el.y1>=sy&&el.y1<=ey&&el.x2>=sx&&el.x2<=ex&&el.y2>=sy&&el.y2<=ey;
-  return false;
+  if (el.type === 'rect') {
+    const rx2=el.x+el.w, ry2=el.y+el.h;
+    return crossing
+      ? el.x<=ex && rx2>=sx && el.y<=ey && ry2>=sy
+      : el.x>=sx && rx2<=ex && el.y>=sy && ry2<=ey;
+  }
+  if (el.type === 'circle') {
+    return crossing
+      ? el.x+el.r>=sx && el.x-el.r<=ex && el.y+el.r>=sy && el.y-el.r<=ey
+      : el.x-el.r>=sx && el.x+el.r<=ex && el.y-el.r>=sy && el.y+el.r<=ey;
+  }
+  if (el.type === 'fline' || el.type === 'dim' || el.type === 'leader') {
+    const pts2 = [{x:el.x1,y:el.y1},{x:el.x2,y:el.y2}];
+    if (el.type === 'leader') pts2.push({x:el.bx,y:el.by});
+    return crossing
+      ? pts2.some(p => p.x>=sx&&p.x<=ex&&p.y>=sy&&p.y<=ey)
+      : pts2.every(p => p.x>=sx&&p.x<=ex&&p.y>=sy&&p.y<=ey);
+  }
+  const d = getDef(el.type);
+  if (!d) {
+    if (el.x != null) return crossing
+      ? el.x>=sx&&el.x<=ex&&el.y>=sy&&el.y<=ey
+      : el.x>=sx&&el.x<=ex&&el.y>=sy&&el.y<=ey;
+    return false;
+  }
+  const sc = el.scale || 1;
+  const hw = d.w*sc/2, hh = d.h*sc/2;
+  return crossing
+    ? el.x+hw>=sx && el.x-hw<=ex && el.y+hh>=sy && el.y-hh<=ey
+    : el.x-hw>=sx && el.x+hw<=ex && el.y-hh>=sy && el.y+hh<=ey;
 }
 
-function wireInBox(w, sx, sy, ex, ey) {
+function wireInBox(w, sx, sy, ex, ey, crossing) {
   const pts = w.pts || [{ x:w.x1,y:w.y1 },{ x:w.x2,y:w.y2 }];
-  return pts.every(p => p.x>=sx && p.x<=ex && p.y>=sy && p.y<=ey);
+  return crossing
+    ? pts.some(p => p.x>=sx && p.x<=ex && p.y>=sy && p.y<=ey)
+    : pts.every(p => p.x>=sx && p.x<=ex && p.y>=sy && p.y<=ey);
 }
 
 function buildDragGroup() {

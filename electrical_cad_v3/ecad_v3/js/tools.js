@@ -67,13 +67,14 @@ const selectTool = {
 
   onUp(wx, wy, e) {
     if (state.mouse.selboxing) {
+      const crossing = wx < state.mouse.startWx; // 右→左なら交差選択
       const sx = Math.min(state.mouse.startWx, wx);
       const ex = Math.max(state.mouse.startWx, wx);
       const sy = Math.min(state.mouse.startWy, wy);
       const ey = Math.max(state.mouse.startWy, wy);
       if (!e.shiftKey) { state.sel.els.clear(); state.sel.wires.clear(); }
-      state.elements.forEach(el => { if (inBox(el, sx, sy, ex, ey)) state.sel.els.add(el.id); });
-      state.wires.forEach(w => { if (wireInBox(w, sx, sy, ex, ey)) state.sel.wires.add(w.id); });
+      state.elements.forEach(el => { if (inBox(el, sx, sy, ex, ey, crossing)) state.sel.els.add(el.id); });
+      state.wires.forEach(w => { if (wireInBox(w, sx, sy, ex, ey, crossing)) state.sel.wires.add(w.id); });
       state.mouse.selboxing = false;
       updateRightPanel();
       updateResizeHandles();
