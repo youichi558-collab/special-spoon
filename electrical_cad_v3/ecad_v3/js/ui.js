@@ -71,9 +71,9 @@ function renderLayers() {
             onchange="LAYERS[${i}].lineWidth=parseFloat(this.value)||1;draw()">
         </td>
         <td style="padding:4px 4px" onclick="event.stopPropagation()">
-          <input type="number" min="6" max="72" step="1" value="${l.fontSize||14}"
+          <input type="number" min="6" max="72" step="1" placeholder="個別" ${l.fontSize!=null?`value="${l.fontSize}"`:''}
             style="width:80px;font-size:12px;padding:2px 4px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
-            onchange="LAYERS[${i}].fontSize=parseInt(this.value)||14;draw()">
+            onchange="applyLayerFontSize(${i},this.value)" oninput="if(!this.value){applyLayerFontSize(${i},null)}">
         </td>
         <td style="padding:4px 6px;text-align:center;white-space:nowrap" onclick="event.stopPropagation()">
           <span onclick="renameLayer(${i})" title="名前変更" style="cursor:pointer;color:var(--fg3);margin-right:6px">✏</span>
@@ -130,6 +130,16 @@ function deleteLayer(i) {
   LAYERS.splice(i, 1);
   if (!LAYERS.find(l=>l.active)) LAYERS[0].active = true;
   renderLayers();
+  draw();
+}
+function applyLayerFontSize(i, val) {
+  const fs = val ? parseInt(val) : null;
+  if (fs !== null && (isNaN(fs) || fs < 6 || fs > 72)) return;
+  LAYERS[i].fontSize = fs;
+  if (fs !== null) {
+    // そのレイヤーの全テキスト要素に適用
+    state.elements.forEach(el => { if (el.type === 'text' && el.layer === LAYERS[i].name) el.fs = fs; });
+  }
   draw();
 }
 function bulkLayVis() {

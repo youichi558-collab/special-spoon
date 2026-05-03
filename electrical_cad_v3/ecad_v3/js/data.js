@@ -10,11 +10,11 @@ const LAYER_DASHES = {
   dashdot:[10, 4, 2, 4],
 };
 const LAYERS = [
-  { name: '回路', color: '#1d6fb5', visible: true, locked: false, active: true,  lineWidth: 1, lineDash: 'solid', fontSize: 14 },
-  { name: '配線', color: '#0F6E56', visible: true, locked: false, active: false, lineWidth: 1, lineDash: 'solid', fontSize: 14 },
-  { name: '注記', color: '#b45309', visible: true, locked: false, active: false, lineWidth: 1, lineDash: 'solid', fontSize: 14 },
-  { name: '外形', color: '#444',    visible: true, locked: false, active: false, lineWidth: 1, lineDash: 'solid', fontSize: 14 },
-  { name: '図面枠',color: '#222',   visible: true, locked: false, active: false, lineWidth: 1, lineDash: 'solid', fontSize: 14 },
+  { name: '回路', color: '#1d6fb5', visible: true, locked: false, active: true,  lineWidth: 1, lineDash: 'solid', fontSize: null },
+  { name: '配線', color: '#0F6E56', visible: true, locked: false, active: false, lineWidth: 1, lineDash: 'solid', fontSize: null },
+  { name: '注記', color: '#b45309', visible: true, locked: false, active: false, lineWidth: 1, lineDash: 'solid', fontSize: null },
+  { name: '外形', color: '#444',    visible: true, locked: false, active: false, lineWidth: 1, lineDash: 'solid', fontSize: null },
+  { name: '図面枠',color: '#222',   visible: true, locked: false, active: false, lineWidth: 1, lineDash: 'solid', fontSize: null },
 ];
 
 const BUILTIN_PARTS = [
