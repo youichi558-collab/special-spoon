@@ -101,6 +101,27 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc) {
     ctx.beginPath(); ctx.arc(14,0,3,0,Math.PI*2); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(14,0); ctx.lineTo(32,0); ctx.stroke();
 
+  } else if (type==='timer_no') {
+    // JIS C 0617 02-12-05: 限時動作a接点 = a接点 + 下側に半円弧
+    ctx.beginPath(); ctx.moveTo(-32,0); ctx.lineTo(-14,0); ctx.stroke();
+    ctx.beginPath(); ctx.arc(-14,0,3,0,Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-11,0); ctx.lineTo(11,-12); ctx.stroke();
+    ctx.beginPath(); ctx.arc(14,0,3,0,Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(14,0); ctx.lineTo(32,0); ctx.stroke();
+    // 限時記号: アームの下に小さな弧
+    ctx.beginPath(); ctx.arc(0,6,8,0,Math.PI); ctx.stroke();
+
+  } else if (type==='timer_nc') {
+    // JIS C 0617 02-12-05: 限時動作b接点 = b接点 + 下側に半円弧
+    ctx.beginPath(); ctx.moveTo(-32,0); ctx.lineTo(-14,0); ctx.stroke();
+    ctx.beginPath(); ctx.arc(-14,0,3,0,Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-11,0); ctx.lineTo(11,0); ctx.stroke();
+    ctx.beginPath(); ctx.arc(14,0,3,0,Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(14,0); ctx.lineTo(32,0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-6,-12); ctx.stroke();
+    // 限時記号: 下に小さな弧
+    ctx.beginPath(); ctx.arc(0,6,8,0,Math.PI); ctx.stroke();
+
   } else if (type==='push_no') {
     // JIS C 0617-7: 押しボタン a接点 操作素子（T字）
     ctx.beginPath(); ctx.moveTo(-32,0); ctx.lineTo(-14,0); ctx.stroke();

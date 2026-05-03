@@ -1,3 +1,11 @@
+document.addEventListener('keyup', e => {
+  if (e.key === 'Shift' && state._shiftOrtho) {
+    state._shiftOrtho = false;
+    state.ortho = false;
+    document.getElementById('rb-ortho')?.classList.remove('on');
+  }
+});
+
 // ================================================================
 // edit.js — Undo/Redo・保存・読込・クリップボード・ショートカット
 // ================================================================
@@ -266,6 +274,13 @@ function ungroupSelected() {
 // ----------------------------------------------------------------
 document.addEventListener('keydown', e => {
   if (['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
+  // Shiftキーで一時的に直交ON（F8トグルと独立して管理）
+  if (e.key === 'Shift' && !e.repeat && !state.ortho) {
+    state._shiftOrtho = true;
+    state.ortho = true;
+    document.getElementById('rb-ortho')?.classList.add('on');
+    return;
+  }
 
   if (e.ctrlKey) {
     switch (e.key) {
