@@ -206,6 +206,20 @@ function runExportPDF() {
   _exportPDFPages([state.currentPage], _pageFileBase(pg, state.currentPage) + '.pdf');
 }
 
+function confirmAllPDF() {
+  const n = state.pages.length;
+  if (confirm(`全${n}ページを1つのPDFファイルで出力します。\nよろしいですか？`)) {
+    runExportAllPDF();
+  }
+}
+
+function confirmAllDXF() {
+  const n = state.pages.length;
+  if (confirm(`全${n}ページを1つのDXFファイルで出力します。\nよろしいですか？`)) {
+    exportAllDXF();
+  }
+}
+
 function runExportAllPDF() {
   // 全ページ1ファイル
   _syncCurrentPage();

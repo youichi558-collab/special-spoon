@@ -73,16 +73,37 @@ function exportDXF(){
 }
 
 function exportAllDXF() {
-  // 全ページ別ファイルでDXF出力
+  // 全ページ1ファイルでDXF出力（ページごとにレイヤー名でセクション分け）
   const p = state.page;
   p.elements = state.elements;
   p.wires    = state.wires;
   p.frameObj = state.frameObj;
   const origPage = state.currentPage;
+
+  const ls = [];
+  ls.push('0','SECTION','2','HEADER','9','$ACADVER','1','AC1015','9','$INSUNITS','70','4','0','ENDSEC');
+  ls.push('0','SECTION','2','TABLES','0','TABLE','2','LAYER','70',String(LAYERS.length));
+  LAYERS.forEach((l,i)=>ls.push('0','LAYER','2',l.name,'70','0','62',String(i+1),'6','CONTINUOUS'));
+  ls.push('0','ENDTAB','0','ENDSEC');
+  ls.push('0','SECTION','2','BLOCKS');
+  ls.push(...buildSymBlocksDXF());
+  ls.push('0','ENDSEC');
+  ls.push('0','SECTION','2','ENTITIES');
+
   state.pages.forEach((pg, idx) => {
     state.currentPage = idx;
-    setTimeout(() => exportDXF(), idx * 300);
+    // ページコメント
+    ls.push('999', `PAGE:${pg.name || ('Sheet'+(idx+1))}`);
+    if (pg.frameObj) ls.push('999','ECAD_FRAME:'+JSON.stringify(pg.frameObj));
+    const els = pg.elements || [];
+    const wrs = pg.wires || [];
+    wrs.forEach(w=>{const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];const layer=w.layer||'配線';for(let i=0;i<pts.length-1;i++)ls.push('0','LINE','8',layer,'10',pts[i].x.toFixed(2),'20',(-pts[i].y).toFixed(2),'30','0','11',pts[i+1].x.toFixed(2),'21',(-pts[i+1].y).toFixed(2),'31','0');});
+    els.forEach(el=>{const layer=el.layer||'回路';if(el.type==='text')ls.push('0','TEXT','8',layer,'10',el.x.toFixed(2),'20',(-el.y).toFixed(2),'30','0','40',String(el.fs||14),'1',el.text);else if(el.type==='rect')addRect(ls,layer,el.x,el.y,el.x+el.w,el.y+el.h);else if(el.type==='circle')ls.push('0','CIRCLE','8',layer,'10',el.x.toFixed(2),'20',(-el.y).toFixed(2),'30','0','40',el.r.toFixed(2));else if(el.type==='fline')ls.push('0','LINE','8',layer,'10',el.x1.toFixed(2),'20',(-el.y1).toFixed(2),'30','0','11',el.x2.toFixed(2),'21',(-el.y2).toFixed(2),'31','0');});
   });
+
+  ls.push('0','ENDSEC','0','EOF');
   state.currentPage = origPage;
+  const base = (state.saveFileName || '図面').replace(/[\\/:*?"<>|]/g, '_');
+  dl(ls.join('\n'), `${base}_全ページ.dxf`, 'application/dxf');
 }
 function addRect(ls,layer,x1,y1,x2,y2){ls.push('0','LWPOLYLINE','8',layer,'90','4','70','1','43','0','10',x1.toFixed(2),'20',(-y1).toFixed(2),'10',x2.toFixed(2),'20',(-y1).toFixed(2),'10',x2.toFixed(2),'20',(-y2).toFixed(2),'10',x1.toFixed(2),'20',(-y2).toFixed(2));}
