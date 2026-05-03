@@ -172,7 +172,7 @@ const textTool = {
   onDown(wx, wy, e) {
     const text = prompt('テキスト:',''); if (!text) return;
     pushH();
-    state.elements.push({ id: genId('el'), type:'text', x:snap(wx), y:snap(wy), text, fs:14, layer:activeLayer() });
+    state.elements.push({ id: genId('el'), type:'text', x:snap(wx), y:snap(wy), text, fs:(LAYERS.find(l=>l.active)?.fontSize||14), layer:activeLayer() });
     state.preview = null;
   },
   onMove() {}, onUp() {}, onHover() {}
