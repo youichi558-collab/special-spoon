@@ -19,7 +19,8 @@ function getAllSnapPoints(wx, wy) {
           if (dist < bestD) { bestD = dist; best = { x: el.x+rx, y: el.y+ry, snapType:'endpoint' }; }
         });
       } else {
-        const hw = (d.w||0)/2;
+        const sc = el.scale || 1;
+        const hw = (d.w||0)/2 * sc;
         [+hw, -hw].forEach(dx => {
           const rx = dx * Math.cos(rot), ry = dx * Math.sin(rot);
           const dist = Math.hypot(wx - (el.x+rx), wy - (el.y+ry));

@@ -423,9 +423,9 @@ function drawDimPreview(ts) {
 // ヘルパー
 // ----------------------------------------------------------------
 function applyLineStyle(ctx, style, zoom) {
-  if (style==='dash')    ctx.setLineDash([8/zoom, 4/zoom]);
-  else if (style==='dot') ctx.setLineDash([2/zoom, 4/zoom]);
-  else if (style==='dashdot') ctx.setLineDash([8/zoom, 3/zoom, 2/zoom, 3/zoom]);
+  if (style==='dash'||style==='dashed')        ctx.setLineDash([8/zoom, 4/zoom]);
+  else if (style==='dot'||style==='dotted')    ctx.setLineDash([2/zoom, 4/zoom]);
+  else if (style==='dashdot')                  ctx.setLineDash([8/zoom, 3/zoom, 2/zoom, 3/zoom]);
   else ctx.setLineDash([]);
 }
 

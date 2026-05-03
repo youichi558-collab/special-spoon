@@ -83,7 +83,7 @@ function getGroupBounds(els, wires) {
   els.forEach(el => {
     if (el.type==='rect') { minX=Math.min(minX,el.x); minY=Math.min(minY,el.y); maxX=Math.max(maxX,el.x+el.w); maxY=Math.max(maxY,el.y+el.h); }
     else if (el.type==='circle') { minX=Math.min(minX,el.x-el.r); minY=Math.min(minY,el.y-el.r); maxX=Math.max(maxX,el.x+el.r); maxY=Math.max(maxY,el.y+el.r); }
-    else if (el.x1!=null) { minX=Math.min(minX,el.x1,el.x2); minY=Math.min(minY,el.y1,el.y2); maxX=Math.max(maxX,el.x1,el.x2); maxY=Math.max(maxY,el.y1,el.y2); }
+    else if (el.x1!=null) { const bx=el.bx??el.x2,by=el.by??el.y2; minX=Math.min(minX,el.x1,el.x2,bx); minY=Math.min(minY,el.y1,el.y2,by); maxX=Math.max(maxX,el.x1,el.x2,bx); maxY=Math.max(maxY,el.y1,el.y2,by); }
     else if (el.x!=null) {
       if (el.type==='text') {
         const tw=(el.text||'').length*(el.fs||14)*0.6, th=(el.fs||14);
@@ -157,7 +157,7 @@ function applyGroupResize(wx, wy) {
   orig.elRefs.forEach((el,i)=>{ const o=orig.els[i];
     if(el.type==='rect'){el.x=anchorX+(o.x-anchorX)*sx;el.y=anchorY+(o.y-anchorY)*sy;el.w=o.w*sx;el.h=o.h*sy;}
     else if(el.type==='circle'){el.x=anchorX+(o.x-anchorX)*sx;el.y=anchorY+(o.y-anchorY)*sy;el.r=o.r*(sx+sy)/2;}
-    else if(el.x1!=null){el.x1=anchorX+(o.x1-anchorX)*sx;el.y1=anchorY+(o.y1-anchorY)*sy;el.x2=anchorX+(o.x2-anchorX)*sx;el.y2=anchorY+(o.y2-anchorY)*sy;}
+    else if(el.x1!=null){el.x1=anchorX+(o.x1-anchorX)*sx;el.y1=anchorY+(o.y1-anchorY)*sy;el.x2=anchorX+(o.x2-anchorX)*sx;el.y2=anchorY+(o.y2-anchorY)*sy;if(o.bx!=null){el.bx=anchorX+(o.bx-anchorX)*sx;el.by=anchorY+(o.by-anchorY)*sy;}}
     else if(el.x!=null){el.x=anchorX+(o.x-anchorX)*sx;el.y=anchorY+(o.y-anchorY)*sy;}
   });
   orig.wireRefs.forEach((w,i)=>{ const o=orig.wires[i];

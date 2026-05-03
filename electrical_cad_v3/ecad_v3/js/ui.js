@@ -199,6 +199,8 @@ function addLayer() {
 function pickSym(el, type) {
   document.querySelectorAll('.sym-item').forEach(e => e.classList.remove('on'));
   el.classList.add('on');
+  state.pendingRef  = null;
+  state.pendingTerm = null;
   setMode('sym', type);
   updateHint();
 }

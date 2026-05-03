@@ -16,13 +16,18 @@ function calcPageBounds(pg) {
     const hw=(d.w||20)/2, hh=(d.h||20)/2;
     if      (el.type==='rect')   { minX=Math.min(minX,el.x); minY=Math.min(minY,el.y); maxX=Math.max(maxX,el.x+(el.w||0)); maxY=Math.max(maxY,el.y+(el.h||0)); }
     else if (el.type==='circle') { minX=Math.min(minX,el.x-(el.r||0)); minY=Math.min(minY,el.y-(el.r||0)); maxX=Math.max(maxX,el.x+(el.r||0)); maxY=Math.max(maxY,el.y+(el.r||0)); }
-    else if (el.type==='dim' || el.type==='leader') {
+    else if (el.type==='dim') {
       const off = (el.offset||30) + 20;
       minX=Math.min(minX,el.x1,el.x2)-off; minY=Math.min(minY,el.y1,el.y2)-off;
       maxX=Math.max(maxX,el.x1,el.x2)+off; maxY=Math.max(maxY,el.y1,el.y2)+off;
     }
+    else if (el.type==='leader') {
+      const bx=el.bx??el.x2, by=el.by??el.y2;
+      minX=Math.min(minX,el.x1,bx,el.x2); minY=Math.min(minY,el.y1,by,el.y2);
+      maxX=Math.max(maxX,el.x1,bx,el.x2); maxY=Math.max(maxY,el.y1,by,el.y2);
+    }
     else if (el.x1!=null) { minX=Math.min(minX,el.x1,el.x2); minY=Math.min(minY,el.y1,el.y2); maxX=Math.max(maxX,el.x1,el.x2); maxY=Math.max(maxY,el.y1,el.y2); }
-    else if (el.x!=null)  { minX=Math.min(minX,el.x-hw); minY=Math.min(minY,el.y-hh); maxX=Math.max(maxX,el.x+hw); maxY=Math.max(maxY,el.y+hh); }
+    else if (el.x!=null)  { const sc=el.scale||1; minX=Math.min(minX,el.x-hw*sc); minY=Math.min(minY,el.y-hh*sc); maxX=Math.max(maxX,el.x+hw*sc); maxY=Math.max(maxY,el.y+hh*sc); }
   });
   (pg.wires||[]).forEach(w => {
     (w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}]).forEach(p => {
@@ -213,12 +218,7 @@ function confirmAllPDF() {
   }
 }
 
-function confirmAllDXF() {
-  const n = state.pages.length;
-  if (confirm(`全${n}ページを1つのDXFファイルで出力します。\nよろしいですか？`)) {
-    exportAllDXF();
-  }
-}
+
 
 function runExportAllPDF() {
   // 全ページ1ファイル
@@ -266,10 +266,10 @@ function _exportPDFPages(indices, filename) {
 
   // lineStyle → jsPDF setLineDashPattern
   function applyDash(style, s) {
-    if      (style==='dash')    pdf.setLineDashPattern([8*s, 4*s], 0);
-    else if (style==='dot')     pdf.setLineDashPattern([2*s, 4*s], 0);
-    else if (style==='dashdot') pdf.setLineDashPattern([8*s, 3*s, 2*s, 3*s], 0);
-    else                        pdf.setLineDashPattern([], 0);
+    if      (style==='dash'||style==='dashed')     pdf.setLineDashPattern([8*s, 4*s], 0);
+    else if (style==='dot'||style==='dotted')      pdf.setLineDashPattern([2*s, 4*s], 0);
+    else if (style==='dashdot')                    pdf.setLineDashPattern([8*s, 3*s, 2*s, 3*s], 0);
+    else                                           pdf.setLineDashPattern([], 0);
   }
 
   // 矢印を PDF に描画（ux/uy は矢印方向の単位ベクトル×s、size は mm）
@@ -335,7 +335,7 @@ function _exportPDFPages(indices, filename) {
         const wColor = w.color || (lay ? lay.color : '#000000');
         applyColor(wColor);
         pdf.setLineWidth(Math.max(0.05, lw * s));
-        applyDash(w.lineStyle, s);
+        applyDash(w.lineStyle || lay?.lineDash, s);
         const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
         for (let i=0; i<pts.length-1; i++) {
           pdf.line(tx(pts[i].x), ty(pts[i].y), tx(pts[i+1].x), ty(pts[i+1].y));
@@ -375,7 +375,7 @@ function _exportPDFPages(indices, filename) {
           const fc = el.color || lc;
           applyColor(fc);
           pdf.setLineWidth(Math.max(0.05, lw * s));
-          applyDash(el.lineStyle, s);
+          applyDash(el.lineStyle || lay?.lineDash, s);
           pdf.line(tx(el.x1), ty(el.y1), tx(el.x2), ty(el.y2));
           pdf.setLineDashPattern([], 0);
           if (el.arrowStart && el.arrowStart !== 'none') {
@@ -391,7 +391,7 @@ function _exportPDFPages(indices, filename) {
           const lw = el.lineWidth || 1.5;
           applyColor(el.color || lc);
           pdf.setLineWidth(Math.max(0.05, lw * s));
-          applyDash(el.lineStyle, s);
+          applyDash(el.lineStyle || lay?.lineDash, s);
           if (el.fillColor) {
             const m = el.fillColor.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
             if (m) { pdf.setFillColor(parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16)); pdf.rect(tx(el.x), ty(el.y), tm(el.w||0), tm(el.h||0), 'FD'); }
@@ -405,7 +405,7 @@ function _exportPDFPages(indices, filename) {
           const lw = el.lineWidth || 1.5;
           applyColor(el.color || lc);
           pdf.setLineWidth(Math.max(0.05, lw * s));
-          applyDash(el.lineStyle, s);
+          applyDash(el.lineStyle || lay?.lineDash, s);
           if (el.fillColor) {
             const m = el.fillColor.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
             if (m) { pdf.setFillColor(parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16)); pdf.circle(tx(el.x), ty(el.y), tm(el.r||1), 'FD'); }

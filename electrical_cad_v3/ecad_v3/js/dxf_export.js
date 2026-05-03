@@ -73,7 +73,17 @@ function exportDXF(){
     if(el.dimText)ls.push('0','TEXT','8',el.layer||'寸法','10',((ax1+ax2)/2).toFixed(3),'20',(-(ay1+ay2)/2-5).toFixed(3),'30','0','40','10','1',el.dimText,'72','1');
   });
   state.wires.forEach(w=>{const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];const layer=w.layer||'配線';for(let i=0;i<pts.length-1;i++)ls.push('0','LINE','8',layer,'10',pts[i].x.toFixed(2),'20',(-pts[i].y).toFixed(2),'30','0','11',pts[i+1].x.toFixed(2),'21',(-pts[i+1].y).toFixed(2),'31','0');if(w.wireNo){const mp=pts[Math.floor(pts.length/2)];ls.push('0','TEXT','8',layer,'10',mp.x.toFixed(2),'20',(-mp.y+8).toFixed(2),'30','0','40','8','1',w.wireNo,'72','1');}});
-  state.elements.forEach(el=>{const layer=el.layer||'回路';if(el.type==='text')ls.push('0','TEXT','8',layer,'10',el.x.toFixed(2),'20',(-el.y).toFixed(2),'30','0','40',String(el.fs||14),'1',el.text);else if(el.type==='rect')addRect(ls,layer,el.x,el.y,el.x+el.w,el.y+el.h);else if(el.type==='circle')ls.push('0','CIRCLE','8',layer,'10',el.x.toFixed(2),'20',(-el.y).toFixed(2),'30','0','40',el.r.toFixed(2));else if(el.type==='fline')ls.push('0','LINE','8',layer,'10',el.x1.toFixed(2),'20',(-el.y1).toFixed(2),'30','0','11',el.x2.toFixed(2),'21',(-el.y2).toFixed(2),'31','0');else{const d=getDef(el.type);ls.push('0','INSERT','8',layer,'2',el.type,'10',el.x.toFixed(3),'20',(-el.y).toFixed(3),'30','0','50',String(el.rot||0),'41','1','42','1','66','1');if(el.label){const lox=el.labelOffX||0,loy=el.labelOffY||(d.h/2+15);const rot=(el.rot||0)*Math.PI/180;const lx=el.x+lox*Math.cos(rot)-loy*Math.sin(rot);const ly=el.y+lox*Math.sin(rot)+loy*Math.cos(rot);ls.push('0','ATTRIB','8',layer,'10',lx.toFixed(3),'20',(-ly).toFixed(3),'30','0','40','10','1',el.label,'2','LABEL','70','0','72','1');}ls.push('0','SEQEND','8',layer);}});
+  state.elements.forEach(el=>{const layer=el.layer||'回路';
+    if(el.type==='dim') return; // dimは上で既に出力済み
+    if(el.type==='leader'){
+      // leaderをLINE+TEXTとして出力
+      ls.push('0','LINE','8',layer,'10',el.x1.toFixed(2),'20',(-el.y1).toFixed(2),'30','0','11',el.bx.toFixed(2),'21',(-el.by).toFixed(2),'31','0');
+      ls.push('0','LINE','8',layer,'10',el.bx.toFixed(2),'20',(-el.by).toFixed(2),'30','0','11',el.x2.toFixed(2),'21',(-el.y2).toFixed(2),'31','0');
+      if(el.leaderText)ls.push('0','TEXT','8',layer,'10',el.x2.toFixed(2),'20',(-el.y2).toFixed(2),'30','0','40','10','1',el.leaderText,'72','0');
+      return;
+    }
+    if(el.type==='text')ls.push('0','TEXT','8',layer,'10',el.x.toFixed(2),'20',(-el.y).toFixed(2),'30','0','40',String(el.fs||14),'1',el.text);else if(el.type==='rect')addRect(ls,layer,el.x,el.y,el.x+el.w,el.y+el.h);else if(el.type==='circle')ls.push('0','CIRCLE','8',layer,'10',el.x.toFixed(2),'20',(-el.y).toFixed(2),'30','0','40',el.r.toFixed(2));else if(el.type==='fline')ls.push('0','LINE','8',layer,'10',el.x1.toFixed(2),'20',(-el.y1).toFixed(2),'30','0','11',el.x2.toFixed(2),'21',(-el.y2).toFixed(2),'31','0');else{const d=getDef(el.type);const sc=el.scale||1;ls.push('0','INSERT','8',layer,'2',el.type,'10',el.x.toFixed(3),'20',(-el.y).toFixed(3),'30','0','50',String(el.rot||0),'41',String(sc),'42',String(sc),'66','1');if(el.label){const lox=el.labelOffX||0,loy=el.labelOffY||(d.h/2+15);const rot=(el.rot||0)*Math.PI/180;const lx=el.x+lox*Math.cos(rot)-loy*Math.sin(rot);const ly=el.y+lox*Math.sin(rot)+loy*Math.cos(rot);ls.push('0','ATTRIB','8',layer,'10',lx.toFixed(3),'20',(-ly).toFixed(3),'30','0','40','10','1',el.label,'2','LABEL','70','0','72','1');}ls.push('0','SEQEND','8',layer);}
+  });
   ls.push('0','ENDSEC','0','EOF');
   const pg = state.pages[state.currentPage];
   const base = (state.saveFileName || '図面').replace(/[\\/:*?"<>|]/g, '_');
@@ -81,47 +91,5 @@ function exportDXF(){
   dl(ls.join('\n'), `${base}_${name}.dxf`, 'application/dxf');
 }
 
-function exportAllDXF() {
-  // 全ページ1ファイルでDXF出力（ページごとにレイヤー名でセクション分け）
-  const p = state.page;
-  p.elements = state.elements;
-  p.wires    = state.wires;
-  p.frameObj = state.frameObj;
-  const origPage = state.currentPage;
 
-  const ls = [];
-  ls.push('0','SECTION','2','HEADER','9','$ACADVER','1','AC1015','9','$INSUNITS','70','4','0','ENDSEC');
-  // 線種テーブル
-  const ltypeMap = { solid:'CONTINUOUS', dashed:'DASHED', dotted:'DOT', dashdot:'DASHDOT' };
-  ls.push('0','SECTION','2','TABLES');
-  ls.push('0','TABLE','2','LTYPE','70','4');
-  ls.push('0','LTYPE','2','CONTINUOUS','70','0','3','Solid line','72','65','73','0','40','0.0');
-  ls.push('0','LTYPE','2','DASHED','70','0','3','Dashed','72','65','73','2','40','9.5','49','6.35','49','-3.175');
-  ls.push('0','LTYPE','2','DOT','70','0','3','Dot','72','65','73','2','40','3.175','49','0.0','49','-3.175');
-  ls.push('0','LTYPE','2','DASHDOT','70','0','3','Dash dot','72','65','73','4','40','12.7','49','6.35','49','-3.175','49','0.0','49','-3.175');
-  ls.push('0','ENDTAB');
-  ls.push('0','TABLE','2','LAYER','70',String(LAYERS.length));
-  LAYERS.forEach((l,i)=>ls.push('0','LAYER','2',l.name,'70',String(l.locked?4:0),'62',String(i+1),'6',ltypeMap[l.lineDash||'solid']||'CONTINUOUS'));
-  ls.push('0','ENDTAB','0','ENDSEC');
-  ls.push('0','SECTION','2','BLOCKS');
-  ls.push(...buildSymBlocksDXF());
-  ls.push('0','ENDSEC');
-  ls.push('0','SECTION','2','ENTITIES');
-
-  state.pages.forEach((pg, idx) => {
-    state.currentPage = idx;
-    // ページコメント
-    ls.push('999', `PAGE:${pg.name || ('Sheet'+(idx+1))}`);
-    if (pg.frameObj) ls.push('999','ECAD_FRAME:'+JSON.stringify(pg.frameObj));
-    const els = pg.elements || [];
-    const wrs = pg.wires || [];
-    wrs.forEach(w=>{const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];const layer=w.layer||'配線';for(let i=0;i<pts.length-1;i++)ls.push('0','LINE','8',layer,'10',pts[i].x.toFixed(2),'20',(-pts[i].y).toFixed(2),'30','0','11',pts[i+1].x.toFixed(2),'21',(-pts[i+1].y).toFixed(2),'31','0');});
-    els.forEach(el=>{const layer=el.layer||'回路';if(el.type==='text')ls.push('0','TEXT','8',layer,'10',el.x.toFixed(2),'20',(-el.y).toFixed(2),'30','0','40',String(el.fs||14),'1',el.text);else if(el.type==='rect')addRect(ls,layer,el.x,el.y,el.x+el.w,el.y+el.h);else if(el.type==='circle')ls.push('0','CIRCLE','8',layer,'10',el.x.toFixed(2),'20',(-el.y).toFixed(2),'30','0','40',el.r.toFixed(2));else if(el.type==='fline')ls.push('0','LINE','8',layer,'10',el.x1.toFixed(2),'20',(-el.y1).toFixed(2),'30','0','11',el.x2.toFixed(2),'21',(-el.y2).toFixed(2),'31','0');});
-  });
-
-  ls.push('0','ENDSEC','0','EOF');
-  state.currentPage = origPage;
-  const base = (state.saveFileName || '図面').replace(/[\\/:*?"<>|]/g, '_');
-  dl(ls.join('\n'), `${base}_全ページ.dxf`, 'application/dxf');
-}
 function addRect(ls,layer,x1,y1,x2,y2){ls.push('0','LWPOLYLINE','8',layer,'90','4','70','1','43','0','10',x1.toFixed(2),'20',(-y1).toFixed(2),'10',x2.toFixed(2),'20',(-y1).toFixed(2),'10',x2.toFixed(2),'20',(-y2).toFixed(2),'10',x1.toFixed(2),'20',(-y2).toFixed(2));}
