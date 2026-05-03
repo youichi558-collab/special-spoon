@@ -556,14 +556,20 @@ function renderSymFloat() {
   const body = document.getElementById('sym-float-body');
   if (!body) return;
   // カテゴリーごとにグループ化
+  const _hiddenSyms = JSON.parse(localStorage.getItem('hiddenSyms')||'[]');
+  const visibleSyms = BUILTIN_SYMS.filter(s => !_hiddenSyms.includes(s.type));
   const cats = {};
-  BUILTIN_SYMS.forEach(s => { if (!cats[s.cat]) cats[s.cat]=[]; cats[s.cat].push(s); });
+  visibleSyms.forEach(s => { if (!cats[s.cat]) cats[s.cat]=[]; cats[s.cat].push(s); });
   let html = '';
+  if (_hiddenSyms.length > 0) {
+    html += `<div style="text-align:right;margin-bottom:4px"><span onclick="restoreAllSyms()" style="font-size:9px;color:var(--acc);cursor:pointer">すべて復元</span></div>`;
+  }
   Object.entries(cats).forEach(([cat, syms]) => {
     html += `<div style="font-size:9px;color:var(--fg3);font-weight:700;margin:6px 0 3px;text-transform:uppercase;letter-spacing:.06em">${cat}</div>`;
     html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-bottom:4px">`;
     syms.forEach(s => {
-      html += `<div class="sym-item" onclick="pickSym(this,'${s.type}')" style="flex-direction:column;align-items:center;padding:5px 3px;gap:3px">
+      html += `<div class="sym-item" onclick="pickSym(this,'${s.type}')" style="flex-direction:column;align-items:center;padding:5px 3px;gap:3px;position:relative">
+        <span onclick="event.stopPropagation();hideBuiltinSym('${s.type}')" style="position:absolute;top:2px;right:2px;font-size:9px;color:var(--fg3);cursor:pointer;line-height:1">×</span>
         ${s.svg}
         <span style="font-size:9px;text-align:center;line-height:1.2">${s.label}</span>
       </div>`;
@@ -631,3 +637,17 @@ function _makeFloatDrag(panelId) {
 }
 function symFloatDown(e) { _makeFloatDrag('sym-float')(e); }
 function prtFloatDown(e) { _makeFloatDrag('prt-float')(e); }
+
+// ----------------------------------------------------------------
+// 標準シンボルの表示/非表示管理
+// ----------------------------------------------------------------
+function hideBuiltinSym(type) {
+  const hidden = JSON.parse(localStorage.getItem('hiddenSyms')||'[]');
+  if (!hidden.includes(type)) hidden.push(type);
+  localStorage.setItem('hiddenSyms', JSON.stringify(hidden));
+  renderSymFloat();
+}
+function restoreAllSyms() {
+  localStorage.removeItem('hiddenSyms');
+  renderSymFloat();
+}
