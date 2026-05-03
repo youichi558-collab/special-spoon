@@ -13,12 +13,26 @@ function switchRibbon(name, el) {
 }
 
 function switchLTab(name, el) {
-  ['sym','lay','prt','cus'].forEach(n => document.getElementById('lt-'+n).style.display = n===name ? 'block' : 'none');
   document.querySelectorAll('.lt').forEach(e => e.classList.remove('on'));
   el.classList.add('on');
-  if (name==='lay') renderLayers();
+  if (name === 'lay') {
+    // レイヤーはフローティングパネルで表示、サイドバーは非表示
+    ['sym','lay','prt','cus'].forEach(n => document.getElementById('lt-'+n).style.display = 'none');
+    const fp = document.getElementById('lay-float');
+    if (fp.style.display === 'none') { fp.style.display = 'block'; renderLayers(); }
+    else { fp.style.display = 'none'; }
+    return;
+  }
+  ['sym','lay','prt','cus'].forEach(n => document.getElementById('lt-'+n).style.display = n===name ? 'block' : 'none');
   if (name==='prt') renderPartsAll();
   if (name==='cus') renderCustomSymbols();
+}
+function closeLayFloat() {
+  document.getElementById('lay-float').style.display = 'none';
+  document.querySelectorAll('.lt').forEach(e => e.classList.remove('on'));
+  // シンボルタブに戻す
+  const symTab = document.querySelector('.lt');
+  if (symTab) { symTab.classList.add('on'); document.getElementById('lt-sym').style.display = 'block'; }
 }
 
 // ----------------------------------------------------------------
@@ -26,37 +40,48 @@ function switchLTab(name, el) {
 // ----------------------------------------------------------------
 function renderLayers() {
   const dashLabels = { solid:'実線', dashed:'破線', dotted:'点線', dashdot:'一点鎖線' };
-  document.getElementById('layer-list').innerHTML = LAYERS.map((l, i) => `
-    <div class="lr ${l.active?'al':''}" onclick="setActLayer(${i})" style="opacity:${l.locked?0.6:1}">
-      <div style="display:flex;align-items:center;gap:2px;width:100%">
-        <div class="lv" title="表示切替" onclick="event.stopPropagation();togLayVis(${i})">${l.visible?'●':'○'}</div>
-        <div class="lv" title="ロック切替" onclick="event.stopPropagation();togLayLock(${i})" style="color:${l.locked?'#e55':'#888'}">${l.locked?'🔒':'🔓'}</div>
-        <div class="lc" title="色変更" style="background:${l.color};cursor:pointer" onclick="event.stopPropagation();changeLayColor(${i})"></div>
-        <span class="ln" style="flex:1;text-decoration:${l.visible?'none':'line-through'};overflow:hidden;text-overflow:ellipsis">${l.name}</span>
-        <span onclick="event.stopPropagation();renameLayer(${i})" title="名前変更" style="cursor:pointer;font-size:10px;padding:0 2px;color:var(--fg3)">✏</span>
-        ${LAYERS.length>1?`<span onclick="event.stopPropagation();deleteLayer(${i})" title="削除" style="cursor:pointer;font-size:10px;padding:0 2px;color:var(--red)">×</span>`:''}
-      </div>
-      ${l.active ? `
-      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:4px;padding:4px;background:var(--bg3);border-radius:3px" onclick="event.stopPropagation()">
-        <div style="display:flex;align-items:center;gap:3px;width:100%">
-          <label style="font-size:9px;color:var(--fg3);white-space:nowrap">線種</label>
-          <select style="flex:1;font-size:9px;padding:1px 2px;background:var(--bg2);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
+  // フローティングパネルのテーブル
+  const tbody = document.getElementById('lay-float-body');
+  if (tbody) {
+    tbody.innerHTML = LAYERS.map((l, i) => `
+      <tr style="background:${l.active?'var(--acc-dim,rgba(0,103,192,0.12))':'var(--bg2)'};border-bottom:1px solid var(--bd2);cursor:pointer" onclick="setActLayer(${i})">
+        <td style="padding:4px 6px;text-align:center" onclick="event.stopPropagation();togLayVis(${i})" title="表示切替">
+          <span style="font-size:13px;color:${l.visible?'var(--fg)':'var(--fg3)'}">${l.visible?'●':'○'}</span>
+        </td>
+        <td style="padding:4px 6px;text-align:center" onclick="event.stopPropagation();togLayLock(${i})" title="ロック切替">
+          <span style="font-size:13px;color:${l.locked?'#e55':'var(--fg3)'}">${l.locked?'🔒':'🔓'}</span>
+        </td>
+        <td style="padding:4px 8px;text-align:center" onclick="event.stopPropagation();changeLayColor(${i})" title="色変更">
+          <div style="width:20px;height:20px;background:${l.color};border-radius:3px;border:1px solid var(--bd2);cursor:pointer;margin:auto"></div>
+        </td>
+        <td style="padding:4px 6px;color:var(--fg);text-decoration:${l.visible?'none':'line-through'};white-space:nowrap;font-weight:${l.active?'600':'400'}">
+          ${l.name}${l.locked?' 🔒':''}
+        </td>
+        <td style="padding:4px 4px" onclick="event.stopPropagation()">
+          <select style="font-size:10px;padding:2px 3px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px;width:80px"
             onchange="LAYERS[${i}].lineDash=this.value;draw()">
             ${['solid','dashed','dotted','dashdot'].map(d=>`<option value="${d}"${(l.lineDash||'solid')===d?' selected':''}>${dashLabels[d]}</option>`).join('')}
           </select>
-        </div>
-        <div style="display:flex;align-items:center;gap:3px;width:100%">
-          <label style="font-size:9px;color:var(--fg3);white-space:nowrap">線幅</label>
+        </td>
+        <td style="padding:4px 4px" onclick="event.stopPropagation()">
           <input type="number" min="0.5" max="10" step="0.5" value="${l.lineWidth||1}"
-            style="flex:1;font-size:9px;padding:1px 2px;background:var(--bg2);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
+            style="width:48px;font-size:10px;padding:2px 3px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
             onchange="LAYERS[${i}].lineWidth=parseFloat(this.value)||1;draw()">
-          <label style="font-size:9px;color:var(--fg3);white-space:nowrap">文字</label>
+        </td>
+        <td style="padding:4px 4px" onclick="event.stopPropagation()">
           <input type="number" min="6" max="72" step="1" value="${l.fontSize||14}"
-            style="flex:1;font-size:9px;padding:1px 2px;background:var(--bg2);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
+            style="width:48px;font-size:10px;padding:2px 3px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
             onchange="LAYERS[${i}].fontSize=parseInt(this.value)||14;draw()">
-        </div>
-      </div>` : ''}
-    </div>`).join('');
+        </td>
+        <td style="padding:4px 6px;text-align:center;white-space:nowrap" onclick="event.stopPropagation()">
+          <span onclick="renameLayer(${i})" title="名前変更" style="cursor:pointer;color:var(--fg3);margin-right:6px">✏</span>
+          ${LAYERS.length>1?`<span onclick="deleteLayer(${i})" title="削除" style="cursor:pointer;color:var(--red)">×</span>`:''}
+        </td>
+      </tr>`).join('');
+  }
+  // サイドバーの旧リストも更新（互換）
+  const ll = document.getElementById('layer-list');
+  if (ll) ll.innerHTML = '';
   document.getElementById('s-lay').textContent = LAYERS.find(l => l.active)?.name || '回路';
 }
 function setActLayer(i) { LAYERS.forEach((l,j) => l.active = j===i); renderLayers(); }
@@ -419,3 +444,29 @@ function sendAI() {
   alert('AI機能は現在準備中です');
   input.value = '';
 }
+
+// ----------------------------------------------------------------
+// フローティングレイヤーパネル ドラッグ
+// ----------------------------------------------------------------
+(function() {
+  let dragging = false, ox = 0, oy = 0;
+  document.addEventListener('DOMContentLoaded', () => {
+    const title = document.getElementById('lay-float-title');
+    const panel = document.getElementById('lay-float');
+    if (!title || !panel) return;
+    title.addEventListener('mousedown', e => {
+      if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SPAN') return;
+      dragging = true;
+      const rect = panel.getBoundingClientRect();
+      ox = e.clientX - rect.left;
+      oy = e.clientY - rect.top;
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      panel.style.left = (e.clientX - ox) + 'px';
+      panel.style.top  = (e.clientY - oy) + 'px';
+    });
+    document.addEventListener('mouseup', () => { dragging = false; });
+  });
+})();

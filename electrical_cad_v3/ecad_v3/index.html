@@ -465,5 +465,30 @@
 <script src="js/report.js"></script>
 <script src="js/pdf_export.js"></script>
 <script src="js/boot.js"></script>
+<!-- フローティングレイヤーパネル -->
+<div id="lay-float" style="display:none;position:fixed;top:80px;left:200px;width:580px;background:var(--bg2);border:1px solid var(--bd2);border-radius:6px;box-shadow:0 4px 20px rgba(0,0,0,0.4);z-index:1000;min-width:400px;min-height:120px;">
+  <div id="lay-float-title" style="display:flex;align-items:center;padding:6px 10px;background:var(--bg3);border-bottom:1px solid var(--bd2);border-radius:6px 6px 0 0;cursor:move;user-select:none">
+    <span style="flex:1;font-size:12px;font-weight:600;color:var(--fg)">レイヤー</span>
+    <button onclick="addLayer()" style="font-size:10px;padding:2px 8px;margin-right:6px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)">+ 追加</button>
+    <span onclick="closeLayFloat()" style="cursor:pointer;font-size:14px;color:var(--fg3);padding:0 4px">×</span>
+  </div>
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead>
+        <tr style="background:var(--bg3);color:var(--fg3)">
+          <th style="padding:4px 6px;text-align:center;white-space:nowrap">表示</th>
+          <th style="padding:4px 6px;text-align:center;white-space:nowrap">ロック</th>
+          <th style="padding:4px 6px;text-align:center;white-space:nowrap">色</th>
+          <th style="padding:4px 6px;text-align:left;white-space:nowrap">名前</th>
+          <th style="padding:4px 6px;text-align:center;white-space:nowrap">線種</th>
+          <th style="padding:4px 6px;text-align:center;white-space:nowrap">線幅</th>
+          <th style="padding:4px 6px;text-align:center;white-space:nowrap">文字</th>
+          <th style="padding:4px 6px;text-align:center;white-space:nowrap">操作</th>
+        </tr>
+      </thead>
+      <tbody id="lay-float-body"></tbody>
+    </table>
+  </div>
+</div>
 </body>
 </html>
