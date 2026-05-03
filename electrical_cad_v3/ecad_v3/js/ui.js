@@ -45,7 +45,19 @@ function renderLayers() {
   // フローティングパネルのテーブル
   const tbody = document.getElementById('lay-float-body');
   if (tbody) {
-    tbody.innerHTML = LAYERS.map((l, i) => `
+    const allVis    = LAYERS.every(l => l.visible);
+    const allLocked = LAYERS.every(l => l.locked);
+    const bulkRow = `
+      <tr style="background:var(--bg3);border-bottom:2px solid var(--bd2)">
+        <td style="padding:4px 6px;text-align:center;cursor:pointer" onclick="bulkLayVis()" title="全表示/非表示切替">
+          <span style="font-size:13px;color:${allVis?'var(--fg)':'var(--fg3)'}">${allVis?'●':'○'}</span>
+        </td>
+        <td style="padding:4px 6px;text-align:center;cursor:pointer" onclick="bulkLayLock()" title="全ロック/解除切替">
+          <span style="font-size:13px;color:${allLocked?'#e55':'var(--fg3)'}">${allLocked?'🔒':'🔓'}</span>
+        </td>
+        <td colspan="6" style="padding:4px 6px;font-size:10px;color:var(--fg3)">← 一括切替</td>
+      </tr>`;
+    tbody.innerHTML = bulkRow + LAYERS.map((l, i) => `
       <tr style="background:${l.active?'var(--acc-dim,rgba(0,103,192,0.12))':'var(--bg2)'};border-bottom:1px solid var(--bd2);cursor:pointer" onclick="setActLayer(${i})">
         <td style="padding:4px 6px;text-align:center" onclick="event.stopPropagation();togLayVis(${i})" title="表示切替">
           <span style="font-size:13px;color:${l.visible?'var(--fg)':'var(--fg3)'}">${l.visible?'●':'○'}</span>
