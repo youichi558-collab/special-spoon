@@ -283,7 +283,7 @@ document.addEventListener('click', () => hideCtx());
 function openFP(id) {
   const el = document.getElementById(id); if (!el) return;
   const ribbonH = document.getElementById('ribbon')?.offsetHeight || 0;
-  el.style.top = `calc(50% + ${ribbonH * 0.3}px)`;
+  el.style.top = `calc(50% + ${ribbonH * 0.1}px)`;
   el.classList.add('open');
 }
 function closeFP(id) { document.getElementById(id)?.classList.remove('open'); }
