@@ -257,6 +257,7 @@ document.addEventListener('keydown', e => {
   switch (e.key) {
     case 'Delete': case 'Backspace': e.preventDefault(); delSel(); break;
     case 'Escape':
+      if (document.body.classList.contains('fullscreen')) { toggleExpand(); break; }
       state.wirePoints = []; state.preview = null; state.dimState = null;
       state.mode = 'select'; state.symType = null;
       document.querySelectorAll('.sym-item').forEach(el => el.classList.remove('on'));

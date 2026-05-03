@@ -324,13 +324,6 @@ function toggleExpand() {
   resize(); draw();
 }
 
-// ESCキーで大画面を解除
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && document.body.classList.contains('fullscreen')) {
-    toggleExpand();
-  }
-});
-
 function toggleAI() {
   const p = document.getElementById('ai-panel');
   if (p) p.style.display = p.style.display === 'none' ? 'flex' : 'none';
