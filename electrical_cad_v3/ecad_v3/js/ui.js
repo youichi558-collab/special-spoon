@@ -642,6 +642,8 @@ function prtFloatDown(e) { _makeFloatDrag('prt-float')(e); }
 // 標準シンボルの表示/非表示管理
 // ----------------------------------------------------------------
 function hideBuiltinSym(type) {
+  const sym = BUILTIN_SYMS.find(s => s.type === type);
+  if (!confirm(`「${sym?.label||type}」を非表示にしますか？`)) return;
   const hidden = JSON.parse(localStorage.getItem('hiddenSyms')||'[]');
   if (!hidden.includes(type)) hidden.push(type);
   localStorage.setItem('hiddenSyms', JSON.stringify(hidden));
