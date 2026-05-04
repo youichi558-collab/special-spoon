@@ -38,6 +38,8 @@ function buildSymBlocksDXF(){
 }
 
 function toUnicodeDXF(str){return[...str].map(c=>{const code=c.charCodeAt(0);return code>127?`\\U+${code.toString(16).toUpperCase().padStart(4,'0')}`:c;}).join('');}
+const DXF_LAYER_MAP={"回路":"CIRCUIT","配線":"WIRE","注記":"NOTE","外形":"OUTLINE","図面枠":"FRAME","寸法":"DIM","寸法_vis":"DIM_VIS"};
+function dxfLayer(name){return DXF_LAYER_MAP[name]||name||"0";}
 function exportDXF(){
   const ls=[];
   ls.push('0','SECTION','2','HEADER','9','$ACADVER','1','AC1015','9','$INSUNITS','70','4','999','ECAD_DXF_V1','0','ENDSEC');
@@ -68,9 +70,9 @@ function exportDXF(){
     const ux=dx/len,uy=dy/len,px=-uy*sign,py=ux*sign;
     const ax1=el.x1+px*off,ay1=el.y1+py*off,ax2=el.x2+px*off,ay2=el.y2+py*off;
     const mx=(ax1+ax2)/2,my=(ay1+ay2)/2;
-    const dimLyr = el.layer||'寸法';
+    const dimLyr = dxfLayer(el.layer||'寸法');
     const gap=el.gap!=null?el.gap:10, ext=el.ext!=null?el.ext:5;
-    const isOwnLyr = dimLyr==='寸法';
+    const isOwnLyr = (el.layer||'寸法')==='寸法';
     // 寸法レイヤーならDIMENSION（自ツール読込用）も出力
     if(isOwnLyr){
       ls.push('0','DIMENSION','8',dimLyr,'10',mx.toFixed(3),'20',(-my).toFixed(3),'30','0',
@@ -79,7 +81,7 @@ function exportDXF(){
         '14',el.x2.toFixed(3),'24',(-el.y2).toFixed(3),'34','0','1',el.dimText||'');
     }
     // LINE+TEXT+矢印（他CAD表示用・寸法レイヤー以外も出力）
-    const drawLyr = isOwnLyr ? '寸法_vis' : dimLyr;
+    const drawLyr = isOwnLyr ? 'DIM_VIS' : dimLyr;
     // 引出し線（gap空け）
     ls.push('0','LINE','8',drawLyr,'10',(el.x1+px*gap).toFixed(3),'20',(-(el.y1+py*gap)).toFixed(3),'30','0','11',(el.x1+px*(off+ext)).toFixed(3),'21',(-(el.y1+py*(off+ext))).toFixed(3),'31','0');
     ls.push('0','LINE','8',drawLyr,'10',(el.x2+px*gap).toFixed(3),'20',(-(el.y2+py*gap)).toFixed(3),'30','0','11',(el.x2+px*(off+ext)).toFixed(3),'21',(-(el.y2+py*(off+ext))).toFixed(3),'31','0');
@@ -105,9 +107,9 @@ function exportDXF(){
     const {sc,wMM,hMM,mg,thMM,cols,rows}=fr;
     const W=wMM*sc,H=hMM*sc,MGpx=mg*sc,TH=thMM*sc;
     const iW=W-MGpx*2,iH=H-MGpx*2,dH=iH-TH;
-    const FL='図面枠';
-    const L=(x1,y1,x2,y2)=>ls.push('0','LINE','8',FL,'10',x1.toFixed(2),'20',(-y1).toFixed(2),'30','0','11',x2.toFixed(2),'21',(-y2).toFixed(2),'31','0');
-    const T=(x,y,h,s)=>{if(s)ls.push('0','TEXT','8',FL,'10',x.toFixed(2),'20',(-y).toFixed(2),'30','0','40',String(h),'1',String(s));};
+    
+    const L=(x1,y1,x2,y2)=>ls.push('0','LINE','8','FRAME','10',x1.toFixed(2),'20',(-y1).toFixed(2),'30','0','11',x2.toFixed(2),'21',(-y2).toFixed(2),'31','0');
+    const T=(x,y,h,s)=>{if(s)ls.push('0','TEXT','8','FRAME','10',x.toFixed(2),'20',(-y).toFixed(2),'30','0','40',String(h),'1',String(s));};
     // 外枠
     L(0,0,W,0);L(W,0,W,H);L(W,H,0,H);L(0,H,0,0);
     // 内枠
@@ -136,8 +138,8 @@ function exportDXF(){
     if(rows>0){const rh=dH/rows;for(let r=1;r<rows;r++){L(0,MGpx+r*rh,MGpx,MGpx+r*rh);L(MGpx+iW,MGpx+r*rh,W,MGpx+r*rh);}
       for(let r=0;r<rows;r++){T(MGpx/2,MGpx+r*rh+rh/2,6,String(r+1));T(MGpx+iW+MGpx/2,MGpx+r*rh+rh/2,6,String(r+1));}}
   }
-  state.wires.forEach(w=>{const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];const layer=w.layer||'配線';for(let i=0;i<pts.length-1;i++)ls.push('0','LINE','8',layer,'10',pts[i].x.toFixed(2),'20',(-pts[i].y).toFixed(2),'30','0','11',pts[i+1].x.toFixed(2),'21',(-pts[i+1].y).toFixed(2),'31','0');if(w.wireNo){const mp=pts[Math.floor(pts.length/2)];ls.push('0','TEXT','8',layer,'10',mp.x.toFixed(2),'20',(-mp.y+8).toFixed(2),'30','0','40','8','1',w.wireNo,'72','1');}});
-  state.elements.forEach(el=>{const layer=el.layer||'回路';
+  state.wires.forEach(w=>{const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];const layer=dxfLayer(w.layer||'配線');for(let i=0;i<pts.length-1;i++)ls.push('0','LINE','8',layer,'10',pts[i].x.toFixed(2),'20',(-pts[i].y).toFixed(2),'30','0','11',pts[i+1].x.toFixed(2),'21',(-pts[i+1].y).toFixed(2),'31','0');if(w.wireNo){const mp=pts[Math.floor(pts.length/2)];ls.push('0','TEXT','8',layer,'10',mp.x.toFixed(2),'20',(-mp.y+8).toFixed(2),'30','0','40','8','1',w.wireNo,'72','1');}});
+  state.elements.forEach(el=>{const layer=dxfLayer(el.layer||'回路');
     if(el.type==='dim') return; // dimは上で既に出力済み
     if(el.type==='leader'){
       // leaderをLINE+TEXTとして出力
