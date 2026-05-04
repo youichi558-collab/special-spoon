@@ -152,8 +152,9 @@ cv.addEventListener('mouseleave', () => {
 
 cv.addEventListener('contextmenu', e => e.preventDefault());
 
-// ダブルクリック → dim/leader/text のテキスト直接編集
+// ダブルクリック → dim/leader/text のテキスト直接編集（selectモードのみ）
 cv.addEventListener('dblclick', e => {
+  if (state.mode !== 'select') return;  // dim/leader配置中は無視
   const r = cv.getBoundingClientRect();
   const {x:wx, y:wy} = tw(e.clientX - r.left, e.clientY - r.top);
   // ワイヤー → 線番編集
