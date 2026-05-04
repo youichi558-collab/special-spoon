@@ -435,13 +435,16 @@ function _exportPDFPages(indices, filename) {
           if (len >= 0.1) {
             const sign=el.offsetSign||1, off=(el.offset||30)*sign;
             const ux=dx/len, uy=dy/len, px=-uy*sign, py=ux*sign;
-            const ax1=el.x1+px*Math.abs(off), ay1=el.y1+py*Math.abs(off);
-            const ax2=el.x2+px*Math.abs(off), ay2=el.y2+py*Math.abs(off);
+            const absOff=Math.abs(off);
+            const gap=el.gap!=null?el.gap:3, ext=el.ext!=null?el.ext:5;
+            const ax1=el.x1+px*absOff, ay1=el.y1+py*absOff;
+            const ax2=el.x2+px*absOff, ay2=el.y2+py*absOff;
             const dc = el.color || '#744da9';
             applyColor(dc);
             pdf.setLineWidth(Math.max(0.05, 0.3));
-            pdf.line(tx(el.x1), ty(el.y1), tx(ax1), ty(ay1));
-            pdf.line(tx(el.x2), ty(el.y2), tx(ax2), ty(ay2));
+            // 引出し線（gap空け・ext伸び）
+            pdf.line(tx(el.x1+px*gap), ty(el.y1+py*gap), tx(el.x1+px*(absOff+ext)), ty(el.y1+py*(absOff+ext)));
+            pdf.line(tx(el.x2+px*gap), ty(el.y2+py*gap), tx(el.x2+px*(absOff+ext)), ty(el.y2+py*(absOff+ext)));
             pdf.line(tx(ax1), ty(ay1), tx(ax2), ty(ay2));
             pdfArrow(pdf, tx(ax1), ty(ay1),  ux*s,  uy*s, 2, dc);
             pdfArrow(pdf, tx(ax2), ty(ay2), -ux*s, -uy*s, 2, dc);

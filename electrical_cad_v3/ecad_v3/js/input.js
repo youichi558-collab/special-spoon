@@ -152,6 +152,28 @@ cv.addEventListener('mouseleave', () => {
 
 cv.addEventListener('contextmenu', e => e.preventDefault());
 
+// ダブルクリック → dim/leader/text のテキスト直接編集
+cv.addEventListener('dblclick', e => {
+  const r = cv.getBoundingClientRect();
+  const {x:wx, y:wy} = tw(e.clientX - r.left, e.clientY - r.top);
+  const el = hitTestElement(wx, wy);
+  if (!el) return;
+  if (el.type === 'dim') {
+    const len = Math.round(Math.hypot(el.x2-el.x1, el.y2-el.y1));
+    const txt = prompt('寸法テキスト:', el.dimText || String(len));
+    if (txt === null) return;
+    pushH(); el.dimText = txt; draw();
+  } else if (el.type === 'leader') {
+    const txt = prompt('引出しテキスト:', el.leaderText || '');
+    if (txt === null) return;
+    pushH(); el.leaderText = txt; draw();
+  } else if (el.type === 'text') {
+    const txt = prompt('テキスト:', el.text || '');
+    if (txt === null) return;
+    pushH(); el.text = txt; draw();
+  }
+});
+
 // ----------------------------------------------------------------
 // ツール切り替え
 // ----------------------------------------------------------------

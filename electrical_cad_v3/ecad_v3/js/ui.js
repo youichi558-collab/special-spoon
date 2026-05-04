@@ -578,6 +578,18 @@ function updateRightPanel() {
   if (el && el.type === 'text') {
     html += `<div class="pp-row"><label>テキスト</label><textarea rows="2" id="pp-text">${el.text||''}</textarea></div>`;
     html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-fs" value="${el.fs||14}" min="8" max="72"></div>`;
+  } else if (el && el.type === 'dim') {
+    const len = Math.round(Math.hypot(el.x2-el.x1, el.y2-el.y1));
+    html += `<div class="pp-row"><label>寸法テキスト</label><input type="text" id="pp-dimtext" value="${el.dimText||len}"></div>`;
+    html += `<div class="pp-row"><label>オフセット距離</label><input type="number" id="pp-offset" value="${Math.abs(el.offset||30)}" min="5" max="200" step="5"></div>`;
+    html += `<div class="pp-row"><label>引出しgap</label><input type="number" id="pp-gap" value="${el.gap!=null?el.gap:3}" min="0" max="20"></div>`;
+    html += `<div class="pp-row"><label>伸び(ext)</label><input type="number" id="pp-ext" value="${el.ext!=null?el.ext:5}" min="0" max="20"></div>`;
+    html += `<div class="pp-row"><label>色</label><input type="color" id="pp-color" value="${el.color||'#744da9'}"></div>`;
+    html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
+  } else if (el && el.type === 'leader') {
+    html += `<div class="pp-row"><label>引出しテキスト</label><input type="text" id="pp-ldrtext" value="${el.leaderText||''}"></div>`;
+    html += `<div class="pp-row"><label>色</label><input type="color" id="pp-color" value="${el.color||'#744da9'}"></div>`;
+    html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
   } else if (wire || (el && el.pts)) {
     html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${item.wireNo||''}"></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${item.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
@@ -615,6 +627,17 @@ function applyRightPanel() {
   const v = id => { const e = document.getElementById(id); return e ? e.value : ''; };
   if (el && el.type === 'text') {
     el.text = v('pp-text'); el.fs = parseInt(v('pp-fs'))||14;
+  } else if (el && el.type === 'dim') {
+    el.dimText = v('pp-dimtext');
+    el.offset  = (parseInt(v('pp-offset'))||30) * (el.offsetSign||1);
+    el.gap     = parseInt(v('pp-gap'));
+    el.ext     = parseInt(v('pp-ext'));
+    el.color   = v('pp-color') || undefined;
+    el.layer   = v('pp-layer');
+  } else if (el && el.type === 'leader') {
+    el.leaderText = v('pp-ldrtext');
+    el.color      = v('pp-color') || undefined;
+    el.layer      = v('pp-layer');
   } else if (wire) {
     wire.wireNo    = v('pp-wireno'); wire.layer = v('pp-layer');
     if (v('pp-lw')) wire.lineWidth = parseFloat(v('pp-lw'));

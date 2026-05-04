@@ -370,12 +370,23 @@ function drawDimEl(el, isSel) {
   if (len<0.1) return;
   const sign=el.offsetSign||1, off=(el.offset||30)*sign, arr=el.arrowSz||8;
   const ux=dx/len, uy=dy/len, px=-uy*sign, py=ux*sign;
-  const ax1=el.x1+px*Math.abs(off), ay1=el.y1+py*Math.abs(off);
-  const ax2=el.x2+px*Math.abs(off), ay2=el.y2+py*Math.abs(off);
-  const c = isSel ? '#0067c0' : (layColor(el.layer)||'#744da9');
+  const absOff=Math.abs(off);
+  const gap=el.gap!=null?el.gap:3;    // 測定点からの隙間
+  const ext=el.ext!=null?el.ext:5;    // 寸法線を超える伸び
+  // 引出し線の始点(gap)・終点(absOff+ext)
+  const ex1sx=el.x1+px*gap,    ex1sy=el.y1+py*gap;
+  const ex1ex=el.x1+px*(absOff+ext), ex1ey=el.y1+py*(absOff+ext);
+  const ex2sx=el.x2+px*gap,    ex2sy=el.y2+py*gap;
+  const ex2ex=el.x2+px*(absOff+ext), ex2ey=el.y2+py*(absOff+ext);
+  // 寸法線の端点
+  const ax1=el.x1+px*absOff, ay1=el.y1+py*absOff;
+  const ax2=el.x2+px*absOff, ay2=el.y2+py*absOff;
+  const c = isSel ? '#0067c0' : (el.color||layColor(el.layer)||'#744da9');
   ctx.save(); ctx.strokeStyle=c; ctx.fillStyle=c; ctx.lineWidth=(isSel?1.5:1)/state.zoom;
-  ctx.beginPath(); ctx.moveTo(el.x1,el.y1); ctx.lineTo(ax1,ay1); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(el.x2,el.y2); ctx.lineTo(ax2,ay2); ctx.stroke();
+  // 引出し線（gap空けて伸びる）
+  ctx.beginPath(); ctx.moveTo(ex1sx,ex1sy); ctx.lineTo(ex1ex,ex1ey); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ex2sx,ex2sy); ctx.lineTo(ex2ex,ex2ey); ctx.stroke();
+  // 寸法線
   ctx.beginPath(); ctx.moveTo(ax1,ay1); ctx.lineTo(ax2,ay2); ctx.stroke();
   const a=arr/state.zoom;
   const drawArr=(x,y,dx2,dy2)=>{ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+dx2*a-(-dy2)*a*0.3,y+dy2*a-dx2*a*0.3);ctx.lineTo(x+dx2*a+(-dy2)*a*0.3,y+dy2*a+dx2*a*0.3);ctx.closePath();ctx.fill();};
