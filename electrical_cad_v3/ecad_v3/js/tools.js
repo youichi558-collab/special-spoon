@@ -254,11 +254,14 @@ const dimTool = {
       const offset = Math.max(15, Math.abs(dot));
       const dist = Math.round(len);
       const txt = prompt('寸法テキスト（空欄で自動）:', '') ?? '';
-      state.mouse.down = false;  // promptのOK後にmouseupがcanvasに届かないためリセット
+      state.mouse.down = false;
       pushH();
+      const def = state.dimDef;
       state.elements.push({ id: genId('el'), type:'dim', x1:ds.x1, y1:ds.y1, x2:ds.x2, y2:ds.y2,
         dimText: txt || String(dist), offset, offsetSign:sign,
-        arrowSz:8, layer:activeLayer(), x:(ds.x1+ds.x2)/2, y:(ds.y1+ds.y2)/2 });
+        arrowSz:8, layer:activeLayer(), x:(ds.x1+ds.x2)/2, y:(ds.y1+ds.y2)/2,
+        dimFs: def.fs, dimTx: def.tx, dimTy: def.ty,
+        gap: def.gap, ext: def.ext, color: def.color });
       state.dimState = null; state.preview = null;
     }
   },

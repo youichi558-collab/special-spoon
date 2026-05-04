@@ -582,6 +582,7 @@ function updateRightPanel() {
     const len = Math.round(Math.hypot(el.x2-el.x1, el.y2-el.y1));
     html += `<div class="pp-row"><label>寸法テキスト</label><input type="text" id="pp-dimtext" value="${el.dimText||len}"></div>`;
     html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-dimfs" value="${el.dimFs||11}" min="8" max="72"></div>`;
+    html += `<div class="pp-row"><label>サイズ固定</label><input type="checkbox" id="pp-dimfixed" ${el.dimFixed?'checked':''}> <span style="font-size:10px;color:var(--fg3)">ズームで変わらない</span></div>`;
     html += `<div class="pp-row"><label>テキストX補正</label><input type="number" id="pp-dimtx" value="${el.dimTx||0}" step="5"></div>`;
     html += `<div class="pp-row"><label>テキストY補正</label><input type="number" id="pp-dimty" value="${el.dimTy||0}" step="5"></div>`;
     html += `<div class="pp-row"><label>オフセット距離</label><input type="number" id="pp-offset" value="${Math.abs(el.offset||30)}" min="5" max="200" step="5"></div>`;
@@ -589,6 +590,12 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>伸び(ext)</label><input type="number" id="pp-ext" value="${el.ext!=null?el.ext:state.G}" min="0" max="20"></div>`;
     html += `<div class="pp-row"><label>色</label><input type="color" id="pp-color" value="${el.color||'#744da9'}"></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
+    html += `<div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
+      <button class="fp-btn primary" onclick="applyRightPanel()">適用</button>
+      <button class="fp-btn" onclick="applyDimToAll()">全て適用</button>
+      <button class="fp-btn" onclick="saveDimDef()">デフォルト保存</button>
+      <button class="fp-btn danger" onclick="resetDimDef()">デフォルトに戻す</button>
+    </div>`;
   } else if (el && el.type === 'leader') {
     html += `<div class="pp-row"><label>引出しテキスト</label><input type="text" id="pp-ldrtext" value="${el.leaderText||''}"></div>`;
     html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-ldrfs" value="${el.leaderFs||11}" min="8" max="72"></div>`;
@@ -634,15 +641,16 @@ function applyRightPanel() {
   if (el && el.type === 'text') {
     el.text = v('pp-text'); el.fs = parseInt(v('pp-fs'))||14;
   } else if (el && el.type === 'dim') {
-    el.dimText = v('pp-dimtext');
-    el.dimFs   = parseInt(v('pp-dimfs')) || 11;
-    el.dimTx   = parseInt(v('pp-dimtx')) || 0;
-    el.dimTy   = parseInt(v('pp-dimty')) || 0;
-    el.offset  = (parseInt(v('pp-offset'))||30) * (el.offsetSign||1);
-    el.gap     = parseInt(v('pp-gap'));
-    el.ext     = parseInt(v('pp-ext'));
-    el.color   = v('pp-color') || undefined;
-    el.layer   = v('pp-layer');
+    el.dimText  = v('pp-dimtext');
+    el.dimFs    = parseInt(v('pp-dimfs')) || 11;
+    el.dimFixed = document.getElementById('pp-dimfixed')?.checked || false;
+    el.dimTx    = parseInt(v('pp-dimtx')) || 0;
+    el.dimTy    = parseInt(v('pp-dimty')) || 0;
+    el.offset   = (parseInt(v('pp-offset'))||30) * (el.offsetSign||1);
+    el.gap      = parseInt(v('pp-gap'));
+    el.ext      = parseInt(v('pp-ext'));
+    el.color    = v('pp-color') || undefined;
+    el.layer    = v('pp-layer');
   } else if (el && el.type === 'leader') {
     el.leaderText = v('pp-ldrtext');
     el.leaderFs   = parseInt(v('pp-ldrfs')) || 11;
@@ -671,6 +679,39 @@ function applyRightPanel() {
     }
   }
   draw();
+}
+
+// 全寸法線に現在の設定を適用
+function applyDimToAll() {
+  const rp = document.getElementById('rp-body');
+  const el = rp._el;
+  if (!el || el.type !== 'dim') return;
+  applyRightPanel();
+  const fs=el.dimFs, tx=el.dimTx, ty=el.dimTy, fixed=el.dimFixed, color=el.color, gap=el.gap, ext=el.ext;
+  pushH();
+  state.elements.filter(e => e.type==='dim').forEach(e => {
+    e.dimFs=fs; e.dimTx=tx; e.dimTy=ty; e.dimFixed=fixed; e.color=color;
+    if (gap!=null) e.gap=gap; if (ext!=null) e.ext=ext;
+  });
+  draw();
+}
+
+// 現在の設定をデフォルトとして保存
+function saveDimDef() {
+  const rp = document.getElementById('rp-body');
+  const el = rp._el;
+  if (!el || el.type !== 'dim') return;
+  applyRightPanel();
+  state.dimDef = { fs:el.dimFs||11, tx:el.dimTx||0, ty:el.dimTy||0,
+    fixed:el.dimFixed||false, color:el.color||'#744da9',
+    gap:el.gap!=null?el.gap:null, ext:el.ext!=null?el.ext:null };
+  alert('デフォルト設定を保存しました');
+}
+
+// デフォルト設定をリセット
+function resetDimDef() {
+  state.dimDef = { fs:11, tx:0, ty:0, fixed:false, color:'#744da9', gap:null, ext:null };
+  alert('デフォルト設定をリセットしました');
 }
 
 function applyFrameProps() {
