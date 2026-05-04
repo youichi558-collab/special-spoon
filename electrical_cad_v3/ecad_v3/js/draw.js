@@ -394,6 +394,9 @@ function drawDimEl(el, isSel) {
   ctx.setLineDash([]);
   const a=arr;  // ズーム追従（zoom済み座標系で描くのでそのまま）
   const aStyle = el.arrowStyle || 'filled';
+  // 寸法線が矢印より短い場合は外向きに反転
+  const dimLen = Math.hypot(ax2-ax1, ay2-ay1);
+  const flip = dimLen < a * 2.5;
   const drawArr=(x,y,dx2,dy2)=>{
     if (aStyle==='none') return;
     if (aStyle==='filled') {
@@ -401,13 +404,16 @@ function drawDimEl(el, isSel) {
     } else if (aStyle==='open') {
       ctx.beginPath();ctx.moveTo(x+dx2*a-(-dy2)*a*0.3,y+dy2*a-dx2*a*0.3);ctx.lineTo(x,y);ctx.lineTo(x+dx2*a+(-dy2)*a*0.3,y+dy2*a+dx2*a*0.3);ctx.stroke();
     } else if (aStyle==='tick') {
-      // 斜め線（建築系）
       ctx.beginPath();ctx.moveTo(x-(-dy2)*a*0.5,y-dx2*a*0.5);ctx.lineTo(x+(-dy2)*a*0.5,y+dx2*a*0.5);ctx.stroke();
     } else if (aStyle==='dot') {
       ctx.beginPath();ctx.arc(x,y,a*0.4,0,Math.PI*2);ctx.fill();
     }
   };
-  drawArr(ax1,ay1,ux,uy); drawArr(ax2,ay2,-ux,-uy);
+  if (flip) {
+    drawArr(ax1,ay1,-ux,-uy); drawArr(ax2,ay2,ux,uy);
+  } else {
+    drawArr(ax1,ay1,ux,uy); drawArr(ax2,ay2,-ux,-uy);
+  }
   const cx0=(ax1+ax2)/2, cy0=(ay1+ay2)/2;
   const fs = el.dimFs || 11;
   const txt = el.dimText || String(Math.round(len));
