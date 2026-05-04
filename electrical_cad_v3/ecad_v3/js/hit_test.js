@@ -27,10 +27,10 @@ function hitTest(wx, wy) {
       const bx=el.bx??el.x2, by=el.by??el.y2;
       if (distToSeg(wx,wy,el.x1,el.y1,bx,by) < R) return el;
       if (el.bx!=null && distToSeg(wx,wy,bx,by,el.x2,el.y2) < R) return el;
-      // テキスト：棚線端点(el.x2, el.y2)から右方向
       if (el.leaderText) {
-        const tw = el.leaderText.length * 7 / state.zoom;
-        if (wx>=el.x2 && wx<=el.x2+tw+R*2 && wy>=el.y2-R*3 && wy<=el.y2+R) return el;
+        const textW = (el.leaderText.length * 9 + 20) / state.zoom;
+        const textH = 20 / state.zoom;
+        if (wx >= el.x2 - R && wx <= el.x2 + textW && wy >= el.y2 - textH && wy <= el.y2 + R) return el;
       }
       continue;
     }
