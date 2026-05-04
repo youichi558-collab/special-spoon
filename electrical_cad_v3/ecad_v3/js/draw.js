@@ -383,12 +383,15 @@ function drawDimEl(el, isSel) {
   const ax1=el.x1+px*absOff, ay1=el.y1+py*absOff;
   const ax2=el.x2+px*absOff, ay2=el.y2+py*absOff;
   const c = isSel ? '#0067c0' : (el.color||layColor(el.layer)||'#744da9');
-  ctx.save(); ctx.strokeStyle=c; ctx.fillStyle=c; ctx.lineWidth=(isSel?1.5:1)/state.zoom;
+  const lw = el.lineWidth || 1;
+  ctx.save(); ctx.strokeStyle=c; ctx.fillStyle=c; ctx.lineWidth=(isSel?lw+0.5:lw)/state.zoom;
+  applyLineStyle(ctx, el.lineStyle, state.zoom);
   // 引出し線（gap空けて伸びる）
   ctx.beginPath(); ctx.moveTo(ex1sx,ex1sy); ctx.lineTo(ex1ex,ex1ey); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(ex2sx,ex2sy); ctx.lineTo(ex2ex,ex2ey); ctx.stroke();
   // 寸法線
   ctx.beginPath(); ctx.moveTo(ax1,ay1); ctx.lineTo(ax2,ay2); ctx.stroke();
+  ctx.setLineDash([]);
   const a=arr/state.zoom;
   const aStyle = el.arrowStyle || 'filled';
   const drawArr=(x,y,dx2,dy2)=>{

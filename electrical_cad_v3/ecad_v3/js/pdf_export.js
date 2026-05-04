@@ -441,7 +441,9 @@ function _exportPDFPages(indices, filename) {
             const ax2=el.x2+px*absOff, ay2=el.y2+py*absOff;
             const dc = el.color || '#744da9';
             applyColor(dc);
-            pdf.setLineWidth(Math.max(0.05, 0.3));
+            pdf.setLineWidth(Math.max(0.05, (el.lineWidth||1) * 0.3));
+            const dimDash = el.lineStyle==='dash'?[3,2]:el.lineStyle==='dashdot'?[4,2,1,2]:el.lineStyle==='dot'?[1,2]:null;
+            if (dimDash) pdf.setLineDashPattern(dimDash, 0); else pdf.setLineDashPattern([], 0);
             // 引出し線（gap空け・ext伸び）
             pdf.line(tx(el.x1+px*gap), ty(el.y1+py*gap), tx(el.x1+px*(absOff+ext)), ty(el.y1+py*(absOff+ext)));
             pdf.line(tx(el.x2+px*gap), ty(el.y2+py*gap), tx(el.x2+px*(absOff+ext)), ty(el.y2+py*(absOff+ext)));

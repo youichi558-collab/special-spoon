@@ -594,6 +594,18 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>矢印サイズ</label><input type="number" id="pp-arrsz" value="${el.arrowSz||8}" min="2" max="30" step="1"></div>`;
     html += `<div class="pp-row"><label>引出しgap</label><input type="number" id="pp-gap" value="${el.gap!=null?el.gap:state.G}" min="0" max="20"></div>`;
     html += `<div class="pp-row"><label>伸び(ext)</label><input type="number" id="pp-ext" value="${el.ext!=null?el.ext:state.G}" min="0" max="20"></div>`;
+    html += `<div class="pp-row"><label>線幅</label><select id="pp-dimlw">
+      <option value="0.5" ${(el.lineWidth||1)==0.5?'selected':''}>極細(0.5)</option>
+      <option value="1"   ${(el.lineWidth||1)==1  ?'selected':''}>細(1)</option>
+      <option value="1.5" ${(el.lineWidth||1)==1.5?'selected':''}>標準(1.5)</option>
+      <option value="2"   ${(el.lineWidth||1)==2  ?'selected':''}>太(2)</option>
+    </select></div>`;
+    html += `<div class="pp-row"><label>線種</label><select id="pp-dimls">
+      <option value=""        ${!el.lineStyle          ?'selected':''}>実線</option>
+      <option value="dash"    ${el.lineStyle==='dash'   ?'selected':''}>破線</option>
+      <option value="dashdot" ${el.lineStyle==='dashdot'?'selected':''}>一点鎖線</option>
+      <option value="dot"     ${el.lineStyle==='dot'    ?'selected':''}>点線</option>
+    </select></div>`;
     html += `<div class="pp-row"><label>色</label><input type="color" id="pp-color" value="${el.color||'#744da9'}"></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
     html += `<div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
@@ -655,6 +667,8 @@ function applyRightPanel() {
     el.arrowStyle = v('pp-arrstyle') || 'filled';
     el.arrowSz    = parseInt(v('pp-arrsz')) || 8;
     el.offset   = (parseInt(v('pp-offset'))||30) * (el.offsetSign||1);
+    el.lineWidth  = parseFloat(v('pp-dimlw')) || 1;
+    el.lineStyle  = v('pp-dimls') || undefined;
     el.gap      = parseInt(v('pp-gap'));
     el.ext      = parseInt(v('pp-ext'));
     el.color    = v('pp-color') || undefined;
