@@ -253,10 +253,226 @@ function saveCusPart() {
 }
 
 // ----------------------------------------------------------------
-// カスタムシンボル（シンプル版）
+// カスタムシンボルエディタ
 // ----------------------------------------------------------------
-function showSymReg()       { alert('シンボル登録は現在準備中です'); }
-function registerAsSymbol() { alert('シンボル登録は現在準備中です'); }
+let _srShapes = [];
+let _srTerms  = [];
+let _srTool   = 'line';
+let _srDraw   = null;
+let _srFirst  = null;
+let _srMouse  = { x:0, y:0 };
+const SR_SCALE = 2;   // canvas px per coord unit
+const SR_GRID  = 5;   // grid snap unit (coord)
+const SR_CX    = 160; // canvas center x
+const SR_CY    = 130; // canvas center y
+
+function showSymReg() {
+  srClear();
+  openFP('sym-reg-p');
+  requestAnimationFrame(srRender);
+  const cv = document.getElementById('sym-reg-cv');
+  cv.onmousedown = srOnDown;
+  cv.onmousemove = srOnMove;
+  cv.onmouseup   = srOnUp;
+}
+
+function srClear() {
+  _srShapes = []; _srTerms = []; _srTool = 'line'; _srDraw = null; _srFirst = null;
+  document.querySelectorAll('.sr-tool').forEach(b => b.classList.toggle('active', b.dataset.tool === 'line'));
+  const n = document.getElementById('sr-name'); if (n) n.value = '';
+  const c = document.getElementById('sr-cat'); if (c) c.value = 'カスタム';
+  const w = document.getElementById('sr-w'); if (w) w.value = 80;
+  const h = document.getElementById('sr-h'); if (h) h.value = 60;
+  srUpdateTermList(); srRender();
+}
+
+function registerAsSymbol() { showSymReg(); }
+
+function srSnap(clientX, clientY) {
+  const cv = document.getElementById('sym-reg-cv');
+  const r  = cv.getBoundingClientRect();
+  const px = (clientX - r.left) * (cv.width  / r.width);
+  const py = (clientY - r.top)  * (cv.height / r.height);
+  const wx = Math.round((px - SR_CX) / SR_SCALE / SR_GRID) * SR_GRID;
+  const wy = Math.round((py - SR_CY) / SR_SCALE / SR_GRID) * SR_GRID;
+  return { x: wx, y: wy };
+}
+
+function srRender() {
+  const cv = document.getElementById('sym-reg-cv');
+  if (!cv) return;
+  const c = cv.getContext('2d');
+  c.clearRect(0, 0, cv.width, cv.height);
+  c.fillStyle = '#fff'; c.fillRect(0, 0, cv.width, cv.height);
+
+  // Grid
+  c.strokeStyle = '#e8e8e8'; c.lineWidth = 0.5;
+  const gPx = SR_GRID * SR_SCALE;
+  for (let x = ((SR_CX % gPx) + gPx) % gPx; x < cv.width; x += gPx) { c.beginPath(); c.moveTo(x,0); c.lineTo(x,cv.height); c.stroke(); }
+  for (let y = ((SR_CY % gPx) + gPx) % gPx; y < cv.height; y += gPx) { c.beginPath(); c.moveTo(0,y); c.lineTo(cv.width,y); c.stroke(); }
+
+  // Axes
+  c.strokeStyle = '#bbb'; c.lineWidth = 0.7;
+  c.beginPath(); c.moveTo(SR_CX,0); c.lineTo(SR_CX,cv.height); c.stroke();
+  c.beginPath(); c.moveTo(0,SR_CY); c.lineTo(cv.width,SR_CY); c.stroke();
+
+  // Bounding box (dashed)
+  const bw = (parseInt(document.getElementById('sr-w')?.value)||80) * SR_SCALE;
+  const bh = (parseInt(document.getElementById('sr-h')?.value)||60) * SR_SCALE;
+  c.strokeStyle = '#aac'; c.lineWidth = 1; c.setLineDash([5,4]);
+  c.strokeRect(SR_CX - bw/2, SR_CY - bh/2, bw, bh);
+  c.setLineDash([]);
+
+  // Shapes
+  c.strokeStyle = '#222'; c.fillStyle = '#222'; c.lineWidth = 1.5;
+  _srShapes.forEach(s => srDrawShape(c, s, '#222'));
+
+  // Preview
+  if (_srDraw) { c.save(); c.setLineDash([5,4]); srDrawShape(c, _srDraw, '#888'); c.restore(); }
+
+  // Terminals
+  _srTerms.forEach((t, i) => {
+    const px = SR_CX + t.x * SR_SCALE, py = SR_CY + t.y * SR_SCALE;
+    c.fillStyle = '#0067c0'; c.fillRect(px-5,py-5,10,10);
+    c.strokeStyle = '#fff'; c.lineWidth = 1.5;
+    c.beginPath(); c.moveTo(px-3,py-3); c.lineTo(px+3,py+3); c.stroke();
+    c.beginPath(); c.moveTo(px+3,py-3); c.lineTo(px-3,py+3); c.stroke();
+    c.fillStyle = '#0067c0'; c.font = '8px sans-serif'; c.textAlign = 'left';
+    c.fillText(`T${i}`, px+6, py+3);
+  });
+
+  // Mouse cursor
+  const mpx = SR_CX + _srMouse.x * SR_SCALE, mpy = SR_CY + _srMouse.y * SR_SCALE;
+  c.strokeStyle = '#ccc'; c.lineWidth = 0.5; c.setLineDash([3,3]);
+  c.beginPath(); c.moveTo(mpx,0); c.lineTo(mpx,cv.height); c.stroke();
+  c.beginPath(); c.moveTo(0,mpy); c.lineTo(cv.width,mpy); c.stroke();
+  c.setLineDash([]);
+  c.fillStyle = '#555'; c.font = '9px monospace'; c.textAlign = 'left';
+  c.fillText(`(${_srMouse.x},${_srMouse.y})`, 4, cv.height-4);
+
+  // First point highlight
+  if (_srFirst) {
+    const fx = SR_CX + _srFirst.x * SR_SCALE, fy = SR_CY + _srFirst.y * SR_SCALE;
+    c.fillStyle = '#0aa'; c.beginPath(); c.arc(fx,fy,4,0,Math.PI*2); c.fill();
+  }
+}
+
+function srDrawShape(c, s, color) {
+  const T  = v => SR_CX + v * SR_SCALE;
+  const TY = v => SR_CY + v * SR_SCALE;
+  c.save(); c.strokeStyle = color || '#222'; c.fillStyle = color || '#222';
+  if (s.t==='L') {
+    c.lineWidth = 1.5; c.beginPath(); c.moveTo(T(s.x1),TY(s.y1)); c.lineTo(T(s.x2),TY(s.y2)); c.stroke();
+  } else if (s.t==='C') {
+    c.lineWidth = 1.5; c.beginPath(); c.arc(T(s.cx),TY(s.cy),Math.max(1,s.r*SR_SCALE),0,Math.PI*2); c.stroke();
+  } else if (s.t==='R') {
+    c.lineWidth = 1.5; c.strokeRect(T(s.x),TY(s.y),s.w*SR_SCALE,s.h*SR_SCALE);
+  } else if (s.t==='T') {
+    c.font = `${(s.fs||14)*SR_SCALE/2}px sans-serif`; c.textAlign = 'center';
+    c.fillText(s.text, T(s.x), TY(s.y));
+  }
+  c.restore();
+}
+
+function srOnDown(e) {
+  if (e.button !== 0) return;
+  const { x, y } = srSnap(e.clientX, e.clientY);
+  if (_srTool === 'erase') {
+    let minD = 12, minI = -1;
+    _srShapes.forEach((s, i) => {
+      let d = Infinity;
+      if (s.t==='L') d = distToSeg(x,y,s.x1,s.y1,s.x2,s.y2);
+      else if (s.t==='C') d = Math.abs(Math.hypot(x-s.cx,y-s.cy)-s.r);
+      else if (s.t==='R') { const cx=(s.x+s.w/2), cy=(s.y+s.h/2); d=Math.hypot(x-cx,y-cy); }
+      else if (s.t==='T') d = Math.hypot(x-s.x, y-s.y);
+      if (d < minD) { minD = d; minI = i; }
+    });
+    let minTD = 8, minTI = -1;
+    _srTerms.forEach((t, i) => { const d=Math.hypot(x-t.x,y-t.y); if(d<minTD){minTD=d;minTI=i;} });
+    if (minTI >= 0) { _srTerms.splice(minTI,1); srUpdateTermList(); srRender(); return; }
+    if (minI  >= 0) { _srShapes.splice(minI,1); srRender(); return; }
+    return;
+  }
+  if (_srTool === 'term') {
+    _srTerms.push({ x, y });
+    srUpdateTermList(); srRender(); return;
+  }
+  if (_srTool === 'text') {
+    const txt = prompt('テキスト:','');
+    if (!txt) return;
+    _srShapes.push({ t:'T', text:txt, x, y, fs:14 });
+    srRender(); return;
+  }
+  // line/circle/rect: 2クリック確定
+  if (!_srFirst) {
+    _srFirst = { x, y };
+  } else {
+    const f = _srFirst;
+    if (_srTool==='line') {
+      _srShapes.push({ t:'L', x1:f.x, y1:f.y, x2:x, y2:y });
+    } else if (_srTool==='circle') {
+      const r = Math.round(Math.hypot(x-f.x,y-f.y));
+      if (r>0) _srShapes.push({ t:'C', cx:f.x, cy:f.y, r });
+    } else if (_srTool==='rect') {
+      const rw=Math.abs(x-f.x), rh=Math.abs(y-f.y);
+      if (rw>0&&rh>0) _srShapes.push({ t:'R', x:Math.min(f.x,x), y:Math.min(f.y,y), w:rw, h:rh });
+    }
+    _srFirst=null; _srDraw=null; srRender();
+  }
+}
+
+function srOnMove(e) {
+  const { x, y } = srSnap(e.clientX, e.clientY);
+  _srMouse = { x, y };
+  if (_srFirst) {
+    const f = _srFirst;
+    if      (_srTool==='line')   _srDraw = { t:'L', x1:f.x,y1:f.y,x2:x,y2:y };
+    else if (_srTool==='circle') { const r=Math.max(1,Math.round(Math.hypot(x-f.x,y-f.y))); _srDraw={t:'C',cx:f.x,cy:f.y,r}; }
+    else if (_srTool==='rect')   _srDraw = { t:'R', x:Math.min(f.x,x),y:Math.min(f.y,y),w:Math.abs(x-f.x),h:Math.abs(y-f.y) };
+  }
+  srRender();
+}
+
+function srOnUp(e) {}
+
+function srSetTool(t) {
+  _srTool=t; _srFirst=null; _srDraw=null;
+  document.querySelectorAll('.sr-tool').forEach(b => b.classList.toggle('active', b.dataset.tool===t));
+  srRender();
+}
+
+function srUndo() {
+  if (_srFirst) { _srFirst=null; _srDraw=null; srRender(); return; }
+  if (_srShapes.length) { _srShapes.pop(); srRender(); }
+}
+
+function srUpdateTermList() {
+  const el = document.getElementById('sr-term-list');
+  if (!el) return;
+  if (!_srTerms.length) { el.textContent = '（端子点なし）'; return; }
+  el.innerHTML = _srTerms.map((t,i) =>
+    `<div>T${i}: (${t.x}, ${t.y}) <span onclick="_srTerms.splice(${i},1);srUpdateTermList();srRender()" style="cursor:pointer;color:var(--red)">×</span></div>`
+  ).join('');
+}
+
+function saveCustomSymbol() {
+  const name = document.getElementById('sr-name').value.trim();
+  if (!name) { alert('シンボル名を入力してください'); return; }
+  if (!_srShapes.length) { alert('図形を少なくとも1つ描いてください'); return; }
+  const cat = document.getElementById('sr-cat').value.trim() || 'カスタム';
+  const w   = parseInt(document.getElementById('sr-w').value) || 80;
+  const h   = parseInt(document.getElementById('sr-h').value) || 60;
+  const type = 'custom_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,5);
+  const sym = { type, name, cat, w, h, shapes:[..._srShapes], terminals:[..._srTerms] };
+  state.customSymbols.push(sym);
+  if (typeof DEFS !== 'undefined') {
+    DEFS[type] = { w, h, cat, name, jis:'',
+      terminals: _srTerms.map((t,i) => ({ id:`t${i}`, x:t.x, y:t.y })) };
+  }
+  closeFP('sym-reg-p');
+  renderCustomSymbols();
+  alert(`「${name}」を登録しました。シンボルパレットのカスタムタブから配置できます。`);
+}
 
 function renderCustomSymbols() {
   const el = document.getElementById('cus-list');

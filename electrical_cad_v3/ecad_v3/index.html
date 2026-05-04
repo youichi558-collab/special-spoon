@@ -387,6 +387,49 @@
     </div>
 
 
+    <!-- カスタムシンボル登録 -->
+    <div class="fp" id="sym-reg-p" style="width:660px;max-height:90vh">
+      <h3>カスタムシンボル登録</h3>
+      <div style="display:flex;gap:14px;align-items:flex-start">
+        <div>
+          <div style="display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap">
+            <button class="fp-btn sr-tool active" data-tool="line"   onclick="srSetTool('line')">─ 直線</button>
+            <button class="fp-btn sr-tool"        data-tool="circle" onclick="srSetTool('circle')">○ 円</button>
+            <button class="fp-btn sr-tool"        data-tool="rect"   onclick="srSetTool('rect')">□ 矩形</button>
+            <button class="fp-btn sr-tool"        data-tool="text"   onclick="srSetTool('text')">Ａ テキスト</button>
+            <button class="fp-btn sr-tool"        data-tool="term"   onclick="srSetTool('term')" style="color:#0067c0;border-color:#0067c0">⊕ 端子点</button>
+            <button class="fp-btn sr-tool"        data-tool="erase"  onclick="srSetTool('erase')" style="color:var(--red)">✕ 消去</button>
+            <button class="fp-btn" onclick="srUndo()" title="右クリックでも元に戻せます">↩ Undo</button>
+          </div>
+          <canvas id="sym-reg-cv" width="320" height="260"
+            style="border:1px solid var(--bd);cursor:crosshair;display:block;background:#fff"
+            oncontextmenu="event.preventDefault();srUndo()"></canvas>
+          <div style="font-size:10px;color:var(--fg3);margin-top:3px">グリッド5単位スナップ　右クリック=Undo　左クリック2回で確定</div>
+        </div>
+        <div style="min-width:180px;display:flex;flex-direction:column;gap:8px">
+          <div class="fr"><label>シンボル名 *</label><input type="text" id="sr-name" placeholder="例: 電磁弁"></div>
+          <div class="fr"><label>カテゴリ</label><input type="text" id="sr-cat" value="カスタム"></div>
+          <div style="display:flex;gap:6px">
+            <div class="fr" style="flex:1"><label>幅 (W)</label><input type="number" id="sr-w" value="80" min="10" max="300" oninput="srRender()"></div>
+            <div class="fr" style="flex:1"><label>高さ (H)</label><input type="number" id="sr-h" value="60" min="10" max="300" oninput="srRender()"></div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;margin-bottom:4px">端子点</div>
+            <div id="sr-term-list" style="font-size:10px;color:var(--fg3);max-height:100px;overflow-y:auto"></div>
+          </div>
+          <div style="font-size:10px;color:var(--fg3);line-height:1.5">
+            ⊕ 端子点 = ワイヤーがスナップできる接続点<br>
+            中心が (0,0)、点線枠が境界ボックス
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <button class="fp-btn primary" onclick="saveCustomSymbol()">登録</button>
+        <button class="fp-btn" onclick="srClear()">クリア</button>
+        <button class="fp-btn" onclick="closeFP('sym-reg-p')">キャンセル</button>
+      </div>
+    </div>
+
   <!-- AI アシストパネル -->
   <div id="ai-panel" style="display:none">
     <div id="ai-panel-header">
