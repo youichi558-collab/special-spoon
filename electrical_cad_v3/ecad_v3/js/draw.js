@@ -419,7 +419,9 @@ function drawDimEl(el, isSel) {
   };
   // 通常：矢印は内向き（羽が外側）、短い時：矢印は外向き（羽がさらに外側）
   if (flip) {
-    drawArr(ax1,ay1,-ux,-uy); drawArr(ax2,ay2,ux,uy);
+    // 短い場合：端点の外側から外向きに矢印を描く
+    drawArr(ax1-ux*a*0.1, ay1-uy*a*0.1, -ux, -uy);
+    drawArr(ax2+ux*a*0.1, ay2+uy*a*0.1,  ux,  uy);
   } else {
     drawArr(ax1,ay1,ux,uy); drawArr(ax2,ay2,-ux,-uy);
   }
