@@ -200,8 +200,8 @@ function readEnt(pairs,start){const e={_end:start+1};let i=start+1;while(i<pairs
 function readPoly(pairs,start){const e={_end:start+1,pts:[]};let i=start+1,cx=null;while(i<pairs.length){const{code,val}=pairs[i];if(code===0&&i>start+1)break;if(e[String(code)]===undefined&&code!==10&&code!==20)e[String(code)]=val;if(code===10)cx=+val||0;if(code===20&&cx!==null){e.pts.push({x:cx,y:-(+val||0)});cx=null;}i++;}e._end=i;return e;}
 function fromUnicodeDXF(str){return str.replace(/\\U\+([0-9A-Fa-f]{4})/g,(_,h)=>String.fromCharCode(parseInt(h,16)));}
 function mapBlock(name){const n=name.toLowerCase();const m=[
+  ['timer_coil','timer_coil'],['timer_no','timer_no'],['timer_nc','timer_nc'],['timer','timer_coil'],
   ['coil','coil'],['relay','coil'],
-  ['timer_no','timer_no'],['timer_nc','timer_nc'],['timer','timer_coil'],
   ['motor','motor'],['breaker','breaker'],['mccb','breaker'],
   ['cb','breaker'],['nf','breaker'],['fuse','fuse'],
   ['lamp','lamp'],['sw_no','sw_no'],['sw_nc','sw_nc'],
