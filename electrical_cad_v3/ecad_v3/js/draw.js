@@ -419,10 +419,13 @@ function drawDimEl(el, isSel) {
   };
   // 通常：矢印は内向き（羽が外側）、短い時：矢印は外向き（羽がさらに外側）
   if (flip) {
+    // 短い場合：外向き（baseが外側）
     drawArr(ax1, ay1, -ux, -uy);
     drawArr(ax2, ay2,  ux,  uy);
   } else {
-    drawArr(ax1,ay1,ux,uy); drawArr(ax2,ay2,-ux,-uy);
+    // 通常：内向き（baseがax2方向・ax1方向）
+    drawArr(ax1, ay1,  ux,  uy);
+    drawArr(ax2, ay2, -ux, -uy);
   }
   const cx0=(ax1+ax2)/2, cy0=(ay1+ay2)/2;
   const fs = el.dimFs || 11;
