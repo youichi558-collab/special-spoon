@@ -372,7 +372,7 @@ function drawDimEl(el, isSel) {
   const sign=el.offsetSign||1, off=(el.offset||30)*sign, arr=el.arrowSz||8;
   const ux=dx/len, uy=dy/len, px=-uy*sign, py=ux*sign;
   const absOff=Math.abs(off);
-  const gap=el.gap!=null?el.gap:3;    // 測定点からの隙間
+  const gap=el.gap!=null?el.gap:state.G;    // 測定点からの隙間（デフォルト1グリッド）
   const ext=el.ext!=null?el.ext:5;    // 寸法線を超える伸び
   // 引出し線の始点(gap)・終点(absOff+ext)
   const ex1sx=el.x1+px*gap,    ex1sy=el.y1+py*gap;
@@ -408,17 +408,29 @@ function drawLeaderEl(el, isSel) {
   const c = isSel ? '#0067c0' : (layColor(el.layer)||'#744da9');
   const bx=el.bx??el.x2, by=el.by??el.y2;
   ctx.save(); ctx.strokeStyle=c; ctx.fillStyle=c; ctx.lineWidth=(isSel?1.5:1)/state.zoom;
-  ctx.beginPath(); ctx.moveTo(el.x1,el.y1); ctx.lineTo(bx,by);
-  if (el.bx!=null) ctx.lineTo(el.x2,el.y2);
-  ctx.stroke();
   const dx=bx-el.x1, dy=by-el.y1, len=Math.hypot(dx,dy);
   if (len>0.1) {
     const ux=dx/len, uy=dy/len, a=8/state.zoom;
+    const gap = state.G;  // 1グリッド分の隙間
+    // 矢印（先端はx1,y1）
     ctx.beginPath(); ctx.moveTo(el.x1,el.y1); ctx.lineTo(el.x1+ux*a+uy*a*0.3,el.y1+uy*a-ux*a*0.3); ctx.lineTo(el.x1+ux*a-uy*a*0.3,el.y1+uy*a+ux*a*0.3); ctx.closePath(); ctx.fill();
+    // 線：gap分空けてから開始
+    ctx.beginPath(); ctx.moveTo(el.x1+ux*gap, el.y1+uy*gap); ctx.lineTo(bx,by);
+    if (el.bx!=null) ctx.lineTo(el.x2,el.y2);
+    ctx.stroke();
+  } else {
+    ctx.beginPath(); ctx.moveTo(el.x1,el.y1); ctx.lineTo(bx,by);
+    if (el.bx!=null) ctx.lineTo(el.x2,el.y2);
+    ctx.stroke();
   }
   if (el.leaderText) {
-    const fs=11; ctx.font=`${fs}px sans-serif`; ctx.textAlign='left'; ctx.fillStyle=c;
-    ctx.fillText(el.leaderText, bx+4, by-3);
+    const fs=11/state.zoom; ctx.font=`${fs}px sans-serif`; ctx.textAlign='left';
+    const tw2 = ctx.measureText(el.leaderText).width;
+    // テキスト背景（白）
+    ctx.fillStyle=state.darkMode?'#252525':'#fff';
+    ctx.fillRect(bx+6, by-fs-4, tw2+4, fs+4);
+    ctx.fillStyle=c;
+    ctx.fillText(el.leaderText, bx+8, by-4);
   }
   ctx.restore();
 }

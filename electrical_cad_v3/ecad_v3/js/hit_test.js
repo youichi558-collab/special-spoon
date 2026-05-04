@@ -23,7 +23,18 @@ function hitTest(wx, wy) {
       }
       continue;
     }
-    if (el.type === 'leader') { if (distToSeg(wx,wy,el.x1,el.y1,el.bx,el.by) < R || distToSeg(wx,wy,el.bx,el.by,el.x2,el.y2) < R) return el; continue; }
+    if (el.type === 'leader') {
+      const bx=el.bx??el.x2, by=el.by??el.y2;
+      if (distToSeg(wx,wy,el.x1,el.y1,bx,by) < R) return el;
+      if (el.bx!=null && distToSeg(wx,wy,bx,by,el.x2,el.y2) < R) return el;
+      // テキスト領域のhit判定
+      if (el.leaderText) {
+        const fs=11/state.zoom;
+        const tw=el.leaderText.length*fs*0.6;
+        if (wx>=bx+4 && wx<=bx+12+tw && wy>=by-fs-6 && wy<=by+2) return el;
+      }
+      continue;
+    }
     if (el.type === 'fline')  { if (distToSeg(wx,wy,el.x1,el.y1,el.x2,el.y2) < R) return el; continue; }
     if (el.type === 'rect')   { if (wx>=el.x&&wx<=el.x+el.w&&wy>=el.y&&wy<=el.y+el.h) return el; continue; }
     if (el.type === 'circle') { if (Math.abs(Math.hypot(wx-el.x,wy-el.y)-el.r) < R) return el; continue; }
