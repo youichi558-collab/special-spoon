@@ -14,6 +14,7 @@ const LAYERS = [
   { name: '配線', color: '#0F6E56', visible: true, locked: false, active: false, lineWidth: 1, lineDash: 'solid', fontSize: null },
   { name: '注記', color: '#b45309', visible: true, locked: false, active: false, lineWidth: 1, lineDash: 'solid', fontSize: null },
   { name: '外形', color: '#444',    visible: true, locked: false, active: false, lineWidth: 1, lineDash: 'solid', fontSize: null },
+  { name: '寸法', color: '#744da9', visible: true, locked: false, active: false, lineWidth: 1, lineDash: 'solid', fontSize: null },
   { name: '図面枠',color: '#222',   visible: true, locked: false, active: false, lineWidth: 1, lineDash: 'solid', fontSize: null },
 ];
 

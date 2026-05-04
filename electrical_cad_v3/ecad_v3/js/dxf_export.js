@@ -64,15 +64,61 @@ function exportDXF(){
   state.elements.filter(e=>e.type==='dim').forEach(el=>{
     const dx=el.x2-el.x1,dy=el.y2-el.y1,len=Math.hypot(dx,dy);
     if(len<0.1)return;
-    const off=el.offset||30;
-    const ux=dx/len,uy=dy/len,px=-uy,py=ux;
+    const sign=el.offsetSign||1, off=Math.abs(el.offset||30);
+    const ux=dx/len,uy=dy/len,px=-uy*sign,py=ux*sign;
     const ax1=el.x1+px*off,ay1=el.y1+py*off,ax2=el.x2+px*off,ay2=el.y2+py*off;
-    ls.push('0','DIMENSION','8',el.layer||'寸法','10',((ax1+ax2)/2).toFixed(3),'20',(-(ay1+ay2)/2).toFixed(3),'30','0','11',((ax1+ax2)/2).toFixed(3),'21',(-(ay1+ay2)/2).toFixed(3),'31','0','70','32','13',el.x1.toFixed(3),'23',(-el.y1).toFixed(3),'33','0','14',el.x2.toFixed(3),'24',(-el.y2).toFixed(3),'34','0','1',el.dimText||'');
-    ls.push('0','LINE','8',el.layer||'寸法','10',ax1.toFixed(3),'20',(-ay1).toFixed(3),'30','0','11',ax2.toFixed(3),'21',(-ay2).toFixed(3),'31','0');
-    ls.push('0','LINE','8',el.layer||'寸法','10',el.x1.toFixed(3),'20',(-el.y1).toFixed(3),'30','0','11',ax1.toFixed(3),'21',(-ay1).toFixed(3),'31','0');
-    ls.push('0','LINE','8',el.layer||'寸法','10',el.x2.toFixed(3),'20',(-el.y2).toFixed(3),'30','0','11',ax2.toFixed(3),'21',(-ay2).toFixed(3),'31','0');
-    if(el.dimText)ls.push('0','TEXT','8',el.layer||'寸法','10',((ax1+ax2)/2).toFixed(3),'20',(-(ay1+ay2)/2-5).toFixed(3),'30','0','40','10','1',el.dimText,'72','1');
+    const mx=(ax1+ax2)/2,my=(ay1+ay2)/2;
+    const dimLyr = el.layer||'寸法';
+    const gap=el.gap!=null?el.gap:10, ext=el.ext!=null?el.ext:5;
+    const isOwnLyr = dimLyr==='寸法';
+    // 寸法レイヤーならDIMENSION（自ツール読込用）も出力
+    if(isOwnLyr){
+      ls.push('0','DIMENSION','8',dimLyr,'10',mx.toFixed(3),'20',(-my).toFixed(3),'30','0',
+        '11',mx.toFixed(3),'21',(-my).toFixed(3),'31','0','70','32',
+        '13',el.x1.toFixed(3),'23',(-el.y1).toFixed(3),'33','0',
+        '14',el.x2.toFixed(3),'24',(-el.y2).toFixed(3),'34','0','1',el.dimText||'');
+    }
+    // LINE+TEXT+矢印（他CAD表示用・寸法レイヤー以外も出力）
+    const drawLyr = isOwnLyr ? '寸法_vis' : dimLyr;
+    // 引出し線（gap空け）
+    ls.push('0','LINE','8',drawLyr,'10',(el.x1+px*gap).toFixed(3),'20',(-(el.y1+py*gap)).toFixed(3),'30','0','11',(el.x1+px*(off+ext)).toFixed(3),'21',(-(el.y1+py*(off+ext))).toFixed(3),'31','0');
+    ls.push('0','LINE','8',drawLyr,'10',(el.x2+px*gap).toFixed(3),'20',(-(el.y2+py*gap)).toFixed(3),'30','0','11',(el.x2+px*(off+ext)).toFixed(3),'21',(-(el.y2+py*(off+ext))).toFixed(3),'31','0');
+    // 寸法線
+    ls.push('0','LINE','8',drawLyr,'10',ax1.toFixed(3),'20',(-ay1).toFixed(3),'30','0','11',ax2.toFixed(3),'21',(-ay2).toFixed(3),'31','0');
+    // 矢印（SOLID）
+    const a=(el.arrowSz||8)*0.8, nx=-uy*sign, ny=ux*sign;
+    function solidArrow(x,y,dux,duy){
+      ls.push('0','SOLID','8',drawLyr,
+        '10',(x).toFixed(3),'20',(-y).toFixed(3),'30','0',
+        '11',(x+dux*a+nx*a*0.3).toFixed(3),'21',(-(y+duy*a+ny*a*0.3)).toFixed(3),'31','0',
+        '12',(x+dux*a-nx*a*0.3).toFixed(3),'22',(-(y+duy*a-ny*a*0.3)).toFixed(3),'32','0',
+        '13',(x+dux*a).toFixed(3),'23',(-(y+duy*a)).toFixed(3),'33','0');
+    }
+    solidArrow(ax1,ay1,ux,uy); solidArrow(ax2,ay2,-ux,-uy);
+    // テキスト
+    const txt=el.dimText||String(Math.round(len*(state.drawScale||1)));
+    ls.push('0','TEXT','8',drawLyr,'10',mx.toFixed(3),'20',(-my-5).toFixed(3),'30','0','40','10','1',txt,'72','1');
   });
+  // 図面枠（LINE/TEXT）を出力 - 自ツール読込時はisFrameLayerでスキップ
+  if(state.frameObj){
+    const fr=state.frameObj;
+    const {sc,wMM,hMM,mg,thMM,cols,rows}=fr;
+    const W=wMM*sc,H=hMM*sc,MGpx=mg*sc,TH=thMM*sc;
+    const iW=W-MGpx*2,iH=H-MGpx*2,dH=iH-TH;
+    const FL='図面枠';
+    function FL_LINE(x1,y1,x2,y2){ls.push('0','LINE','8',FL,'10',x1.toFixed(2),'20',(-y1).toFixed(2),'30','0','11',x2.toFixed(2),'21',(-y2).toFixed(2),'31','0');}
+    function FL_TEXT(x,y,h,s){if(s)ls.push('0','TEXT','8',FL,'10',x.toFixed(2),'20',(-y).toFixed(2),'30','0','40',String(h),'1',String(s),'72','1');}
+    // 外枠・内枠・表題欄
+    FL_LINE(0,0,W,0);FL_LINE(W,0,W,H);FL_LINE(W,H,0,H);FL_LINE(0,H,0,0);
+    FL_LINE(MGpx,MGpx,MGpx+iW,MGpx);FL_LINE(MGpx+iW,MGpx,MGpx+iW,MGpx+dH);
+    FL_LINE(MGpx+iW,MGpx+dH,MGpx,MGpx+dH);FL_LINE(MGpx,MGpx+dH,MGpx,MGpx);
+    FL_LINE(MGpx,MGpx+dH,MGpx+iW,MGpx+dH);FL_LINE(MGpx,H-MGpx,MGpx+iW,H-MGpx);
+    // 表題欄テキスト
+    FL_TEXT(MGpx+5,MGpx+dH+TH*0.5,8,fr.title);
+    FL_TEXT(MGpx+5,MGpx+dH+TH*0.8,6,fr.drawno);
+    FL_TEXT(MGpx+iW*0.6,MGpx+dH+TH*0.5,6,fr.company);
+    FL_TEXT(MGpx+iW*0.6,MGpx+dH+TH*0.8,6,fr.author);
+  }
   state.wires.forEach(w=>{const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];const layer=w.layer||'配線';for(let i=0;i<pts.length-1;i++)ls.push('0','LINE','8',layer,'10',pts[i].x.toFixed(2),'20',(-pts[i].y).toFixed(2),'30','0','11',pts[i+1].x.toFixed(2),'21',(-pts[i+1].y).toFixed(2),'31','0');if(w.wireNo){const mp=pts[Math.floor(pts.length/2)];ls.push('0','TEXT','8',layer,'10',mp.x.toFixed(2),'20',(-mp.y+8).toFixed(2),'30','0','40','8','1',w.wireNo,'72','1');}});
   state.elements.forEach(el=>{const layer=el.layer||'回路';
     if(el.type==='dim') return; // dimは上で既に出力済み

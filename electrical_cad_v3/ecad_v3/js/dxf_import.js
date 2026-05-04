@@ -67,7 +67,7 @@ function parseDXF(text){
   function isFrameLayer(name){
     if(!name)return false;
     const n=name.toLowerCase();
-    return n==='図面枠'||n.includes('frame')||n.includes('border')||n.includes('図面枠')||n==='defpoints';
+    return n==='図面枠'||n==='寸法_vis'||n.includes('frame')||n.includes('border')||n.includes('図面枠')||n==='defpoints';
   }
 
   // ENTITIESセクションのみ処理

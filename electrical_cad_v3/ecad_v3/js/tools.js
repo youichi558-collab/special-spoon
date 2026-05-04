@@ -259,7 +259,7 @@ const dimTool = {
       const def = state.dimDef;
       state.elements.push({ id: genId('el'), type:'dim', x1:ds.x1, y1:ds.y1, x2:ds.x2, y2:ds.y2,
         dimText: txt || String(dist), offset, offsetSign:sign,
-        arrowSz:8, layer:activeLayer(), x:(ds.x1+ds.x2)/2, y:(ds.y1+ds.y2)/2,
+        arrowSz:8, layer:'寸法', x:(ds.x1+ds.x2)/2, y:(ds.y1+ds.y2)/2,
         dimFs: def.fs, dimTx: def.tx, dimTy: def.ty,
         gap: def.gap, ext: def.ext, color: def.color,
         arrowStyle: def.arrowStyle||'filled', arrowSz: def.arrowSz||8 });
