@@ -392,11 +392,11 @@ function drawDimEl(el, isSel) {
   // 寸法線
   ctx.beginPath(); ctx.moveTo(ax1,ay1); ctx.lineTo(ax2,ay2); ctx.stroke();
   ctx.setLineDash([]);
-  const a=arr;  // ズーム追従（zoom済み座標系で描くのでそのまま）
+  const a = arr;  // ズーム追従
   const aStyle = el.arrowStyle || 'filled';
   const dimLen = Math.hypot(ax2-ax1, ay2-ay1);
-  const flip = dimLen < a * 2.5;
-  // 矢印：tipが端点、羽が外側方向に広がる
+  const flip = dimLen < a * 2.5;  // 短い場合は外向きに反転
+  // drawArr: tip=(x,y)、outX/outY方向にbaseがある（矢印がout方向を向く）
   const drawArr=(x,y,outX,outY)=>{
     if (aStyle==='none') return;
     const nx=-outY, ny=outX;
@@ -417,13 +417,12 @@ function drawDimEl(el, isSel) {
       ctx.beginPath();ctx.arc(x,y,a*0.4,0,Math.PI*2);ctx.fill();
     }
   };
-  // 通常：矢印は内向き（羽が外側）、短い時：矢印は外向き（羽がさらに外側）
+  // 通常：内向き（ax1はax2方向、ax2はax1方向）
+  // 短い：外向き（ax1はax1方向、ax2はax2方向）
   if (flip) {
-    // 短い場合：外向き（baseが外側）
     drawArr(ax1, ay1, -ux, -uy);
     drawArr(ax2, ay2,  ux,  uy);
   } else {
-    // 通常：内向き（baseがax2方向・ax1方向）
     drawArr(ax1, ay1,  ux,  uy);
     drawArr(ax2, ay2, -ux, -uy);
   }
