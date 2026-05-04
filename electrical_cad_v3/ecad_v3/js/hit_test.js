@@ -27,11 +27,11 @@ function hitTest(wx, wy) {
       const bx=el.bx??el.x2, by=el.by??el.y2;
       if (distToSeg(wx,wy,el.x1,el.y1,bx,by) < R) return el;
       if (el.bx!=null && distToSeg(wx,wy,bx,by,el.x2,el.y2) < R) return el;
-      // テキスト領域のhit判定
+      // テキスト領域のhit判定（bxより右、byより上のR×3の範囲）
       if (el.leaderText) {
-        const fs=11/state.zoom;
-        const tw=el.leaderText.length*fs*0.6;
-        if (wx>=bx+4 && wx<=bx+12+tw && wy>=by-fs-6 && wy<=by+2) return el;
+        const th = R * 3;
+        const tw = el.leaderText.length * 7 / state.zoom;
+        if (wx >= bx - R && wx <= bx + tw + R && wy >= by - th && wy <= by + R) return el;
       }
       continue;
     }
