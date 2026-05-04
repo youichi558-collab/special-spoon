@@ -236,7 +236,8 @@ const TOOLS = {
 // ----------------------------------------------------------------
 const dimTool = {
   onDown(wx, wy, e) {
-    const sx = snap(wx), sy = snap(wy);
+    const pt = getAllSnapPoints(wx, wy);
+    const sx = pt.x, sy = pt.y;
     if (!state.dimState) {
       state.dimState = { step:1, x1:sx, y1:sy };
     } else if (state.dimState.step === 1) {
@@ -260,7 +261,8 @@ const dimTool = {
     }
   },
   onMove(wx, wy) {
-    const sx = snap(wx), sy = snap(wy);
+    const pt = getAllSnapPoints(wx, wy);
+    const sx = pt.x, sy = pt.y;
     const ds = state.dimState;
     if (!ds) return;
     if (ds.step === 1) {
@@ -283,7 +285,8 @@ const dimTool = {
 // ----------------------------------------------------------------
 const leaderTool = {
   onDown(wx, wy, e) {
-    const sx = snap(wx), sy = snap(wy);
+    const pt = getAllSnapPoints(wx, wy);
+    const sx = pt.x, sy = pt.y;
     if (!state.dimState) {
       state.dimState = { step:1, x1:sx, y1:sy };
     } else if (state.dimState.step === 1) {
@@ -299,7 +302,8 @@ const leaderTool = {
     }
   },
   onMove(wx, wy) {
-    const sx = snap(wx), sy = snap(wy);
+    const pt = getAllSnapPoints(wx, wy);
+    const sx = pt.x, sy = pt.y;
     const ds = state.dimState;
     if (!ds) return;
     if (ds.step === 1) state.preview = { type:'leader_prev1', x1:ds.x1, y1:ds.y1, x2:sx, y2:sy };

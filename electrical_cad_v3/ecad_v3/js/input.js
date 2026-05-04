@@ -71,8 +71,16 @@ cv.addEventListener('mousedown', e => {
     return;
   }
 
-  // 右ボタン → パン開始（mouseupでdragMovedなければコンテキストメニュー）
+  // 右ボタン → dim/leader中はステップキャンセル、それ以外はパン開始
   if (e.button === 2) {
+    if ((state.mode === 'dim' || state.mode === 'leader') && state.dimState) {
+      if (state.dimState.step === 2) {
+        state.dimState.step = 1;  // 一つ戻る
+      } else {
+        state.dimState = null;    // キャンセル
+      }
+      state.preview = null; draw(); return;
+    }
     state.mouse.panning   = true;
     state.mouse.panOrigin = { x: state.pan.x, y: state.pan.y };
     state.mouse.dragMoved = false;
