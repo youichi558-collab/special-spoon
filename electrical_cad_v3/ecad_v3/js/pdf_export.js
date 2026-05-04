@@ -449,7 +449,7 @@ function _exportPDFPages(indices, filename) {
             pdf.line(tx(el.x2+px*gap), ty(el.y2+py*gap), tx(el.x2+px*(absOff+ext)), ty(el.y2+py*(absOff+ext)));
             pdf.line(tx(ax1), ty(ay1), tx(ax2), ty(ay2));
             const aStyle = el.arrowStyle || 'filled';
-            const aSize  = Math.min((el.arrowSz||8) * s, 3);  // 最大3mmに制限
+            const aSize  = (el.arrowSz||8) * s;  // プロパティのサイズをそのままmm変換
             const dimLenMM = Math.hypot(tx(ax2)-tx(ax1), ty(ay2)-ty(ay1));
             const flipPdf = dimLenMM < aSize * 2.5;
             if (aStyle !== 'none') {
