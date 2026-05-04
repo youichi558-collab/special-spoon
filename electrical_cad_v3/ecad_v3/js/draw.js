@@ -397,8 +397,8 @@ function drawDimEl(el, isSel) {
   const txt = el.dimText || String(Math.round(len));
   if (el.dimFixed) {
     // ズーム非依存：スクリーン座標に変換してから描画
-    const sx = mx * state.zoom + state.pan.x + cv.width/2;
-    const sy = my * state.zoom + state.pan.y + cv.height/2;
+    const sx = mx * state.zoom + state.pan.x;
+    const sy = my * state.zoom + state.pan.y;
     ctx.save(); ctx.setTransform(1,0,0,1,0,0);
     ctx.font=`${rawFs}px sans-serif`; ctx.textAlign='center';
     const tw2=ctx.measureText(txt).width;
