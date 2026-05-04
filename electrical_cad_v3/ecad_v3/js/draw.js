@@ -94,7 +94,7 @@ function drawWires() {
 
     ctx.save();
     ctx.strokeStyle = color;
-    ctx.lineWidth   = (sel ? lw+0.5 : lw) / state.zoom;
+    ctx.lineWidth   = (sel ? lw+0.5 : lw);
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     applyLineStyle(ctx, w.lineStyle || lay?.lineDash, state.zoom);
     ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
@@ -142,7 +142,7 @@ function drawWirePreview() {
 
   ctx.save();
   ctx.strokeStyle = '#0F6E56';
-  ctx.lineWidth   = 2/state.zoom;
+  ctx.lineWidth   = 2;
   ctx.lineCap = 'round'; ctx.setLineDash([6/state.zoom, 4/state.zoom]);
   ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
   pts.forEach(p => ctx.lineTo(p.x, p.y));
@@ -206,12 +206,12 @@ function drawRectEl(el, sel, lc, lay) {
   ctx.save();
   const c  = sel ? '#0067c0' : (el.color || lc);
   const lw = el.lineWidth || lay?.lineWidth || 1.5;
-  ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+0.5 : lw)/state.zoom;
+  ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+0.5 : lw);
   applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
   if (el.fillColor) { ctx.fillStyle = el.fillColor; ctx.fillRect(el.x, el.y, el.w, el.h); }
   ctx.strokeRect(el.x, el.y, el.w, el.h); ctx.setLineDash([]);
   if (sel) {
-    ctx.strokeStyle='#0067c0'; ctx.lineWidth=1/state.zoom;
+    ctx.strokeStyle='#0067c0'; ctx.lineWidth=1;
     ctx.setLineDash([4/state.zoom,3/state.zoom]);
     ctx.strokeRect(el.x-5, el.y-5, el.w+10, el.h+10); ctx.setLineDash([]);
   }
@@ -222,7 +222,7 @@ function drawCircleEl(el, sel, lc, lay) {
   ctx.save();
   const c  = sel ? '#0067c0' : (el.color || lc);
   const lw = el.lineWidth || lay?.lineWidth || 1.5;
-  ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+0.5 : lw)/state.zoom;
+  ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+0.5 : lw);
   applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
   if (el.fillColor) { ctx.fillStyle = el.fillColor; ctx.beginPath(); ctx.arc(el.x, el.y, el.r, 0, Math.PI*2); ctx.fill(); }
   ctx.beginPath(); ctx.arc(el.x, el.y, el.r, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
@@ -233,7 +233,7 @@ function drawFlineEl(el, sel, lc, lay) {
   ctx.save();
   const c  = sel ? '#0067c0' : (el.color || lc);
   const lw = el.lineWidth || lay?.lineWidth || 1.5;
-  ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+0.5 : lw)/state.zoom; ctx.lineCap = 'round';
+  ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+0.5 : lw); ctx.lineCap = 'round';
   applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
   ctx.beginPath(); ctx.moveTo(el.x1, el.y1); ctx.lineTo(el.x2, el.y2); ctx.stroke(); ctx.setLineDash([]);
   if (el.arrowStart && el.arrowStart !== 'none') { const dx=el.x1-el.x2,dy=el.y1-el.y2,len=Math.hypot(dx,dy); if(len>0.1) drawLineEnd(ctx,el.x1,el.y1,dx/len,dy/len,el.arrowStart,10,c,state.zoom); }
@@ -384,7 +384,7 @@ function drawDimEl(el, isSel) {
   const ax2=el.x2+px*absOff, ay2=el.y2+py*absOff;
   const c = isSel ? '#0067c0' : (el.color||layColor(el.layer)||'#744da9');
   const lw = el.lineWidth || 1;
-  ctx.save(); ctx.strokeStyle=c; ctx.fillStyle=c; ctx.lineWidth=(isSel?lw+0.5:lw)/state.zoom;
+  ctx.save(); ctx.strokeStyle=c; ctx.fillStyle=c; ctx.lineWidth=(isSel?lw+0.5:lw);
   applyLineStyle(ctx, el.lineStyle, state.zoom);
   // 引出し線（gap空けて伸びる）
   ctx.beginPath(); ctx.moveTo(ex1sx,ex1sy); ctx.lineTo(ex1ex,ex1ey); ctx.stroke();
@@ -425,7 +425,7 @@ function drawLeaderEl(el, isSel) {
   if (el.x1==null) return;
   const c = isSel ? '#0067c0' : (layColor(el.layer)||'#744da9');
   const bx=el.bx??el.x2, by=el.by??el.y2;
-  ctx.save(); ctx.strokeStyle=c; ctx.fillStyle=c; ctx.lineWidth=(isSel?1.5:1)/state.zoom;
+  ctx.save(); ctx.strokeStyle=c; ctx.fillStyle=c; ctx.lineWidth=(isSel?1.5:1);
   const dx=bx-el.x1, dy=by-el.y1, len=Math.hypot(dx,dy);
   if (len>0.1) {
     const ux=dx/len, uy=dy/len, a=8;  // ズーム追従
