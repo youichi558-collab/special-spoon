@@ -424,13 +424,13 @@ function drawLeaderEl(el, isSel) {
     ctx.stroke();
   }
   if (el.leaderText) {
+    const tx=el.x2, ty=el.y2;
     const fs=11/state.zoom; ctx.font=`${fs}px sans-serif`; ctx.textAlign='left';
     const tw2 = ctx.measureText(el.leaderText).width;
-    // テキスト背景（白）
     ctx.fillStyle=state.darkMode?'#252525':'#fff';
-    ctx.fillRect(bx+6, by-fs-4, tw2+4, fs+4);
+    ctx.fillRect(tx+4, ty-fs-2, tw2+4, fs+4);
     ctx.fillStyle=c;
-    ctx.fillText(el.leaderText, bx+8, by-4);
+    ctx.fillText(el.leaderText, tx+6, ty-2);
   }
   ctx.restore();
 }
