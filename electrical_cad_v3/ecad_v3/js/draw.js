@@ -411,16 +411,13 @@ function drawDimEl(el, isSel) {
   const cx0=(ax1+ax2)/2, cy0=(ay1+ay2)/2;
   const rawFs = el.dimFs || 11;
   const txt = el.dimText || String(Math.round(len));
-  const zoom = state.pdfZoom || state.zoom;
-  const sx = cx0 * zoom + state.pan.x + (el.dimTx||0);
-  const sy = cy0 * zoom + state.pan.y + (el.dimTy||0) - rawFs - 6;
-  ctx.save(); ctx.setTransform(1,0,0,1,0,0);
-  ctx.font=`${rawFs}px sans-serif`; ctx.textAlign='center';
+  const fs = rawFs / state.zoom;
+  ctx.font=`${fs}px sans-serif`; ctx.textAlign='center';
   const tw2=ctx.measureText(txt).width;
+  const tyOff = fs + 4;
   ctx.fillStyle=state.darkMode?'#252525':'#fff';
-  ctx.fillRect(sx-tw2/2-3, sy-rawFs*0.1, tw2+6, rawFs+4);
-  ctx.fillStyle=c; ctx.fillText(txt, sx, sy+rawFs*0.85);
-  ctx.restore();
+  ctx.fillRect(cx0-tw2/2-3+(el.dimTx||0)/state.zoom, cy0-tyOff+(el.dimTy||0)/state.zoom, tw2+6, fs+4);
+  ctx.fillStyle=c; ctx.fillText(txt, cx0+(el.dimTx||0)/state.zoom, cy0-tyOff+fs*0.85+(el.dimTy||0)/state.zoom);
   ctx.restore();
 }
 
