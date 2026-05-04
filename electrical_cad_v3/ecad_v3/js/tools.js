@@ -253,6 +253,7 @@ const dimTool = {
       const offset = Math.max(15, Math.abs(dot));
       const dist = Math.round(len);
       const txt = prompt('寸法テキスト（空欄で自動）:', '') ?? '';
+      state.mouse.down = false;  // promptのOK後にmouseupがcanvasに届かないためリセット
       pushH();
       state.elements.push({ id: genId('el'), type:'dim', x1:ds.x1, y1:ds.y1, x2:ds.x2, y2:ds.y2,
         dimText: txt || String(dist), offset, offsetSign:sign,
@@ -294,6 +295,7 @@ const leaderTool = {
     } else if (state.dimState.step === 2) {
       const ds = state.dimState;
       const txt = prompt('引出線テキスト:', '') ?? '';
+      state.mouse.down = false;  // promptのOK後にmouseupがcanvasに届かないためリセット
       pushH();
       state.elements.push({ id: genId('el'), type:'leader', x1:ds.x1, y1:ds.y1,
         bx:ds.bx, by:ds.by, x2:sx, y2:sy,
