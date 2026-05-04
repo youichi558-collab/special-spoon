@@ -197,6 +197,8 @@ function rasterizeTextEl(el, fsMM) {
   const oc = document.createElement('canvas');
   oc.width = pxW; oc.height = pxH;
   const octx = oc.getContext('2d');
+  octx.fillStyle = '#ffffff';
+  octx.fillRect(0, 0, pxW, pxH);
   octx.fillStyle = el.color || '#000000';
   octx.font = `${fsPx}px sans-serif`;
   octx.textBaseline = 'alphabetic';
@@ -277,15 +279,16 @@ function _exportPDFPages(indices, filename) {
     const m = (color||'#000000').match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
     if (m) pdf.setFillColor(parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16));
     else   pdf.setFillColor(0,0,0);
-    const ax=ux/Math.hypot(ux,uy), ay=uy/Math.hypot(ux,uy);
+    const h = Math.hypot(ux,uy);
+    if (h < 1e-9) return;
+    const ax=ux/h, ay=uy/h;
     const nx=-ay, ny=ax;
-    pdf.triangle(
-      x, y,
-      x - ax*size + nx*size*0.35,
-      y - ay*size + ny*size*0.35,
-      x - ax*size - nx*size*0.35,
-      y - ay*size - ny*size*0.35,
-      'F'
+    // pdf.triangle() が一部ビルドで未定義のため pdf.lines() で代替
+    const p1x = x - ax*size + nx*size*0.35, p1y = y - ay*size + ny*size*0.35;
+    const p2x = x - ax*size - nx*size*0.35, p2y = y - ay*size - ny*size*0.35;
+    pdf.lines(
+      [[p1x-x, p1y-y], [p2x-p1x, p2y-p1y]],
+      x, y, [1, 1], 'F', true
     );
   }
 
@@ -355,7 +358,9 @@ function _exportPDFPages(indices, filename) {
 
         // wireNo
         if (w.wireNo) {
-          const mp = pts[Math.floor(pts.length/2)];
+          const n = pts.length;
+          const i = Math.floor((n-1)/2), j = Math.ceil((n-1)/2);
+          const mp = n >= 2 ? { x:(pts[i].x+pts[j].x)/2, y:(pts[i].y+pts[j].y)/2 } : pts[0];
           const noEl = { text: w.wireNo, color: '#1e40af' };
           const noRes = rasterizeTextEl(noEl, 2.8);
           if (noRes) pdf.addImage(noRes.dataURL, 'PNG', tx(mp.x)-noRes.wMM/2, ty(mp.y)-noRes.hMM, noRes.wMM, noRes.hMM, '', 'FAST');
@@ -364,6 +369,7 @@ function _exportPDFPages(indices, filename) {
 
       // ---- 要素 ----
       (pg.elements||[]).forEach(el => {
+        try {
         const lay = LAYERS.find(l => l.name===el.layer);
         if (lay && !lay.visible) return;
         // 枠レイヤーの要素はframeObjが別途描画するのでスキップ
@@ -480,6 +486,7 @@ function _exportPDFPages(indices, filename) {
             if (lblRes2) pdf.addImage(lblRes2.dataURL, 'PNG', tx(lx) - lblRes2.wMM/2, ty(ly) - lblRes2.hMM*0.72, lblRes2.wMM, lblRes2.hMM, '', 'FAST');
           }
         }
+        } catch(e) { console.warn('PDF element render error:', el.type, e); }
       });
 
       // ---- 図面枠・表題欄（ベクター＋ラスタライズテキスト） ----

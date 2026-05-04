@@ -115,7 +115,9 @@ function drawWires() {
 
     // 線番
     if (w.wireNo) {
-      const mp  = pts[Math.floor(pts.length/2)];
+      const n = pts.length;
+      const i = Math.floor((n-1)/2), j = Math.ceil((n-1)/2);
+      const mp = n >= 2 ? { x:(pts[i].x+pts[j].x)/2, y:(pts[i].y+pts[j].y)/2 } : pts[0];
       const fs  = 10;
       ctx.font  = `bold ${fs}px sans-serif`; ctx.textAlign = 'center';
       const tw2 = ctx.measureText(w.wireNo).width;
