@@ -98,7 +98,7 @@ const state = {
   pendingRef:   null,
   pendingTerm:  null,
   dimState:     null,
-  dimDef: { fs:11, tx:0, ty:0, gap:null, ext:null, color:'#744da9', arrowStyle:'filled', arrowSz:8 },
+  dimDef: { fs:11, tx:0, ty:-8, gap:null, ext:null, color:'#744da9', arrowStyle:'filled', arrowSz:8 },
 
   // ----------------------------------------------------------------
   // 現在ページへの便利アクセサ
