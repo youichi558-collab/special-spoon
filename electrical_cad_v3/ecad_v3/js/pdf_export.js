@@ -283,9 +283,9 @@ function _exportPDFPages(indices, filename) {
     if (h < 1e-9) return;
     const ax=ux/h, ay=uy/h;
     const nx=-ay, ny=ax;
-    // pdf.triangle() が一部ビルドで未定義のため pdf.lines() で代替
-    const p1x = x - ax*size + nx*size*0.35, p1y = y - ay*size + ny*size*0.35;
-    const p2x = x - ax*size - nx*size*0.35, p2y = y - ay*size - ny*size*0.35;
+    // キャンバスと同じ向き：baseをtipの+ax方向（進行方向）に置く
+    const p1x = x + ax*size + nx*size*0.35, p1y = y + ay*size + ny*size*0.35;
+    const p2x = x + ax*size - nx*size*0.35, p2y = y + ay*size - ny*size*0.35;
     pdf.lines(
       [[p1x-x, p1y-y], [p2x-p1x, p2y-p1y]],
       x, y, [1, 1], 'F', true
