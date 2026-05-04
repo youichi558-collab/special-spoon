@@ -449,13 +449,20 @@ function _exportPDFPages(indices, filename) {
             pdf.line(tx(el.x2+px*gap), ty(el.y2+py*gap), tx(el.x2+px*(absOff+ext)), ty(el.y2+py*(absOff+ext)));
             pdf.line(tx(ax1), ty(ay1), tx(ax2), ty(ay2));
             const aStyle = el.arrowStyle || 'filled';
-            const aSize  = (el.arrowSz||8) / 10;
+            const aSize  = (el.arrowSz||8) * s;  // ワールド単位→mm変換
+            const dimLenMM = Math.hypot(tx(ax2)-tx(ax1), ty(ay2)-ty(ay1));
+            const flipPdf = dimLenMM < aSize * 2.5;
             if (aStyle !== 'none') {
               if (aStyle === 'dot') {
-                applyColor(dc); pdf.circle(tx(ax1), ty(ay1), aSize*0.4, 'F'); pdf.circle(tx(ax2), ty(ay2), aSize*0.4, 'F');
+                applyColor(dc);
+                pdf.circle(tx(ax1), ty(ay1), aSize*0.4, 'F');
+                pdf.circle(tx(ax2), ty(ay2), aSize*0.4, 'F');
               } else if (aStyle === 'tick') {
                 pdf.line(tx(ax1)-(-uy*s)*aSize*0.5, ty(ay1)-(ux*s)*aSize*0.5, tx(ax1)+(-uy*s)*aSize*0.5, ty(ay1)+(ux*s)*aSize*0.5);
                 pdf.line(tx(ax2)-(-uy*s)*aSize*0.5, ty(ay2)-(ux*s)*aSize*0.5, tx(ax2)+(-uy*s)*aSize*0.5, ty(ay2)+(ux*s)*aSize*0.5);
+              } else if (flipPdf) {
+                pdfArrow(pdf, tx(ax1), ty(ay1), -ux*s, -uy*s, aSize, dc);
+                pdfArrow(pdf, tx(ax2), ty(ay2),  ux*s,  uy*s, aSize, dc);
               } else {
                 pdfArrow(pdf, tx(ax1), ty(ay1),  ux*s,  uy*s, aSize, dc);
                 pdfArrow(pdf, tx(ax2), ty(ay2), -ux*s, -uy*s, aSize, dc);
