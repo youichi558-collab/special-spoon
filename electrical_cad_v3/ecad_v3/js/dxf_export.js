@@ -5,7 +5,7 @@
 function buildSymBlocksDXF(){
   const ls=[];
   function bk(name,fn){
-    ls.push('0','BLOCK','8','0','2',name,'70','1','10','0','20','0','30','0','3',name,'1','');
+    ls.push('0','BLOCK','8','0','2',name,'70','0','10','0','20','0','30','0','3',name,'1','');
     fn();
     ls.push('0','ENDBLK','8','0');
   }
@@ -41,6 +41,10 @@ function toUnicodeDXF(str){return[...str].map(c=>{const code=c.charCodeAt(0);ret
 function exportDXF(){
   const ls=[];
   ls.push('0','SECTION','2','HEADER','9','$ACADVER','1','AC1015','9','$INSUNITS','70','4','999','ECAD_DXF_V1','0','ENDSEC');
+  // frameObjをコメントとして保存（HEADERの直後、TABLES前が最も互換性が高い）
+  if(state.frameObj){
+    ls.push('999','ECAD_FRAME:'+JSON.stringify(state.frameObj));
+  }
   // 線種テーブル
   const ltypeMap = { solid:'CONTINUOUS', dashed:'DASHED', dotted:'DOT', dashdot:'DASHDOT' };
   ls.push('0','SECTION','2','TABLES');
@@ -56,11 +60,6 @@ function exportDXF(){
   ls.push('0','SECTION','2','BLOCKS');
   ls.push(...buildSymBlocksDXF());
   ls.push('0','ENDSEC');
-  // frameObjをコメントとして保存（読込時に復元）
-  // 枠のLINE/TEXTエンティティは書かない（読込時に二重になるため）
-  if(state.frameObj){
-    ls.push('999','ECAD_FRAME:'+JSON.stringify(state.frameObj));
-  }
   ls.push('0','SECTION','2','ENTITIES');
   state.elements.filter(e=>e.type==='dim').forEach(el=>{
     const dx=el.x2-el.x1,dy=el.y2-el.y1,len=Math.hypot(dx,dy);
