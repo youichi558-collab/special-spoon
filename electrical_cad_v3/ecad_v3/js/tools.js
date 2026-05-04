@@ -261,7 +261,8 @@ const dimTool = {
         dimText: txt || String(dist), offset, offsetSign:sign,
         arrowSz:8, layer:activeLayer(), x:(ds.x1+ds.x2)/2, y:(ds.y1+ds.y2)/2,
         dimFs: def.fs, dimTx: def.tx, dimTy: def.ty,
-        gap: def.gap, ext: def.ext, color: def.color });
+        gap: def.gap, ext: def.ext, color: def.color,
+        arrowStyle: def.arrowStyle||'filled', arrowSz: def.arrowSz||8 });
       state.dimState = null; state.preview = null;
     }
   },

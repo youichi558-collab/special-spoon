@@ -584,7 +584,14 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-dimfs" value="${el.dimFs||11}" min="8" max="72"></div>`;
     html += `<div class="pp-row"><label>テキストX補正</label><input type="number" id="pp-dimtx" value="${el.dimTx||0}" step="5"></div>`;
     html += `<div class="pp-row"><label>テキストY補正</label><input type="number" id="pp-dimty" value="${el.dimTy||0}" step="5"></div>`;
-    html += `<div class="pp-row"><label>オフセット距離</label><input type="number" id="pp-offset" value="${Math.abs(el.offset||30)}" min="5" max="200" step="5"></div>`;
+    html += `<div class="pp-row"><label>矢印スタイル</label><select id="pp-arrstyle">
+      <option value="filled" ${(el.arrowStyle||'filled')==='filled'?'selected':''}>▶ 塗りつぶし</option>
+      <option value="open"   ${el.arrowStyle==='open'  ?'selected':''}>▷ 開き矢印</option>
+      <option value="tick"   ${el.arrowStyle==='tick'  ?'selected':''}>/ 斜め線</option>
+      <option value="dot"    ${el.arrowStyle==='dot'   ?'selected':''}>● 丸</option>
+      <option value="none"   ${el.arrowStyle==='none'  ?'selected':''}>なし</option>
+    </select></div>`;
+    html += `<div class="pp-row"><label>矢印サイズ</label><input type="number" id="pp-arrsz" value="${el.arrowSz||8}" min="2" max="30" step="1"></div>`;
     html += `<div class="pp-row"><label>引出しgap</label><input type="number" id="pp-gap" value="${el.gap!=null?el.gap:state.G}" min="0" max="20"></div>`;
     html += `<div class="pp-row"><label>伸び(ext)</label><input type="number" id="pp-ext" value="${el.ext!=null?el.ext:state.G}" min="0" max="20"></div>`;
     html += `<div class="pp-row"><label>色</label><input type="color" id="pp-color" value="${el.color||'#744da9'}"></div>`;
@@ -645,6 +652,8 @@ function applyRightPanel() {
     el.dimFixed = document.getElementById('pp-dimfixed')?.checked || false;
     el.dimTx    = parseInt(v('pp-dimtx')) || 0;
     el.dimTy    = parseInt(v('pp-dimty')) || 0;
+    el.arrowStyle = v('pp-arrstyle') || 'filled';
+    el.arrowSz    = parseInt(v('pp-arrsz')) || 8;
     el.offset   = (parseInt(v('pp-offset'))||30) * (el.offsetSign||1);
     el.gap      = parseInt(v('pp-gap'));
     el.ext      = parseInt(v('pp-ext'));
@@ -702,8 +711,8 @@ function saveDimDef() {
   if (!el || el.type !== 'dim') return;
   applyRightPanel();
   state.dimDef = { fs:el.dimFs||11, tx:el.dimTx||0, ty:el.dimTy||0,
-    fixed:el.dimFixed||false, color:el.color||'#744da9',
-    gap:el.gap!=null?el.gap:null, ext:el.ext!=null?el.ext:null };
+    color:el.color||'#744da9', gap:el.gap!=null?el.gap:null, ext:el.ext!=null?el.ext:null,
+    arrowStyle:el.arrowStyle||'filled', arrowSz:el.arrowSz||8 };
   alert('デフォルト設定を保存しました');
 }
 

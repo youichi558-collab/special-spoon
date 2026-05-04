@@ -446,8 +446,19 @@ function _exportPDFPages(indices, filename) {
             pdf.line(tx(el.x1+px*gap), ty(el.y1+py*gap), tx(el.x1+px*(absOff+ext)), ty(el.y1+py*(absOff+ext)));
             pdf.line(tx(el.x2+px*gap), ty(el.y2+py*gap), tx(el.x2+px*(absOff+ext)), ty(el.y2+py*(absOff+ext)));
             pdf.line(tx(ax1), ty(ay1), tx(ax2), ty(ay2));
-            pdfArrow(pdf, tx(ax1), ty(ay1),  ux*s,  uy*s, 2, dc);
-            pdfArrow(pdf, tx(ax2), ty(ay2), -ux*s, -uy*s, 2, dc);
+            const aStyle = el.arrowStyle || 'filled';
+            const aSize  = (el.arrowSz||8) / 10;
+            if (aStyle !== 'none') {
+              if (aStyle === 'dot') {
+                applyColor(dc); pdf.circle(tx(ax1), ty(ay1), aSize*0.4, 'F'); pdf.circle(tx(ax2), ty(ay2), aSize*0.4, 'F');
+              } else if (aStyle === 'tick') {
+                pdf.line(tx(ax1)-(-uy*s)*aSize*0.5, ty(ay1)-(ux*s)*aSize*0.5, tx(ax1)+(-uy*s)*aSize*0.5, ty(ay1)+(ux*s)*aSize*0.5);
+                pdf.line(tx(ax2)-(-uy*s)*aSize*0.5, ty(ay2)-(ux*s)*aSize*0.5, tx(ax2)+(-uy*s)*aSize*0.5, ty(ay2)+(ux*s)*aSize*0.5);
+              } else {
+                pdfArrow(pdf, tx(ax1), ty(ay1),  ux*s,  uy*s, aSize, dc);
+                pdfArrow(pdf, tx(ax2), ty(ay2), -ux*s, -uy*s, aSize, dc);
+              }
+            }
             const mx=(ax1+ax2)/2, my=(ay1+ay2)/2;
             const txt = el.dimText || String(Math.round(len));
             const dimEl = { text: txt, color: dc };

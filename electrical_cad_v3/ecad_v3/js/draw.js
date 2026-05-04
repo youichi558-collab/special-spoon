@@ -390,7 +390,20 @@ function drawDimEl(el, isSel) {
   // 寸法線
   ctx.beginPath(); ctx.moveTo(ax1,ay1); ctx.lineTo(ax2,ay2); ctx.stroke();
   const a=arr/state.zoom;
-  const drawArr=(x,y,dx2,dy2)=>{ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+dx2*a-(-dy2)*a*0.3,y+dy2*a-dx2*a*0.3);ctx.lineTo(x+dx2*a+(-dy2)*a*0.3,y+dy2*a+dx2*a*0.3);ctx.closePath();ctx.fill();};
+  const aStyle = el.arrowStyle || 'filled';
+  const drawArr=(x,y,dx2,dy2)=>{
+    if (aStyle==='none') return;
+    if (aStyle==='filled') {
+      ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+dx2*a-(-dy2)*a*0.3,y+dy2*a-dx2*a*0.3);ctx.lineTo(x+dx2*a+(-dy2)*a*0.3,y+dy2*a+dx2*a*0.3);ctx.closePath();ctx.fill();
+    } else if (aStyle==='open') {
+      ctx.beginPath();ctx.moveTo(x+dx2*a-(-dy2)*a*0.3,y+dy2*a-dx2*a*0.3);ctx.lineTo(x,y);ctx.lineTo(x+dx2*a+(-dy2)*a*0.3,y+dy2*a+dx2*a*0.3);ctx.stroke();
+    } else if (aStyle==='tick') {
+      // 斜め線（建築系）
+      ctx.beginPath();ctx.moveTo(x-(-dy2)*a*0.5,y-dx2*a*0.5);ctx.lineTo(x+(-dy2)*a*0.5,y+dx2*a*0.5);ctx.stroke();
+    } else if (aStyle==='dot') {
+      ctx.beginPath();ctx.arc(x,y,a*0.4,0,Math.PI*2);ctx.fill();
+    }
+  };
   drawArr(ax1,ay1,ux,uy); drawArr(ax2,ay2,-ux,-uy);
   const mx=(ax1+ax2)/2 + (el.dimTx||0), my=(ay1+ay2)/2 + (el.dimTy||0);
   const rawFs = el.dimFs || 11;
