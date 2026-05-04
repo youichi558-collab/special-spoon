@@ -7,6 +7,21 @@ function getAllSnapPoints(wx, wy) {
   let best = null, bestD = R;
 
   state.elements.forEach(el => {
+    // 円スナップ：中心点＋4方向端点
+    if (el.type === 'circle') {
+      const pts = [
+        { x: el.x,        y: el.y,        snapType: 'endpoint' },  // 中心
+        { x: el.x + el.r, y: el.y,        snapType: 'endpoint' },  // 右
+        { x: el.x - el.r, y: el.y,        snapType: 'endpoint' },  // 左
+        { x: el.x,        y: el.y + el.r, snapType: 'endpoint' },  // 下
+        { x: el.x,        y: el.y - el.r, snapType: 'endpoint' },  // 上
+      ];
+      pts.forEach(p => {
+        const d = Math.hypot(wx - p.x, wy - p.y);
+        if (d < bestD) { bestD = d; best = p; }
+      });
+      return;
+    }
     if (state.snapEnd && !['text','rect','circle','fline','dim','leader'].includes(el.type)) {
       const d = getDef(el.type) || {};
       const cS = state.customSymbols.find(s => s.type === el.type);
