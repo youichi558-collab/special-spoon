@@ -409,15 +409,15 @@ function drawDimEl(el, isSel) {
   };
   drawArr(ax1,ay1,ux,uy); drawArr(ax2,ay2,-ux,-uy);
   const cx0=(ax1+ax2)/2, cy0=(ay1+ay2)/2;
-  const rawFs = el.dimFs || 11;
+  const fs = el.dimFs || 11;
   const txt = el.dimText || String(Math.round(len));
-  const fs = rawFs / state.zoom;
+  const tx2 = cx0 + (el.dimTx||0)/state.zoom;
+  const ty2 = cy0 + (el.dimTy||0)/state.zoom - fs - 4;
   ctx.font=`${fs}px sans-serif`; ctx.textAlign='center';
   const tw2=ctx.measureText(txt).width;
-  const tyOff = fs + 4;
   ctx.fillStyle=state.darkMode?'#252525':'#fff';
-  ctx.fillRect(cx0-tw2/2-3+(el.dimTx||0)/state.zoom, cy0-tyOff+(el.dimTy||0)/state.zoom, tw2+6, fs+4);
-  ctx.fillStyle=c; ctx.fillText(txt, cx0+(el.dimTx||0)/state.zoom, cy0-tyOff+fs*0.85+(el.dimTy||0)/state.zoom);
+  ctx.fillRect(tx2-tw2/2-3, ty2-fs*0.1, tw2+6, fs+4);
+  ctx.fillStyle=c; ctx.fillText(txt, tx2, ty2+fs*0.85);
   ctx.restore();
 }
 
