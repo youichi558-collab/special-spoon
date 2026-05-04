@@ -428,7 +428,7 @@ function drawLeaderEl(el, isSel) {
   ctx.save(); ctx.strokeStyle=c; ctx.fillStyle=c; ctx.lineWidth=(isSel?1.5:1)/state.zoom;
   const dx=bx-el.x1, dy=by-el.y1, len=Math.hypot(dx,dy);
   if (len>0.1) {
-    const ux=dx/len, uy=dy/len, a=8/state.zoom;
+    const ux=dx/len, uy=dy/len, a=8;  // ズーム追従
     const gap = state.G;  // 1グリッド分の隙間
     // 矢印（先端はx1,y1）
     ctx.beginPath(); ctx.moveTo(el.x1,el.y1); ctx.lineTo(el.x1+ux*a+uy*a*0.3,el.y1+uy*a-ux*a*0.3); ctx.lineTo(el.x1+ux*a-uy*a*0.3,el.y1+uy*a+ux*a*0.3); ctx.closePath(); ctx.fill();
@@ -444,7 +444,7 @@ function drawLeaderEl(el, isSel) {
   if (el.leaderText) {
     const tx = el.x2 + (el.leaderTx||0);
     const ty = el.y2 + (el.leaderTy||0);
-    const fs = (el.leaderFs||11) / state.zoom;
+    const fs = el.leaderFs||11;  // ズーム追従
     ctx.font=`${fs}px sans-serif`; ctx.textAlign='left';
     const tw2 = ctx.measureText(el.leaderText).width;
     ctx.fillStyle=state.darkMode?'#252525':'#fff';
