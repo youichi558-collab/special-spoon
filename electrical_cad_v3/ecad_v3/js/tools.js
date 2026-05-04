@@ -253,23 +253,12 @@ const dimTool = {
       const sign = dot >= 0 ? 1 : -1;
       const offset = Math.max(15, Math.abs(dot));
       const dist = Math.round(len);
-      // 円の直径・半径を自動判定
-      let autoPrefix = '';
-      state.elements.forEach(el => {
-        if (el.type !== 'circle') return;
-        const isCenter1 = Math.hypot(ds.x1-el.x, ds.y1-el.y) < 1;
-        const isCenter2 = Math.hypot(ds.x2-el.x, ds.y2-el.y) < 1;
-        const isEdge1 = Math.abs(Math.hypot(ds.x1-el.x, ds.y1-el.y) - el.r) < 1;
-        const isEdge2 = Math.abs(Math.hypot(ds.x2-el.x, ds.y2-el.y) - el.r) < 1;
-        if (isEdge1 && isEdge2) autoPrefix = 'φ';       // 両端が円周上→直径
-        else if ((isCenter1 && isEdge2) || (isCenter2 && isEdge1)) autoPrefix = 'R'; // 中心＋円周→半径
-      });
       const txt = prompt('寸法テキスト（空欄で自動）:', '') ?? '';
       state.mouse.down = false;
       pushH();
       const def = state.dimDef;
       state.elements.push({ id: genId('el'), type:'dim', x1:ds.x1, y1:ds.y1, x2:ds.x2, y2:ds.y2,
-        dimText: txt || (autoPrefix + String(dist)), offset, offsetSign:sign,
+        dimText: txt || String(dist), offset, offsetSign:sign,
         arrowSz:8, layer:activeLayer(), x:(ds.x1+ds.x2)/2, y:(ds.y1+ds.y2)/2,
         dimFs: def.fs, dimTx: def.tx, dimTy: def.ty,
         gap: def.gap, ext: def.ext, color: def.color,
