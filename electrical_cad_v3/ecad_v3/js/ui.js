@@ -30,10 +30,8 @@ function switchLTab(name, el) {
     el.classList.remove('on');
   }
 }
-function closeLayFloat() {
-  document.getElementById('lay-float').style.display = 'none';
-  document.querySelectorAll('.lt').forEach(e => e.classList.remove('on'));
-}
+// closeLayFloat は下で定義
+
 function closeSym() {
   document.getElementById('sym-float').style.display = 'none';
   document.querySelectorAll('.lt').forEach(e => e.classList.remove('on'));
@@ -212,7 +210,7 @@ function allParts() {
   return [...BUILTIN_PARTS, ...state.customParts.map(p => ({ ...p, custom:true }))];
 }
 function renderPartsAll()  { renderPartsTable(allParts()); }
-function filterParts(q)    { renderPartsTable(allParts().filter(p => !q || p.ref.toLowerCase().includes(q.toLowerCase()) || p.maker.toLowerCase().includes(q.toLowerCase()))); }
+// filterParts は下で定義
 function renderPartsTable(parts) {
   document.getElementById('parts-table').innerHTML = parts.map(p => `
     <div style="padding:4px 3px;border-bottom:1px solid var(--bg4);cursor:pointer" onclick="placePart('${p.type}','${p.ref}','${p.terminals||''}')">
@@ -463,7 +461,7 @@ function saveCustomSymbol() {
   const w   = parseInt(document.getElementById('sr-w').value) || 80;
   const h   = parseInt(document.getElementById('sr-h').value) || 60;
   const type = 'custom_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,5);
-  const sym = { type, name, cat, w, h, shapes:[..._srShapes], terminals:[..._srTerms] };
+  const sym = { type, name, label:name, cat, w, h, shapes:[..._srShapes], terminals:[..._srTerms] };
   state.customSymbols.push(sym);
   if (typeof DEFS !== 'undefined') {
     DEFS[type] = { w, h, cat, name, jis:'',
@@ -515,10 +513,11 @@ function switchPage(idx) {
 }
 
 function addPage() {
+  pushH();
   state.pages[state.currentPage].elements = state.elements;
   state.pages[state.currentPage].wires    = state.wires;
   state.pages[state.currentPage].frameObj = state.frameObj;
-  state.pages.push({ name:'Sheet'+(state.pages.length+1), elements:[], wires:[], frameObj:null });
+  state.pages.push({ name:'Sheet'+(state.pages.length+1), elements:[], wires:[], groups:[], frameObj:null });
   switchPage(state.pages.length - 1);
 }
 
@@ -666,7 +665,7 @@ function applyRightPanel() {
     el.dimTy    = parseInt(v('pp-dimty')) || 0;
     el.arrowStyle = v('pp-arrstyle') || 'filled';
     el.arrowSz    = parseInt(v('pp-arrsz')) || 8;
-    el.offset   = (parseInt(v('pp-offset'))||30) * (el.offsetSign||1);
+    if (document.getElementById('pp-offset')) el.offset = (parseInt(v('pp-offset'))||30) * (el.offsetSign||1);
     el.lineWidth  = parseFloat(v('pp-dimlw')) || 1;
     el.lineStyle  = v('pp-dimls') || undefined;
     el.gap      = parseInt(v('pp-gap'));
@@ -732,13 +731,13 @@ function saveDimDef() {
 
 // デフォルト設定をリセット
 function resetDimDef() {
-  state.dimDef = { fs:11, tx:0, ty:0, fixed:false, color:'#744da9', gap:null, ext:null };
+  state.dimDef = { fs:11, tx:0, ty:-8, gap:null, ext:null, color:'#744da9', arrowStyle:'filled', arrowSz:8 };
   const rp = document.getElementById('rp-body');
   const el = rp._el;
   if (!el || el.type !== 'dim') return;
   pushH();
-  el.dimFs=11; el.dimTx=0; el.dimTy=0; el.dimFixed=false; el.color='#744da9';
-  el.gap=null; el.ext=null;
+  el.dimFs=11; el.dimTx=0; el.dimTy=-8; el.color='#744da9';
+  el.gap=null; el.ext=null; el.arrowStyle='filled'; el.arrowSz=8;
   draw();
   updateRightPanel();
 }
@@ -833,7 +832,7 @@ function toggleAI() {
 }
 
 function saveApiKey() {
-  const key = document.getElementById('ai-key')?.value?.trim();
+  const key = document.getElementById('ai-apikey')?.value?.trim();
   if (key) { state.apiKey = key; alert('APIキーを保存しました'); }
 }
 
@@ -912,7 +911,7 @@ function renderSymFloat() {
   }
   body.innerHTML = html;
 }
-function renderCustomSymbols() { renderSymFloat(); }
+// renderCustomSymbols は上で定義済み
 
 // ----------------------------------------------------------------
 // 部品DBフローティングパネル

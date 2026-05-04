@@ -174,11 +174,23 @@ function pasteSelected() {
   if (!state.clipboard?.els) return;
   pushH();
   const off = state.G * 2;
-  const newEls = state.clipboard.els.map(el => ({
-    ...JSON.parse(JSON.stringify(el)),
-    id: genId('el'),
-    x: (el.x||0)+off, y: (el.y||0)+off,
-  }));
+  function offsetEl(el) {
+    const ne = JSON.parse(JSON.stringify(el));
+    ne.id = genId('el');
+    // x,y（中心・基準点）
+    if (ne.x != null) ne.x += off;
+    if (ne.y != null) ne.y += off;
+    // 2点系（fline/dim/leader）
+    if (ne.x1 != null) ne.x1 += off;
+    if (ne.y1 != null) ne.y1 += off;
+    if (ne.x2 != null) ne.x2 += off;
+    if (ne.y2 != null) ne.y2 += off;
+    // leader折れ曲がり点
+    if (ne.bx != null) ne.bx += off;
+    if (ne.by != null) ne.by += off;
+    return ne;
+  }
+  const newEls = state.clipboard.els.map(offsetEl);
   const newWires = state.clipboard.wires.map(w => {
     const nw = JSON.parse(JSON.stringify(w));
     nw.id  = genId('w');

@@ -119,18 +119,21 @@ function _renderPVPage() {
     state.pan = { x: -b.minX * sc, y: -b.minY * sc };
   }
 
-  draw();
-
-  // 復元
-  cv  = origCv;
-  ctx = origCtx;
-  state.zoom        = origZoom;
-  state.pan         = origPan;
-  state.currentPage = origPage;
-  state.darkMode    = origDark;
-  if (origDark) document.body.classList.add('dk');
-  state.sel.els   = origSelEls;
-  state.sel.wires = origSelWires;
+  try {
+    draw();
+  } finally {
+    // 必ず復元
+    cv  = origCv;
+    ctx = origCtx;
+    state.zoom        = origZoom;
+    state.pan         = origPan;
+    state.currentPage = origPage;
+    state.darkMode    = origDark;
+    if (origDark) document.body.classList.add('dk');
+    else document.body.classList.remove('dk');
+    state.sel.els   = origSelEls;
+    state.sel.wires = origSelWires;
+  }
   draw();
 }
 

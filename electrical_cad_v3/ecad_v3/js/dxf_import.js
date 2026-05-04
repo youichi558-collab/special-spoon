@@ -10,7 +10,7 @@ function loadDXF(input){
 
     // まずASCII範囲でECAD_FRAMEマーカーを探す（自ツール出力はUTF-8確定）
     const ascii=String.fromCharCode(...u8.slice(0,Math.min(u8.length,2000)));
-    const isOwnFile=ascii.includes('ECAD_FRAME');
+    const isOwnFile=ascii.includes('ECAD_DXF_V1')||ascii.includes('ECAD_FRAME');
 
     let enc='UTF-8';
     if(!isOwnFile){
