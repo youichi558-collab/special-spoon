@@ -394,21 +394,30 @@ function drawDimEl(el, isSel) {
   ctx.setLineDash([]);
   const a=arr;  // ズーム追従（zoom済み座標系で描くのでそのまま）
   const aStyle = el.arrowStyle || 'filled';
-  // 寸法線が矢印より短い場合は外向きに反転
   const dimLen = Math.hypot(ax2-ax1, ay2-ay1);
   const flip = dimLen < a * 2.5;
-  const drawArr=(x,y,dx2,dy2)=>{
+  // 矢印：tipが端点、羽が外側方向に広がる
+  const drawArr=(x,y,outX,outY)=>{
     if (aStyle==='none') return;
+    const nx=-outY, ny=outX;
     if (aStyle==='filled') {
-      ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+dx2*a-(-dy2)*a*0.3,y+dy2*a-dx2*a*0.3);ctx.lineTo(x+dx2*a+(-dy2)*a*0.3,y+dy2*a+dx2*a*0.3);ctx.closePath();ctx.fill();
+      ctx.beginPath();ctx.moveTo(x,y);
+      ctx.lineTo(x+outX*a+nx*a*0.3, y+outY*a+ny*a*0.3);
+      ctx.lineTo(x+outX*a-nx*a*0.3, y+outY*a-ny*a*0.3);
+      ctx.closePath();ctx.fill();
     } else if (aStyle==='open') {
-      ctx.beginPath();ctx.moveTo(x+dx2*a-(-dy2)*a*0.3,y+dy2*a-dx2*a*0.3);ctx.lineTo(x,y);ctx.lineTo(x+dx2*a+(-dy2)*a*0.3,y+dy2*a+dx2*a*0.3);ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x+outX*a+nx*a*0.3, y+outY*a+ny*a*0.3);
+      ctx.lineTo(x,y);
+      ctx.lineTo(x+outX*a-nx*a*0.3, y+outY*a-ny*a*0.3);
+      ctx.stroke();
     } else if (aStyle==='tick') {
-      ctx.beginPath();ctx.moveTo(x-(-dy2)*a*0.5,y-dx2*a*0.5);ctx.lineTo(x+(-dy2)*a*0.5,y+dx2*a*0.5);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(x-nx*a*0.5,y-ny*a*0.5);ctx.lineTo(x+nx*a*0.5,y+ny*a*0.5);ctx.stroke();
     } else if (aStyle==='dot') {
       ctx.beginPath();ctx.arc(x,y,a*0.4,0,Math.PI*2);ctx.fill();
     }
   };
+  // 通常：矢印は内向き（羽が外側）、短い時：矢印は外向き（羽がさらに外側）
   if (flip) {
     drawArr(ax1,ay1,-ux,-uy); drawArr(ax2,ay2,ux,uy);
   } else {
