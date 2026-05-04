@@ -392,7 +392,7 @@ function drawDimEl(el, isSel) {
   // 寸法線
   ctx.beginPath(); ctx.moveTo(ax1,ay1); ctx.lineTo(ax2,ay2); ctx.stroke();
   ctx.setLineDash([]);
-  const a=arr/state.zoom;
+  const a=arr;  // ズーム追従（zoom済み座標系で描くのでそのまま）
   const aStyle = el.arrowStyle || 'filled';
   const drawArr=(x,y,dx2,dy2)=>{
     if (aStyle==='none') return;
