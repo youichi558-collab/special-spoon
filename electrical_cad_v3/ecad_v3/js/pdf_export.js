@@ -363,7 +363,7 @@ function _exportPDFPages(indices, filename) {
           const mp = n >= 2 ? { x:(pts[i].x+pts[j].x)/2, y:(pts[i].y+pts[j].y)/2 } : pts[0];
           const noEl = { text: w.wireNo, color: '#1e40af' };
           const noRes = rasterizeTextEl(noEl, 2.8);
-          if (noRes) pdf.addImage(noRes.dataURL, 'PNG', tx(mp.x)-noRes.wMM/2, ty(mp.y)-noRes.hMM, noRes.wMM, noRes.hMM, '', 'FAST');
+          if (noRes) pdf.addImage(noRes.dataURL, 'PNG', tx(mp.x)-noRes.wMM/2, ty(mp.y)-noRes.hMM-1.5, noRes.wMM, noRes.hMM, '', 'FAST');
         }
       });
 
@@ -452,7 +452,7 @@ function _exportPDFPages(indices, filename) {
             const txt = el.dimText || String(Math.round(len));
             const dimEl = { text: txt, color: dc };
             const dimRes = rasterizeTextEl(dimEl, 2.5);
-            if (dimRes) pdf.addImage(dimRes.dataURL, 'PNG', tx(mx)-dimRes.wMM/2, ty(my)-dimRes.hMM*0.9, dimRes.wMM, dimRes.hMM, '', 'FAST');
+            if (dimRes) pdf.addImage(dimRes.dataURL, 'PNG', tx(mx)-dimRes.wMM/2, ty(my)-dimRes.hMM*0.6, dimRes.wMM, dimRes.hMM, '', 'FAST');
           }
 
         } else if (el.type === 'leader') {

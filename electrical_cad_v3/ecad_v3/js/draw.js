@@ -119,12 +119,13 @@ function drawWires() {
       const i = Math.floor((n-1)/2), j = Math.ceil((n-1)/2);
       const mp = n >= 2 ? { x:(pts[i].x+pts[j].x)/2, y:(pts[i].y+pts[j].y)/2 } : pts[0];
       const fs  = 10;
+      const off = fs + 6;   // ワイヤーから離す距離
       ctx.font  = `bold ${fs}px sans-serif`; ctx.textAlign = 'center';
       const tw2 = ctx.measureText(w.wireNo).width;
       ctx.fillStyle = state.darkMode ? '#252525' : '#fff';
-      ctx.fillRect(mp.x-tw2/2-1, mp.y-fs-1, tw2+2, fs+2);
+      ctx.fillRect(mp.x-tw2/2-2, mp.y-off-fs, tw2+4, fs+3);
       ctx.fillStyle = sel ? '#0067c0' : '#1e40af';
-      ctx.fillText(w.wireNo, mp.x, mp.y-1);
+      ctx.fillText(w.wireNo, mp.x, mp.y-off);
     }
     ctx.restore();
   });
@@ -394,8 +395,10 @@ function drawDimEl(el, isSel) {
   const mx=(ax1+ax2)/2, my=(ay1+ay2)/2, fs=11/state.zoom;
   ctx.font=`${fs}px sans-serif`; ctx.textAlign='center';
   const txt=el.dimText||String(Math.round(len)), tw2=ctx.measureText(txt).width;
-  ctx.fillStyle=state.darkMode?'#252525':'#fff'; ctx.fillRect(mx-tw2/2-2,my-fs-1,tw2+4,fs+2);
-  ctx.fillStyle=c; ctx.fillText(txt,mx,my);
+  const padX=4, padY=4;
+  ctx.fillStyle=state.darkMode?'#252525':'#fff';
+  ctx.fillRect(mx-tw2/2-padX, my-fs-padY, tw2+padX*2, fs+padY*2);
+  ctx.fillStyle=c; ctx.fillText(txt, mx, my+padY*0.3);
   ctx.restore();
 }
 
