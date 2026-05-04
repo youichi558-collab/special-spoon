@@ -129,10 +129,12 @@ function exportDXF(){
     T(MGpx+tw*1.1,ty,fs,fr.author);
     T(MGpx+tw*2.1,ty,fs,fr.company);
     T(MGpx+tw*3.1,ty,fs,fr.scale2||'');
-    // 列ラベル
-    if(cols>0){const cw=iW/cols;for(let c=0;c<cols;c++){L(MGpx+cw*c,MGpx,MGpx+cw*c,MGpx+iH);T(MGpx+cw*(c+0.5),MGpx+6,6,String.fromCharCode(65+c));}}
-    // 行ラベル
-    if(rows>0){const rh=dH/rows;for(let r=0;r<rows;r++){L(MGpx,MGpx+rh*r,MGpx+iW,MGpx+rh*r);T(MGpx+4,MGpx+rh*(r+0.5),6,String(r+1));}}
+    // 列ラベル・分割線（余白部分のみ）
+    if(cols>0){const cw=iW/cols;for(let c=1;c<cols;c++){L(MGpx+c*cw,0,MGpx+c*cw,MGpx);L(MGpx+c*cw,MGpx+iH,MGpx+c*cw,H);}
+      for(let c=0;c<cols;c++){T(MGpx+c*cw+cw/2,MGpx/2,6,String.fromCharCode(65+c));T(MGpx+c*cw+cw/2,MGpx+iH+MGpx/2,6,String.fromCharCode(65+c));}}
+    // 行ラベル・分割線（余白部分のみ）
+    if(rows>0){const rh=dH/rows;for(let r=1;r<rows;r++){L(0,MGpx+r*rh,MGpx,MGpx+r*rh);L(MGpx+iW,MGpx+r*rh,W,MGpx+r*rh);}
+      for(let r=0;r<rows;r++){T(MGpx/2,MGpx+r*rh+rh/2,6,String(r+1));T(MGpx+iW+MGpx/2,MGpx+r*rh+rh/2,6,String(r+1));}}
   }
   state.wires.forEach(w=>{const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];const layer=w.layer||'配線';for(let i=0;i<pts.length-1;i++)ls.push('0','LINE','8',layer,'10',pts[i].x.toFixed(2),'20',(-pts[i].y).toFixed(2),'30','0','11',pts[i+1].x.toFixed(2),'21',(-pts[i+1].y).toFixed(2),'31','0');if(w.wireNo){const mp=pts[Math.floor(pts.length/2)];ls.push('0','TEXT','8',layer,'10',mp.x.toFixed(2),'20',(-mp.y+8).toFixed(2),'30','0','40','8','1',w.wireNo,'72','1');}});
   state.elements.forEach(el=>{const layer=el.layer||'回路';
