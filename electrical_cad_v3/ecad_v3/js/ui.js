@@ -588,6 +588,9 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
   } else if (el && el.type === 'leader') {
     html += `<div class="pp-row"><label>引出しテキスト</label><input type="text" id="pp-ldrtext" value="${el.leaderText||''}"></div>`;
+    html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-ldrfs" value="${el.leaderFs||11}" min="8" max="72"></div>`;
+    html += `<div class="pp-row"><label>テキストX補正</label><input type="number" id="pp-ldrtx" value="${el.leaderTx||0}" step="5"></div>`;
+    html += `<div class="pp-row"><label>テキストY補正</label><input type="number" id="pp-ldrty" value="${el.leaderTy||0}" step="5"></div>`;
     html += `<div class="pp-row"><label>色</label><input type="color" id="pp-color" value="${el.color||'#744da9'}"></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
   } else if (wire || (el && el.pts)) {
@@ -636,6 +639,9 @@ function applyRightPanel() {
     el.layer   = v('pp-layer');
   } else if (el && el.type === 'leader') {
     el.leaderText = v('pp-ldrtext');
+    el.leaderFs   = parseInt(v('pp-ldrfs')) || 11;
+    el.leaderTx   = parseInt(v('pp-ldrtx')) || 0;
+    el.leaderTy   = parseInt(v('pp-ldrty')) || 0;
     el.color      = v('pp-color') || undefined;
     el.layer      = v('pp-layer');
   } else if (wire) {

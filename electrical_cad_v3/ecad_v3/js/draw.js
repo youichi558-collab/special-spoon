@@ -424,8 +424,10 @@ function drawLeaderEl(el, isSel) {
     ctx.stroke();
   }
   if (el.leaderText) {
-    const tx=el.x2, ty=el.y2;
-    const fs=11/state.zoom; ctx.font=`${fs}px sans-serif`; ctx.textAlign='left';
+    const tx = el.x2 + (el.leaderTx||0);
+    const ty = el.y2 + (el.leaderTy||0);
+    const fs = (el.leaderFs||11) / state.zoom;
+    ctx.font=`${fs}px sans-serif`; ctx.textAlign='left';
     const tw2 = ctx.measureText(el.leaderText).width;
     ctx.fillStyle=state.darkMode?'#252525':'#fff';
     ctx.fillRect(tx+4, ty-fs-2, tw2+4, fs+4);
