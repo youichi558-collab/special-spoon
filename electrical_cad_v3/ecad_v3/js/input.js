@@ -204,6 +204,10 @@ function setMode(m, sym) {
   state.preview  = null;
   state.wirePoints = [];
   state.dimState = null;
+  // 選択解除 + resizeハンドル削除（ハンドルがstopPropagationでdimクリックを横取りするのを防ぐ）
+  state.sel.els.clear();
+  state.sel.wires.clear();
+  if (typeof updateResizeHandles === 'function') updateResizeHandles();
   document.querySelectorAll('.rb[id^=rb-]').forEach(b => b.classList.remove('on'));
   document.getElementById('rb-' + (m === 'sym' ? 'sym' : m))?.classList.add('on');
   updateHint();
