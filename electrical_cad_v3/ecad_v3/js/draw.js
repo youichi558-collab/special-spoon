@@ -392,10 +392,10 @@ function drawDimEl(el, isSel) {
   const a=arr/state.zoom;
   const drawArr=(x,y,dx2,dy2)=>{ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+dx2*a-(-dy2)*a*0.3,y+dy2*a-dx2*a*0.3);ctx.lineTo(x+dx2*a+(-dy2)*a*0.3,y+dy2*a+dx2*a*0.3);ctx.closePath();ctx.fill();};
   drawArr(ax1,ay1,ux,uy); drawArr(ax2,ay2,-ux,-uy);
-  const mx=(ax1+ax2)/2, my=(ay1+ay2)/2, fs=11/state.zoom;
+  const mx=(ax1+ax2)/2 + (el.dimTx||0), my=(ay1+ay2)/2 + (el.dimTy||0);
+  const fs=(el.dimFs||11)/state.zoom;
   ctx.font=`${fs}px sans-serif`; ctx.textAlign='center';
   const txt=el.dimText||String(Math.round(len)), tw2=ctx.measureText(txt).width;
-  // テキストを寸法線の上側に明確にずらす（線と被らないよう fs+4 分オフセット）
   const tyOff = fs + 4;
   ctx.fillStyle=state.darkMode?'#252525':'#fff';
   ctx.fillRect(mx-tw2/2-3, my-tyOff-fs*0.1, tw2+6, fs+2);
