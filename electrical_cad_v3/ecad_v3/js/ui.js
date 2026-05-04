@@ -594,7 +594,7 @@ function updateRightPanel() {
       <button class="fp-btn primary" onclick="applyRightPanel()">適用</button>
       <button class="fp-btn" onclick="applyDimToAll()">全て適用</button>
       <button class="fp-btn" onclick="saveDimDef()">デフォルト保存</button>
-      <button class="fp-btn danger" onclick="resetDimDef()">デフォルトに戻す</button>
+      <button class="fp-btn danger" onclick="resetDimDef()">初期値に戻す</button>
     </div>`;
   } else if (el && el.type === 'leader') {
     html += `<div class="pp-row"><label>引出しテキスト</label><input type="text" id="pp-ldrtext" value="${el.leaderText||''}"></div>`;
@@ -711,7 +711,14 @@ function saveDimDef() {
 // デフォルト設定をリセット
 function resetDimDef() {
   state.dimDef = { fs:11, tx:0, ty:0, fixed:false, color:'#744da9', gap:null, ext:null };
-  alert('デフォルト設定をリセットしました');
+  const rp = document.getElementById('rp-body');
+  const el = rp._el;
+  if (!el || el.type !== 'dim') return;
+  pushH();
+  el.dimFs=11; el.dimTx=0; el.dimTy=0; el.dimFixed=false; el.color='#744da9';
+  el.gap=null; el.ext=null;
+  draw();
+  updateRightPanel();
 }
 
 function applyFrameProps() {
