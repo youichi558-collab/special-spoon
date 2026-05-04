@@ -156,6 +156,14 @@ cv.addEventListener('contextmenu', e => e.preventDefault());
 cv.addEventListener('dblclick', e => {
   const r = cv.getBoundingClientRect();
   const {x:wx, y:wy} = tw(e.clientX - r.left, e.clientY - r.top);
+  // ワイヤー → 線番編集
+  const wire = hitTestWire(wx, wy);
+  if (wire) {
+    const txt = prompt('線番:', wire.wireNo || '');
+    if (txt === null) return;
+    pushH(); wire.wireNo = txt; draw(); return;
+  }
+  // 要素
   const el = hitTestElement(wx, wy);
   if (!el) return;
   if (el.type === 'dim') {
