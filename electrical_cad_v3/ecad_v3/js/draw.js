@@ -395,26 +395,16 @@ function drawDimEl(el, isSel) {
   const mx=(ax1+ax2)/2 + (el.dimTx||0), my=(ay1+ay2)/2 + (el.dimTy||0);
   const rawFs = el.dimFs || 11;
   const txt = el.dimText || String(Math.round(len));
-  if (el.dimFixed) {
-    // ズーム非依存：スクリーン座標に変換してから描画
-    const sx = mx * state.zoom + state.pan.x;
-    const sy = my * state.zoom + state.pan.y;
-    ctx.save(); ctx.setTransform(1,0,0,1,0,0);
-    ctx.font=`${rawFs}px sans-serif`; ctx.textAlign='center';
-    const tw2=ctx.measureText(txt).width;
-    ctx.fillStyle=state.darkMode?'#252525':'#fff';
-    ctx.fillRect(sx-tw2/2-3, sy-rawFs-4, tw2+6, rawFs+6);
-    ctx.fillStyle=c; ctx.fillText(txt, sx, sy-2);
-    ctx.restore();
-  } else {
-    const fs = rawFs / state.zoom;
-    ctx.font=`${fs}px sans-serif`; ctx.textAlign='center';
-    const tw2=ctx.measureText(txt).width;
-    const tyOff = fs + 4;
-    ctx.fillStyle=state.darkMode?'#252525':'#fff';
-    ctx.fillRect(mx-tw2/2-3, my-tyOff-fs*0.1, tw2+6, fs+2);
-    ctx.fillStyle=c; ctx.fillText(txt, mx, my-tyOff+fs*0.85);
-  }
+  // 線番と同じ扱い：常にズーム非依存の固定サイズ
+  const sx = mx * state.zoom + state.pan.x;
+  const sy = my * state.zoom + state.pan.y;
+  ctx.save(); ctx.setTransform(1,0,0,1,0,0);
+  ctx.font=`${rawFs}px sans-serif`; ctx.textAlign='center';
+  const tw2=ctx.measureText(txt).width;
+  ctx.fillStyle=state.darkMode?'#252525':'#fff';
+  ctx.fillRect(sx-tw2/2-3, sy-rawFs-6, tw2+6, rawFs+6);
+  ctx.fillStyle=c; ctx.fillText(txt, sx, sy-2);
+  ctx.restore();
   ctx.restore();
 }
 

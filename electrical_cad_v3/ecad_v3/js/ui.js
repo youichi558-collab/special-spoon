@@ -582,7 +582,6 @@ function updateRightPanel() {
     const len = Math.round(Math.hypot(el.x2-el.x1, el.y2-el.y1));
     html += `<div class="pp-row"><label>寸法テキスト</label><input type="text" id="pp-dimtext" value="${el.dimText||len}"></div>`;
     html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-dimfs" value="${el.dimFs||11}" min="8" max="72"></div>`;
-    html += `<div class="pp-row"><label>サイズ固定</label><input type="checkbox" id="pp-dimfixed" ${el.dimFixed?'checked':''}> <span style="font-size:10px;color:var(--fg3)">ズームで変わらない</span></div>`;
     html += `<div class="pp-row"><label>テキストX補正</label><input type="number" id="pp-dimtx" value="${el.dimTx||0}" step="5"></div>`;
     html += `<div class="pp-row"><label>テキストY補正</label><input type="number" id="pp-dimty" value="${el.dimTy||0}" step="5"></div>`;
     html += `<div class="pp-row"><label>オフセット距離</label><input type="number" id="pp-offset" value="${Math.abs(el.offset||30)}" min="5" max="200" step="5"></div>`;
