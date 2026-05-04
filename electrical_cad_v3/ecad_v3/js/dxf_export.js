@@ -58,8 +58,8 @@ function exportDXF(){
   ls.push('0','ENDSEC');
   // frameObjをコメントとして保存（読込時に復元）
   // 枠のLINE/TEXTエンティティは書かない（読込時に二重になるため）
+  ls.push('999','ECAD_DXF_V1');
   if(state.frameObj){
-    ls.push('999','ECAD_DXF_V1');
     ls.push('999','ECAD_FRAME:'+JSON.stringify(state.frameObj));
   }
   ls.push('0','SECTION','2','ENTITIES');
@@ -69,14 +69,14 @@ function exportDXF(){
     const off=el.offset||30;
     const ux=dx/len,uy=dy/len,px=-uy,py=ux;
     const ax1=el.x1+px*off,ay1=el.y1+py*off,ax2=el.x2+px*off,ay2=el.y2+py*off;
-    ls.push('0','DIMENSION','8',el.layer||'寸法','10',((ax1+ax2)/2).toFixed(3),'20',(-(ay1+ay2)/2).toFixed(3),'30','0','11',((ax1+ax2)/2).toFixed(3),'21',(-(ay1+ay2)/2).toFixed(3),'31','0','70','32','13',el.x1.toFixed(3),'23',(-el.y1).toFixed(3),'33','0','14',el.x2.toFixed(3),'24',(-el.y2).toFixed(3),'34','0','1',toUnicodeDXF(el.dimText||''));
-    ls.push('0','LINE','8',el.layer||'寸法','10',ax1.toFixed(3),'20',(-ay1).toFixed(3),'30','0','11',ax2.toFixed(3),'21',(-ay2).toFixed(3),'31','0');
-    ls.push('0','LINE','8',el.layer||'寸法','10',el.x1.toFixed(3),'20',(-el.y1).toFixed(3),'30','0','11',ax1.toFixed(3),'21',(-ay1).toFixed(3),'31','0');
-    ls.push('0','LINE','8',el.layer||'寸法','10',el.x2.toFixed(3),'20',(-el.y2).toFixed(3),'30','0','11',ax2.toFixed(3),'21',(-ay2).toFixed(3),'31','0');
-    if(el.dimText)ls.push('0','TEXT','8',el.layer||'寸法','10',((ax1+ax2)/2).toFixed(3),'20',(-(ay1+ay2)/2-5).toFixed(3),'30','0','40','10','1',toUnicodeDXF(el.dimText),'72','1');
+    ls.push('0','DIMENSION','8',toUnicodeDXF(el.layer||'寸法'),'10',((ax1+ax2)/2).toFixed(3),'20',(-(ay1+ay2)/2).toFixed(3),'30','0','11',((ax1+ax2)/2).toFixed(3),'21',(-(ay1+ay2)/2).toFixed(3),'31','0','70','32','13',el.x1.toFixed(3),'23',(-el.y1).toFixed(3),'33','0','14',el.x2.toFixed(3),'24',(-el.y2).toFixed(3),'34','0','1',toUnicodeDXF(el.dimText||''));
+    ls.push('0','LINE','8',toUnicodeDXF(el.layer||'寸法'),'10',ax1.toFixed(3),'20',(-ay1).toFixed(3),'30','0','11',ax2.toFixed(3),'21',(-ay2).toFixed(3),'31','0');
+    ls.push('0','LINE','8',toUnicodeDXF(el.layer||'寸法'),'10',el.x1.toFixed(3),'20',(-el.y1).toFixed(3),'30','0','11',ax1.toFixed(3),'21',(-ay1).toFixed(3),'31','0');
+    ls.push('0','LINE','8',toUnicodeDXF(el.layer||'寸法'),'10',el.x2.toFixed(3),'20',(-el.y2).toFixed(3),'30','0','11',ax2.toFixed(3),'21',(-ay2).toFixed(3),'31','0');
+    if(el.dimText)ls.push('0','TEXT','8',toUnicodeDXF(el.layer||'寸法'),'10',((ax1+ax2)/2).toFixed(3),'20',(-(ay1+ay2)/2-5).toFixed(3),'30','0','40','10','1',toUnicodeDXF(el.dimText),'72','1');
   });
-  state.wires.forEach(w=>{const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];const layer=w.layer||'配線';for(let i=0;i<pts.length-1;i++)ls.push('0','LINE','8',layer,'10',pts[i].x.toFixed(2),'20',(-pts[i].y).toFixed(2),'30','0','11',pts[i+1].x.toFixed(2),'21',(-pts[i+1].y).toFixed(2),'31','0');if(w.wireNo){const mp=pts[Math.floor(pts.length/2)];ls.push('0','TEXT','8',layer,'10',mp.x.toFixed(2),'20',(-mp.y+8).toFixed(2),'30','0','40','8','1',toUnicodeDXF(w.wireNo),'72','1');}});
-  state.elements.forEach(el=>{const layer=el.layer||'回路';
+  state.wires.forEach(w=>{const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];const layer=toUnicodeDXF(w.layer||'配線');for(let i=0;i<pts.length-1;i++)ls.push('0','LINE','8',layer,'10',pts[i].x.toFixed(2),'20',(-pts[i].y).toFixed(2),'30','0','11',pts[i+1].x.toFixed(2),'21',(-pts[i+1].y).toFixed(2),'31','0');if(w.wireNo){const mp=pts[Math.floor(pts.length/2)];ls.push('0','TEXT','8',layer,'10',mp.x.toFixed(2),'20',(-mp.y+8).toFixed(2),'30','0','40','8','1',toUnicodeDXF(w.wireNo),'72','1');}});
+  state.elements.forEach(el=>{const layer=toUnicodeDXF(el.layer||'回路');
     if(el.type==='dim') return; // dimは上で既に出力済み
     if(el.type==='leader'){
       // leaderをLINE+TEXTとして出力
