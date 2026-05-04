@@ -159,7 +159,8 @@ function parseDXF(text){
           offset=Math.max(15,Math.abs(dot));
         }
         state.elements.push({id:genId('el'),type:'dim',x1,y1,x2,y2,
-          dimText:e['1']||'',offset,offsetSign,arrowSz:8,dimFs:11,
+          dimText:e['1']||'',offset,offsetSign,arrowSz:state.dimDef?.arrowSz||8,
+          dimFs:state.dimDef?.fs||11,dimTy:state.dimDef?.ty||0,dimTx:state.dimDef?.tx||0,
           layer:e['8']||'寸法',x:mx,y:my});
         i=e._end;continue;
       }

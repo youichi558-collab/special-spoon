@@ -106,18 +106,33 @@ function exportDXF(){
     const W=wMM*sc,H=hMM*sc,MGpx=mg*sc,TH=thMM*sc;
     const iW=W-MGpx*2,iH=H-MGpx*2,dH=iH-TH;
     const FL='図面枠';
-    function FL_LINE(x1,y1,x2,y2){ls.push('0','LINE','8',FL,'10',x1.toFixed(2),'20',(-y1).toFixed(2),'30','0','11',x2.toFixed(2),'21',(-y2).toFixed(2),'31','0');}
-    function FL_TEXT(x,y,h,s){if(s)ls.push('0','TEXT','8',FL,'10',x.toFixed(2),'20',(-y).toFixed(2),'30','0','40',String(h),'1',String(s),'72','1');}
-    // 外枠・内枠・表題欄
-    FL_LINE(0,0,W,0);FL_LINE(W,0,W,H);FL_LINE(W,H,0,H);FL_LINE(0,H,0,0);
-    FL_LINE(MGpx,MGpx,MGpx+iW,MGpx);FL_LINE(MGpx+iW,MGpx,MGpx+iW,MGpx+dH);
-    FL_LINE(MGpx+iW,MGpx+dH,MGpx,MGpx+dH);FL_LINE(MGpx,MGpx+dH,MGpx,MGpx);
-    FL_LINE(MGpx,MGpx+dH,MGpx+iW,MGpx+dH);FL_LINE(MGpx,H-MGpx,MGpx+iW,H-MGpx);
+    const L=(x1,y1,x2,y2)=>ls.push('0','LINE','8',FL,'10',x1.toFixed(2),'20',(-y1).toFixed(2),'30','0','11',x2.toFixed(2),'21',(-y2).toFixed(2),'31','0');
+    const T=(x,y,h,s)=>{if(s)ls.push('0','TEXT','8',FL,'10',x.toFixed(2),'20',(-y).toFixed(2),'30','0','40',String(h),'1',String(s));};
+    // 外枠
+    L(0,0,W,0);L(W,0,W,H);L(W,H,0,H);L(0,H,0,0);
+    // 内枠
+    L(MGpx,MGpx,MGpx+iW,MGpx);
+    L(MGpx+iW,MGpx,MGpx+iW,MGpx+iH);
+    L(MGpx+iW,MGpx+iH,MGpx,MGpx+iH);
+    L(MGpx,MGpx+iH,MGpx,MGpx);
+    // 表題欄の横線
+    L(MGpx,MGpx+dH,MGpx+iW,MGpx+dH);
+    // 表題欄の縦区切り
+    const tw=iW/4;
+    L(MGpx+tw,MGpx+dH,MGpx+tw,MGpx+iH);
+    L(MGpx+tw*2,MGpx+dH,MGpx+tw*2,MGpx+iH);
+    L(MGpx+tw*3,MGpx+dH,MGpx+tw*3,MGpx+iH);
     // 表題欄テキスト
-    FL_TEXT(MGpx+5,MGpx+dH+TH*0.5,8,fr.title);
-    FL_TEXT(MGpx+5,MGpx+dH+TH*0.8,6,fr.drawno);
-    FL_TEXT(MGpx+iW*0.6,MGpx+dH+TH*0.5,6,fr.company);
-    FL_TEXT(MGpx+iW*0.6,MGpx+dH+TH*0.8,6,fr.author);
+    const ty=MGpx+dH+TH*0.6,fs=Math.max(4,TH*0.3);
+    T(MGpx+tw*0.1,ty,fs,fr.drawno);
+    T(MGpx+tw*0.1,ty-TH*0.35,fs,fr.title||'');
+    T(MGpx+tw*1.1,ty,fs,fr.author);
+    T(MGpx+tw*2.1,ty,fs,fr.company);
+    T(MGpx+tw*3.1,ty,fs,fr.scale2||'');
+    // 列ラベル
+    if(cols>0){const cw=iW/cols;for(let c=0;c<cols;c++){L(MGpx+cw*c,MGpx,MGpx+cw*c,MGpx+iH);T(MGpx+cw*(c+0.5),MGpx+6,6,String.fromCharCode(65+c));}}
+    // 行ラベル
+    if(rows>0){const rh=dH/rows;for(let r=0;r<rows;r++){L(MGpx,MGpx+rh*r,MGpx+iW,MGpx+rh*r);T(MGpx+4,MGpx+rh*(r+0.5),6,String(r+1));}}
   }
   state.wires.forEach(w=>{const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];const layer=w.layer||'配線';for(let i=0;i<pts.length-1;i++)ls.push('0','LINE','8',layer,'10',pts[i].x.toFixed(2),'20',(-pts[i].y).toFixed(2),'30','0','11',pts[i+1].x.toFixed(2),'21',(-pts[i+1].y).toFixed(2),'31','0');if(w.wireNo){const mp=pts[Math.floor(pts.length/2)];ls.push('0','TEXT','8',layer,'10',mp.x.toFixed(2),'20',(-mp.y+8).toFixed(2),'30','0','40','8','1',w.wireNo,'72','1');}});
   state.elements.forEach(el=>{const layer=el.layer||'回路';
