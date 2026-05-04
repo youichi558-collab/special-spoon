@@ -252,7 +252,7 @@ const dimTool = {
       const dot=(sx-mx)*px+(sy-my)*py;
       const sign = dot >= 0 ? 1 : -1;
       const offset = Math.max(15, Math.abs(dot));
-      const dist = Math.round(len);
+      const dist = Math.round(len * (state.drawScale||1));
       const txt = prompt('寸法テキスト（空欄で自動）:', '') ?? '';
       state.mouse.down = false;
       pushH();
