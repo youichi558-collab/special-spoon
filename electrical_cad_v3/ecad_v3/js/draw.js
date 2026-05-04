@@ -373,7 +373,7 @@ function drawDimEl(el, isSel) {
   const ux=dx/len, uy=dy/len, px=-uy*sign, py=ux*sign;
   const absOff=Math.abs(off);
   const gap=el.gap!=null?el.gap:state.G;    // 測定点からの隙間（デフォルト1グリッド）
-  const ext=el.ext!=null?el.ext:5;    // 寸法線を超える伸び
+  const ext=el.ext!=null?el.ext:state.G;    // 寸法線を超える伸び（デフォルト1グリッド）
   // 引出し線の始点(gap)・終点(absOff+ext)
   const ex1sx=el.x1+px*gap,    ex1sy=el.y1+py*gap;
   const ex1ex=el.x1+px*(absOff+ext), ex1ey=el.y1+py*(absOff+ext);

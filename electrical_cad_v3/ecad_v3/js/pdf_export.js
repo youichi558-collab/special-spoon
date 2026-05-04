@@ -436,7 +436,7 @@ function _exportPDFPages(indices, filename) {
             const sign=el.offsetSign||1, off=(el.offset||30)*sign;
             const ux=dx/len, uy=dy/len, px=-uy*sign, py=ux*sign;
             const absOff=Math.abs(off);
-            const gap=el.gap!=null?el.gap:state.G, ext=el.ext!=null?el.ext:5;
+            const gap=el.gap!=null?el.gap:state.G, ext=el.ext!=null?el.ext:state.G;
             const ax1=el.x1+px*absOff, ay1=el.y1+py*absOff;
             const ax2=el.x2+px*absOff, ay2=el.y2+py*absOff;
             const dc = el.color || '#744da9';
