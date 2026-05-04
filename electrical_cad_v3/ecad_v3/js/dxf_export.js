@@ -130,8 +130,8 @@ function exportDXF(){
     T(MGpx+tw*2.1,ty,fs,fr.company);
     T(MGpx+tw*3.1,ty,fs,fr.scale2||'');
     // 列ラベル・分割線（余白部分のみ）
-    if(cols>0){const cw=iW/cols;for(let c=1;c<cols;c++){L(MGpx+c*cw,0,MGpx+c*cw,MGpx);L(MGpx+c*cw,MGpx+iH,MGpx+c*cw,H);}
-      for(let c=0;c<cols;c++){T(MGpx+c*cw+cw/2,MGpx/2,6,String.fromCharCode(65+c));T(MGpx+c*cw+cw/2,MGpx+iH+MGpx/2,6,String.fromCharCode(65+c));}}
+    if(cols>0){const cw=iW/cols;for(let c=1;c<cols;c++){L(MGpx+c*cw,0,MGpx+c*cw,MGpx);L(MGpx+c*cw,MGpx+dH,MGpx+c*cw,H);}
+      for(let c=0;c<cols;c++){T(MGpx+c*cw+cw/2,MGpx/2,6,String.fromCharCode(65+c));T(MGpx+c*cw+cw/2,MGpx+dH+TH/2,6,String.fromCharCode(65+c));}}
     // 行ラベル・分割線（余白部分のみ、表題欄を除く図面エリアのみ）
     if(rows>0){const rh=dH/rows;for(let r=1;r<rows;r++){L(0,MGpx+r*rh,MGpx,MGpx+r*rh);L(MGpx+iW,MGpx+r*rh,W,MGpx+r*rh);}
       for(let r=0;r<rows;r++){T(MGpx/2,MGpx+r*rh+rh/2,6,String(r+1));T(MGpx+iW+MGpx/2,MGpx+r*rh+rh/2,6,String(r+1));}}
