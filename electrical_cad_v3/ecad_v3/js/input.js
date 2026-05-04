@@ -163,8 +163,8 @@ cv.addEventListener('dblclick', e => {
     if (txt === null) return;
     pushH(); wire.wireNo = txt; draw(); return;
   }
-  // 要素
-  const el = hitTestElement(wx, wy);
+  // 要素（hitTest が正しい関数名）
+  const el = hitTest(wx, wy);
   if (!el) return;
   if (el.type === 'dim') {
     const len = Math.round(Math.hypot(el.x2-el.x1, el.y2-el.y1));

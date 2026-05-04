@@ -10,7 +10,19 @@ function hitTest(wx, wy) {
     if (lay && lay.locked) continue;
     // getDef()に依存しない型を先に判定
     if (el.type === 'text')   { const hw = Math.min(200, (el.text||'').length * (el.fs||14) * 0.55); const hh = (el.fs||14) * 0.8; if (wx>=el.x && wx<=el.x+hw && wy>=el.y-hh && wy<=el.y+2) return el; continue; }
-    if (el.type === 'dim')    { if (distToSeg(wx,wy,el.x1,el.y1,el.x2,el.y2) < R) return el; continue; }
+    if (el.type === 'dim') {
+      // 測定点セグメント or 実際の寸法線（オフセット位置）どちらでもヒット
+      if (distToSeg(wx,wy,el.x1,el.y1,el.x2,el.y2) < R) return el;
+      const ddx=el.x2-el.x1, ddy=el.y2-el.y1, dlen=Math.hypot(ddx,ddy);
+      if (dlen > 0.1) {
+        const sign=el.offsetSign||1, absOff=Math.abs(el.offset||30);
+        const px=-ddy/dlen*sign, py=ddx/dlen*sign;
+        const ax1=el.x1+px*absOff, ay1=el.y1+py*absOff;
+        const ax2=el.x2+px*absOff, ay2=el.y2+py*absOff;
+        if (distToSeg(wx,wy,ax1,ay1,ax2,ay2) < R) return el;
+      }
+      continue;
+    }
     if (el.type === 'leader') { if (distToSeg(wx,wy,el.x1,el.y1,el.bx,el.by) < R || distToSeg(wx,wy,el.bx,el.by,el.x2,el.y2) < R) return el; continue; }
     if (el.type === 'fline')  { if (distToSeg(wx,wy,el.x1,el.y1,el.x2,el.y2) < R) return el; continue; }
     if (el.type === 'rect')   { if (wx>=el.x&&wx<=el.x+el.w&&wy>=el.y&&wy<=el.y+el.h) return el; continue; }

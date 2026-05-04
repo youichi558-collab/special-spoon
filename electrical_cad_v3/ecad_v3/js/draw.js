@@ -395,10 +395,11 @@ function drawDimEl(el, isSel) {
   const mx=(ax1+ax2)/2, my=(ay1+ay2)/2, fs=11/state.zoom;
   ctx.font=`${fs}px sans-serif`; ctx.textAlign='center';
   const txt=el.dimText||String(Math.round(len)), tw2=ctx.measureText(txt).width;
-  const padX=4, padY=4;
+  // テキストを寸法線の上側に明確にずらす（線と被らないよう fs+4 分オフセット）
+  const tyOff = fs + 4;
   ctx.fillStyle=state.darkMode?'#252525':'#fff';
-  ctx.fillRect(mx-tw2/2-padX, my-fs-padY, tw2+padX*2, fs+padY*2);
-  ctx.fillStyle=c; ctx.fillText(txt, mx, my+padY*0.3);
+  ctx.fillRect(mx-tw2/2-3, my-tyOff-fs*0.1, tw2+6, fs+2);
+  ctx.fillStyle=c; ctx.fillText(txt, mx, my-tyOff+fs*0.85);
   ctx.restore();
 }
 

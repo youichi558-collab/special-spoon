@@ -452,7 +452,7 @@ function _exportPDFPages(indices, filename) {
             const txt = el.dimText || String(Math.round(len));
             const dimEl = { text: txt, color: dc };
             const dimRes = rasterizeTextEl(dimEl, 2.5);
-            if (dimRes) pdf.addImage(dimRes.dataURL, 'PNG', tx(mx)-dimRes.wMM/2, ty(my)-dimRes.hMM*0.6, dimRes.wMM, dimRes.hMM, '', 'FAST');
+            if (dimRes) pdf.addImage(dimRes.dataURL, 'PNG', tx(mx)-dimRes.wMM/2, ty(my)-dimRes.hMM*1.4, dimRes.wMM, dimRes.hMM, '', 'FAST');
           }
 
         } else if (el.type === 'leader') {
