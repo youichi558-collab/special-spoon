@@ -363,10 +363,11 @@ function _exportPDFPages(indices, filename) {
           const n = pts.length;
           const i = Math.floor((n-1)/2), j = Math.ceil((n-1)/2);
           const mp = n >= 2 ? { x:(pts[i].x+pts[j].x)/2, y:(pts[i].y+pts[j].y)/2 } : pts[0];
-          // 線の垂直方向にオフセット（斜め線でも離れる）
+          // 線の垂直方向にオフセット（常に上側）
           const p1 = pts[i], p2 = pts[j];
           const dx = p2.x - p1.x, dy = p2.y - p1.y, dl = Math.hypot(dx, dy) || 1;
-          const nx = -dy/dl, ny = dx/dl;  // 法線ベクトル（上向き優先）
+          let nx = -dy/dl, ny = dx/dl;
+          if (ny > 0) { nx = -nx; ny = -ny; }  // y上向き(負方向)に統一
           const offW = 15;  // world単位オフセット
           const ox = nx * offW, oy = ny * offW;
           const noEl = { text: w.wireNo, color: '#1e40af' };
