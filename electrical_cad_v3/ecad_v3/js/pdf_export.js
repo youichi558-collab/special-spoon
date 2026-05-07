@@ -364,7 +364,7 @@ function _exportPDFPages(indices, filename) {
           const i = Math.floor((n-1)/2), j = Math.ceil((n-1)/2);
           const mp = n >= 2 ? { x:(pts[i].x+pts[j].x)/2, y:(pts[i].y+pts[j].y)/2 } : pts[0];
           const noEl = { text: w.wireNo, color: '#1e40af' };
-          const noRes = rasterizeTextEl(noEl, 2.8);
+          const noRes = rasterizeTextEl(noEl, 3.5);
           if (noRes) pdf.addImage(noRes.dataURL, 'PNG', tx(mp.x)-noRes.wMM/2, ty(mp.y)-noRes.hMM-1.5, noRes.wMM, noRes.hMM, '', 'FAST');
         }
       });
@@ -473,7 +473,7 @@ function _exportPDFPages(indices, filename) {
             const mx=(ax1+ax2)/2, my=(ay1+ay2)/2;
             const txt = el.dimText || String(Math.round(len));
             const dimEl = { text: txt, color: dc };
-            const dimRes = rasterizeTextEl(dimEl, 2.5);
+            const dimRes = rasterizeTextEl(dimEl, (el.dimFs || 11) * 0.35);
             if (dimRes) pdf.addImage(dimRes.dataURL, 'PNG', tx(mx)-dimRes.wMM/2, ty(my)-dimRes.hMM*1.4, dimRes.wMM, dimRes.hMM, '', 'FAST');
           }
 
@@ -489,7 +489,7 @@ function _exportPDFPages(indices, filename) {
           if (len>0.1) pdfArrow(pdf, tx(el.x1), ty(el.y1), (bx-el.x1)/len*s, (by-el.y1)/len*s, 2, lc2);
           if (el.leaderText) {
             const ltEl = { text: el.leaderText, color: lc2 };
-            const ltRes = rasterizeTextEl(ltEl, 2.8);
+            const ltRes = rasterizeTextEl(ltEl, (el.leaderFs || 11) * 0.35);
             const ltx = el.x2 + (el.leaderTx||0);
             const lty = el.y2 + (el.leaderTy||0);
             if (ltRes) pdf.addImage(ltRes.dataURL, 'PNG', tx(ltx)+0.5, ty(lty)-ltRes.hMM*0.9, ltRes.wMM, ltRes.hMM, '', 'FAST');
