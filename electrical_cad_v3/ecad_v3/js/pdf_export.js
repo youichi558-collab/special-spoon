@@ -366,7 +366,7 @@ function _exportPDFPages(indices, filename) {
           // 線番：中点から上方向に固定オフセット（draw.jsと同じ方式）
           const noEl = { text: w.wireNo, color: '#1e40af' };
           const noRes = rasterizeTextEl(noEl, 3.5);
-          if (noRes) pdf.addImage(noRes.dataURL, 'PNG', tx(mp.x)-noRes.wMM/2, ty(mp.y) - noRes.hMM - 6, noRes.wMM, noRes.hMM, '', 'FAST');
+          if (noRes) pdf.addImage(noRes.dataURL, 'PNG', tx(mp.x)-noRes.wMM/2, ty(mp.y) - noRes.hMM - 20, noRes.wMM, noRes.hMM, '', 'FAST');
         }
       });
 
