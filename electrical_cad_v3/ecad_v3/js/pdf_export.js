@@ -200,8 +200,7 @@ function rasterizeTextEl(el, fsMM) {
   const oc = document.createElement('canvas');
   oc.width = pxW; oc.height = pxH;
   const octx = oc.getContext('2d');
-  octx.fillStyle = '#ffffff';
-  octx.fillRect(0, 0, pxW, pxH);
+  // 背景は透明（白塗りしない）
   octx.fillStyle = el.color || '#000000';
   octx.font = `${fsPx}px sans-serif`;
   octx.textBaseline = 'alphabetic';
@@ -491,7 +490,9 @@ function _exportPDFPages(indices, filename) {
           if (el.leaderText) {
             const ltEl = { text: el.leaderText, color: lc2 };
             const ltRes = rasterizeTextEl(ltEl, 2.8);
-            if (ltRes) pdf.addImage(ltRes.dataURL, 'PNG', tx(bx)+0.5, ty(by)-ltRes.hMM*0.9, ltRes.wMM, ltRes.hMM, '', 'FAST');
+            const ltx = el.x2 + (el.leaderTx||0);
+            const lty = el.y2 + (el.leaderTy||0);
+            if (ltRes) pdf.addImage(ltRes.dataURL, 'PNG', tx(ltx)+0.5, ty(lty)-ltRes.hMM*0.9, ltRes.wMM, ltRes.hMM, '', 'FAST');
           }
 
         } else {
