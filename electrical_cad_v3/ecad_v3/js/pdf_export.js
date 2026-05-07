@@ -367,7 +367,7 @@ function _exportPDFPages(indices, filename) {
           const p1 = pts[i], p2 = pts[j];
           const dx = p2.x - p1.x, dy = p2.y - p1.y, dl = Math.hypot(dx, dy) || 1;
           const nx = -dy/dl, ny = dx/dl;  // 法線ベクトル（上向き優先）
-          const offW = 6;  // world単位オフセット
+          const offW = 15;  // world単位オフセット
           const ox = nx * offW, oy = ny * offW;
           const noEl = { text: w.wireNo, color: '#1e40af' };
           const noRes = rasterizeTextEl(noEl, 3.5);
