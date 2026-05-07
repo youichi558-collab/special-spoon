@@ -363,16 +363,10 @@ function _exportPDFPages(indices, filename) {
           const n = pts.length;
           const i = Math.floor((n-1)/2), j = Math.ceil((n-1)/2);
           const mp = n >= 2 ? { x:(pts[i].x+pts[j].x)/2, y:(pts[i].y+pts[j].y)/2 } : pts[0];
-          // 線の垂直方向にオフセット（常に上側）
-          const p1 = pts[i], p2 = pts[j];
-          const dx = p2.x - p1.x, dy = p2.y - p1.y, dl = Math.hypot(dx, dy) || 1;
-          let nx = -dy/dl, ny = dx/dl;
-          if (ny > 0) { nx = -nx; ny = -ny; }  // y上向き(負方向)に統一
-          const offW = 15;  // world単位オフセット
-          const ox = nx * offW, oy = ny * offW;
+          // 線番：中点から上方向に固定オフセット（draw.jsと同じ方式）
           const noEl = { text: w.wireNo, color: '#1e40af' };
           const noRes = rasterizeTextEl(noEl, 3.5);
-          if (noRes) pdf.addImage(noRes.dataURL, 'PNG', tx(mp.x+ox)-noRes.wMM/2, ty(mp.y+oy)-noRes.hMM*0.8, noRes.wMM, noRes.hMM, '', 'FAST');
+          if (noRes) pdf.addImage(noRes.dataURL, 'PNG', tx(mp.x)-noRes.wMM/2, ty(mp.y) - noRes.hMM - tm(16), noRes.wMM, noRes.hMM, '', 'FAST');
         }
       });
 
