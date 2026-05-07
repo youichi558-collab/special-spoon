@@ -365,7 +365,7 @@ function _exportPDFPages(indices, filename) {
           const mp = n >= 2 ? { x:(pts[i].x+pts[j].x)/2, y:(pts[i].y+pts[j].y)/2 } : pts[0];
           const noEl = { text: w.wireNo, color: '#1e40af' };
           const noRes = rasterizeTextEl(noEl, 3.5);
-          if (noRes) pdf.addImage(noRes.dataURL, 'PNG', tx(mp.x)-noRes.wMM/2, ty(mp.y)-noRes.hMM-1.5, noRes.wMM, noRes.hMM, '', 'FAST');
+          if (noRes) pdf.addImage(noRes.dataURL, 'PNG', tx(mp.x)-noRes.wMM/2, ty(mp.y)-noRes.hMM*1.5-2, noRes.wMM, noRes.hMM, '', 'FAST');
         }
       });
 
