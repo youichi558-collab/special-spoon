@@ -189,11 +189,12 @@ function rasterizeTextEl(el, fsMM) {
   if (!text) return null;
   const pxPerMM = dpi / 25.4;
   const fsPx = fsMM * pxPerMM;
+  const fontStr = `${el.bold ? 'bold ' : ''}${fsPx}px sans-serif`;
 
   const tmpCv = document.createElement('canvas');
   tmpCv.width = 1; tmpCv.height = 1;
   const tmpCtx = tmpCv.getContext('2d');
-  tmpCtx.font = `${fsPx}px sans-serif`;
+  tmpCtx.font = fontStr;
   const pxW = Math.max(4, Math.ceil(tmpCtx.measureText(text).width + 4));
   const pxH = Math.max(4, Math.ceil(fsPx * 1.5));
 
@@ -202,7 +203,7 @@ function rasterizeTextEl(el, fsMM) {
   const octx = oc.getContext('2d');
   // 背景は透明（白塗りしない）
   octx.fillStyle = el.color || '#000000';
-  octx.font = `${fsPx}px sans-serif`;
+  octx.font = fontStr;
   octx.textBaseline = 'alphabetic';
   octx.fillText(text, 2, fsPx);
   return { dataURL: oc.toDataURL('image/png'), wMM: pxW / pxPerMM, hMM: pxH / pxPerMM };
@@ -364,9 +365,9 @@ function _exportPDFPages(indices, filename) {
           const i = Math.floor((n-1)/2), j = Math.ceil((n-1)/2);
           const mp = n >= 2 ? { x:(pts[i].x+pts[j].x)/2, y:(pts[i].y+pts[j].y)/2 } : pts[0];
           // 線番：中点から上方向に固定オフセット（draw.jsと同じ方式）
-          const noEl = { text: w.wireNo, color: '#1e40af' };
+          const noEl = { text: w.wireNo, color: '#1e40af', bold: true };
           const noRes = rasterizeTextEl(noEl, 3.5);
-          if (noRes) pdf.addImage(noRes.dataURL, 'PNG', tx(mp.x)-noRes.wMM/2, ty(mp.y) - noRes.hMM - 20, noRes.wMM, noRes.hMM, '', 'FAST');
+          if (noRes) pdf.addImage(noRes.dataURL, 'PNG', tx(mp.x)-noRes.wMM/2, ty(mp.y) - noRes.hMM - 2, noRes.wMM, noRes.hMM, '', 'FAST');
         }
       });
 
@@ -473,9 +474,11 @@ function _exportPDFPages(indices, filename) {
             }
             const mx=(ax1+ax2)/2, my=(ay1+ay2)/2;
             const txt = el.dimText || String(Math.round(len));
-            const dimEl = { text: txt, color: dc };
+            const dimEl = { text: txt, color: dc, bold: true };
             const dimRes = rasterizeTextEl(dimEl, (el.dimFs || 11) * 0.35);
-            if (dimRes) pdf.addImage(dimRes.dataURL, 'PNG', tx(mx)-dimRes.wMM/2, ty(my)-dimRes.hMM*1.4, dimRes.wMM, dimRes.hMM, '', 'FAST');
+            const dtx = mx + (el.dimTx||0);
+            const dty = my + (el.dimTy||0);
+            if (dimRes) pdf.addImage(dimRes.dataURL, 'PNG', tx(dtx)-dimRes.wMM/2, ty(dty)-dimRes.hMM, dimRes.wMM, dimRes.hMM, '', 'FAST');
           }
 
         } else if (el.type === 'leader') {
