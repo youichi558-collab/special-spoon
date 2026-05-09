@@ -553,11 +553,11 @@ function saveCustomSymbol() {
   let preview = null;
   if (cv) {
     const thumbCv = document.createElement('canvas');
-    thumbCv.width = 80; thumbCv.height = 60;
+    thumbCv.width = 40; thumbCv.height = 30;
     const tctx = thumbCv.getContext('2d');
     tctx.fillStyle = '#fff';
-    tctx.fillRect(0, 0, 80, 60);
-    tctx.drawImage(cv, 0, 0, 80, 60);
+    tctx.fillRect(0, 0, 40, 30);
+    tctx.drawImage(cv, 0, 0, 40, 30);
     preview = thumbCv.toDataURL('image/png');
   }
   const sym = { type, name, label:name, cat, w, h, shapes:[..._srShapes], terminals:[..._srTerms], preview };
@@ -580,7 +580,7 @@ function renderCustomSymbols() {
   el.innerHTML = Object.entries(grps).map(([cat,syms]) =>
     `<h4>${cat}</h4>` + syms.map(s =>
       `<div class="sym-item" onclick="pickSym(this,'${s.type}')" style="flex-direction:column;align-items:flex-start;gap:2px;padding:4px">
-        ${s.preview ? `<img src="${s.preview}" style="width:80px;height:60px;object-fit:contain;background:#fff;border-radius:2px;display:block">` : ''}
+        ${s.preview ? `<img src="${s.preview}" style="width:40px;height:30px;object-fit:contain;background:#fff;border-radius:2px;display:block">` : ''}
         <div style="display:flex;width:100%;align-items:center"><span>${s.name}</span>
         <span onclick="event.stopPropagation();delCusSym('${s.type}')" style="margin-left:auto;color:var(--red);font-size:10px;cursor:pointer">×</span></div>
       </div>`
@@ -1004,8 +1004,9 @@ function renderSymFloat() {
     html += `<div style="font-size:9px;color:var(--fg3);font-weight:700;margin:8px 0 3px;text-transform:uppercase;letter-spacing:.06em;border-top:1px solid var(--bd2);padding-top:6px">カスタム</div>`;
     html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px">`;
     state.customSymbols.forEach(s => {
+      const img = s.preview ? `<img src="${s.preview}" style="width:36px;height:28px;object-fit:contain;background:#fff;border-radius:2px">` : `<svg width="36" height="28"></svg>`;
       html += `<div class="sym-item" onclick="pickSym(this,'${s.type}')" style="flex-direction:column;align-items:center;padding:5px 3px;gap:3px;position:relative">
-        <svg width="36" height="28" viewBox="-50 -30 100 60" style="overflow:visible">${s.paths||''}</svg>
+        ${img}
         <span style="font-size:9px;text-align:center;line-height:1.2">${s.label||s.type}</span>
         <span onclick="event.stopPropagation();delCusSym('${s.type}')" style="position:absolute;top:2px;right:2px;font-size:9px;color:var(--red);cursor:pointer">×</span>
       </div>`;
