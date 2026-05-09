@@ -502,7 +502,7 @@ function _exportPDFPages(indices, filename) {
             const dimRes = rasterizeTextEl(dimEl, (el.dimFs || 11) * 0.35);
             const dtx = mx + (el.dimTx||0) + px*(el.dimFs||11)*0.35*1.4;
             const dty = my + (el.dimTy||0) + py*(el.dimFs||11)*0.35*1.4;
-            if (dimRes) pdf.addImage(dimRes.dataURL, 'PNG', tx(dtx)-dimRes.wMM/2, ty(dty)-dimRes.hMM/2, dimRes.wMM, dimRes.hMM, '', 'FAST');
+            if (dimRes) pdf.addImage(dimRes.dataURL, 'PNG', tx(dtx)-dimRes.wMM/2, ty(dty)-dimRes.hMM*0.72, dimRes.wMM, dimRes.hMM, '', 'FAST');
           }
 
         } else if (el.type === 'leader') {
