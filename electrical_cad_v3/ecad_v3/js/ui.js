@@ -276,19 +276,19 @@ function showSymReg() {
 
 function srPasteFromClipboard() {
   const cb = state.clipboard;
-  if (!cb?.els?.length) { alert('先にCADで図形を選択してCtrl+Cでコピーしてください'); return; }
+  if (!cb?.els?.length && !cb?.wires?.length) { alert('先にCADで図形を選択してCtrl+Cでコピーしてください'); return; }
 
   // バウンディングボックス計算
   let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+  const addPt = (x,y) => { minX=Math.min(minX,x); minY=Math.min(minY,y); maxX=Math.max(maxX,x); maxY=Math.max(maxY,y); };
   cb.els.forEach(el => {
-    const pts = [];
-    if (el.type==='fline'||el.type==='dim'||el.type==='leader') pts.push({x:el.x1,y:el.y1},{x:el.x2,y:el.y2});
-    else if (el.type==='circle'||el.type==='arc') pts.push({x:el.x-(el.r||0),y:el.y-(el.r||0)},{x:el.x+(el.r||0),y:el.y+(el.r||0)});
-    else if (el.type==='rect') pts.push({x:el.x,y:el.y},{x:el.x+(el.w||0),y:el.y+(el.h||0)});
-    else if (el.type==='triangle') pts.push({x:el.x1,y:el.y1},{x:el.x2,y:el.y2},{x:el.x3,y:el.y3});
-    else if (el.x!=null) pts.push({x:el.x,y:el.y});
-    pts.forEach(p => { minX=Math.min(minX,p.x); minY=Math.min(minY,p.y); maxX=Math.max(maxX,p.x); maxY=Math.max(maxY,p.y); });
+    if (el.type==='fline'||el.type==='dim'||el.type==='leader') { addPt(el.x1,el.y1); addPt(el.x2,el.y2); }
+    else if (el.type==='circle'||el.type==='arc') { addPt(el.x-(el.r||0),el.y-(el.r||0)); addPt(el.x+(el.r||0),el.y+(el.r||0)); }
+    else if (el.type==='rect') { addPt(el.x,el.y); addPt(el.x+(el.w||0),el.y+(el.h||0)); }
+    else if (el.type==='triangle') { addPt(el.x1,el.y1); addPt(el.x2,el.y2); addPt(el.x3,el.y3); }
+    else if (el.x!=null) addPt(el.x,el.y);
   });
+  cb.wires.forEach(w => { (w.pts||[]).forEach(p => addPt(p.x, p.y)); });
   if (!isFinite(minX)) return;
 
   const bW = maxX-minX || 1, bH = maxY-minY || 1;
@@ -322,7 +322,13 @@ function srPasteFromClipboard() {
     }
   });
 
-  _srShapes = shapes;
+  // ワイヤーを直線として変換
+  cb.wires.forEach(w => {
+    const pts = w.pts || [];
+    for (let i=0; i<pts.length-1; i++) {
+      shapes.push({t:'L', x1:tx(pts[i].x),y1:ty(pts[i].y), x2:tx(pts[i+1].x),y2:ty(pts[i+1].y)});
+    }
+  });
   srRender();
 }
 
