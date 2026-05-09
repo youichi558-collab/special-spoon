@@ -300,10 +300,10 @@ document.addEventListener('keydown', e => {
       case 'y': case 'Y': e.preventDefault(); redo(); break;
       case 's': e.preventDefault(); saveProject(); break;
       case 'a': e.preventDefault(); selectAll(); break;
-      case 'c': e.preventDefault(); copySelected(); break;
-      case 'x': e.preventDefault(); cutSelected(); break;
-      case 'v': e.preventDefault(); pasteSelected(); break;
-      case 'g': e.preventDefault(); groupSelected(); break;
+      case 'c': case 'C': e.preventDefault(); copySelected(); break;
+      case 'x': case 'X': e.preventDefault(); cutSelected(); break;
+      case 'v': case 'V': e.preventDefault(); pasteSelected(); break;
+      case 'g': case 'G': e.preventDefault(); groupSelected(); break;
       case 'Tab': e.preventDefault();
         switchPage((state.currentPage + (e.shiftKey ? -1 : 1) + state.pages.length) % state.pages.length);
         break;
