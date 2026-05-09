@@ -329,6 +329,7 @@ function srPasteFromClipboard() {
       shapes.push({t:'L', x1:tx(pts[i].x),y1:ty(pts[i].y), x2:tx(pts[i+1].x),y2:ty(pts[i+1].y)});
     }
   });
+  _srShapes = shapes;
   srRender();
 }
 
