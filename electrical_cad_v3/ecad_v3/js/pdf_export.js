@@ -152,7 +152,7 @@ function rasterizeSymEl(el, s) {
   const dpi = 200;
   const def = getDef(el.type) || { w:40, h:40 };
   const sc  = el.scale || 1;
-  const pad = 10;
+  const pad = 4;
   const wW = (def.w * sc || 40) + pad*2;
   const hW = (def.h * sc || 40) + pad*2;
   const zoom = s * dpi / 25.4;
