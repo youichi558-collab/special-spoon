@@ -500,8 +500,8 @@ function _exportPDFPages(indices, filename) {
             const txt = el.dimText || String(Math.round(len));
             const dimEl = { text: txt, color: dc, bold: true };
             const dimRes = rasterizeTextEl(dimEl, (el.dimFs || 11) * 0.35);
-            const dtx = mx + (el.dimTx||0);
-            const dty = my + (el.dimTy||0);
+            const dtx = mx + (el.dimTx||0) + px*(el.dimFs||11)*0.35*1.4;
+            const dty = my + (el.dimTy||0) + py*(el.dimFs||11)*0.35*1.4;
             if (dimRes) pdf.addImage(dimRes.dataURL, 'PNG', tx(dtx)-dimRes.wMM/2, ty(dty)-dimRes.hMM, dimRes.wMM, dimRes.hMM, '', 'FAST');
           }
 

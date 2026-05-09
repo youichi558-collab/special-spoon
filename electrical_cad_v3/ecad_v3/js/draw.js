@@ -457,13 +457,14 @@ function drawDimEl(el, isSel) {
   const cx0=(ax1+ax2)/2, cy0=(ay1+ay2)/2;
   const fs = el.dimFs || 11;
   const txt = el.dimText || String(Math.round(len));
-  const tx2 = cx0 + (el.dimTx||0)/state.zoom;
-  const ty2 = cy0 + (el.dimTy||0)/state.zoom - fs - 4;
-  ctx.font=`${fs}px sans-serif`; ctx.textAlign='center';
+  const tx2 = cx0 + (el.dimTx||0)/state.zoom + px*(fs+4);
+  const ty2 = cy0 + (el.dimTy||0)/state.zoom + py*(fs+4);
+  ctx.font=`bold ${fs}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
   const tw2=ctx.measureText(txt).width;
   ctx.fillStyle=state.darkMode?'#252525':'#fff';
-  ctx.fillRect(tx2-tw2/2-3, ty2-fs*0.1, tw2+6, fs+4);
-  ctx.fillStyle=c; ctx.fillText(txt, tx2, ty2+fs*0.85);
+  ctx.fillRect(tx2-tw2/2-3, ty2-fs*0.6, tw2+6, fs+4);
+  ctx.fillStyle=c; ctx.fillText(txt, tx2, ty2);
+  ctx.textBaseline='alphabetic';
   ctx.restore();
 }
 
