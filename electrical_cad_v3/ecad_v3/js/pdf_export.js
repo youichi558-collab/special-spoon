@@ -269,7 +269,7 @@ function _exportPDFPages(indices, filename) {
     else pdf.setTextColor(0,0,0);
     pdf.setFont('helvetica', bold ? 'bold' : 'normal');
     pdf.setFontSize(fsMM * 2.835);
-    pdf.text(text, x, y + fsMM * 0.5, { align: align||'center', baseline: 'alphabetic' });
+    pdf.text(text, x, y + fsMM * 0.5, { align: align||'center' });
     pdf.setTextColor(0,0,0);
   }
 
