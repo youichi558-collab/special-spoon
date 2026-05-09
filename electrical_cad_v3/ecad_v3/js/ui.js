@@ -272,6 +272,26 @@ function showSymReg() {
   cv.onmousedown = srOnDown;
   cv.onmousemove = srOnMove;
   cv.onmouseup   = srOnUp;
+  cv.setAttribute('tabindex', '0');
+  cv.focus();
+  cv.onkeydown = e => {
+    const step = e.shiftKey ? SR_GRID : 1;
+    let dx=0, dy=0;
+    if (e.key==='ArrowLeft')  dx=-step;
+    else if (e.key==='ArrowRight') dx=step;
+    else if (e.key==='ArrowUp')    dy=-step;
+    else if (e.key==='ArrowDown')  dy=step;
+    else return;
+    e.preventDefault();
+    _srShapes.forEach(s => {
+      if (s.t==='L') { s.x1+=dx; s.y1+=dy; s.x2+=dx; s.y2+=dy; }
+      else if (s.t==='C') { s.cx+=dx; s.cy+=dy; }
+      else if (s.t==='R') { s.x+=dx; s.y+=dy; }
+      else if (s.t==='T') { s.x+=dx; s.y+=dy; }
+    });
+    _srTerms.forEach(t => { t.x+=dx; t.y+=dy; });
+    srRender();
+  };
 }
 
 function srPasteFromClipboard() {
