@@ -557,7 +557,18 @@ function saveCustomSymbol() {
     const tctx = thumbCv.getContext('2d');
     tctx.fillStyle = '#fff';
     tctx.fillRect(0, 0, 64, 48);
-    tctx.drawImage(cv, 0, 0, 64, 48);
+    // グリッドなし・図形のみを描画
+    const cx = 32, cy = 24, scale = Math.min(64/((_srZoom*160)||64), 48/((_srZoom*130)||48));
+    tctx.save();
+    tctx.translate(cx, cy);
+    tctx.scale(scale * _srZoom, scale * _srZoom);
+    tctx.strokeStyle = '#222'; tctx.lineWidth = 1.5 / (scale * _srZoom);
+    _srShapes.forEach(s => {
+      if (s.t==='L') { tctx.beginPath(); tctx.moveTo(s.x1,s.y1); tctx.lineTo(s.x2,s.y2); tctx.stroke(); }
+      else if (s.t==='C') { tctx.beginPath(); tctx.arc(s.cx,s.cy,s.r,0,Math.PI*2); tctx.stroke(); }
+      else if (s.t==='R') { tctx.strokeRect(s.x,s.y,s.w,s.h); }
+    });
+    tctx.restore();
     preview = thumbCv.toDataURL('image/png');
   }
   const sym = { type, name, label:name, cat, w, h, shapes:[..._srShapes], terminals:[..._srTerms], preview };
