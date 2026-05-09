@@ -577,7 +577,9 @@ function _exportPDFPages(indices, filename) {
             const rot = (el.rot||0) * Math.PI/180;
             const lx = el.x + lox*Math.cos(rot) - loy*Math.sin(rot);
             const ly = el.y + lox*Math.sin(rot) + loy*Math.cos(rot);
-            pdfText(tx(lx), ty(ly), el.label, 3.5, '#555555', false, 'center');
+            const lblEl2 = { text: el.label, color: '#555555' };
+            const lblRes2 = rasterizeTextEl(lblEl2, 3.5);
+            if (lblRes2) pdf.addImage(lblRes2.dataURL, 'PNG', tx(lx) - lblRes2.wMM/2, ty(ly) - lblRes2.hMM/2, lblRes2.wMM, lblRes2.hMM, '', 'FAST');
           }
         }
         } catch(e) { console.warn('PDF element render error:', el.type, e); }
