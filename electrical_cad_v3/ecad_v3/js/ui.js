@@ -580,7 +580,7 @@ function renderCustomSymbols() {
   el.innerHTML = Object.entries(grps).map(([cat,syms]) =>
     `<h4>${cat}</h4>` + syms.map(s =>
       `<div class="sym-item" onclick="pickSym(this,'${s.type}')" style="flex-direction:column;align-items:flex-start;gap:2px;padding:4px">
-        ${s.preview ? `<img src="${s.preview}" style="width:100%;max-height:48px;object-fit:contain;background:#fff;border-radius:2px">` : ''}
+        ${s.preview ? `<img src="${s.preview}" style="width:80px;height:60px;object-fit:contain;background:#fff;border-radius:2px;display:block">` : ''}
         <div style="display:flex;width:100%;align-items:center"><span>${s.name}</span>
         <span onclick="event.stopPropagation();delCusSym('${s.type}')" style="margin-left:auto;color:var(--red);font-size:10px;cursor:pointer">×</span></div>
       </div>`
