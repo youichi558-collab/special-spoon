@@ -1002,9 +1002,9 @@ function renderSymFloat() {
   // カスタムシンボル
   if (state.customSymbols && state.customSymbols.length) {
     html += `<div style="font-size:9px;color:var(--fg3);font-weight:700;margin:8px 0 3px;text-transform:uppercase;letter-spacing:.06em;border-top:1px solid var(--bd2);padding-top:6px">カスタム</div>`;
-    html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px">`;
+    html += `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:3px">`;
     state.customSymbols.forEach(s => {
-      const img = s.preview ? `<img src="${s.preview}" style="width:36px;height:28px;object-fit:contain;background:#fff;border-radius:2px">` : `<svg width="36" height="28"></svg>`;
+      const img = s.preview ? `<img src="${s.preview}" style="width:64px;height:48px;object-fit:contain;background:#fff;border-radius:2px">` : `<svg width="36" height="28"></svg>`;
       html += `<div class="sym-item" onclick="pickSym(this,'${s.type}')" style="flex-direction:column;align-items:center;padding:5px 3px;gap:3px;position:relative">
         ${img}
         <span style="font-size:9px;text-align:center;line-height:1.2">${s.label||s.type}</span>
