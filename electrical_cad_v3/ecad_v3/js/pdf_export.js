@@ -411,8 +411,7 @@ function _exportPDFPages(indices, filename) {
           }
           pdf.setLineDashPattern([], 0);
 
-        } else if (el.type==='circle') {
-          const lw = el.lineWidth || 1.5;
+        } else if (el.type==='circle') {          const lw = el.lineWidth || 1.5;
           applyColor(el.color || lc);
           pdf.setLineWidth(Math.max(0.05, lw * s));
           applyDash(el.lineStyle || lay?.lineDash, s);
@@ -424,6 +423,31 @@ function _exportPDFPages(indices, filename) {
             pdf.circle(tx(el.x), ty(el.y), tm(el.r||1), 'S');
           }
           pdf.setLineDashPattern([], 0);
+
+        } else if (el.type==='arc') {
+          const lw = el.lineWidth || 1.5;
+          applyColor(el.color || lc);
+          pdf.setLineWidth(Math.max(0.05, lw * s));
+          // jsPDFにはarcがないのでベジェ近似（複数分割）
+          const steps = 16;
+          const sa = el.startA, ea = el.endA;
+          const r = tm(el.r || 1);
+          const cx2 = tx(el.x), cy2 = ty(el.y);
+          pdf.lines(
+            Array.from({length: steps}, (_, i) => {
+              const a0 = sa + (ea - sa) * i / steps;
+              const a1 = sa + (ea - sa) * (i + 1) / steps;
+              return [Math.cos(a1)*r - Math.cos(a0)*r, Math.sin(a1)*r - Math.sin(a0)*r];
+            }),
+            cx2 + Math.cos(sa)*r, cy2 + Math.sin(sa)*r, [1,1], 'S', false
+          );
+
+        } else if (el.type==='junction') {
+          const jc = el.color || lc;
+          const m2 = (jc||'#000').match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+          if (m2) pdf.setFillColor(parseInt(m2[1],16),parseInt(m2[2],16),parseInt(m2[3],16));
+          else pdf.setFillColor(0,0,0);
+          pdf.circle(tx(el.x), ty(el.y), tm(el.r||4), 'F');
 
         } else if (el.type==='text') {
           // テキスト: el.fsはスクリーンpx → 0.35mm/px で変換（72dpi相当）

@@ -222,6 +222,50 @@ const shapeTool = {
 // ----------------------------------------------------------------
 // ツールマップ
 // ----------------------------------------------------------------
+// ----------------------------------------------------------------
+// 半円ツール（arc）
+// ----------------------------------------------------------------
+const arcTool = {
+  onDown(wx, wy) {
+    const p = { x: snap(wx), y: snap(wy) };
+    if (!state.mouse.shapeStart) {
+      state.mouse.shapeStart = p;
+    } else {
+      const c = state.mouse.shapeStart;
+      const r = Math.hypot(wx - c.x, wy - c.y);
+      if (r < 1) { state.mouse.shapeStart = null; state.preview = null; return; }
+      const angle = Math.atan2(wy - c.y, wx - c.x);
+      pushH();
+      state.elements.push({ id: genId('el'), type:'arc', x:c.x, y:c.y, r,
+        startA: angle, endA: angle + Math.PI, layer: activeLayer() });
+      state.mouse.shapeStart = null; state.preview = null;
+    }
+  },
+  onMove(wx, wy) {
+    if (!state.mouse.shapeStart) return;
+    const c = state.mouse.shapeStart;
+    const r = Math.hypot(wx - c.x, wy - c.y);
+    const angle = Math.atan2(wy - c.y, wx - c.x);
+    state.preview = { type:'arc_preview', x:c.x, y:c.y, r, startA:angle, endA:angle + Math.PI };
+  },
+  onUp() {}, onHover(wx, wy) { this.onMove(wx, wy); }
+};
+
+// ----------------------------------------------------------------
+// ジャンクションツール
+// ----------------------------------------------------------------
+const junctionTool = {
+  onDown(wx, wy) {
+    const p = getAllSnapPoints(wx, wy);
+    pushH();
+    state.elements.push({ id: genId('el'), type:'junction', x:p.x, y:p.y, layer: activeLayer() });
+  },
+  onMove() {}, onUp() {}, onHover() {}
+};
+
+// ----------------------------------------------------------------
+// ツールマップ
+// ----------------------------------------------------------------
 const TOOLS = {
   select: selectTool,
   wire:   wireTool,
@@ -230,6 +274,8 @@ const TOOLS = {
   rect:   shapeTool,
   circle: shapeTool,
   fline:  shapeTool,
+  arc:    arcTool,
+  junction: junctionTool,
 };
 
 // ----------------------------------------------------------------

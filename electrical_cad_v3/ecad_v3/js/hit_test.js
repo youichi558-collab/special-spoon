@@ -32,6 +32,20 @@ function hitTest(wx, wy) {
     if (el.type === 'fline')  { if (distToSeg(wx,wy,el.x1,el.y1,el.x2,el.y2) < R) return el; continue; }
     if (el.type === 'rect')   { if (wx>=el.x&&wx<=el.x+el.w&&wy>=el.y&&wy<=el.y+el.h) return el; continue; }
     if (el.type === 'circle') { if (Math.abs(Math.hypot(wx-el.x,wy-el.y)-el.r) < R) return el; continue; }
+    if (el.type === 'arc') {
+      const dist = Math.abs(Math.hypot(wx-el.x,wy-el.y)-el.r);
+      if (dist < R) {
+        // 角度範囲内か確認
+        let a = Math.atan2(wy-el.y, wx-el.x);
+        let sa = el.startA, ea = el.endA;
+        // normalize to [sa, sa+2π]
+        while (ea < sa) ea += Math.PI*2;
+        while (a < sa) a += Math.PI*2;
+        if (a <= ea) return el;
+      }
+      continue;
+    }
+    if (el.type === 'junction') { if (Math.hypot(wx-el.x,wy-el.y) < (el.r||4)+R) return el; continue; }
     // シンボル系はgetDef()が必要
     const d = getDef(el.type);
     if (!d) continue;

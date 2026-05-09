@@ -177,6 +177,10 @@ function drawElements() {
       drawCircleEl(el, sel, lc, lay);
     } else if (el.type === 'fline') {
       drawFlineEl(el, sel, lc, lay);
+    } else if (el.type === 'arc') {
+      drawArcEl(el, sel, lc, lay);
+    } else if (el.type === 'junction') {
+      drawJunctionEl(el, sel, lc);
     } else if (el.type === 'dim') {
       drawDimEl(el, sel);
     } else if (el.type === 'leader') {
@@ -226,6 +230,26 @@ function drawCircleEl(el, sel, lc, lay) {
   applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
   if (el.fillColor) { ctx.fillStyle = el.fillColor; ctx.beginPath(); ctx.arc(el.x, el.y, el.r, 0, Math.PI*2); ctx.fill(); }
   ctx.beginPath(); ctx.arc(el.x, el.y, el.r, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function drawArcEl(el, sel, lc, lay) {
+  ctx.save();
+  const c  = sel ? '#0067c0' : (el.color || lc);
+  const lw = el.lineWidth || lay?.lineWidth || 1.5;
+  ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+0.5 : lw);
+  applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
+  ctx.beginPath(); ctx.arc(el.x, el.y, el.r, el.startA, el.endA); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function drawJunctionEl(el, sel, lc) {
+  ctx.save();
+  const c = sel ? '#0067c0' : (el.color || lc);
+  const r = (el.r || 4) / state.zoom * state.zoom;  // 固定4px相当
+  ctx.fillStyle = c;
+  ctx.beginPath(); ctx.arc(el.x, el.y, el.r || 4, 0, Math.PI*2); ctx.fill();
   ctx.restore();
 }
 
@@ -293,6 +317,8 @@ function drawPreview() {
     } else if (shapeMode === 'fline') {
       ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
     }
+  } else if (prev.type === 'arc_preview') {
+    ctx.beginPath(); ctx.arc(prev.x, prev.y, prev.r, prev.startA, prev.endA); ctx.stroke();
   } else if (prev.type === 'sym_preview') {
     ctx.setLineDash([]);
     ctx.globalAlpha = 0.5;
