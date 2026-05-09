@@ -275,6 +275,63 @@ const arcTool = {
 // ----------------------------------------------------------------
 // ジャンクションツール
 // ----------------------------------------------------------------
+// ----------------------------------------------------------------
+// 弧ツール（arc3）- 始点→終点→通過点の3クリックで任意弧
+// ----------------------------------------------------------------
+const arc3Tool = {
+  onDown(wx, wy) {
+    const p = getAllSnapPoints(wx, wy);
+    if (!state.mouse.arc3P1) {
+      state.mouse.arc3P1 = p;
+    } else if (!state.mouse.arc3P2) {
+      if (state.ortho) { const o = applyOrtho(state.mouse.arc3P1.x, state.mouse.arc3P1.y, p.x, p.y); state.mouse.arc3P2 = {x:o.x,y:o.y}; }
+      else state.mouse.arc3P2 = p;
+    } else {
+      // 3点から外接円を計算
+      const p1=state.mouse.arc3P1, p2=state.mouse.arc3P2, p3=p;
+      const ax=p2.x-p1.x, ay=p2.y-p1.y;
+      const bx=p3.x-p1.x, by=p3.y-p1.y;
+      const D = 2*(ax*by - ay*bx);
+      if (Math.abs(D) < 1e-6) { state.mouse.arc3P1=null; state.mouse.arc3P2=null; state.preview=null; return; }
+      const cx = (by*(ax*ax+ay*ay) - ay*(bx*bx+by*by)) / D + p1.x;
+      const cy = (ax*(bx*bx+by*by) - bx*(ax*ax+ay*ay)) / D + p1.y;
+      const r  = Math.hypot(p1.x-cx, p1.y-cy);
+      const a1 = Math.atan2(p1.y-cy, p1.x-cx);
+      const a2 = Math.atan2(p2.y-cy, p2.x-cx);
+      // p3が時計/反時計どちら側かでccwを決定
+      const nx=-(p2.y-p1.y), ny=p2.x-p1.x;
+      const ccw = nx*(p3.x-(p1.x+p2.x)/2)+ny*(p3.y-(p1.y+p2.y)/2) > 0;
+      pushH();
+      state.elements.push({ id:genId('el'), type:'arc', x:cx, y:cy, r, startA:a1, endA:a2, ccw, layer:activeLayer() });
+      state.mouse.arc3P1=null; state.mouse.arc3P2=null; state.preview=null;
+    }
+  },
+  onMove(wx, wy) {
+    if (!state.mouse.arc3P1) return;
+    const p1 = state.mouse.arc3P1;
+    if (!state.mouse.arc3P2) {
+      let ex=wx, ey=wy;
+      if (state.ortho) { const o=applyOrtho(p1.x,p1.y,wx,wy); ex=o.x; ey=o.y; }
+      state.preview = { type:'arc_preview_line', x1:p1.x, y1:p1.y, x2:ex, y2:ey };
+      return;
+    }
+    const p2 = state.mouse.arc3P2;
+    const ax=p2.x-p1.x, ay=p2.y-p1.y;
+    const bx=wx-p1.x,   by=wy-p1.y;
+    const D = 2*(ax*by - ay*bx);
+    if (Math.abs(D) < 1e-6) return;
+    const cx = (by*(ax*ax+ay*ay) - ay*(bx*bx+by*by)) / D + p1.x;
+    const cy = (ax*(bx*bx+by*by) - bx*(ax*ax+ay*ay)) / D + p1.y;
+    const r  = Math.hypot(p1.x-cx, p1.y-cy);
+    const a1 = Math.atan2(p1.y-cy, p1.x-cx);
+    const a2 = Math.atan2(p2.y-cy, p2.x-cx);
+    const nx=-(p2.y-p1.y), ny=p2.x-p1.x;
+    const ccw = nx*(wx-(p1.x+p2.x)/2)+ny*(wy-(p1.y+p2.y)/2) > 0;
+    state.preview = { type:'arc_preview', x:cx, y:cy, r, startA:a1, endA:a2, ccw };
+  },
+  onUp() {}, onHover(wx, wy) { this.onMove(wx, wy); }
+};
+
 const junctionTool = {
   onDown(wx, wy) {
     const p = getAllSnapPoints(wx, wy);
@@ -296,6 +353,7 @@ const TOOLS = {
   circle: shapeTool,
   fline:  shapeTool,
   arc:    arcTool,
+  arc3:   arc3Tool,
   junction: junctionTool,
 };
 

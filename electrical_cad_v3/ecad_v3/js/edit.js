@@ -317,7 +317,7 @@ document.addEventListener('keydown', e => {
       if (document.getElementById('pdf-preview-overlay')?.style.display === 'flex') { closePDFPreview(); break; }
       if (document.body.classList.contains('fullscreen')) { toggleExpand(); break; }
       state.wirePoints = []; state.preview = null; state.dimState = null;
-      state.mouse.shapeStart = null; state.mouse.arcP1 = null; state.mouse.arcP2 = null;
+      state.mouse.shapeStart = null; state.mouse.arcP1 = null; state.mouse.arcP2 = null; state.mouse.arc3P1 = null; state.mouse.arc3P2 = null;
       state.mode = 'select'; state.symType = null;
       document.querySelectorAll('.sym-item').forEach(el => el.classList.remove('on'));
       document.getElementById('rb-sel')?.classList.add('on');

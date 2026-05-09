@@ -84,7 +84,7 @@ cv.addEventListener('mousedown', e => {
     // 作図中のキャンセル（rect/circle/fline/arc）
     if (state.mouse.shapeStart || state.mouse.arcP1) {
       state.mouse.shapeStart = null;
-      state.mouse.arcP1 = null; state.mouse.arcP2 = null;
+      state.mouse.arcP1 = null; state.mouse.arcP2 = null; state.mouse.arc3P1 = null; state.mouse.arc3P2 = null;
       state.preview = null; draw(); return;
     }
     state.mouse.panning   = true;
