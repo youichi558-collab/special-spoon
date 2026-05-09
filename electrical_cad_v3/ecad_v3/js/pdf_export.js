@@ -268,12 +268,9 @@ function _exportPDFPages(indices, filename) {
     if (m) pdf.setTextColor(parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16));
     else pdf.setTextColor(0,0,0);
     pdf.setFont('helvetica', bold ? 'bold' : 'normal');
-    pdf.setFontSize(fsMM * 2.835);  // mm → pt
-    // jsPDFのtext()はalphabeticベースライン基準。
-    // 視覚的中央に置くには lineHeight/2 分下にずらす（ptからmmに変換）
-    const lhMM = pdf.getLineHeight() / 2.835;
-    const yAdj = y + lhMM * 0.35;
-    pdf.text(text, x, yAdj, { align: align||'center' });
+    const k = pdf.internal.scaleFactor;
+    pdf.setFontSize(fsMM * k);
+    pdf.text(text, x, y + fsMM * 0.5, { align: align||'center', baseline: 'alphabetic' });
     pdf.setTextColor(0,0,0);
   }
 
