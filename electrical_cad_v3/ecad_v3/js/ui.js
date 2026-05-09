@@ -548,9 +548,18 @@ function saveCustomSymbol() {
   const w   = parseInt(document.getElementById('sr-w').value) || 80;
   const h   = parseInt(document.getElementById('sr-h').value) || 60;
   const type = 'custom_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,5);
-  // プレビュー画像を生成（SRキャンバスをそのままdataURL化）
+  // プレビュー画像を小さなcanvasに縮小して生成
   const cv = document.getElementById('sym-reg-cv');
-  const preview = cv ? cv.toDataURL('image/png') : null;
+  let preview = null;
+  if (cv) {
+    const thumbCv = document.createElement('canvas');
+    thumbCv.width = 80; thumbCv.height = 60;
+    const tctx = thumbCv.getContext('2d');
+    tctx.fillStyle = '#fff';
+    tctx.fillRect(0, 0, 80, 60);
+    tctx.drawImage(cv, 0, 0, 80, 60);
+    preview = thumbCv.toDataURL('image/png');
+  }
   const sym = { type, name, label:name, cat, w, h, shapes:[..._srShapes], terminals:[..._srTerms], preview };
   state.customSymbols.push(sym);
   if (typeof DEFS !== 'undefined') {
