@@ -538,9 +538,36 @@ function _exportPDFPages(indices, filename) {
           }
 
         } else {
-          // 電気シンボル: ラスタライズ（アスペクト比修正済み）
-          const res = rasterizeSymEl(el, s);
-          pdf.addImage(res.dataURL, 'PNG', tx(el.x)-res.dispW/2, ty(el.y)-res.dispH/2, res.dispW, res.dispH, '', 'FAST');
+          // カスタムシンボル: ベクター直接描画
+          const cS = state.customSymbols?.find(cs => cs.type === el.type);
+          if (cS && cS.shapes?.length) {
+            const sc2 = el.scale || 1;
+            const rot = (el.rot||0) * Math.PI/180;
+            const cosR = Math.cos(rot), sinR = Math.sin(rot);
+            const rotate = (sx, sy) => ({
+              x: el.x + (sx*cosR - sy*sinR)*sc2,
+              y: el.y + (sx*sinR + sy*cosR)*sc2
+            });
+            applyColor(el.color || lc);
+            pdf.setLineWidth(Math.max(0.1, s * 0.5));
+            cS.shapes.forEach(sh => {
+              if (sh.t==='L') {
+                const p1=rotate(sh.x1,sh.y1), p2=rotate(sh.x2,sh.y2);
+                pdf.line(tx(p1.x),ty(p1.y),tx(p2.x),ty(p2.y));
+              } else if (sh.t==='C') {
+                const p=rotate(sh.cx,sh.cy);
+                pdf.circle(tx(p.x),ty(p.y),tm(sh.r*sc2),'S');
+              } else if (sh.t==='R') {
+                const cx=sh.x+sh.w/2, cy=sh.y+sh.h/2;
+                const p=rotate(cx,cy);
+                pdf.rect(tx(p.x)-tm(sh.w*sc2/2),ty(p.y)-tm(sh.h*sc2/2),tm(sh.w*sc2),tm(sh.h*sc2),'S');
+              }
+            });
+          } else {
+            // ビルトインシンボル: ラスタライズ
+            const res = rasterizeSymEl(el, s);
+            pdf.addImage(res.dataURL, 'PNG', tx(el.x)-res.dispW/2, ty(el.y)-res.dispH/2, res.dispW, res.dispH, '', 'FAST');
+          }
 
           // シンボルラベル（el.label）を別途描画 — 3.5mm固定
           if (el.label) {
@@ -550,9 +577,7 @@ function _exportPDFPages(indices, filename) {
             const rot = (el.rot||0) * Math.PI/180;
             const lx = el.x + lox*Math.cos(rot) - loy*Math.sin(rot);
             const ly = el.y + lox*Math.sin(rot) + loy*Math.cos(rot);
-            const lblEl2 = { text: el.label, color: '#555555' };
-            const lblRes2 = rasterizeTextEl(lblEl2, 3.5);
-            if (lblRes2) pdf.addImage(lblRes2.dataURL, 'PNG', tx(lx) - lblRes2.wMM/2, ty(ly) - lblRes2.hMM/2, lblRes2.wMM, lblRes2.hMM, '', 'FAST');
+            pdfText(tx(lx), ty(ly), el.label, 3.5, '#555555', false, 'center');
           }
         }
         } catch(e) { console.warn('PDF element render error:', el.type, e); }
