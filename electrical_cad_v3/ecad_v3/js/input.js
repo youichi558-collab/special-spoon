@@ -81,6 +81,12 @@ cv.addEventListener('mousedown', e => {
       }
       state.preview = null; draw(); return;
     }
+    // 作図中のキャンセル（rect/circle/fline/arc）
+    if (state.mouse.shapeStart || state.mouse.arcP1) {
+      state.mouse.shapeStart = null;
+      state.mouse.arcP1 = null; state.mouse.arcP2 = null;
+      state.preview = null; draw(); return;
+    }
     state.mouse.panning   = true;
     state.mouse.panOrigin = { x: state.pan.x, y: state.pan.y };
     state.mouse.dragMoved = false;
@@ -204,6 +210,9 @@ function setMode(m, sym) {
   state.preview  = null;
   state.wirePoints = [];
   state.dimState = null;
+  state.mouse.shapeStart = null;
+  state.mouse.arcP1 = null;
+  state.mouse.arcP2 = null;
   // 選択解除 + resizeハンドル削除（ハンドルがstopPropagationでdimクリックを横取りするのを防ぐ）
   state.sel.els.clear();
   state.sel.wires.clear();
