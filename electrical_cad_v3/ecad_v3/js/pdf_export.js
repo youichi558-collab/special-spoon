@@ -261,6 +261,18 @@ function _exportPDFPages(indices, filename) {
 
   let pdf = null;
 
+
+  // jsPDFで直接テキスト描画（数字・英字用、位置が正確）
+  function pdfText(x, y, text, fsMM, color, bold, align) {
+    const m = (color||'#000').match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    if (m) pdf.setTextColor(parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16));
+    else pdf.setTextColor(0,0,0);
+    pdf.setFont('helvetica', bold ? 'bold' : 'normal');
+    pdf.setFontSize(fsMM * 2.835);  // mm → pt
+    pdf.text(text, x, y, { align: align||'center', baseline: 'middle' });
+    pdf.setTextColor(0,0,0);
+  }
+
   // 色文字列 → jsPDF setDrawColor
   function applyColor(color) {
     if (!color) { pdf.setDrawColor(0); return; }
@@ -365,9 +377,7 @@ function _exportPDFPages(indices, filename) {
           const i = Math.floor((n-1)/2), j = Math.ceil((n-1)/2);
           const mp = n >= 2 ? { x:(pts[i].x+pts[j].x)/2, y:(pts[i].y+pts[j].y)/2 } : pts[0];
           // 線番：中点から上方向に固定オフセット（draw.jsと同じ方式）
-          const noEl = { text: w.wireNo, color: '#1e40af', bold: true };
-          const noRes = rasterizeTextEl(noEl, 3.5);
-          if (noRes) pdf.addImage(noRes.dataURL, 'PNG', tx(mp.x)-noRes.wMM/2, ty(mp.y) - noRes.hMM/2 - 3, noRes.wMM, noRes.hMM, '', 'FAST');
+          pdfText(tx(mp.x), ty(mp.y) - 4, w.wireNo, 3.5, '#1e40af', true, 'center');
         }
       });
 
@@ -498,11 +508,9 @@ function _exportPDFPages(indices, filename) {
             }
             const mx=(ax1+ax2)/2, my=(ay1+ay2)/2;
             const txt = el.dimText || String(Math.round(len));
-            const dimEl = { text: txt, color: dc, bold: true };
-            const dimRes = rasterizeTextEl(dimEl, (el.dimFs || 11) * 0.35);
             const dtx = mx + (el.dimTx||0) + px*(el.dimFs||11)*0.35*1.4;
             const dty = my + (el.dimTy||0) + py*(el.dimFs||11)*0.35*1.4;
-            if (dimRes) pdf.addImage(dimRes.dataURL, 'PNG', tx(dtx)-dimRes.wMM/2, ty(dty)-dimRes.hMM/2, dimRes.wMM, dimRes.hMM, '', 'FAST');
+            pdfText(tx(dtx), ty(dty), txt, (el.dimFs||11)*0.35, dc, true, 'center');
           }
 
         } else if (el.type === 'leader') {
@@ -516,11 +524,9 @@ function _exportPDFPages(indices, filename) {
           const dx=bx-el.x1, dy=by-el.y1, len=Math.hypot(dx,dy);
           if (len>0.1) pdfArrow(pdf, tx(el.x1), ty(el.y1), (bx-el.x1)/len*s, (by-el.y1)/len*s, 2, lc2);
           if (el.leaderText) {
-            const ltEl = { text: el.leaderText, color: lc2 };
-            const ltRes = rasterizeTextEl(ltEl, (el.leaderFs || 11) * 0.35);
             const ltx = el.x2 + (el.leaderTx||0);
             const lty = el.y2 + (el.leaderTy||0);
-            if (ltRes) pdf.addImage(ltRes.dataURL, 'PNG', tx(ltx)+0.5, ty(lty)-ltRes.hMM/2, ltRes.wMM, ltRes.hMM, '', 'FAST');
+            pdfText(tx(ltx)+0.5, ty(lty), el.leaderText, (el.leaderFs||11)*0.35, lc2, false, 'left');
           }
 
         } else {
