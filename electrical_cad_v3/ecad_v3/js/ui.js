@@ -274,6 +274,58 @@ function showSymReg() {
   cv.onmouseup   = srOnUp;
 }
 
+function srPasteFromClipboard() {
+  const cb = state.clipboard;
+  if (!cb?.els?.length) { alert('先にCADで図形を選択してCtrl+Cでコピーしてください'); return; }
+
+  // バウンディングボックス計算
+  let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+  cb.els.forEach(el => {
+    const pts = [];
+    if (el.type==='fline'||el.type==='dim'||el.type==='leader') pts.push({x:el.x1,y:el.y1},{x:el.x2,y:el.y2});
+    else if (el.type==='circle'||el.type==='arc') pts.push({x:el.x-(el.r||0),y:el.y-(el.r||0)},{x:el.x+(el.r||0),y:el.y+(el.r||0)});
+    else if (el.type==='rect') pts.push({x:el.x,y:el.y},{x:el.x+(el.w||0),y:el.y+(el.h||0)});
+    else if (el.type==='triangle') pts.push({x:el.x1,y:el.y1},{x:el.x2,y:el.y2},{x:el.x3,y:el.y3});
+    else if (el.x!=null) pts.push({x:el.x,y:el.y});
+    pts.forEach(p => { minX=Math.min(minX,p.x); minY=Math.min(minY,p.y); maxX=Math.max(maxX,p.x); maxY=Math.max(maxY,p.y); });
+  });
+  if (!isFinite(minX)) return;
+
+  const bW = maxX-minX || 1, bH = maxY-minY || 1;
+  const cx = (minX+maxX)/2, cy = (minY+maxY)/2;
+  // W/H入力値に合わせてスケール
+  const symW = parseFloat(document.getElementById('sr-w')?.value)||80;
+  const symH = parseFloat(document.getElementById('sr-h')?.value)||60;
+  const scale = Math.min(symW/bW, symH/bH) * 0.9;
+  const tx = wx => Math.round((wx - cx) * scale);
+  const ty = wy => Math.round((wy - cy) * scale);
+
+  // 変換してSR形式に
+  const shapes = [];
+  cb.els.forEach(el => {
+    if (el.type==='fline') shapes.push({t:'L', x1:tx(el.x1),y1:ty(el.y1),x2:tx(el.x2),y2:ty(el.y2)});
+    else if (el.type==='circle') shapes.push({t:'C', cx:tx(el.x),cy:ty(el.y),r:Math.round(el.r*scale)});
+    else if (el.type==='rect') shapes.push({t:'R', x:tx(el.x),y:ty(el.y),w:Math.round(el.w*scale),h:Math.round(el.h*scale)});
+    else if (el.type==='triangle') {
+      shapes.push({t:'L',x1:tx(el.x1),y1:ty(el.y1),x2:tx(el.x2),y2:ty(el.y2)});
+      shapes.push({t:'L',x1:tx(el.x2),y1:ty(el.y2),x2:tx(el.x3),y2:ty(el.y3)});
+      shapes.push({t:'L',x1:tx(el.x3),y1:ty(el.y3),x2:tx(el.x1),y2:ty(el.y1)});
+    } else if (el.type==='arc') {
+      // 弧を複数の直線に近似
+      const steps=8, r=Math.round(el.r*scale), ccx=tx(el.x), ccy=ty(el.y);
+      for (let i=0;i<steps;i++) {
+        const a0=el.startA+(el.endA-el.startA)*i/steps;
+        const a1=el.startA+(el.endA-el.startA)*(i+1)/steps;
+        shapes.push({t:'L',x1:Math.round(ccx+Math.cos(a0)*r),y1:Math.round(ccy+Math.sin(a0)*r),
+                         x2:Math.round(ccx+Math.cos(a1)*r),y2:Math.round(ccy+Math.sin(a1)*r)});
+      }
+    }
+  });
+
+  _srShapes = shapes;
+  srRender();
+}
+
 function srClear() {
   _srShapes = []; _srTerms = []; _srTool = 'line'; _srDraw = null; _srFirst = null;
   document.querySelectorAll('.sr-tool').forEach(b => b.classList.toggle('active', b.dataset.tool === 'line'));
