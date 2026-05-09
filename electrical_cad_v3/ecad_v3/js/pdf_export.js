@@ -204,8 +204,8 @@ function rasterizeTextEl(el, fsMM) {
   // 背景は透明（白塗りしない）
   octx.fillStyle = el.color || '#000000';
   octx.font = fontStr;
-  octx.textBaseline = 'alphabetic';
-  octx.fillText(text, 2, fsPx);
+  octx.textBaseline = 'middle';
+  octx.fillText(text, 2, pxH / 2);
   return { dataURL: oc.toDataURL('image/png'), wMM: pxW / pxPerMM, hMM: pxH / pxPerMM };
 }
 
@@ -367,7 +367,7 @@ function _exportPDFPages(indices, filename) {
           // 線番：中点から上方向に固定オフセット（draw.jsと同じ方式）
           const noEl = { text: w.wireNo, color: '#1e40af', bold: true };
           const noRes = rasterizeTextEl(noEl, 3.5);
-          if (noRes) pdf.addImage(noRes.dataURL, 'PNG', tx(mp.x)-noRes.wMM/2, ty(mp.y) - noRes.hMM - 2, noRes.wMM, noRes.hMM, '', 'FAST');
+          if (noRes) pdf.addImage(noRes.dataURL, 'PNG', tx(mp.x)-noRes.wMM/2, ty(mp.y) - noRes.hMM/2 - 3, noRes.wMM, noRes.hMM, '', 'FAST');
         }
       });
 
@@ -502,7 +502,7 @@ function _exportPDFPages(indices, filename) {
             const dimRes = rasterizeTextEl(dimEl, (el.dimFs || 11) * 0.35);
             const dtx = mx + (el.dimTx||0) + px*(el.dimFs||11)*0.35*1.4;
             const dty = my + (el.dimTy||0) + py*(el.dimFs||11)*0.35*1.4;
-            if (dimRes) pdf.addImage(dimRes.dataURL, 'PNG', tx(dtx)-dimRes.wMM/2, ty(dty)-dimRes.hMM*0.667, dimRes.wMM, dimRes.hMM, '', 'FAST');
+            if (dimRes) pdf.addImage(dimRes.dataURL, 'PNG', tx(dtx)-dimRes.wMM/2, ty(dty)-dimRes.hMM/2, dimRes.wMM, dimRes.hMM, '', 'FAST');
           }
 
         } else if (el.type === 'leader') {
@@ -520,7 +520,7 @@ function _exportPDFPages(indices, filename) {
             const ltRes = rasterizeTextEl(ltEl, (el.leaderFs || 11) * 0.35);
             const ltx = el.x2 + (el.leaderTx||0);
             const lty = el.y2 + (el.leaderTy||0);
-            if (ltRes) pdf.addImage(ltRes.dataURL, 'PNG', tx(ltx)+0.5, ty(lty)-ltRes.hMM*0.9, ltRes.wMM, ltRes.hMM, '', 'FAST');
+            if (ltRes) pdf.addImage(ltRes.dataURL, 'PNG', tx(ltx)+0.5, ty(lty)-ltRes.hMM/2, ltRes.wMM, ltRes.hMM, '', 'FAST');
           }
 
         } else {
@@ -538,7 +538,7 @@ function _exportPDFPages(indices, filename) {
             const ly = el.y + lox*Math.sin(rot) + loy*Math.cos(rot);
             const lblEl2 = { text: el.label, color: '#555555' };
             const lblRes2 = rasterizeTextEl(lblEl2, 3.5);
-            if (lblRes2) pdf.addImage(lblRes2.dataURL, 'PNG', tx(lx) - lblRes2.wMM/2, ty(ly) - lblRes2.hMM*0.72, lblRes2.wMM, lblRes2.hMM, '', 'FAST');
+            if (lblRes2) pdf.addImage(lblRes2.dataURL, 'PNG', tx(lx) - lblRes2.wMM/2, ty(ly) - lblRes2.hMM/2, lblRes2.wMM, lblRes2.hMM, '', 'FAST');
           }
         }
         } catch(e) { console.warn('PDF element render error:', el.type, e); }
