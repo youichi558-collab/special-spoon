@@ -239,7 +239,7 @@ function drawArcEl(el, sel, lc, lay) {
   const lw = el.lineWidth || lay?.lineWidth || 1.5;
   ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+0.5 : lw);
   applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
-  ctx.beginPath(); ctx.arc(el.x, el.y, el.r, el.startA, el.endA, !el.ccw); ctx.stroke();
+  ctx.beginPath(); ctx.arc(el.x, el.y, el.r, el.startA, el.endA, el.ccw || false); ctx.stroke();
   ctx.setLineDash([]);
   ctx.restore();
 }
@@ -318,7 +318,7 @@ function drawPreview() {
       ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
     }
   } else if (prev.type === 'arc_preview') {
-    ctx.beginPath(); ctx.arc(prev.x, prev.y, prev.r, prev.startA, prev.endA, !prev.ccw); ctx.stroke();
+    ctx.beginPath(); ctx.arc(prev.x, prev.y, prev.r, prev.startA, prev.endA, prev.ccw || false); ctx.stroke();
   } else if (prev.type === 'arc_preview_line') {
     ctx.beginPath(); ctx.moveTo(prev.x1, prev.y1); ctx.lineTo(prev.x2, prev.y2); ctx.stroke();
   } else if (prev.type === 'sym_preview') {

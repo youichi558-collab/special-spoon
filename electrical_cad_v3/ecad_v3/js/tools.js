@@ -227,36 +227,24 @@ const shapeTool = {
 // ----------------------------------------------------------------
 const arcTool = {
   onDown(wx, wy) {
-    const p = { x: snap(wx), y: snap(wy) };
+    const p = getAllSnapPoints(wx, wy);
     if (!state.mouse.arcP1) {
-      // フェーズ1: 端点1
       state.mouse.arcP1 = p;
     } else if (!state.mouse.arcP2) {
-      // フェーズ2: 端点2（弦確定）
       const r = Math.hypot(p.x-state.mouse.arcP1.x, p.y-state.mouse.arcP1.y) / 2;
       if (r < 1) { state.mouse.arcP1 = null; state.preview = null; return; }
       state.mouse.arcP2 = p;
     } else {
-      // フェーズ3: 向き確定
       const p1 = state.mouse.arcP1, p2 = state.mouse.arcP2;
       const cx=(p1.x+p2.x)/2, cy=(p1.y+p2.y)/2;
       const r=Math.hypot(p2.x-p1.x,p2.y-p1.y)/2;
-      const dx=p2.x-p1.x, dy=p2.y-p1.y;
-      // 法線方向にマウスがどちら側か
-      const nx=-dy, ny=dx;
+      const nx=-(p2.y-p1.y), ny=p2.x-p1.x;
       const side = nx*(wx-cx)+ny*(wy-cy) >= 0 ? 1 : -1;
-      const baseA = Math.atan2(dy,dx);
-      const startA = baseA + Math.PI/2 * side + Math.PI/2 * side;
-      // 実際の角度: p1からp2へ、side方向に膨らむ半円
-      const a1 = Math.atan2(p1.y-cy, p1.x-cx);
-      const a2 = Math.atan2(p2.y-cy, p2.x-cx);
-      // sideで時計/反時計を決定
+      const a1=Math.atan2(p1.y-cy,p1.x-cx);
+      const a2=Math.atan2(p2.y-cy,p2.x-cx);
       pushH();
       state.elements.push({ id: genId('el'), type:'arc',
-        x:cx, y:cy, r,
-        startA: side>0 ? a1 : a2,
-        endA:   side>0 ? a2 : a1,
-        ccw: side > 0,
+        x:cx, y:cy, r, startA:a1, endA:a2, ccw: side > 0,
         layer: activeLayer() });
       state.mouse.arcP1 = null; state.mouse.arcP2 = null; state.preview = null;
     }
@@ -265,21 +253,17 @@ const arcTool = {
     if (!state.mouse.arcP1) return;
     const p1 = state.mouse.arcP1;
     if (!state.mouse.arcP2) {
-      // フェーズ1→2プレビュー: 弦をプレビュー
       state.preview = { type:'arc_preview_line', x1:p1.x, y1:p1.y, x2:wx, y2:wy };
       return;
     }
-    // フェーズ2→3プレビュー: 向きをプレビュー
     const p2 = state.mouse.arcP2;
     const cx=(p1.x+p2.x)/2, cy=(p1.y+p2.y)/2;
     const r=Math.hypot(p2.x-p1.x,p2.y-p1.y)/2;
-    const dx=p2.x-p1.x, dy=p2.y-p1.y;
-    const nx=-dy, ny=dx;
+    const nx=-(p2.y-p1.y), ny=p2.x-p1.x;
     const side = nx*(wx-cx)+ny*(wy-cy) >= 0 ? 1 : -1;
     const a1=Math.atan2(p1.y-cy,p1.x-cx);
     const a2=Math.atan2(p2.y-cy,p2.x-cx);
-    state.preview = { type:'arc_preview', x:cx, y:cy, r,
-      startA: side>0?a1:a2, endA: side>0?a2:a1, ccw: side>0 };
+    state.preview = { type:'arc_preview', x:cx, y:cy, r, startA:a1, endA:a2, ccw: side > 0 };
   },
   onUp() {}, onHover(wx, wy) { this.onMove(wx, wy); }
 };
