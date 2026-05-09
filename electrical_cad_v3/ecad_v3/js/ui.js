@@ -548,7 +548,10 @@ function saveCustomSymbol() {
   const w   = parseInt(document.getElementById('sr-w').value) || 80;
   const h   = parseInt(document.getElementById('sr-h').value) || 60;
   const type = 'custom_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,5);
-  const sym = { type, name, label:name, cat, w, h, shapes:[..._srShapes], terminals:[..._srTerms] };
+  // プレビュー画像を生成（SRキャンバスをそのままdataURL化）
+  const cv = document.getElementById('sym-reg-cv');
+  const preview = cv ? cv.toDataURL('image/png') : null;
+  const sym = { type, name, label:name, cat, w, h, shapes:[..._srShapes], terminals:[..._srTerms], preview };
   state.customSymbols.push(sym);
   if (typeof DEFS !== 'undefined') {
     DEFS[type] = { w, h, cat, name, jis:'',
@@ -567,8 +570,11 @@ function renderCustomSymbols() {
   state.customSymbols.forEach(s => { if (!grps[s.cat]) grps[s.cat]=[]; grps[s.cat].push(s); });
   el.innerHTML = Object.entries(grps).map(([cat,syms]) =>
     `<h4>${cat}</h4>` + syms.map(s =>
-      `<div class="sym-item" onclick="pickSym(this,'${s.type}')"><span>${s.name}</span>
-      <span onclick="event.stopPropagation();delCusSym('${s.type}')" style="margin-left:auto;color:var(--red);font-size:10px;cursor:pointer">×</span></div>`
+      `<div class="sym-item" onclick="pickSym(this,'${s.type}')" style="flex-direction:column;align-items:flex-start;gap:2px;padding:4px">
+        ${s.preview ? `<img src="${s.preview}" style="width:100%;max-height:48px;object-fit:contain;background:#fff;border-radius:2px">` : ''}
+        <div style="display:flex;width:100%;align-items:center"><span>${s.name}</span>
+        <span onclick="event.stopPropagation();delCusSym('${s.type}')" style="margin-left:auto;color:var(--red);font-size:10px;cursor:pointer">×</span></div>
+      </div>`
     ).join('')
   ).join('');
 }
