@@ -532,6 +532,10 @@
     <span onclick="closeSym()" style="cursor:pointer;font-size:14px;color:var(--fg3);padding:0 4px">×</span>
   </div>
   <div style="overflow-y:auto;padding:6px" id="sym-float-body"></div>
+  <div style="padding:4px 6px;border-top:1px solid var(--bd2);display:flex;gap:4px;flex-shrink:0">
+    <button class="fp-btn" style="flex:1;font-size:10px" onclick="exportCustomSymbols()">📤 エクスポート</button>
+    <button class="fp-btn" style="flex:1;font-size:10px" onclick="importCustomSymbols()">📥 インポート</button>
+  </div>
 
   <div onmousedown="symFloatDown(event)" style="height:10px;background:var(--bg3);border-top:1px solid var(--bd2);border-radius:0 0 6px 6px;cursor:move;display:flex;align-items:center;justify-content:center;user-select:none"><span style="color:var(--fg3);font-size:10px;letter-spacing:3px">⠿⠿⠿</span></div>
 </div>

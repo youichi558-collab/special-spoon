@@ -12,6 +12,9 @@
   // カスタムシンボルをDEFSに登録
   state.customSymbols.forEach(s => { DEFS[s.type] = s; });
 
+  // localStorageからシンボルライブラリを読み込む
+  loadSymbolsFromStorage();
+
   // 初期描画
   renderLayers();
   renderPartsAll();

@@ -573,6 +573,7 @@ function saveCustomSymbol() {
   }
   const sym = { type, name, label:name, cat, w, h, shapes:[..._srShapes], terminals:[..._srTerms], preview };
   state.customSymbols.push(sym);
+  saveSymbolsToStorage();
   if (typeof DEFS !== 'undefined') {
     DEFS[type] = { w, h, cat, name, jis:'',
       terminals: _srTerms.map((t,i) => ({ id:`t${i}`, x:t.x, y:t.y })) };
@@ -601,6 +602,7 @@ function renderCustomSymbols() {
 function delCusSym(type) {
   if (!confirm('削除しますか？')) return;
   state.customSymbols = state.customSymbols.filter(s => s.type !== type);
+  saveSymbolsToStorage();
   delete DEFS[type];
 
   renderCustomSymbols();
@@ -986,6 +988,62 @@ function initLayFloat() {}
 // ----------------------------------------------------------------
 // シンボルフローティングパネル
 // ----------------------------------------------------------------
+function saveSymbolsToStorage() {
+  try { localStorage.setItem('ecad_customSymbols', JSON.stringify(state.customSymbols)); } catch(e) {}
+}
+
+function loadSymbolsFromStorage() {
+  try {
+    const data = localStorage.getItem('ecad_customSymbols');
+    if (!data) return;
+    const syms = JSON.parse(data);
+    if (!Array.isArray(syms)) return;
+    // プロジェクトのシンボルとマージ（typeが重複しないように）
+    const existing = new Set(state.customSymbols.map(s => s.type));
+    syms.forEach(s => {
+      if (!existing.has(s.type)) {
+        state.customSymbols.push(s);
+        if (typeof DEFS !== 'undefined') DEFS[s.type] = s;
+      }
+    });
+  } catch(e) {}
+}
+
+function exportCustomSymbols() {
+  const json = JSON.stringify(state.customSymbols, null, 2);
+  const a = document.createElement('a');
+  a.href = 'data:application/json,' + encodeURIComponent(json);
+  a.download = 'ecad_symbols.json';
+  a.click();
+}
+
+function importCustomSymbols() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const syms = JSON.parse(ev.target.result);
+        if (!Array.isArray(syms)) { alert('形式が正しくありません'); return; }
+        const existing = new Set(state.customSymbols.map(s => s.type));
+        syms.forEach(s => {
+          if (!existing.has(s.type)) {
+            state.customSymbols.push(s);
+            if (typeof DEFS !== 'undefined') DEFS[s.type] = s;
+          }
+        });
+        saveSymbolsToStorage();
+        renderSymFloat();
+        alert(`${syms.length}件のシンボルを読み込みました`);
+      } catch(e) { alert('読み込みエラー'); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
 function renderSymFloat() {
   const body = document.getElementById('sym-float-body');
   if (!body) return;
