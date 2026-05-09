@@ -87,6 +87,11 @@ cv.addEventListener('mousedown', e => {
       state.mouse.arcP1 = null; state.mouse.arcP2 = null; state.mouse.arc3P1 = null; state.mouse.arc3P2 = null;
       state.preview = null; draw(); return;
     }
+    // 配線中の右クリック：1点戻る（なければパンニング）
+    if (state.mode === 'wire' && state.wirePoints.length > 0) {
+      state.wirePoints.pop();
+      state.preview = null; draw(); return;
+    }
     state.mouse.panning   = true;
     state.mouse.panOrigin = { x: state.pan.x, y: state.pan.y };
     state.mouse.dragMoved = false;
