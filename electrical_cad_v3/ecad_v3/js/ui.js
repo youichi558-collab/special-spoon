@@ -98,6 +98,11 @@ function renderLayers() {
             style="width:80px;font-size:12px;padding:2px 4px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
             onchange="applyLayerFontSize(${i},this.value)" oninput="if(!this.value){applyLayerFontSize(${i},null)}">
         </td>
+        <td style="padding:4px 4px" onclick="event.stopPropagation()">
+          <input type="text" placeholder="属性（例:200V）" value="${l.attr||''}"
+            style="width:90px;font-size:11px;padding:2px 4px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
+            onchange="LAYERS[${i}].attr=this.value">
+        </td>
         <td style="padding:4px 10px;text-align:center;white-space:nowrap" onclick="event.stopPropagation()">
           <button onclick="renameLayer(${i})" title="名前変更" style="font-size:11px;padding:1px 6px;margin-right:4px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg3);color:var(--fg)">名前</button>
           ${LAYERS.length>1?`<button onclick="deleteLayer(${i})" title="削除" style="font-size:11px;padding:1px 6px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg3);color:var(--red)">削除</button>`:''}
@@ -737,10 +742,13 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>色</label><input type="color" id="pp-color" value="${el.color||'#744da9'}"></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
   } else if (wire || (el && el.pts)) {
+    const lay = LAYERS.find(l => l.name === item.layer);
     html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${item.wireNo||''}"></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${item.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
+    html += `<div class="pp-row"><label>色（個別上書き）</label><input type="color" id="pp-wcolor" value="${item.color||lay?.color||'#0F6E56'}"></div>`;
     html += `<div class="pp-row"><label>線幅</label><select id="pp-lw"><option value="1"${(item.lineWidth||2)==1?' selected':''}>細(1)</option><option value="2"${(item.lineWidth||2)==2?' selected':''}>標準(2)</option><option value="3"${(item.lineWidth||2)==3?' selected':''}>太(3)</option><option value="4"${(item.lineWidth||2)==4?' selected':''}>極太(4)</option></select></div>`;
     html += `<div class="pp-row"><label>線種</label><select id="pp-ls"><option value=""${!item.lineStyle?' selected':''}>実線</option><option value="dash"${item.lineStyle==='dash'?' selected':''}>破線</option><option value="dashdot"${item.lineStyle==='dashdot'?' selected':''}>一点鎖線</option><option value="dot"${item.lineStyle==='dot'?' selected':''}>点線</option></select></div>`;
+    if (lay?.attr) html += `<div class="pp-row"><label>属性（レイヤー）</label><p style="font-size:11px;color:var(--fg3);padding:2px 5px">${lay.attr}</p></div>`;
   } else if (el) {
     const def = getDef(el.type) || {};
     html += `<div class="pp-row"><label>ラベル</label><input type="text" id="pp-label" value="${el.label||''}"></div>`;
@@ -797,6 +805,7 @@ function applyRightPanel() {
     el.layer      = v('pp-layer');
   } else if (wire) {
     wire.wireNo    = v('pp-wireno'); wire.layer = v('pp-layer');
+    if (v('pp-wcolor')) wire.color = v('pp-wcolor');
     if (v('pp-lw')) wire.lineWidth = parseFloat(v('pp-lw'));
     if (v('pp-ls') !== undefined) wire.lineStyle = v('pp-ls') || undefined;
   } else if (el) {
