@@ -227,10 +227,12 @@ const shapeTool = {
 // ----------------------------------------------------------------
 const arcTool = {
   onDown(wx, wy) {
-    const p = getAllSnapPoints(wx, wy);
+    let p = getAllSnapPoints(wx, wy);
     if (!state.mouse.arcP1) {
       state.mouse.arcP1 = p;
     } else if (!state.mouse.arcP2) {
+      // 直交モードなら端点1から水平/垂直に拘束
+      if (state.ortho) { const o = applyOrtho(state.mouse.arcP1.x, state.mouse.arcP1.y, p.x, p.y); p = {x:o.x, y:o.y}; }
       const r = Math.hypot(p.x-state.mouse.arcP1.x, p.y-state.mouse.arcP1.y) / 2;
       if (r < 1) { state.mouse.arcP1 = null; state.preview = null; return; }
       state.mouse.arcP2 = p;
@@ -253,7 +255,9 @@ const arcTool = {
     if (!state.mouse.arcP1) return;
     const p1 = state.mouse.arcP1;
     if (!state.mouse.arcP2) {
-      state.preview = { type:'arc_preview_line', x1:p1.x, y1:p1.y, x2:wx, y2:wy };
+      let ex = wx, ey = wy;
+      if (state.ortho) { const o = applyOrtho(p1.x, p1.y, wx, wy); ex=o.x; ey=o.y; }
+      state.preview = { type:'arc_preview_line', x1:p1.x, y1:p1.y, x2:ex, y2:ey };
       return;
     }
     const p2 = state.mouse.arcP2;
