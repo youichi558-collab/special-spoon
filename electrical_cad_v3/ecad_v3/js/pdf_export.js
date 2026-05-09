@@ -268,8 +268,7 @@ function _exportPDFPages(indices, filename) {
     if (m) pdf.setTextColor(parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16));
     else pdf.setTextColor(0,0,0);
     pdf.setFont('helvetica', bold ? 'bold' : 'normal');
-    const k = pdf.internal.scaleFactor;
-    pdf.setFontSize(fsMM * k);
+    pdf.setFontSize(fsMM * 2.835);
     pdf.text(text, x, y + fsMM * 0.5, { align: align||'center', baseline: 'alphabetic' });
     pdf.setTextColor(0,0,0);
   }
