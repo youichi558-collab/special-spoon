@@ -46,6 +46,10 @@ function hitTest(wx, wy) {
       continue;
     }
     if (el.type === 'junction') { if (Math.hypot(wx-el.x,wy-el.y) < (el.r||4)+R) return el; continue; }
+    if (el.type === 'triangle') {
+      if (distToSeg(wx,wy,el.x1,el.y1,el.x2,el.y2)<R || distToSeg(wx,wy,el.x2,el.y2,el.x3,el.y3)<R || distToSeg(wx,wy,el.x3,el.y3,el.x1,el.y1)<R) return el;
+      continue;
+    }
     // シンボル系はgetDef()が必要
     const d = getDef(el.type);
     if (!d) continue;
