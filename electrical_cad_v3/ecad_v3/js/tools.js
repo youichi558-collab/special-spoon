@@ -352,7 +352,9 @@ const triTool = {
     if (!state.mouse.triP1) {
       state.mouse.triP1 = p;
     } else if (!state.mouse.triP2) {
-      state.mouse.triP2 = p;
+      let p2 = p;
+      if (state.ortho) { const o = applyOrtho(state.mouse.triP1.x, state.mouse.triP1.y, p.x, p.y); p2 = {x:o.x, y:o.y}; }
+      state.mouse.triP2 = p2;
     } else {
       const p3 = e?.shiftKey ? this._equilateral(state.mouse.triP1, state.mouse.triP2, wx, wy) : p;
       pushH();
@@ -367,7 +369,9 @@ const triTool = {
     if (!state.mouse.triP1) return;
     const p1 = state.mouse.triP1;
     if (!state.mouse.triP2) {
-      state.preview = { type:'tri_preview', p1, p2:{x:wx,y:wy}, p3:null };
+      let ex=wx, ey=wy;
+      if (state.ortho) { const o=applyOrtho(p1.x,p1.y,wx,wy); ex=o.x; ey=o.y; }
+      state.preview = { type:'tri_preview', p1, p2:{x:ex,y:ey}, p3:null };
       return;
     }
     const p2 = state.mouse.triP2;
