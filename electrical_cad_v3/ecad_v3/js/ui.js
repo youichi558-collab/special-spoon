@@ -297,8 +297,9 @@ function srPasteFromClipboard() {
   const symW = parseFloat(document.getElementById('sr-w')?.value)||80;
   const symH = parseFloat(document.getElementById('sr-h')?.value)||60;
   const scale = Math.min(symW/bW, symH/bH) * 0.9;
-  const tx = wx => Math.round((wx - cx) * scale);
-  const ty = wy => Math.round((wy - cy) * scale);
+  const snapG = v => Math.round(v / SR_GRID) * SR_GRID;
+  const tx = wx => snapG((wx - cx) * scale);
+  const ty = wy => snapG((wy - cy) * scale);
 
   // 変換してSR形式に
   const shapes = [];
