@@ -526,6 +526,7 @@ function saveCustomSymbol() {
 
 function renderCustomSymbols() {
   const el = document.getElementById('cus-list');
+  if (!el) return;
   if (!state.customSymbols.length) { el.innerHTML = '<p style="font-size:11px;color:var(--fg3);padding:4px">登録済みシンボルがありません</p>'; return; }
   const grps = {};
   state.customSymbols.forEach(s => { if (!grps[s.cat]) grps[s.cat]=[]; grps[s.cat].push(s); });
