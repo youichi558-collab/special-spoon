@@ -255,7 +255,7 @@ function saveCusPart() {
 // ----------------------------------------------------------------
 let _srShapes = [];
 let _srTerms  = [];
-let _srTool   = 'line';
+let _srTool   = null;
 let _srDraw   = null;
 let _srFirst  = null;
 let _srMouse  = { x:0, y:0 };
@@ -354,8 +354,8 @@ function srPasteFromClipboard() {
 }
 
 function srClear() {
-  _srShapes = []; _srTerms = []; _srTool = 'line'; _srDraw = null; _srFirst = null;
-  document.querySelectorAll('.sr-tool').forEach(b => b.classList.toggle('active', b.dataset.tool === 'line'));
+  _srShapes = []; _srTerms = []; _srTool = null; _srDraw = null; _srFirst = null;
+  document.querySelectorAll('.sr-tool').forEach(b => b.classList.remove('active'));
   const n = document.getElementById('sr-name'); if (n) n.value = '';
   const c = document.getElementById('sr-cat'); if (c) c.value = 'カスタム';
   const w = document.getElementById('sr-w'); if (w) w.value = 80;
