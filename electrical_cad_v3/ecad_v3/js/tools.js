@@ -332,8 +332,38 @@ const arc3Tool = {
   onUp() {}, onHover(wx, wy) { this.onMove(wx, wy); }
 };
 
-const junctionTool = {
+// ----------------------------------------------------------------
+// 三角形ツール（triangle）- 3点クリックで確定
+// ----------------------------------------------------------------
+const triTool = {
   onDown(wx, wy) {
+    const p = getAllSnapPoints(wx, wy);
+    if (!state.mouse.triP1) {
+      state.mouse.triP1 = p;
+    } else if (!state.mouse.triP2) {
+      state.mouse.triP2 = p;
+    } else {
+      pushH();
+      state.elements.push({ id:genId('el'), type:'triangle',
+        x1:state.mouse.triP1.x, y1:state.mouse.triP1.y,
+        x2:state.mouse.triP2.x, y2:state.mouse.triP2.y,
+        x3:p.x, y3:p.y, layer:activeLayer() });
+      state.mouse.triP1 = null; state.mouse.triP2 = null; state.preview = null;
+    }
+  },
+  onMove(wx, wy) {
+    if (!state.mouse.triP1) return;
+    const p1 = state.mouse.triP1;
+    if (!state.mouse.triP2) {
+      state.preview = { type:'tri_preview', p1, p2:{x:wx,y:wy}, p3:null };
+      return;
+    }
+    state.preview = { type:'tri_preview', p1, p2:state.mouse.triP2, p3:{x:wx,y:wy} };
+  },
+  onUp() {}, onHover(wx, wy) { this.onMove(wx, wy); }
+};
+
+const junctionTool = {  onDown(wx, wy) {
     const p = getAllSnapPoints(wx, wy);
     pushH();
     state.elements.push({ id: genId('el'), type:'junction', x:p.x, y:p.y, layer: activeLayer() });
@@ -354,6 +384,7 @@ const TOOLS = {
   fline:  shapeTool,
   arc:    arcTool,
   arc3:   arc3Tool,
+  triangle: triTool,
   junction: junctionTool,
 };
 

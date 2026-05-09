@@ -177,6 +177,8 @@ function drawElements() {
       drawCircleEl(el, sel, lc, lay);
     } else if (el.type === 'fline') {
       drawFlineEl(el, sel, lc, lay);
+    } else if (el.type === 'triangle') {
+      drawTriEl(el, sel, lc, lay);
     } else if (el.type === 'arc') {
       drawArcEl(el, sel, lc, lay);
     } else if (el.type === 'junction') {
@@ -231,6 +233,23 @@ function drawCircleEl(el, sel, lc, lay) {
   if (el.fillColor) { ctx.fillStyle = el.fillColor; ctx.beginPath(); ctx.arc(el.x, el.y, el.r, 0, Math.PI*2); ctx.fill(); }
   ctx.beginPath(); ctx.arc(el.x, el.y, el.r, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
   ctx.restore();
+}
+
+function drawTriEl(el, sel, lc, lay) {
+  ctx.save();
+  const c = sel ? '#0067c0' : (el.color || lc);
+  const lw = el.lineWidth || lay?.lineWidth || 1.5;
+  ctx.strokeStyle = c; ctx.lineWidth = sel ? lw+0.5 : lw;
+  applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
+  ctx.beginPath();
+  ctx.moveTo(el.x1, el.y1); ctx.lineTo(el.x2, el.y2);
+  ctx.lineTo(el.x3, el.y3); ctx.closePath();
+  if (el.fillColor) {
+    const m = el.fillColor.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    if (m) { ctx.fillStyle = el.fillColor; ctx.fill(); }
+  }
+  ctx.stroke();
+  ctx.setLineDash([]); ctx.restore();
 }
 
 function drawArcEl(el, sel, lc, lay) {
@@ -317,7 +336,10 @@ function drawPreview() {
     } else if (shapeMode === 'fline') {
       ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
     }
-  } else if (prev.type === 'arc_preview') {
+  } else if (prev.type === 'tri_preview') {
+    ctx.beginPath(); ctx.moveTo(prev.p1.x, prev.p1.y); ctx.lineTo(prev.p2.x, prev.p2.y);
+    if (prev.p3) { ctx.lineTo(prev.p3.x, prev.p3.y); ctx.closePath(); }
+    ctx.stroke();
     ctx.beginPath(); ctx.arc(prev.x, prev.y, prev.r, prev.startA, prev.endA, prev.ccw || false); ctx.stroke();
   } else if (prev.type === 'arc_preview_line') {
     ctx.beginPath(); ctx.moveTo(prev.x1, prev.y1); ctx.lineTo(prev.x2, prev.y2); ctx.stroke();

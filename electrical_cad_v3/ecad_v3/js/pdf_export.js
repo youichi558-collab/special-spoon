@@ -452,6 +452,14 @@ function _exportPDFPages(indices, filename) {
             cx2 + Math.cos(sa)*r, cy2 + Math.sin(sa)*r, [1,1], 'S', false
           );
 
+        } else if (el.type==='triangle') {
+          const lw = el.lineWidth || 1.5;
+          applyColor(el.color || lc);
+          pdf.setLineWidth(Math.max(0.05, lw*s));
+          applyDash(el.lineStyle || lay?.lineDash, s);
+          pdf.triangle(tx(el.x1),ty(el.y1), tx(el.x2),ty(el.y2), tx(el.x3),ty(el.y3), el.fillColor ? 'FD' : 'S');
+          pdf.setLineDashPattern([],0);
+
         } else if (el.type==='junction') {
           const jc = el.color || lc;
           const m2 = (jc||'#000').match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
