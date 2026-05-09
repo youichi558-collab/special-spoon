@@ -21,6 +21,7 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc) {
   // カスタムシンボル
   const cS = state.customSymbols.find(s => s.type === type);
   if (cS) {
+    ctx.lineWidth = (isSel ? 2.5 : 2) / zoom;  // ワイヤーと同じ太さ
     if (cS.shapes && cS.shapes.length) {
       cS.shapes.forEach(s => {
         if (s.t==='L') { ctx.beginPath(); ctx.moveTo(s.x1,s.y1); ctx.lineTo(s.x2,s.y2); ctx.stroke(); }
