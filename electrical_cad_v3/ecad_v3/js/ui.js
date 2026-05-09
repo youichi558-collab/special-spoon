@@ -553,11 +553,11 @@ function saveCustomSymbol() {
   let preview = null;
   if (cv) {
     const thumbCv = document.createElement('canvas');
-    thumbCv.width = 40; thumbCv.height = 30;
+    thumbCv.width = 64; thumbCv.height = 48;
     const tctx = thumbCv.getContext('2d');
     tctx.fillStyle = '#fff';
-    tctx.fillRect(0, 0, 40, 30);
-    tctx.drawImage(cv, 0, 0, 40, 30);
+    tctx.fillRect(0, 0, 64, 48);
+    tctx.drawImage(cv, 0, 0, 64, 48);
     preview = thumbCv.toDataURL('image/png');
   }
   const sym = { type, name, label:name, cat, w, h, shapes:[..._srShapes], terminals:[..._srTerms], preview };
