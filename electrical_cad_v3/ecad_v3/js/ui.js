@@ -260,6 +260,7 @@ let _srDraw   = null;
 let _srFirst  = null;
 let _srMouse  = { x:0, y:0 };
 const SR_SCALE = 2;   // canvas px per coord unit
+let _srZoom = SR_SCALE;
 const SR_GRID  = 5;   // grid snap unit (coord)
 const SR_CX    = 160; // canvas center x
 const SR_CY    = 130; // canvas center y
@@ -272,6 +273,12 @@ function showSymReg() {
   cv.onmousedown = srOnDown;
   cv.onmousemove = srOnMove;
   cv.onmouseup   = srOnUp;
+  cv.onwheel = e => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.2 : 1/1.2;
+    _srZoom = Math.max(0.5, Math.min(10, _srZoom * factor));
+    srRender();
+  };
   cv.setAttribute('tabindex', '0');
   cv.focus();
   cv.onkeydown = e => {
@@ -355,6 +362,7 @@ function srPasteFromClipboard() {
 
 function srClear() {
   _srShapes = []; _srTerms = []; _srTool = null; _srDraw = null; _srFirst = null;
+  _srZoom = SR_SCALE;
   document.querySelectorAll('.sr-tool').forEach(b => b.classList.remove('active'));
   const n = document.getElementById('sr-name'); if (n) n.value = '';
   const c = document.getElementById('sr-cat'); if (c) c.value = 'カスタム';
@@ -370,8 +378,8 @@ function srSnap(clientX, clientY) {
   const r  = cv.getBoundingClientRect();
   const px = (clientX - r.left) * (cv.width  / r.width);
   const py = (clientY - r.top)  * (cv.height / r.height);
-  const wx = Math.round((px - SR_CX) / SR_SCALE / SR_GRID) * SR_GRID;
-  const wy = Math.round((py - SR_CY) / SR_SCALE / SR_GRID) * SR_GRID;
+  const wx = Math.round((px - SR_CX) / _srZoom / SR_GRID) * SR_GRID;
+  const wy = Math.round((py - SR_CY) / _srZoom / SR_GRID) * SR_GRID;
   return { x: wx, y: wy };
 }
 
@@ -384,7 +392,7 @@ function srRender() {
 
   // Grid
   c.strokeStyle = '#e8e8e8'; c.lineWidth = 0.5;
-  const gPx = SR_GRID * SR_SCALE;
+  const gPx = SR_GRID * _srZoom;
   for (let x = ((SR_CX % gPx) + gPx) % gPx; x < cv.width; x += gPx) { c.beginPath(); c.moveTo(x,0); c.lineTo(x,cv.height); c.stroke(); }
   for (let y = ((SR_CY % gPx) + gPx) % gPx; y < cv.height; y += gPx) { c.beginPath(); c.moveTo(0,y); c.lineTo(cv.width,y); c.stroke(); }
 
@@ -394,8 +402,8 @@ function srRender() {
   c.beginPath(); c.moveTo(0,SR_CY); c.lineTo(cv.width,SR_CY); c.stroke();
 
   // Bounding box (dashed)
-  const bw = (parseInt(document.getElementById('sr-w')?.value)||80) * SR_SCALE;
-  const bh = (parseInt(document.getElementById('sr-h')?.value)||60) * SR_SCALE;
+  const bw = (parseInt(document.getElementById('sr-w')?.value)||80) * _srZoom;
+  const bh = (parseInt(document.getElementById('sr-h')?.value)||60) * _srZoom;
   c.strokeStyle = '#aac'; c.lineWidth = 1; c.setLineDash([5,4]);
   c.strokeRect(SR_CX - bw/2, SR_CY - bh/2, bw, bh);
   c.setLineDash([]);
@@ -409,7 +417,7 @@ function srRender() {
 
   // Terminals
   _srTerms.forEach((t, i) => {
-    const px = SR_CX + t.x * SR_SCALE, py = SR_CY + t.y * SR_SCALE;
+    const px = SR_CX + t.x * _srZoom, py = SR_CY + t.y * _srZoom;
     c.fillStyle = '#0067c0'; c.fillRect(px-5,py-5,10,10);
     c.strokeStyle = '#fff'; c.lineWidth = 1.5;
     c.beginPath(); c.moveTo(px-3,py-3); c.lineTo(px+3,py+3); c.stroke();
@@ -419,7 +427,7 @@ function srRender() {
   });
 
   // Mouse cursor
-  const mpx = SR_CX + _srMouse.x * SR_SCALE, mpy = SR_CY + _srMouse.y * SR_SCALE;
+  const mpx = SR_CX + _srMouse.x * _srZoom, mpy = SR_CY + _srMouse.y * _srZoom;
   c.strokeStyle = '#ccc'; c.lineWidth = 0.5; c.setLineDash([3,3]);
   c.beginPath(); c.moveTo(mpx,0); c.lineTo(mpx,cv.height); c.stroke();
   c.beginPath(); c.moveTo(0,mpy); c.lineTo(cv.width,mpy); c.stroke();
@@ -429,14 +437,14 @@ function srRender() {
 
   // First point highlight
   if (_srFirst) {
-    const fx = SR_CX + _srFirst.x * SR_SCALE, fy = SR_CY + _srFirst.y * SR_SCALE;
+    const fx = SR_CX + _srFirst.x * _srZoom, fy = SR_CY + _srFirst.y * _srZoom;
     c.fillStyle = '#0aa'; c.beginPath(); c.arc(fx,fy,4,0,Math.PI*2); c.fill();
   }
 }
 
 function srDrawShape(c, s, color) {
-  const T  = v => SR_CX + v * SR_SCALE;
-  const TY = v => SR_CY + v * SR_SCALE;
+  const T  = v => SR_CX + v * _srZoom;
+  const TY = v => SR_CY + v * _srZoom;
   c.save(); c.strokeStyle = color || '#222'; c.fillStyle = color || '#222';
   if (s.t==='L') {
     c.lineWidth = 1.5; c.beginPath(); c.moveTo(T(s.x1),TY(s.y1)); c.lineTo(T(s.x2),TY(s.y2)); c.stroke();
