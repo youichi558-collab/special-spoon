@@ -333,34 +333,48 @@ const arc3Tool = {
 };
 
 // ----------------------------------------------------------------
-// 三角形ツール（triangle）- 3点クリックで確定
+// 三角形ツール（triangle）- 3点クリックで確定、Shiftで正三角形
 // ----------------------------------------------------------------
 const triTool = {
-  onDown(wx, wy) {
+  _equilateral(p1, p2, mx, my) {
+    // p1-p2の底辺に対して正三角形の3点目を計算（マウス位置mx,myで向き決定）
+    const dx=p2.x-p1.x, dy=p2.y-p1.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1) return {x:mx, y:my};
+    const nx=-dy/len, ny=dx/len; // 法線（単位）
+    const cx=(p1.x+p2.x)/2, cy=(p1.y+p2.y)/2;
+    const h = len * Math.sqrt(3) / 2;
+    const side = nx*(mx-cx)+ny*(my-cy) >= 0 ? 1 : -1;
+    return { x: cx + nx*h*side, y: cy + ny*h*side };
+  },
+  onDown(wx, wy, e) {
     const p = getAllSnapPoints(wx, wy);
     if (!state.mouse.triP1) {
       state.mouse.triP1 = p;
     } else if (!state.mouse.triP2) {
       state.mouse.triP2 = p;
     } else {
+      const p3 = e?.shiftKey ? this._equilateral(state.mouse.triP1, state.mouse.triP2, wx, wy) : p;
       pushH();
       state.elements.push({ id:genId('el'), type:'triangle',
         x1:state.mouse.triP1.x, y1:state.mouse.triP1.y,
         x2:state.mouse.triP2.x, y2:state.mouse.triP2.y,
-        x3:p.x, y3:p.y, layer:activeLayer() });
+        x3:p3.x, y3:p3.y, layer:activeLayer() });
       state.mouse.triP1 = null; state.mouse.triP2 = null; state.preview = null;
     }
   },
-  onMove(wx, wy) {
+  onMove(wx, wy, e) {
     if (!state.mouse.triP1) return;
     const p1 = state.mouse.triP1;
     if (!state.mouse.triP2) {
       state.preview = { type:'tri_preview', p1, p2:{x:wx,y:wy}, p3:null };
       return;
     }
-    state.preview = { type:'tri_preview', p1, p2:state.mouse.triP2, p3:{x:wx,y:wy} };
+    const p2 = state.mouse.triP2;
+    const p3 = e?.shiftKey ? this._equilateral(p1, p2, wx, wy) : {x:wx, y:wy};
+    state.preview = { type:'tri_preview', p1, p2, p3 };
   },
-  onUp() {}, onHover(wx, wy) { this.onMove(wx, wy); }
+  onUp() {}, onHover(wx, wy, e) { this.onMove(wx, wy, e); }
 };
 
 const junctionTool = {  onDown(wx, wy) {
