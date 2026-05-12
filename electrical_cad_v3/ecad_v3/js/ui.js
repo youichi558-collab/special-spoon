@@ -859,7 +859,7 @@ function previewWireColor() {
   const wire = rp?._wire;
   if (!wire) return;
   const c = document.getElementById('pp-wcolorcode');
-  if (c && /^#[0-9a-fA-F]{6}$/.test(c.value)) { pushH(); wire.color = c.value; }
+  if (c && /^#[0-9a-fA-F]{6}$/.test(c.value)) wire.color = c.value;
   drawWithoutSel();
 }
 
@@ -868,7 +868,7 @@ function previewElColor() {
   const el = rp?._el;
   if (!el) return;
   const c = document.getElementById('pp-colorcode') || document.getElementById('pp-textcolorcode');
-  if (c && /^#[0-9a-fA-F]{6}$/.test(c.value)) { pushH(); el.color = c.value; }
+  if (c && /^#[0-9a-fA-F]{6}$/.test(c.value)) el.color = c.value;
   drawWithoutSel();
 }
 
@@ -888,7 +888,7 @@ function previewSymColor() {
   const el = rp?._el;
   if (!el) return;
   const c = document.getElementById('pp-symcolorcode');
-  if (c && /^#[0-9a-fA-F]{6}$/.test(c.value)) { pushH(); el.color = c.value; }
+  if (c && /^#[0-9a-fA-F]{6}$/.test(c.value)) el.color = c.value;
   drawWithoutSel();
 }
 
