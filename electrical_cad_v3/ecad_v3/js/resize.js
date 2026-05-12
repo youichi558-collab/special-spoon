@@ -39,7 +39,8 @@ function calcElHandles(elId) {
   if (!d || d.w === 0) return [];
   const rot = (el.rot||0)*Math.PI/180;
   const sc = el.scale||1;
-  const hw = d.w*sc/2+8, hh = d.h*sc/2+8;
+  // 選択矩形はscale(sc,sc)後に(d.w/2+8)を描くので実際のサイズはsc*(d.w/2+8)
+  const hw = sc*(d.w/2+8), hh = sc*(d.h/2+8);
   return [[-hw,-hh,'nw'],[hw,-hh,'ne'],[hw,hh,'se'],[-hw,hh,'sw']].map(([lx,ly,hid]) => {
     const rx = lx*Math.cos(rot)-ly*Math.sin(rot);
     const ry = lx*Math.sin(rot)+ly*Math.cos(rot);
