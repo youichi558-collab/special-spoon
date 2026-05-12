@@ -97,7 +97,7 @@ function drawWires() {
 
     ctx.save();
     ctx.strokeStyle = color;
-    ctx.lineWidth   = (sel ? lw+0.5 : lw) / state.zoom;
+    ctx.lineWidth   = (sel ? lw+0.5 : lw);
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     applyLineStyle(ctx, w.lineStyle || lay?.lineDash, state.zoom);
     ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
@@ -547,9 +547,9 @@ function drawDimPreview(ts) {
 // ヘルパー
 // ----------------------------------------------------------------
 function applyLineStyle(ctx, style, zoom) {
-  if (style==='dash'||style==='dashed')        ctx.setLineDash([8/zoom, 4/zoom]);
-  else if (style==='dot'||style==='dotted')    ctx.setLineDash([2/zoom, 4/zoom]);
-  else if (style==='dashdot')                  ctx.setLineDash([8/zoom, 3/zoom, 2/zoom, 3/zoom]);
+  if (style==='dash'||style==='dashed')        ctx.setLineDash([8, 4]);
+  else if (style==='dot'||style==='dotted')    ctx.setLineDash([2, 4]);
+  else if (style==='dashdot')                  ctx.setLineDash([8, 3, 2, 3]);
   else ctx.setLineDash([]);
 }
 
