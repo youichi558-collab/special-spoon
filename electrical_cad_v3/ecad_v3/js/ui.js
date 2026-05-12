@@ -776,8 +776,8 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-term" value="${el.terminals||''}"></div>`;
     html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${el.wireNo||''}"></div>`;
     html += `<div class="pp-row"><label>回転(°)</label><input type="number" id="pp-rot" value="${el.rot||0}" step="90"></div>`;
-    html += `<div class="pp-row"><label>ラベル位置X補正</label><input type="number" id="pp-lox" value="${el.labelOffX||0}" step="5"></div>`;
-    html += `<div class="pp-row"><label>ラベル位置Y補正</label><input type="number" id="pp-loy" value="${el.labelOffY||''}" placeholder="自動" step="5"></div>`;
+    html += `<div class="pp-row"><label>ラベル位置X補正</label><input type="number" id="pp-lox" value="${el.labelOffX||0}" step="5" oninput="previewLabelOff()"></div>`;
+    html += `<div class="pp-row"><label>ラベル位置Y補正</label><input type="number" id="pp-loy" value="${el.labelOffY||''}" placeholder="自動" step="5" oninput="previewLabelOff()"></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
     if (['fline','rect','circle'].includes(el.type)) {
       html += `<div class="pp-row"><label>線幅</label><select id="pp-lw"><option value="0.5"${(el.lineWidth||1.5)==0.5?' selected':''}>極細(0.5)</option><option value="1"${(el.lineWidth||1.5)==1?' selected':''}>細(1)</option><option value="1.5"${(el.lineWidth||1.5)==1.5?' selected':''}>標準(1.5)</option><option value="2"${(el.lineWidth||1.5)==2?' selected':''}>太(2)</option><option value="3"${(el.lineWidth||1.5)==3?' selected':''}>極太(3)</option></select></div>`;
@@ -789,6 +789,17 @@ function updateRightPanel() {
 
   html += `<button class="pp-apply" onclick="applyRightPanel()">適用</button>`;
   rp.innerHTML = html; rp._el = el; rp._wire = wire;
+}
+
+function previewLabelOff() {
+  const rp = document.getElementById('rp-body');
+  const el = rp?._el;
+  if (!el) return;
+  const lox = document.getElementById('pp-lox');
+  const loy = document.getElementById('pp-loy');
+  if (lox) el.labelOffX = parseInt(lox.value)||0;
+  if (loy) el.labelOffY = loy.value ? parseInt(loy.value) : undefined;
+  draw();
 }
 
 function applyRightPanel() {
