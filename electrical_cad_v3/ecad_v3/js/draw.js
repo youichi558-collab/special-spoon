@@ -199,12 +199,12 @@ function drawElements() {
 
 function drawTextEl(el, sel, lc, lay) {
   ctx.save();
-  ctx.fillStyle = sel ? '#0067c0' : (el.color || lc);
+  ctx.fillStyle = el.color || lc;
   ctx.font      = `${el.fs || lay?.fontSize || 14}px sans-serif`;
   ctx.fillText(el.text, el.x, el.y);
   if (sel) {
     const m = ctx.measureText(el.text);
-    ctx.strokeStyle = '#0067c0'; ctx.lineWidth = 1/state.zoom;
+    ctx.strokeStyle = el.color || lc; ctx.lineWidth = 1.5/state.zoom;
     ctx.setLineDash([4/state.zoom, 3/state.zoom]);
     ctx.strokeRect(el.x-3, el.y-14, m.width+6, 18);
     ctx.setLineDash([]);
@@ -214,14 +214,14 @@ function drawTextEl(el, sel, lc, lay) {
 
 function drawRectEl(el, sel, lc, lay) {
   ctx.save();
-  const c  = sel ? '#0067c0' : (el.color || lc);
+  const c  = el.color || lc;
   const lw = el.lineWidth || lay?.lineWidth || 1.5;
-  ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+0.5 : lw);
+  ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+1 : lw);
   applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
   if (el.fillColor) { ctx.fillStyle = el.fillColor; ctx.fillRect(el.x, el.y, el.w, el.h); }
   ctx.strokeRect(el.x, el.y, el.w, el.h); ctx.setLineDash([]);
   if (sel) {
-    ctx.strokeStyle='#0067c0'; ctx.lineWidth=1;
+    ctx.strokeStyle=c; ctx.lineWidth=1;
     ctx.setLineDash([4/state.zoom,3/state.zoom]);
     ctx.strokeRect(el.x-5, el.y-5, el.w+10, el.h+10); ctx.setLineDash([]);
   }
@@ -230,9 +230,9 @@ function drawRectEl(el, sel, lc, lay) {
 
 function drawCircleEl(el, sel, lc, lay) {
   ctx.save();
-  const c  = sel ? '#0067c0' : (el.color || lc);
+  const c  = el.color || lc;
   const lw = el.lineWidth || lay?.lineWidth || 1.5;
-  ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+0.5 : lw);
+  ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+1 : lw);
   applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
   if (el.fillColor) { ctx.fillStyle = el.fillColor; ctx.beginPath(); ctx.arc(el.x, el.y, el.r, 0, Math.PI*2); ctx.fill(); }
   ctx.beginPath(); ctx.arc(el.x, el.y, el.r, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
@@ -241,9 +241,9 @@ function drawCircleEl(el, sel, lc, lay) {
 
 function drawTriEl(el, sel, lc, lay) {
   ctx.save();
-  const c = sel ? '#0067c0' : (el.color || lc);
+  const c = el.color || lc;
   const lw = el.lineWidth || lay?.lineWidth || 1.5;
-  ctx.strokeStyle = c; ctx.lineWidth = sel ? lw+0.5 : lw;
+  ctx.strokeStyle = c; ctx.lineWidth = sel ? lw+1 : lw;
   applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
   ctx.beginPath();
   ctx.moveTo(el.x1, el.y1); ctx.lineTo(el.x2, el.y2);
@@ -258,9 +258,9 @@ function drawTriEl(el, sel, lc, lay) {
 
 function drawArcEl(el, sel, lc, lay) {
   ctx.save();
-  const c  = sel ? '#0067c0' : (el.color || lc);
+  const c  = el.color || lc;
   const lw = el.lineWidth || lay?.lineWidth || 1.5;
-  ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+0.5 : lw);
+  ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+1 : lw);
   applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
   ctx.beginPath(); ctx.arc(el.x, el.y, el.r, el.startA, el.endA, el.ccw || false); ctx.stroke();
   ctx.setLineDash([]);
@@ -269,7 +269,7 @@ function drawArcEl(el, sel, lc, lay) {
 
 function drawJunctionEl(el, sel, lc) {
   ctx.save();
-  const c = sel ? '#0067c0' : (el.color || lc);
+  const c = el.color || lc;
   const r = (el.r || 4) / state.zoom * state.zoom;  // 固定4px相当
   ctx.fillStyle = c;
   ctx.beginPath(); ctx.arc(el.x, el.y, el.r || 4, 0, Math.PI*2); ctx.fill();
@@ -278,9 +278,9 @@ function drawJunctionEl(el, sel, lc) {
 
 function drawFlineEl(el, sel, lc, lay) {
   ctx.save();
-  const c  = sel ? '#0067c0' : (el.color || lc);
+  const c  = el.color || lc;
   const lw = el.lineWidth || lay?.lineWidth || 1.5;
-  ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+0.5 : lw); ctx.lineCap = 'round';
+  ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+1 : lw); ctx.lineCap = 'round';
   applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
   ctx.beginPath(); ctx.moveTo(el.x1, el.y1); ctx.lineTo(el.x2, el.y2); ctx.stroke(); ctx.setLineDash([]);
   if (el.arrowStart && el.arrowStart !== 'none') { const dx=el.x1-el.x2,dy=el.y1-el.y2,len=Math.hypot(dx,dy); if(len>0.1) drawLineEnd(ctx,el.x1,el.y1,dx/len,dy/len,el.arrowStart,10,c,state.zoom); }
