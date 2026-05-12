@@ -75,16 +75,15 @@ body{font-family:'Segoe UI',sans-serif;font-size:12px;background:var(--bg);color
 #cv{display:block;cursor:default;}
 
 /* ========= 右プロパティパネル ========= */
-#rp{width:200px;background:var(--bg2);border-left:1px solid var(--bd);flex-shrink:0;display:flex;flex-direction:column;transition:width 0.2s;}
+#rp{position:fixed;right:0;top:var(--ribbon-h,90px);bottom:24px;width:200px;background:var(--bg2);border-left:1px solid var(--bd);display:flex;flex-direction:column;transition:transform 0.2s;z-index:20;}
 #rp-body{flex:1;overflow-y:auto;}
 #rp-footer{padding:4px 6px;border-top:1px solid var(--bd);background:var(--bg2);}
-#rp.collapsed{width:28px;}
-#rp.collapsed #rp-body,#rp.collapsed #rp-footer{display:none;}
-#rp.collapsed h4{writing-mode:vertical-rl;padding:8px 6px;font-size:11px;white-space:nowrap;}
+#rp.collapsed{transform:translateX(200px);}
 #rp h4{display:flex;justify-content:space-between;align-items:center;}
 #rp-toggle{background:none;border:none;cursor:pointer;color:var(--fg);font-size:10px;padding:0 2px;line-height:1;}
 #rp-toggle:hover{color:var(--acc);}
-#rp.collapsed #rp-toggle{display:none;}
+#rp-expand-btn{position:fixed;right:0;top:50%;transform:translateY(-50%);width:18px;height:40px;background:var(--bg2);border:1px solid var(--bd);border-radius:3px 0 0 3px;cursor:pointer;display:none;align-items:center;justify-content:center;font-size:10px;color:var(--fg);z-index:21;}
+#rp-expand-btn:hover{color:var(--acc);}
 #rp h4{font-size:11px;font-weight:600;padding:8px 10px 4px;color:var(--fg);border-bottom:1px solid var(--bd);}
 .pp-row{padding:4px 10px;}
 .pp-row label{display:block;font-size:10px;color:var(--fg3);margin-bottom:2px;}
