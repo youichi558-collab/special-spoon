@@ -303,9 +303,9 @@ function drawSymEl(el, sel, lc) {
     const rot = (el.rot||0) * Math.PI/180;
     const lx  = el.x + lox*Math.cos(rot) - loy*Math.sin(rot);
     const ly  = el.y + lox*Math.sin(rot) + loy*Math.cos(rot);
-    const fs  = Math.round(11 * sc);
+    const fs  = Math.round((el.labelFs||11) * sc);
     ctx.save();
-    ctx.fillStyle = state.darkMode ? '#aaa' : '#555';
+    ctx.fillStyle = el.labelColor || (state.darkMode ? '#aaa' : '#555');
     ctx.font = `${fs}px sans-serif`; ctx.textAlign = 'center';
     ctx.fillText(el.label, lx, ly);
     ctx.restore();

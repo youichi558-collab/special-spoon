@@ -771,6 +771,8 @@ function updateRightPanel() {
   } else if (el) {
     const def = getDef(el.type) || {};
     html += `<div class="pp-row"><label>ラベル</label><input type="text" id="pp-label" value="${el.label||''}"></div>`;
+    html += `<div class="pp-row"><label>ラベル色</label><input type="color" id="pp-lcolor" value="${el.labelColor||'#555555'}" style="width:48px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer"></div>`;
+    html += `<div class="pp-row"><label>ラベルサイズ</label><input type="number" id="pp-lfs" value="${el.labelFs||11}" step="1" min="6" max="32"></div>`;
     if (def.isCoil)    html += `<div class="pp-row"><label>コイル名</label><input type="text" id="pp-coilname" value="${el.coilName||el.label||''}"></div>`;
     if (def.isContact) html += `<div class="pp-row"><label>参照コイル名</label><input type="text" id="pp-refcoil" value="${el.refCoil||''}"></div>`;
     html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-term" value="${el.terminals||''}"></div>`;
@@ -878,9 +880,11 @@ function applyRightPanel() {
     el.terminals = v('pp-term');
     el.wireNo    = v('pp-wireno');
     el.rot       = parseInt(v('pp-rot'))||0;
-    el.scale     = Math.max(0.1, Math.min(5, parseFloat(v('pp-scale'))||1));
-    el.labelOffX = parseInt(v('pp-lox'))||0;
-    el.labelOffY = v('pp-loy') ? parseInt(v('pp-loy')) : undefined;
+    el.scale      = Math.max(0.1, Math.min(5, parseFloat(v('pp-scale'))||1));
+    el.labelColor = v('pp-lcolor') || undefined;
+    el.labelFs    = parseInt(v('pp-lfs'))||11;
+    el.labelOffX  = parseInt(v('pp-lox'))||0;
+    el.labelOffY  = v('pp-loy') ? parseInt(v('pp-loy')) : undefined;
     el.layer     = v('pp-layer');
     el.note      = v('pp-note');
     if (['fline','rect','circle'].includes(el.type)) {
