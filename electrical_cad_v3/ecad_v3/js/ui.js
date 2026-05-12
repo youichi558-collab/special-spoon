@@ -799,8 +799,8 @@ function updateRightPanel() {
 }
 
 function colorCodeBtns(codeId, pickerId) {
-  return `<button onclick="copyColorCode('${codeId}')" style="font-size:10px;padding:1px 5px;border:1px solid var(--bd2);border-radius:3px;background:var(--bg3);cursor:pointer;color:var(--fg)">コピー</button>` +
-         `<button onclick="pasteColorCode('${codeId}','${pickerId}')" style="font-size:10px;padding:1px 5px;border:1px solid var(--bd2);border-radius:3px;background:var(--bg3);cursor:pointer;color:var(--fg)">貼付</button>`;
+  return `<div style="display:flex;gap:2px"><button onclick="copyColorCode('${codeId}')" style="font-size:10px;padding:1px 4px;border:1px solid var(--bd2);border-radius:3px;background:var(--bg3);cursor:pointer;color:var(--fg)">コピー</button>` +
+         `<button onclick="pasteColorCode('${codeId}','${pickerId}')" style="font-size:10px;padding:1px 4px;border:1px solid var(--bd2);border-radius:3px;background:var(--bg3);cursor:pointer;color:var(--fg)">貼付</button></div>`;
 }
 
 function copyColorCode(codeId) {
