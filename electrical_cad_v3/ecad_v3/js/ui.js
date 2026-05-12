@@ -545,13 +545,32 @@ function srUpdateTermList() {
   ).join('');
 }
 
+function calcCustomSymBBox(shapes) {
+  let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+  shapes.forEach(s => {
+    if (s.t==='L') {
+      minX=Math.min(minX,s.x1,s.x2); maxX=Math.max(maxX,s.x1,s.x2);
+      minY=Math.min(minY,s.y1,s.y2); maxY=Math.max(maxY,s.y1,s.y2);
+    } else if (s.t==='C') {
+      minX=Math.min(minX,s.cx-s.r); maxX=Math.max(maxX,s.cx+s.r);
+      minY=Math.min(minY,s.cy-s.r); maxY=Math.max(maxY,s.cy+s.r);
+    } else if (s.t==='R') {
+      minX=Math.min(minX,s.x,s.x+s.w); maxX=Math.max(maxX,s.x,s.x+s.w);
+      minY=Math.min(minY,s.y,s.y+s.h); maxY=Math.max(maxY,s.y,s.y+s.h);
+    }
+  });
+  if (!isFinite(minX)) return { w:80, h:60 };
+  return { w: Math.max(10, maxX-minX), h: Math.max(10, maxY-minY) };
+}
+
 function saveCustomSymbol() {
   const name = document.getElementById('sr-name').value.trim();
   if (!name) { alert('シンボル名を入力してください'); return; }
   if (!_srShapes.length) { alert('図形を少なくとも1つ描いてください'); return; }
   const cat = document.getElementById('sr-cat').value.trim() || 'カスタム';
-  const w   = parseInt(document.getElementById('sr-w').value) || 80;
-  const h   = parseInt(document.getElementById('sr-h').value) || 60;
+  const bbox = calcCustomSymBBox(_srShapes);
+  const w = bbox.w;
+  const h = bbox.h;
   const type = 'custom_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,5);
   // プレビュー画像を小さなcanvasに縮小して生成
   const cv = document.getElementById('sym-reg-cv');

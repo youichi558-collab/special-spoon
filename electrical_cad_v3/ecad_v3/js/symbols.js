@@ -36,9 +36,17 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc) {
       ctx.fillText(cS.label||type, 0, 4);
     }
     if (isSel) {
+      // 実際の図形範囲からバウンディングボックスを計算
+      let mnX=Infinity,mnY=Infinity,mxX=-Infinity,mxY=-Infinity;
+      (cS.shapes||[]).forEach(s => {
+        if (s.t==='L') { mnX=Math.min(mnX,s.x1,s.x2);mxX=Math.max(mxX,s.x1,s.x2);mnY=Math.min(mnY,s.y1,s.y2);mxY=Math.max(mxY,s.y1,s.y2); }
+        else if (s.t==='C') { mnX=Math.min(mnX,s.cx-s.r);mxX=Math.max(mxX,s.cx+s.r);mnY=Math.min(mnY,s.cy-s.r);mxY=Math.max(mxY,s.cy+s.r); }
+        else if (s.t==='R') { mnX=Math.min(mnX,s.x,s.x+s.w);mxX=Math.max(mxX,s.x,s.x+s.w);mnY=Math.min(mnY,s.y,s.y+s.h);mxY=Math.max(mxY,s.y,s.y+s.h); }
+      });
+      if (!isFinite(mnX)) { mnX=-cS.w/2; mxX=cS.w/2; mnY=-cS.h/2; mxY=cS.h/2; }
       ctx.strokeStyle='#0067c0'; ctx.lineWidth=1/zoom;
       ctx.setLineDash([4/zoom,3/zoom]);
-      ctx.strokeRect(-cS.w/2-8,-cS.h/2-8,cS.w+16,cS.h+16);
+      ctx.strokeRect(mnX-8, mnY-8, (mxX-mnX)+16, (mxY-mnY)+16);
       ctx.setLineDash([]);
     }
     ctx.restore(); return;
