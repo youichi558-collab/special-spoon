@@ -1002,6 +1002,29 @@ function applyFrameProps() {
   draw();
 }
 
+function toggleRightPanel() {
+  const rp = document.getElementById('rp');
+  const btn = document.getElementById('rp-toggle');
+  const collapsed = rp.classList.toggle('collapsed');
+  if (btn) btn.textContent = collapsed ? '▶' : '◀';
+  // 折りたたみ時はキャンバス端にクリックエリアを追加
+  let expBtn = document.getElementById('rp-expand-btn');
+  if (collapsed) {
+    if (!expBtn) {
+      expBtn = document.createElement('div');
+      expBtn.id = 'rp-expand-btn';
+      expBtn.title = 'プロパティを開く';
+      expBtn.textContent = '▶';
+      expBtn.style.cssText = 'position:fixed;right:0;top:50%;transform:translateY(-50%);width:20px;height:40px;background:var(--bg2);border:1px solid var(--bd);border-radius:3px 0 0 3px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--fg);z-index:50;';
+      expBtn.onclick = toggleRightPanel;
+      document.body.appendChild(expBtn);
+    }
+    expBtn.style.display = 'flex';
+  } else if (expBtn) {
+    expBtn.style.display = 'none';
+  }
+}
+
 function showPropPanel() { if (state.sel.els.size >= 1 || state.sel.wires.size >= 1) updateRightPanel(); }
 
 // ----------------------------------------------------------------
