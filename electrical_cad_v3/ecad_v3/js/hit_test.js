@@ -104,6 +104,12 @@ function inBox(el, sx, sy, ex, ey, crossing) {
       ? el.x+el.r>=sx && el.x-el.r<=ex && el.y+el.r>=sy && el.y-el.r<=ey
       : el.x-el.r>=sx && el.x+el.r<=ex && el.y-el.r>=sy && el.y+el.r<=ey;
   }
+  if (el.type === 'triangle') {
+    const pts3 = [{x:el.x1,y:el.y1},{x:el.x2,y:el.y2},{x:el.x3,y:el.y3}];
+    return crossing
+      ? pts3.some(p => p.x>=sx&&p.x<=ex&&p.y>=sy&&p.y<=ey)
+      : pts3.every(p => p.x>=sx&&p.x<=ex&&p.y>=sy&&p.y<=ey);
+  }
   if (el.type === 'fline' || el.type === 'dim' || el.type === 'leader') {
     const pts2 = [{x:el.x1,y:el.y1},{x:el.x2,y:el.y2}];
     if (el.type === 'leader') pts2.push({x:el.bx,y:el.by});

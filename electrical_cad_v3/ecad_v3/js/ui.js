@@ -717,6 +717,7 @@ function updateRightPanel() {
   if (el && el.type === 'text') {
     html += `<div class="pp-row"><label>テキスト</label><textarea rows="2" id="pp-text">${el.text||''}</textarea></div>`;
     html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-fs" value="${el.fs||14}" min="8" max="72"></div>`;
+    html += colorRow('色', 'pp-textcolor', 'pp-textcolorcode', el.color||'#222222', 'previewElColor()');
   } else if (el && el.type === 'dim') {
     const len = Math.round(Math.hypot(el.x2-el.x1, el.y2-el.y1));
     html += `<div class="pp-row"><label>寸法テキスト</label><input type="text" id="pp-dimtext" value="${el.dimText||len}"></div>`;
@@ -779,7 +780,7 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${el.wireNo||''}"></div>`;
     html += `<div class="pp-row"><label>回転(°)</label><input type="number" id="pp-rot" value="${el.rot||0}" step="90"></div>`;
     html += `<div class="pp-row"><label>スケール</label><input type="number" id="pp-scale" value="${el.scale||1}" step="0.1" min="0.1" max="5" oninput="previewScale()"></div>`;
-    html += `<div class="pp-row"><label>シンボル色</label><div style="display:flex;gap:4px;align-items:center"><input type="color" id="pp-symcolor" value="${el.color||'#1d6fb5'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer" oninput="syncColorCode('pp-symcolor','pp-symcolorcode')"><input type="text" id="pp-symcolorcode" value="${el.color||'#1d6fb5'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-symcolorcode','pp-symcolor')">${colorCodeBtns('pp-symcolorcode','pp-symcolor')}</div></div>`;
+    html += `<div class="pp-row"><label>シンボル色</label><div style="display:flex;gap:4px;align-items:center"><input type="color" id="pp-symcolor" value="${el.color||'#1d6fb5'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer" oninput="syncColorCode('pp-symcolor','pp-symcolorcode');previewSymColor()"><input type="text" id="pp-symcolorcode" value="${el.color||'#1d6fb5'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-symcolorcode','pp-symcolor');previewSymColor()">${colorCodeBtns('pp-symcolorcode','pp-symcolor')}</div></div>`;
     html += `<div class="pp-row"><label>シンボル線種</label><select id="pp-symls"><option value=""${!el.lineStyle?' selected':''}>実線</option><option value="dash"${el.lineStyle==='dash'?' selected':''}>破線</option><option value="dot"${el.lineStyle==='dot'?' selected':''}>点線</option><option value="dashdot"${el.lineStyle==='dashdot'?' selected':''}>一点鎖線</option></select></div>`;
     html += `<div class="pp-row"><label>ラベル位置X補正</label><input type="number" id="pp-lox" value="${el.labelOffX||0}" step="5" oninput="previewLabelOff()"></div>`;
     html += `<div class="pp-row"><label>ラベル位置Y補正</label><input type="number" id="pp-loy" value="${el.labelOffY||''}" placeholder="自動" step="5" oninput="previewLabelOff()"></div>`;
@@ -845,22 +846,30 @@ function syncColorPicker(codeId, pickerId) {
   if (/^#[0-9a-fA-F]{6}$/.test(v)) picker.value = v;
 }
 
+function drawWithoutSel() {
+  const savedEls = new Set(state.sel.els);
+  const savedWires = new Set(state.sel.wires);
+  state.sel.els.clear(); state.sel.wires.clear();
+  draw();
+  state.sel.els = savedEls; state.sel.wires = savedWires;
+}
+
 function previewWireColor() {
   const rp = document.getElementById('rp-body');
   const wire = rp?._wire;
   if (!wire) return;
   const c = document.getElementById('pp-wcolorcode');
   if (c && /^#[0-9a-fA-F]{6}$/.test(c.value)) wire.color = c.value;
-  draw();
+  drawWithoutSel();
 }
 
 function previewElColor() {
   const rp = document.getElementById('rp-body');
   const el = rp?._el;
   if (!el) return;
-  const c = document.getElementById('pp-colorcode');
+  const c = document.getElementById('pp-colorcode') || document.getElementById('pp-textcolorcode');
   if (c && /^#[0-9a-fA-F]{6}$/.test(c.value)) el.color = c.value;
-  draw();
+  drawWithoutSel();
 }
 
 function previewLabelStyle() {
@@ -871,7 +880,16 @@ function previewLabelStyle() {
   const lfs    = document.getElementById('pp-lfs');
   if (lcolor) el.labelColor = lcolor.value || undefined;
   if (lfs)    el.labelFs    = parseInt(lfs.value) || 11;
-  draw();
+  drawWithoutSel();
+}
+
+function previewSymColor() {
+  const rp = document.getElementById('rp-body');
+  const el = rp?._el;
+  if (!el) return;
+  const c = document.getElementById('pp-symcolorcode');
+  if (c && /^#[0-9a-fA-F]{6}$/.test(c.value)) el.color = c.value;
+  drawWithoutSel();
 }
 
 function previewScale() {
@@ -897,7 +915,7 @@ function previewLabelOff() {
   const loy = document.getElementById('pp-loy');
   if (lox) el.labelOffX = parseInt(lox.value)||0;
   if (loy) el.labelOffY = loy.value ? parseInt(loy.value) : undefined;
-  draw();
+  drawWithoutSel();
 }
 
 function cancelLabelOff() {
@@ -925,6 +943,7 @@ function applyRightPanel() {
   const v = id => { const e = document.getElementById(id); return e ? e.value : ''; };
   if (el && el.type === 'text') {
     el.text = v('pp-text'); el.fs = parseInt(v('pp-fs'))||14;
+    el.color = v('pp-textcolorcode') || v('pp-textcolor') || undefined;
   } else if (el && el.type === 'dim') {
     el.dimText  = v('pp-dimtext');
     el.dimFs    = parseInt(v('pp-dimfs')) || 11;
