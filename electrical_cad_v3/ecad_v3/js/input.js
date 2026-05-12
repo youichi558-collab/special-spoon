@@ -52,6 +52,7 @@ cv.addEventListener('wheel', e => {
 // マウスイベント
 // ----------------------------------------------------------------
 cv.addEventListener('mousedown', e => {
+  if (state.colorEditing) return; // カラー編集中はキャンバス操作をブロック
   const r  = cv.getBoundingClientRect();
   const cx = e.clientX - r.left;
   const cy = e.clientY - r.top;
