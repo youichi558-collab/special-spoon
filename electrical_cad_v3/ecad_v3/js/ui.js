@@ -771,7 +771,7 @@ function updateRightPanel() {
   } else if (el) {
     const def = getDef(el.type) || {};
     html += `<div class="pp-row"><label>ラベル</label><input type="text" id="pp-label" value="${el.label||''}"></div>`;
-    html += `<div class="pp-row"><label>ラベル色</label><input type="color" id="pp-lcolor" value="${el.labelColor||'#555555'}" style="width:48px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer" oninput="previewLabelStyle()"></div>`;
+    html += `<div class="pp-row"><label>ラベル色</label><div style="display:flex;gap:4px;align-items:center"><input type="color" id="pp-lcolor" value="${el.labelColor||'#555555'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer" oninput="syncColorCode('pp-lcolor','pp-lcolorcode');previewLabelStyle()"><input type="text" id="pp-lcolorcode" value="${el.labelColor||'#555555'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-lcolorcode','pp-lcolor');previewLabelStyle()"></div></div>`;
     html += `<div class="pp-row"><label>ラベルサイズ</label><input type="number" id="pp-lfs" value="${el.labelFs||11}" step="1" min="6" max="32" oninput="previewLabelStyle()"></div>`;
     if (def.isCoil)    html += `<div class="pp-row"><label>コイル名</label><input type="text" id="pp-coilname" value="${el.coilName||el.label||''}"></div>`;
     if (def.isContact) html += `<div class="pp-row"><label>参照コイル名</label><input type="text" id="pp-refcoil" value="${el.refCoil||''}"></div>`;
@@ -779,7 +779,7 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${el.wireNo||''}"></div>`;
     html += `<div class="pp-row"><label>回転(°)</label><input type="number" id="pp-rot" value="${el.rot||0}" step="90"></div>`;
     html += `<div class="pp-row"><label>スケール</label><input type="number" id="pp-scale" value="${el.scale||1}" step="0.1" min="0.1" max="5" oninput="previewScale()"></div>`;
-    html += `<div class="pp-row"><label>シンボル色</label><input type="color" id="pp-symcolor" value="${el.color||'#1d6fb5'}" style="width:48px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer"></div>`;
+    html += `<div class="pp-row"><label>シンボル色</label><div style="display:flex;gap:4px;align-items:center"><input type="color" id="pp-symcolor" value="${el.color||'#1d6fb5'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer" oninput="syncColorCode('pp-symcolor','pp-symcolorcode')"><input type="text" id="pp-symcolorcode" value="${el.color||'#1d6fb5'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-symcolorcode','pp-symcolor')"></div></div>`;
     html += `<div class="pp-row"><label>シンボル線種</label><select id="pp-symls"><option value=""${!el.lineStyle?' selected':''}>実線</option><option value="dash"${el.lineStyle==='dash'?' selected':''}>破線</option><option value="dot"${el.lineStyle==='dot'?' selected':''}>点線</option><option value="dashdot"${el.lineStyle==='dashdot'?' selected':''}>一点鎖線</option></select></div>`;
     html += `<div class="pp-row"><label>ラベル位置X補正</label><input type="number" id="pp-lox" value="${el.labelOffX||0}" step="5" oninput="previewLabelOff()"></div>`;
     html += `<div class="pp-row"><label>ラベル位置Y補正</label><input type="number" id="pp-loy" value="${el.labelOffY||''}" placeholder="自動" step="5" oninput="previewLabelOff()"></div>`;
@@ -795,6 +795,20 @@ function updateRightPanel() {
 
   html += `<button class="pp-apply" onclick="applyRightPanel()">適用</button>`;
   rp.innerHTML = html; rp._el = el; rp._wire = wire;
+}
+
+function syncColorCode(pickerId, codeId) {
+  const picker = document.getElementById(pickerId);
+  const code   = document.getElementById(codeId);
+  if (picker && code) code.value = picker.value;
+}
+
+function syncColorPicker(codeId, pickerId) {
+  const code   = document.getElementById(codeId);
+  const picker = document.getElementById(pickerId);
+  if (!code || !picker) return;
+  const v = code.value.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) picker.value = v;
 }
 
 function previewLabelStyle() {
@@ -894,9 +908,9 @@ function applyRightPanel() {
     el.wireNo    = v('pp-wireno');
     el.rot       = parseInt(v('pp-rot'))||0;
     el.scale      = Math.max(0.1, Math.min(5, parseFloat(v('pp-scale'))||1));
-    el.color      = v('pp-symcolor') || undefined;
+    el.color      = v('pp-symcolorcode') || v('pp-symcolor') || undefined;
     el.lineStyle  = v('pp-symls') || undefined;
-    el.labelColor = v('pp-lcolor') || undefined;
+    el.labelColor = v('pp-lcolorcode') || v('pp-lcolor') || undefined;
     el.labelFs    = parseInt(v('pp-lfs'))||11;
     el.labelOffX  = parseInt(v('pp-lox'))||0;
     el.labelOffY  = v('pp-loy') ? parseInt(v('pp-loy')) : undefined;
