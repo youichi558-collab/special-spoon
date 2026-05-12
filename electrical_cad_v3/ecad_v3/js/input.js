@@ -99,6 +99,16 @@ cv.addEventListener('mousedown', e => {
     return;
   }
 
+  // 左ボタン → リサイズハンドル優先チェック（selectモード時）
+  if (state.mode === 'select') {
+    const h = hitResizeHandle(wx, wy);
+    if (h) {
+      if (h.group) startGroupResize(h, e);
+      else         startElResize(h, e);
+      return;
+    }
+  }
+
   // 左ボタン → 現在ツールに委譲
   currentTool().onDown(wx, wy, e);
   draw();

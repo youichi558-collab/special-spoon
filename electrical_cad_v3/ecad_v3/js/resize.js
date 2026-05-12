@@ -1,81 +1,87 @@
 // ================================================================
-// resize.js — リサイズハンドル管理
+// resize.js — リサイズハンドル管理（canvas描画方式）
 // ================================================================
 
+// ハンドル情報をstateに保持
 function updateResizeHandles() {
-  document.querySelectorAll('.resize-handle, .grp-resize-handle').forEach(h => h.remove());
-  const { els, wires } = state.sel;
-  if (els.size + wires.size >= 2) {
-    drawGroupResizeHandles();
-  } else if (els.size === 1) {
-    drawResizeHandles([...els][0]);
-  }
+  state.resizeHandles = calcResizeHandles();
 }
 
-function drawResizeHandles(el) {
-  let corners;
+function calcResizeHandles() {
+  const { els, wires } = state.sel;
+  if (els.size + wires.size >= 2) return calcGroupHandles();
+  if (els.size === 1) return calcElHandles([...els][0]);
+  return [];
+}
+
+function calcElHandles(elId) {
+  const el = state.elements.find(e => e.id === elId);
+  if (!el) return [];
   if (el.type === 'rect') {
-    // rect: 四隅をそのまま使う
     const x=el.x, y=el.y, w=el.w||10, h=el.h||10;
-    corners = [[x,y,'nw'],[x+w,y,'ne'],[x+w,y+h,'se'],[x,y+h,'sw']];
-    corners.forEach(([wx,wy,hid]) => {
-      const cp = tc(wx, wy);
-      const div = document.createElement('div');
-      div.className = 'resize-handle';
-      div.style.left = (cp.x-4)+'px'; div.style.top = (cp.y-4)+'px';
-      div.dataset.handle = hid;
-      div.addEventListener('mousedown', ev => { ev.stopPropagation(); startElResize(el, hid, ev); });
-      document.getElementById('cw').appendChild(div);
-    });
-    return;
+    return [
+      { wx:x,     wy:y,     hid:'nw', el },
+      { wx:x+w,   wy:y,     hid:'ne', el },
+      { wx:x+w,   wy:y+h,   hid:'se', el },
+      { wx:x,     wy:y+h,   hid:'sw', el },
+    ];
   }
   if (el.type === 'circle') {
-    // circle: 上下左右4点にハンドル
     const r = (el.r||10)+8;
-    [[0,-r,'n'],[r,0,'e'],[0,r,'s'],[-r,0,'w']].forEach(([lx,ly,hid]) => {
-      const cp = tc(el.x+lx, el.y+ly);
-      const div = document.createElement('div');
-      div.className = 'resize-handle';
-      div.style.left = (cp.x-4)+'px'; div.style.top = (cp.y-4)+'px';
-      div.dataset.handle = hid;
-      div.addEventListener('mousedown', ev => { ev.stopPropagation(); startElResize(el, hid, ev); });
-      document.getElementById('cw').appendChild(div);
-    });
-    return;
+    return [
+      { wx:el.x,   wy:el.y-r, hid:'n', el },
+      { wx:el.x+r, wy:el.y,   hid:'e', el },
+      { wx:el.x,   wy:el.y+r, hid:'s', el },
+      { wx:el.x-r, wy:el.y,   hid:'w', el },
+    ];
   }
-  const d = getDef(el.type); if (!d || d.w === 0) return;
+  const d = getDef(el.type);
+  if (!d || d.w === 0) return [];
   const rot = (el.rot||0)*Math.PI/180;
   const sc = el.scale||1;
   const hw = d.w*sc/2+8, hh = d.h*sc/2+8;
-  [[-hw,-hh,'nw'],[hw,-hh,'ne'],[hw,hh,'se'],[-hw,hh,'sw']].forEach(([lx,ly,hid]) => {
+  return [[-hw,-hh,'nw'],[hw,-hh,'ne'],[hw,hh,'se'],[-hw,hh,'sw']].map(([lx,ly,hid]) => {
     const rx = lx*Math.cos(rot)-ly*Math.sin(rot);
     const ry = lx*Math.sin(rot)+ly*Math.cos(rot);
-    const cp = tc(el.x+rx, el.y+ry);
-    const div = document.createElement('div');
-    div.className = 'resize-handle';
-    div.style.left = (cp.x-4)+'px'; div.style.top = (cp.y-4)+'px';
-    div.dataset.handle = hid;
-    div.addEventListener('mousedown', ev => { ev.stopPropagation(); startElResize(el, hid, ev); });
-    document.getElementById('cw').appendChild(div);
+    return { wx:el.x+rx, wy:el.y+ry, hid, el };
   });
 }
 
-function drawGroupResizeHandles() {
+function calcGroupHandles() {
   const selEls   = state.elements.filter(el => state.sel.els.has(el.id));
   const selWires = state.wires.filter(w    => state.sel.wires.has(w.id));
   const b = getGroupBounds(selEls, selWires);
-  if (!b || b.w < 1 || b.h < 1) return;
-  [['nw',b.x,b.y,'nw-resize'],['ne',b.x+b.w,b.y,'ne-resize'],
-   ['sw',b.x,b.y+b.h,'sw-resize'],['se',b.x+b.w,b.y+b.h,'se-resize']].forEach(([hid,wx,wy,cur]) => {
-    const cp = tc(wx, wy);
-    const div = document.createElement('div');
-    div.className = 'resize-handle grp-resize-handle';
-    div.style.left = (cp.x-5)+'px'; div.style.top = (cp.y-5)+'px';
-    div.style.cursor = cur;
-    div.dataset.handle = hid;
-    div.addEventListener('mousedown', ev => { ev.stopPropagation(); startGroupResize(hid, ev, b); });
-    document.getElementById('cw').appendChild(div);
+  if (!b || b.w < 1 || b.h < 1) return [];
+  return [
+    { wx:b.x,     wy:b.y,     hid:'nw', group:true, bounds:b },
+    { wx:b.x+b.w, wy:b.y,     hid:'ne', group:true, bounds:b },
+    { wx:b.x,     wy:b.y+b.h, hid:'sw', group:true, bounds:b },
+    { wx:b.x+b.w, wy:b.y+b.h, hid:'se', group:true, bounds:b },
+  ];
+}
+
+// canvas上にハンドルを描画（draw.jsから呼ぶ）
+function drawResizeHandlesOnCanvas() {
+  if (!state.resizeHandles || !state.resizeHandles.length) return;
+  const z = state.zoom;
+  state.resizeHandles.forEach(h => {
+    const cp = tc(h.wx, h.wy);
+    ctx.save();
+    ctx.fillStyle = h.group ? '#e07000' : '#0067c0';
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1;
+    const s = h.group ? 5 : 4;
+    ctx.fillRect(cp.x-s, cp.y-s, s*2, s*2);
+    ctx.strokeRect(cp.x-s, cp.y-s, s*2, s*2);
+    ctx.restore();
   });
+}
+
+// ハンドルのヒットテスト（ワールド座標）
+function hitResizeHandle(wx, wy) {
+  if (!state.resizeHandles) return null;
+  const R = 8 / state.zoom;
+  return state.resizeHandles.find(h => Math.abs(wx-h.wx)<R && Math.abs(wy-h.wy)<R) || null;
 }
 
 function getGroupBounds(els, wires) {
@@ -85,15 +91,8 @@ function getGroupBounds(els, wires) {
     else if (el.type==='circle') { minX=Math.min(minX,el.x-el.r); minY=Math.min(minY,el.y-el.r); maxX=Math.max(maxX,el.x+el.r); maxY=Math.max(maxY,el.y+el.r); }
     else if (el.x1!=null) { const bx=el.bx??el.x2,by=el.by??el.y2; minX=Math.min(minX,el.x1,el.x2,bx); minY=Math.min(minY,el.y1,el.y2,by); maxX=Math.max(maxX,el.x1,el.x2,bx); maxY=Math.max(maxY,el.y1,el.y2,by); }
     else if (el.x!=null) {
-      if (el.type==='text') {
-        const tw=(el.text||'').length*(el.fs||14)*0.6, th=(el.fs||14);
-        minX=Math.min(minX,el.x); minY=Math.min(minY,el.y-th);
-        maxX=Math.max(maxX,el.x+tw); maxY=Math.max(maxY,el.y);
-      } else {
-        const d=getDef(el.type)||{}; const hw=(d.w||20)/2,hh=(d.h||20)/2;
-        minX=Math.min(minX,el.x-hw); minY=Math.min(minY,el.y-hh);
-        maxX=Math.max(maxX,el.x+hw); maxY=Math.max(maxY,el.y+hh);
-      }
+      if (el.type==='text') { const tw=(el.text||'').length*(el.fs||14)*0.6,th=(el.fs||14); minX=Math.min(minX,el.x); minY=Math.min(minY,el.y-th); maxX=Math.max(maxX,el.x+tw); maxY=Math.max(maxY,el.y); }
+      else { const d=getDef(el.type)||{}; const sc=el.scale||1; const hw=(d.w||20)*sc/2,hh=(d.h||20)*sc/2; minX=Math.min(minX,el.x-hw); minY=Math.min(minY,el.y-hh); maxX=Math.max(maxX,el.x+hw); maxY=Math.max(maxY,el.y+hh); }
     }
   });
   wires.forEach(w => (w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}]).forEach(p => { minX=Math.min(minX,p.x); minY=Math.min(minY,p.y); maxX=Math.max(maxX,p.x); maxY=Math.max(maxY,p.y); }));
@@ -101,17 +100,15 @@ function getGroupBounds(els, wires) {
   return { x:minX, y:minY, w:maxX-minX, h:maxY-minY };
 }
 
-function startElResize(el, hid, e) {
+function startElResize(h, e) {
   pushH();
-  state.resize = { el, handle: hid, orig: JSON.parse(JSON.stringify(el)) };
+  const el = h.el;
+  state.resize = { el, handle: h.hid, orig: JSON.parse(JSON.stringify(el)) };
   const r = cv.getBoundingClientRect();
-  const onMove = e2 => {
-    const {x:wx,y:wy} = tw(e2.clientX-r.left, e2.clientY-r.top);
-    applyElResize(wx, wy); draw(); drawResizeHandles(el);
-  };
-  const onUp = () => { state.resize = {el:null,handle:'',orig:null}; document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); draw(); updateResizeHandles(); };
+  const onMove = e2 => { const {x:wx,y:wy}=tw(e2.clientX-r.left,e2.clientY-r.top); applyElResize(wx,wy); draw(); updateResizeHandles(); };
+  const onUp   = () => { state.resize={el:null,handle:'',orig:null}; document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); draw(); updateResizeHandles(); };
   document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onUp);
+  document.addEventListener('mouseup',   onUp);
 }
 
 function applyElResize(wx, wy) {
@@ -127,21 +124,22 @@ function applyElResize(wx, wy) {
   } else {
     const d = getDef(el.type); if (!d) return;
     const dist = Math.hypot(wx-orig.x, wy-orig.y);
-    const origDist = Math.hypot(d.w/2+8, d.h/2+8);
-    el.scale = Math.max(0.3, Math.min(5, dist/origDist));
+    const origDist = Math.hypot(d.w*(orig.scale||1)/2+8, d.h*(orig.scale||1)/2+8);
+    el.scale = Math.max(0.1, Math.min(5, (orig.scale||1) * dist/Math.max(origDist,1)));
   }
 }
 
-function startGroupResize(hid, e, bounds) {
+function startGroupResize(h, e) {
   pushH();
+  const bounds = h.bounds;
   const elRefs   = state.elements.filter(el => state.sel.els.has(el.id));
   const wireRefs = state.wires.filter(w    => state.sel.wires.has(w.id));
-  state.groupResize = { active:true, handle:hid, orig:{ bounds:{...bounds}, els:elRefs.map(el=>JSON.parse(JSON.stringify(el))), wires:wireRefs.map(w=>JSON.parse(JSON.stringify(w))), elRefs, wireRefs } };
+  state.groupResize = { active:true, handle:h.hid, orig:{ bounds:{...bounds}, els:elRefs.map(el=>JSON.parse(JSON.stringify(el))), wires:wireRefs.map(w=>JSON.parse(JSON.stringify(w))), elRefs, wireRefs } };
   const r = cv.getBoundingClientRect();
-  const onMove = e2 => { const {x:wx,y:wy}=tw(e2.clientX-r.left,e2.clientY-r.top); applyGroupResize(wx,wy); draw(); drawGroupResizeHandles(); };
-  const onUp = () => { state.groupResize={active:false,handle:'',orig:null}; document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); draw(); updateResizeHandles(); };
+  const onMove = e2 => { const {x:wx,y:wy}=tw(e2.clientX-r.left,e2.clientY-r.top); applyGroupResize(wx,wy); draw(); updateResizeHandles(); };
+  const onUp   = () => { state.groupResize={active:false,handle:'',orig:null}; document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); draw(); updateResizeHandles(); };
   document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onUp);
+  document.addEventListener('mouseup',   onUp);
 }
 
 function applyGroupResize(wx, wy) {
@@ -158,7 +156,7 @@ function applyGroupResize(wx, wy) {
     if(el.type==='rect'){el.x=anchorX+(o.x-anchorX)*sx;el.y=anchorY+(o.y-anchorY)*sy;el.w=o.w*sx;el.h=o.h*sy;}
     else if(el.type==='circle'){el.x=anchorX+(o.x-anchorX)*sx;el.y=anchorY+(o.y-anchorY)*sy;el.r=o.r*(sx+sy)/2;}
     else if(el.x1!=null){el.x1=anchorX+(o.x1-anchorX)*sx;el.y1=anchorY+(o.y1-anchorY)*sy;el.x2=anchorX+(o.x2-anchorX)*sx;el.y2=anchorY+(o.y2-anchorY)*sy;if(o.bx!=null){el.bx=anchorX+(o.bx-anchorX)*sx;el.by=anchorY+(o.by-anchorY)*sy;}}
-    else if(el.x!=null){el.x=anchorX+(o.x-anchorX)*sx;el.y=anchorY+(o.y-anchorY)*sy;}
+    else if(el.x!=null){el.x=anchorX+(o.x-anchorX)*sx;el.y=anchorY+(o.y-anchorY)*sy;if(el.scale!=null)el.scale=(o.scale||1)*(sx+sy)/2;}
   });
   orig.wireRefs.forEach((w,i)=>{ const o=orig.wires[i];
     const pts=(o.pts||[{x:o.x1,y:o.y1},{x:o.x2,y:o.y2}]).map(p=>({x:anchorX+(p.x-anchorX)*sx,y:anchorY+(p.y-anchorY)*sy}));

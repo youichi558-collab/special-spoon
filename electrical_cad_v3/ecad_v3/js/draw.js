@@ -48,6 +48,9 @@ function draw() {
   ctx.restore();
   drawSelBox();
 
+  // リサイズハンドル（canvas上に描画）
+  if (typeof drawResizeHandlesOnCanvas === 'function') drawResizeHandlesOnCanvas();
+
   // ステータス更新
   document.getElementById('s-zoom').textContent = Math.round(state.zoom * 100) + '%';
   document.getElementById('s-cnt').textContent  = state.elements.length + state.wires.length;

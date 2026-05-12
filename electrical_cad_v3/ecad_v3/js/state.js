@@ -77,6 +77,7 @@ const state = {
     handle: '',
     orig:   null,
   },
+  resizeHandles: [],
   groupResize: {
     active: false,
     handle: '',
