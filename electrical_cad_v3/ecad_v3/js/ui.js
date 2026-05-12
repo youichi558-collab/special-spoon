@@ -796,7 +796,16 @@ function updateRightPanel() {
 
   rp.innerHTML = html; rp._el = el; rp._wire = wire;
   const applyBtn = document.getElementById('rp-apply-btn');
-  if (applyBtn) applyBtn.style.display = (el || wire) ? '' : 'none';
+  if (applyBtn) applyBtn.style.display = 'none'; // 即適用モードでは非表示
+
+  // 即適用：変更を検知して自動applyRightPanel
+  let _autoApplyTimer = null;
+  rp.oninput = rp.onchange = (e) => {
+    if (e.target.tagName === 'BUTTON') return;
+    clearTimeout(_autoApplyTimer);
+    const delay = e.target.tagName === 'SELECT' || e.target.type === 'color' || e.target.type === 'number' ? 0 : 400;
+    _autoApplyTimer = setTimeout(() => applyRightPanel(), delay);
+  };
 }
 
 function colorRow(label, pickerId, codeId, defaultColor, onInput) {
@@ -934,13 +943,15 @@ function cancelLabelOff() {
   draw();
 }
 
+let _lastApplyItem = null;
 function applyRightPanel() {
   state.colorEditing = false;
   const rp   = document.getElementById('rp-body');
   const el   = rp._el, wire = rp._wire;
   const item = el || wire;
   if (!item) return;
-  pushH();
+  // 同じ要素の連続変更はundoスタックをまとめる
+  if (_lastApplyItem !== item) { pushH(); _lastApplyItem = item; setTimeout(()=>{ _lastApplyItem = null; }, 1000); }
   const v = id => { const e = document.getElementById(id); return e ? e.value : ''; };
   if (el && el.type === 'text') {
     el.text = v('pp-text'); el.fs = parseInt(v('pp-fs'))||14;
