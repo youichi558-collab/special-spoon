@@ -12,10 +12,10 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc, lineStyle) {
   if (fH) ctx.scale(-1, 1);
   if (fV) ctx.scale(1, -1);
 
-  const c = isSel ? '#0067c0' : (lc || fgC());
+  const c = lc || fgC(); // 選択状態に関わらず設定色を使用
   ctx.strokeStyle = c; ctx.fillStyle = c;
-  if (!isSel && lineStyle) applyLineStyle(ctx, lineStyle, zoom);
-  const lw = (isSel ? 2 : 1.5) / zoom;
+  if (lineStyle) applyLineStyle(ctx, lineStyle, zoom);
+  const lw = (isSel ? 2.5 : 1.5) / zoom; // 選択時は線幅のみ太くする
   ctx.lineWidth = lw;
   const ln = w => { ctx.lineWidth = w / zoom; };
 
