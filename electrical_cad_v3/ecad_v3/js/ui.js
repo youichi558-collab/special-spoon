@@ -771,7 +771,7 @@ function updateRightPanel() {
   } else if (el) {
     const def = getDef(el.type) || {};
     html += `<div class="pp-row"><label>ラベル</label><input type="text" id="pp-label" value="${el.label||''}"></div>`;
-    html += `<div class="pp-row"><label>ラベル色</label><div style="display:flex;gap:4px;align-items:center"><input type="color" id="pp-lcolor" value="${el.labelColor||'#555555'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer" oninput="syncColorCode('pp-lcolor','pp-lcolorcode');previewLabelStyle()"><input type="text" id="pp-lcolorcode" value="${el.labelColor||'#555555'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-lcolorcode','pp-lcolor');previewLabelStyle()"></div></div>`;
+    html += `<div class="pp-row"><label>ラベル色</label><div style="display:flex;gap:4px;align-items:center"><input type="color" id="pp-lcolor" value="${el.labelColor||'#555555'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer" oninput="syncColorCode('pp-lcolor','pp-lcolorcode');previewLabelStyle()"><input type="text" id="pp-lcolorcode" value="${el.labelColor||'#555555'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-lcolorcode','pp-lcolor');previewLabelStyle()">${colorCodeBtns('pp-lcolorcode','pp-lcolor')}</div></div>`;
     html += `<div class="pp-row"><label>ラベルサイズ</label><input type="number" id="pp-lfs" value="${el.labelFs||11}" step="1" min="6" max="32" oninput="previewLabelStyle()"></div>`;
     if (def.isCoil)    html += `<div class="pp-row"><label>コイル名</label><input type="text" id="pp-coilname" value="${el.coilName||el.label||''}"></div>`;
     if (def.isContact) html += `<div class="pp-row"><label>参照コイル名</label><input type="text" id="pp-refcoil" value="${el.refCoil||''}"></div>`;
@@ -779,7 +779,7 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${el.wireNo||''}"></div>`;
     html += `<div class="pp-row"><label>回転(°)</label><input type="number" id="pp-rot" value="${el.rot||0}" step="90"></div>`;
     html += `<div class="pp-row"><label>スケール</label><input type="number" id="pp-scale" value="${el.scale||1}" step="0.1" min="0.1" max="5" oninput="previewScale()"></div>`;
-    html += `<div class="pp-row"><label>シンボル色</label><div style="display:flex;gap:4px;align-items:center"><input type="color" id="pp-symcolor" value="${el.color||'#1d6fb5'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer" oninput="syncColorCode('pp-symcolor','pp-symcolorcode')"><input type="text" id="pp-symcolorcode" value="${el.color||'#1d6fb5'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-symcolorcode','pp-symcolor')"></div></div>`;
+    html += `<div class="pp-row"><label>シンボル色</label><div style="display:flex;gap:4px;align-items:center"><input type="color" id="pp-symcolor" value="${el.color||'#1d6fb5'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer" oninput="syncColorCode('pp-symcolor','pp-symcolorcode')"><input type="text" id="pp-symcolorcode" value="${el.color||'#1d6fb5'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-symcolorcode','pp-symcolor')">${colorCodeBtns('pp-symcolorcode','pp-symcolor')}</div></div>`;
     html += `<div class="pp-row"><label>シンボル線種</label><select id="pp-symls"><option value=""${!el.lineStyle?' selected':''}>実線</option><option value="dash"${el.lineStyle==='dash'?' selected':''}>破線</option><option value="dot"${el.lineStyle==='dot'?' selected':''}>点線</option><option value="dashdot"${el.lineStyle==='dashdot'?' selected':''}>一点鎖線</option></select></div>`;
     html += `<div class="pp-row"><label>ラベル位置X補正</label><input type="number" id="pp-lox" value="${el.labelOffX||0}" step="5" oninput="previewLabelOff()"></div>`;
     html += `<div class="pp-row"><label>ラベル位置Y補正</label><input type="number" id="pp-loy" value="${el.labelOffY||''}" placeholder="自動" step="5" oninput="previewLabelOff()"></div>`;
@@ -796,6 +796,31 @@ function updateRightPanel() {
   rp.innerHTML = html; rp._el = el; rp._wire = wire;
   const applyBtn = document.getElementById('rp-apply-btn');
   if (applyBtn) applyBtn.style.display = (el || wire) ? '' : 'none';
+}
+
+function colorCodeBtns(codeId, pickerId) {
+  return `<button onclick="copyColorCode('${codeId}')" style="font-size:10px;padding:1px 5px;border:1px solid var(--bd2);border-radius:3px;background:var(--bg3);cursor:pointer;color:var(--fg)">コピー</button>` +
+         `<button onclick="pasteColorCode('${codeId}','${pickerId}')" style="font-size:10px;padding:1px 5px;border:1px solid var(--bd2);border-radius:3px;background:var(--bg3);cursor:pointer;color:var(--fg)">貼付</button>`;
+}
+
+function copyColorCode(codeId) {
+  const el = document.getElementById(codeId);
+  if (!el) return;
+  navigator.clipboard.writeText(el.value).catch(() => {});
+}
+
+async function pasteColorCode(codeId, pickerId) {
+  try {
+    const text = await navigator.clipboard.readText();
+    const v = text.trim();
+    if (!/^#[0-9a-fA-F]{6}$/.test(v)) return;
+    const code = document.getElementById(codeId);
+    const pick = document.getElementById(pickerId);
+    if (code) code.value = v;
+    if (pick) pick.value = v;
+    // previewLabelStyleまたはpreviewSymColorを呼ぶ
+    if (codeId === 'pp-lcolorcode') previewLabelStyle();
+  } catch(e) {}
 }
 
 function syncColorCode(pickerId, codeId) {
