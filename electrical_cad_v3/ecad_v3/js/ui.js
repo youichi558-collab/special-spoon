@@ -1002,6 +1002,26 @@ function applyFrameProps() {
   draw();
 }
 
+// ウィンドウ幅監視して自動折りたたみ
+(function() {
+  const THRESHOLD = 700; // px以下で自動折りたたみ
+  let wasCollapsed = false;
+  function checkWidth() {
+    const rp = document.getElementById('rp');
+    if (!rp) return;
+    const narrow = window.innerWidth < THRESHOLD;
+    const collapsed = rp.classList.contains('collapsed');
+    if (narrow && !collapsed) {
+      wasCollapsed = false;
+      toggleRightPanel();
+    } else if (!narrow && collapsed && !wasCollapsed) {
+      toggleRightPanel();
+    }
+    wasCollapsed = collapsed;
+  }
+  window.addEventListener('resize', checkWidth);
+})();
+
 function toggleRightPanel() {
   const rp = document.getElementById('rp');
   const btn = document.getElementById('rp-toggle');
