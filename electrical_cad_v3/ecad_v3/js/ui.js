@@ -771,8 +771,8 @@ function updateRightPanel() {
   } else if (el) {
     const def = getDef(el.type) || {};
     html += `<div class="pp-row"><label>ラベル</label><input type="text" id="pp-label" value="${el.label||''}"></div>`;
-    html += `<div class="pp-row"><label>ラベル色</label><input type="color" id="pp-lcolor" value="${el.labelColor||'#555555'}" style="width:48px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer"></div>`;
-    html += `<div class="pp-row"><label>ラベルサイズ</label><input type="number" id="pp-lfs" value="${el.labelFs||11}" step="1" min="6" max="32"></div>`;
+    html += `<div class="pp-row"><label>ラベル色</label><input type="color" id="pp-lcolor" value="${el.labelColor||'#555555'}" style="width:48px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer" oninput="previewLabelStyle()"></div>`;
+    html += `<div class="pp-row"><label>ラベルサイズ</label><input type="number" id="pp-lfs" value="${el.labelFs||11}" step="1" min="6" max="32" oninput="previewLabelStyle()"></div>`;
     if (def.isCoil)    html += `<div class="pp-row"><label>コイル名</label><input type="text" id="pp-coilname" value="${el.coilName||el.label||''}"></div>`;
     if (def.isContact) html += `<div class="pp-row"><label>参照コイル名</label><input type="text" id="pp-refcoil" value="${el.refCoil||''}"></div>`;
     html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-term" value="${el.terminals||''}"></div>`;
@@ -795,6 +795,17 @@ function updateRightPanel() {
 
   html += `<button class="pp-apply" onclick="applyRightPanel()">適用</button>`;
   rp.innerHTML = html; rp._el = el; rp._wire = wire;
+}
+
+function previewLabelStyle() {
+  const rp = document.getElementById('rp-body');
+  const el = rp?._el;
+  if (!el) return;
+  const lcolor = document.getElementById('pp-lcolor');
+  const lfs    = document.getElementById('pp-lfs');
+  if (lcolor) el.labelColor = lcolor.value || undefined;
+  if (lfs)    el.labelFs    = parseInt(lfs.value) || 11;
+  draw();
 }
 
 function previewScale() {
