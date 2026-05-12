@@ -778,6 +778,7 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>回転(°)</label><input type="number" id="pp-rot" value="${el.rot||0}" step="90"></div>`;
     html += `<div class="pp-row"><label>ラベル位置X補正</label><input type="number" id="pp-lox" value="${el.labelOffX||0}" step="5" oninput="previewLabelOff()"></div>`;
     html += `<div class="pp-row"><label>ラベル位置Y補正</label><input type="number" id="pp-loy" value="${el.labelOffY||''}" placeholder="自動" step="5" oninput="previewLabelOff()"></div>`;
+    html += `<div class="pp-row"><button onclick="cancelLabelOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">ラベル位置リセット</button></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
     if (['fline','rect','circle'].includes(el.type)) {
       html += `<div class="pp-row"><label>線幅</label><select id="pp-lw"><option value="0.5"${(el.lineWidth||1.5)==0.5?' selected':''}>極細(0.5)</option><option value="1"${(el.lineWidth||1.5)==1?' selected':''}>細(1)</option><option value="1.5"${(el.lineWidth||1.5)==1.5?' selected':''}>標準(1.5)</option><option value="2"${(el.lineWidth||1.5)==2?' selected':''}>太(2)</option><option value="3"${(el.lineWidth||1.5)==3?' selected':''}>極太(3)</option></select></div>`;
@@ -795,10 +796,31 @@ function previewLabelOff() {
   const rp = document.getElementById('rp-body');
   const el = rp?._el;
   if (!el) return;
+  // 初回プレビュー時に元の値を保存
+  if (rp._origLox === undefined) {
+    rp._origLox = el.labelOffX;
+    rp._origLoy = el.labelOffY;
+  }
   const lox = document.getElementById('pp-lox');
   const loy = document.getElementById('pp-loy');
   if (lox) el.labelOffX = parseInt(lox.value)||0;
   if (loy) el.labelOffY = loy.value ? parseInt(loy.value) : undefined;
+  draw();
+}
+
+function cancelLabelOff() {
+  const rp = document.getElementById('rp-body');
+  const el = rp?._el;
+  if (!el || rp._origLox === undefined) return;
+  el.labelOffX = rp._origLox;
+  el.labelOffY = rp._origLoy;
+  rp._origLox = undefined;
+  rp._origLoy = undefined;
+  // 入力欄も元の値に戻す
+  const lox = document.getElementById('pp-lox');
+  const loy = document.getElementById('pp-loy');
+  if (lox) lox.value = el.labelOffX || 0;
+  if (loy) loy.value = el.labelOffY !== undefined ? el.labelOffY : '';
   draw();
 }
 
