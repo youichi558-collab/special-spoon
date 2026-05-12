@@ -103,8 +103,9 @@ function getGroupBounds(els, wires) {
 function startElResize(h, e) {
   pushH();
   const el = h.el;
-  state.resize = { el, handle: h.hid, orig: JSON.parse(JSON.stringify(el)) };
   const r = cv.getBoundingClientRect();
+  const {x:startWx, y:startWy} = tw(e.clientX-r.left, e.clientY-r.top);
+  state.resize = { el, handle: h.hid, orig: JSON.parse(JSON.stringify(el)), startWx, startWy, startScale: el.scale||1 };
   const onMove = e2 => { const {x:wx,y:wy}=tw(e2.clientX-r.left,e2.clientY-r.top); applyElResize(wx,wy); updateResizeHandles(); draw(); };
   const onUp   = () => { state.resize={el:null,handle:'',orig:null}; updateResizeHandles(); draw(); document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); };
   document.addEventListener('mousemove', onMove);
@@ -123,9 +124,10 @@ function applyElResize(wx, wy) {
     el.r = Math.max(5, Math.hypot(wx-orig.x, wy-orig.y));
   } else {
     const d = getDef(el.type); if (!d) return;
-    const dist = Math.hypot(wx-orig.x, wy-orig.y);
-    const origDist = Math.hypot(d.w*(orig.scale||1)/2+8, d.h*(orig.scale||1)/2+8);
-    el.scale = Math.max(0.1, Math.min(5, (orig.scale||1) * dist/Math.max(origDist,1)));
+    // ドラッグ開始時のマウス距離を基準にスケール計算
+    const startDist = Math.hypot(state.resize.startWx-orig.x, state.resize.startWy-orig.y);
+    const newDist   = Math.hypot(wx-orig.x, wy-orig.y);
+    el.scale = Math.max(0.1, Math.min(5, state.resize.startScale * newDist / Math.max(startDist, 1)));
   }
 }
 
