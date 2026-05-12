@@ -116,6 +116,7 @@ cv.addEventListener('mousedown', e => {
 });
 
 cv.addEventListener('mousemove', e => {
+  if (state.colorEditing) return;
   const r  = cv.getBoundingClientRect();
   const cx = e.clientX - r.left;
   const cy = e.clientY - r.top;
