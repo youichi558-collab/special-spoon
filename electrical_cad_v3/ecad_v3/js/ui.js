@@ -779,6 +779,8 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${el.wireNo||''}"></div>`;
     html += `<div class="pp-row"><label>回転(°)</label><input type="number" id="pp-rot" value="${el.rot||0}" step="90"></div>`;
     html += `<div class="pp-row"><label>スケール</label><input type="number" id="pp-scale" value="${el.scale||1}" step="0.1" min="0.1" max="5" oninput="previewScale()"></div>`;
+    html += `<div class="pp-row"><label>シンボル色</label><input type="color" id="pp-symcolor" value="${el.color||'#1d6fb5'}" style="width:48px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer"></div>`;
+    html += `<div class="pp-row"><label>シンボル線種</label><select id="pp-symls"><option value=""${!el.lineStyle?' selected':''}>実線</option><option value="dash"${el.lineStyle==='dash'?' selected':''}>破線</option><option value="dot"${el.lineStyle==='dot'?' selected':''}>点線</option><option value="dashdot"${el.lineStyle==='dashdot'?' selected':''}>一点鎖線</option></select></div>`;
     html += `<div class="pp-row"><label>ラベル位置X補正</label><input type="number" id="pp-lox" value="${el.labelOffX||0}" step="5" oninput="previewLabelOff()"></div>`;
     html += `<div class="pp-row"><label>ラベル位置Y補正</label><input type="number" id="pp-loy" value="${el.labelOffY||''}" placeholder="自動" step="5" oninput="previewLabelOff()"></div>`;
     html += `<div class="pp-row"><button onclick="cancelLabelOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">ラベル位置リセット</button></div>`;
@@ -881,6 +883,8 @@ function applyRightPanel() {
     el.wireNo    = v('pp-wireno');
     el.rot       = parseInt(v('pp-rot'))||0;
     el.scale      = Math.max(0.1, Math.min(5, parseFloat(v('pp-scale'))||1));
+    el.color      = v('pp-symcolor') || undefined;
+    el.lineStyle  = v('pp-symls') || undefined;
     el.labelColor = v('pp-lcolor') || undefined;
     el.labelFs    = parseInt(v('pp-lfs'))||11;
     el.labelOffX  = parseInt(v('pp-lox'))||0;

@@ -4,7 +4,7 @@
 // state.zoom / state.customSymbols を参照
 // ================================================================
 
-function drawSym(type, x, y, isSel, rot, fH, fV, lc) {
+function drawSym(type, x, y, isSel, rot, fH, fV, lc, lineStyle) {
   const zoom = state.zoom;
   ctx.save();
   ctx.translate(x, y);
@@ -14,6 +14,7 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc) {
 
   const c = isSel ? '#0067c0' : (lc || fgC());
   ctx.strokeStyle = c; ctx.fillStyle = c;
+  if (!isSel && lineStyle) applyLineStyle(ctx, lineStyle, zoom);
   const lw = (isSel ? 2 : 1.5) / zoom;
   ctx.lineWidth = lw;
   const ln = w => { ctx.lineWidth = w / zoom; };

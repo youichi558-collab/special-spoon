@@ -290,10 +290,10 @@ function drawSymEl(el, sel, lc) {
     ctx.save();
     ctx.translate(el.x, el.y);
     ctx.scale(sc, sc);
-    drawSym(el.type, 0, 0, sel, el.rot||0, el.flipH, el.flipV, el.color||lc);
+    drawSym(el.type, 0, 0, sel, el.rot||0, el.flipH, el.flipV, el.color||lc, el.lineStyle);
     ctx.restore();
   } else {
-    drawSym(el.type, el.x, el.y, sel, el.rot||0, el.flipH, el.flipV, el.color||lc);
+    drawSym(el.type, el.x, el.y, sel, el.rot||0, el.flipH, el.flipV, el.color||lc, el.lineStyle);
   }
   if (el.label) {
     const d   = getDef(el.type) || { w:64, h:34 };
