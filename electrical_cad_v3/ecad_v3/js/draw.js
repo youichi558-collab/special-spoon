@@ -297,22 +297,25 @@ function drawSymEl(el, sel, lc) {
   }
   if (el.label) {
     const d   = getDef(el.type) || { w:64, h:34 };
+    const sc  = el.scale || 1;
     const lox = el.labelOffX || 0;
-    const loy = el.labelOffY || (d.h/2+15);
+    const loy = el.labelOffY || (d.h*sc/2+15);
     const rot = (el.rot||0) * Math.PI/180;
     const lx  = el.x + lox*Math.cos(rot) - loy*Math.sin(rot);
     const ly  = el.y + lox*Math.sin(rot) + loy*Math.cos(rot);
+    const fs  = Math.round(11 * sc);
     ctx.save();
     ctx.fillStyle = state.darkMode ? '#aaa' : '#555';
-    ctx.font = `${11}px sans-serif`; ctx.textAlign = 'center';
+    ctx.font = `${fs}px sans-serif`; ctx.textAlign = 'center';
     ctx.fillText(el.label, lx, ly);
     ctx.restore();
   }
   if (el.refLabel) {
-    const d = getDef(el.type) || { h:34 };
+    const d  = getDef(el.type) || { h:34 };
+    const sc = el.scale || 1;
     ctx.save(); ctx.fillStyle = '#744da9';
     ctx.font = `${9}px sans-serif`; ctx.textAlign = 'center';
-    ctx.fillText('→'+el.refLabel, el.x, el.y-d.h/2-5);
+    ctx.fillText('→'+el.refLabel, el.x, el.y-d.h*sc/2-5);
     ctx.restore();
   }
 }
