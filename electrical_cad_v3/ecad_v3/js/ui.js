@@ -793,8 +793,9 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>メモ</label><textarea rows="2" id="pp-note">${el.note||''}</textarea></div>`;
   }
 
-  html += `<button class="pp-apply" onclick="applyRightPanel()">適用</button>`;
   rp.innerHTML = html; rp._el = el; rp._wire = wire;
+  const applyBtn = document.getElementById('rp-apply-btn');
+  if (applyBtn) applyBtn.style.display = (el || wire) ? '' : 'none';
 }
 
 function syncColorCode(pickerId, codeId) {
