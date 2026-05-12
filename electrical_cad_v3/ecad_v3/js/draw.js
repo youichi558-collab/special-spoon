@@ -10,6 +10,13 @@ const cwEl = document.getElementById('cw');
 function fgC() { return state.darkMode ? '#ccc' : '#222'; }
 
 function draw() {
+  // カラー編集中は選択ハイライトを一時解除
+  let _savedSel = null;
+  if (state.colorEditing) {
+    _savedSel = { els: new Set(state.sel.els), wires: new Set(state.sel.wires) };
+    state.sel.els.clear(); state.sel.wires.clear();
+  }
+
   ctx.clearRect(0, 0, cv.width, cv.height);
 
   // 背景（PDF出力時は白・グリッドなし）
@@ -58,6 +65,9 @@ function draw() {
   document.getElementById('s-pos').textContent  = `${Math.round(state.mouse.wx)}, ${Math.round(state.mouse.wy)}`;
   const al = LAYERS.find(l => l.active);
   document.getElementById('s-lay').textContent  = al ? al.name : '';
+
+  // カラー編集中の選択を戻す
+  if (_savedSel) { state.sel.els = _savedSel.els; state.sel.wires = _savedSel.wires; }
 }
 
 // ----------------------------------------------------------------

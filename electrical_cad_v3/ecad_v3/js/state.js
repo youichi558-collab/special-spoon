@@ -78,6 +78,7 @@ const state = {
     orig:   null,
   },
   resizeHandles: [],
+  colorEditing: false,
   groupResize: {
     active: false,
     handle: '',
