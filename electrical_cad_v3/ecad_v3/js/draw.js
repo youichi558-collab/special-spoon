@@ -97,7 +97,7 @@ function drawWires() {
 
     ctx.save();
     ctx.strokeStyle = color;
-    ctx.lineWidth   = (sel ? lw+0.5 : lw);
+    ctx.lineWidth   = (sel ? lw+0.5 : lw) / state.zoom;
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     applyLineStyle(ctx, w.lineStyle || lay?.lineDash, state.zoom);
     ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
