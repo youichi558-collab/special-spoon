@@ -800,7 +800,7 @@ function updateRightPanel() {
 }
 
 function colorRow(label, pickerId, codeId, defaultColor, onInput) {
-  const focusBlur = `onfocus="state.colorEditing=true;draw()" onblur="state.colorEditing=false;draw()"`;
+  const focusBlur = `onfocus="state.colorEditing=true;draw()"`;
   return `<div class="pp-row"><label>${label}</label><div style="display:flex;gap:4px;align-items:center">` +
     `<input type="color" id="${pickerId}" value="${defaultColor}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer" ${focusBlur} oninput="syncColorCode('${pickerId}','${codeId}');${onInput||''}">` +
     `<input type="text" id="${codeId}" value="${defaultColor}" style="width:72px;font-size:11px" maxlength="7" ${focusBlur} oninput="syncColorPicker('${codeId}','${pickerId}');${onInput||''}">` +
@@ -935,6 +935,7 @@ function cancelLabelOff() {
 }
 
 function applyRightPanel() {
+  state.colorEditing = false;
   const rp   = document.getElementById('rp-body');
   const el   = rp._el, wire = rp._wire;
   const item = el || wire;
