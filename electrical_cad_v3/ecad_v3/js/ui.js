@@ -769,6 +769,14 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>線幅</label><select id="pp-lw"><option value="0.5"${(item.lineWidth||1.5)==0.5?' selected':''}>極細(0.5)</option><option value="1"${(item.lineWidth||1.5)==1?' selected':''}>細(1)</option><option value="1.5"${(item.lineWidth||1.5)==1.5?' selected':''}>標準(1.5)</option><option value="2"${(item.lineWidth||1.5)==2?' selected':''}>太(2)</option><option value="3"${(item.lineWidth||1.5)==3?' selected':''}>極太(3)</option></select></div>`;
     html += `<div class="pp-row"><label>線種</label><select id="pp-ls"><option value=""${!item.lineStyle?' selected':''}>実線</option><option value="dash"${item.lineStyle==='dash'?' selected':''}>破線</option><option value="dashdot"${item.lineStyle==='dashdot'?' selected':''}>一点鎖線</option><option value="dot"${item.lineStyle==='dot'?' selected':''}>点線</option></select></div>`;
     if (lay?.attr) html += `<div class="pp-row"><label>属性（レイヤー）</label><p style="font-size:11px;color:var(--fg3);padding:2px 5px">${lay.attr}</p></div>`;
+  } else if (el && ['fline','rect','circle','arc','triangle'].includes(el.type)) {
+    // 図形専用プロパティ
+    const defColor = el.color || layColor(el.layer) || '#1d6fb5';
+    html += colorRow('色', 'pp-symcolor', 'pp-symcolorcode', defColor, 'previewSymColor()');
+    html += `<div class="pp-row"><label>線幅</label><select id="pp-lw"><option value="0.5"${(el.lineWidth||1.5)==0.5?' selected':''}>極細(0.5)</option><option value="1"${(el.lineWidth||1.5)==1?' selected':''}>細(1)</option><option value="1.5"${(el.lineWidth||1.5)==1.5?' selected':''}>標準(1.5)</option><option value="2"${(el.lineWidth||1.5)==2?' selected':''}>太(2)</option><option value="3"${(el.lineWidth||1.5)==3?' selected':''}>極太(3)</option></select></div>`;
+    html += `<div class="pp-row"><label>線種</label><select id="pp-ls"><option value=""${!el.lineStyle?' selected':''}>実線</option><option value="dash"${el.lineStyle==='dash'?' selected':''}>破線</option><option value="dot"${el.lineStyle==='dot'?' selected':''}>点線</option><option value="dashdot"${el.lineStyle==='dashdot'?' selected':''}>一点鎖線</option></select></div>`;
+    html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
+    html += `<div class="pp-row"><label>メモ</label><textarea rows="2" id="pp-note">${el.note||''}</textarea></div>`;
   } else if (el) {
     const def = getDef(el.type) || {};
     html += `<div class="pp-row"><label>ラベル</label><input type="text" id="pp-label" value="${el.label||''}"></div>`;
@@ -786,10 +794,6 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>ラベル位置Y補正</label><input type="number" id="pp-loy" value="${el.labelOffY||''}" placeholder="自動" step="5" oninput="previewLabelOff()"></div>`;
     html += `<div class="pp-row"><button onclick="cancelLabelOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">ラベル位置リセット</button></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
-    if (['fline','rect','circle'].includes(el.type)) {
-      html += `<div class="pp-row"><label>線幅</label><select id="pp-lw"><option value="0.5"${(el.lineWidth||1.5)==0.5?' selected':''}>極細(0.5)</option><option value="1"${(el.lineWidth||1.5)==1?' selected':''}>細(1)</option><option value="1.5"${(el.lineWidth||1.5)==1.5?' selected':''}>標準(1.5)</option><option value="2"${(el.lineWidth||1.5)==2?' selected':''}>太(2)</option><option value="3"${(el.lineWidth||1.5)==3?' selected':''}>極太(3)</option></select></div>`;
-      html += `<div class="pp-row"><label>線種</label><select id="pp-ls"><option value=""${!el.lineStyle?' selected':''}>実線</option><option value="dash"${el.lineStyle==='dash'?' selected':''}>破線</option><option value="dashdot"${el.lineStyle==='dashdot'?' selected':''}>一点鎖線</option><option value="dot"${el.lineStyle==='dot'?' selected':''}>点線</option></select></div>`;
-    }
     if (def.jis) html += `<div class="pp-row"><label style="color:var(--fg4)">JIS規格</label><p style="font-size:10px;color:var(--fg3);padding:2px 5px">${def.jis}</p></div>`;
     html += `<div class="pp-row"><label>メモ</label><textarea rows="2" id="pp-note">${el.note||''}</textarea></div>`;
   }
@@ -983,6 +987,12 @@ function applyRightPanel() {
     wire.color = v('pp-wcolorcode') || v('pp-wcolor') || undefined;
     if (v('pp-lw')) wire.lineWidth = parseFloat(v('pp-lw'));
     if (v('pp-ls') !== undefined) wire.lineStyle = v('pp-ls') || undefined;
+  } else if (el && ['fline','rect','circle','arc','triangle'].includes(el.type)) {
+    el.color     = v('pp-symcolorcode') || v('pp-symcolor') || undefined;
+    if (v('pp-lw')) el.lineWidth = parseFloat(v('pp-lw'));
+    el.lineStyle = v('pp-ls') || undefined;
+    el.layer     = v('pp-layer');
+    el.note      = v('pp-note');
   } else if (el) {
     el.label     = v('pp-label');
     el.coilName  = v('pp-coilname');
@@ -999,10 +1009,6 @@ function applyRightPanel() {
     el.labelOffY  = v('pp-loy') ? parseInt(v('pp-loy')) : undefined;
     el.layer     = v('pp-layer');
     el.note      = v('pp-note');
-    if (['fline','rect','circle'].includes(el.type)) {
-      if (v('pp-lw')) el.lineWidth = parseFloat(v('pp-lw'));
-      el.lineStyle = v('pp-ls') || undefined;
-    }
   }
   draw();
 }
