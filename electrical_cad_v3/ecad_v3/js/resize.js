@@ -105,7 +105,8 @@ function startElResize(h, e) {
   const el = h.el;
   const r = cv.getBoundingClientRect();
   const {x:startWx, y:startWy} = tw(e.clientX-r.left, e.clientY-r.top);
-  state.resize = { el, handle: h.hid, orig: JSON.parse(JSON.stringify(el)), startWx, startWy, startScale: el.scale||1 };
+  const startHandleDist = Math.hypot(h.wx - el.x, h.wy - el.y);
+  state.resize = { el, handle: h.hid, orig: JSON.parse(JSON.stringify(el)), startHandleDist, startScale: el.scale||1 };
   const onMove = e2 => { const {x:wx,y:wy}=tw(e2.clientX-r.left,e2.clientY-r.top); applyElResize(wx,wy); updateResizeHandles(); draw(); };
   const onUp   = () => { state.resize={el:null,handle:'',orig:null}; updateResizeHandles(); draw(); document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); };
   document.addEventListener('mousemove', onMove);
@@ -123,11 +124,9 @@ function applyElResize(wx, wy) {
   } else if (el.type === 'circle') {
     el.r = Math.max(5, Math.hypot(wx-orig.x, wy-orig.y));
   } else {
-    const d = getDef(el.type); if (!d) return;
-    // ドラッグ開始時のマウス距離を基準にスケール計算
-    const startDist = Math.hypot(state.resize.startWx-orig.x, state.resize.startWy-orig.y);
-    const newDist   = Math.hypot(wx-orig.x, wy-orig.y);
-    el.scale = Math.max(0.1, Math.min(5, state.resize.startScale * newDist / Math.max(startDist, 1)));
+    // ハンドル開始距離とマウス現在距離の比でscaleを計算
+    const currentDist = Math.hypot(wx - orig.x, wy - orig.y);
+    el.scale = Math.max(0.1, Math.min(5, state.resize.startScale * currentDist / Math.max(state.resize.startHandleDist, 1)));
   }
 }
 
