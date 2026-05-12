@@ -33,6 +33,7 @@ const selectTool = {
     state.mouse.dragHistPushed = false;
     state.mouse.dragGroup = buildDragGroup();
     updateRightPanel();
+    updateResizeHandles();
   },
 
   onMove(wx, wy, e) {
