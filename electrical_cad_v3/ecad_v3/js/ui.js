@@ -745,7 +745,7 @@ function updateRightPanel() {
       <option value="dashdot" ${el.lineStyle==='dashdot'?'selected':''}>一点鎖線</option>
       <option value="dot"     ${el.lineStyle==='dot'    ?'selected':''}>点線</option>
     </select></div>`;
-    html += `<div class="pp-row"><label>色</label><input type="color" id="pp-color" value="${el.color||'#744da9'}"></div>`;
+    html += colorRow('色', 'pp-color', 'pp-colorcode', el.color||'#744da9', 'previewElColor()');
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
     html += `<div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
       <button class="fp-btn primary" onclick="applyRightPanel()">適用</button>
@@ -758,13 +758,13 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-ldrfs" value="${el.leaderFs||11}" min="8" max="72"></div>`;
     html += `<div class="pp-row"><label>テキストX補正</label><input type="number" id="pp-ldrtx" value="${el.leaderTx||0}" step="5"></div>`;
     html += `<div class="pp-row"><label>テキストY補正</label><input type="number" id="pp-ldrty" value="${el.leaderTy||0}" step="5"></div>`;
-    html += `<div class="pp-row"><label>色</label><input type="color" id="pp-color" value="${el.color||'#744da9'}"></div>`;
+    html += colorRow('色', 'pp-color', 'pp-colorcode', el.color||'#744da9', 'previewElColor()');
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
   } else if (wire || (el && el.pts)) {
     const lay = LAYERS.find(l => l.name === item.layer);
     html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${item.wireNo||''}"></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${item.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
-    html += `<div class="pp-row"><label>色（個別上書き）</label><input type="color" id="pp-wcolor" value="${item.color||lay?.color||'#0F6E56'}"></div>`;
+    html += colorRow('色（個別上書き）', 'pp-wcolor', 'pp-wcolorcode', item.color||lay?.color||'#0F6E56', 'previewWireColor()');
     html += `<div class="pp-row"><label>線幅</label><select id="pp-lw"><option value="0.5"${(item.lineWidth||1.5)==0.5?' selected':''}>極細(0.5)</option><option value="1"${(item.lineWidth||1.5)==1?' selected':''}>細(1)</option><option value="1.5"${(item.lineWidth||1.5)==1.5?' selected':''}>標準(1.5)</option><option value="2"${(item.lineWidth||1.5)==2?' selected':''}>太(2)</option><option value="3"${(item.lineWidth||1.5)==3?' selected':''}>極太(3)</option></select></div>`;
     html += `<div class="pp-row"><label>線種</label><select id="pp-ls"><option value=""${!item.lineStyle?' selected':''}>実線</option><option value="dash"${item.lineStyle==='dash'?' selected':''}>破線</option><option value="dashdot"${item.lineStyle==='dashdot'?' selected':''}>一点鎖線</option><option value="dot"${item.lineStyle==='dot'?' selected':''}>点線</option></select></div>`;
     if (lay?.attr) html += `<div class="pp-row"><label>属性（レイヤー）</label><p style="font-size:11px;color:var(--fg3);padding:2px 5px">${lay.attr}</p></div>`;
@@ -796,6 +796,14 @@ function updateRightPanel() {
   rp.innerHTML = html; rp._el = el; rp._wire = wire;
   const applyBtn = document.getElementById('rp-apply-btn');
   if (applyBtn) applyBtn.style.display = (el || wire) ? '' : 'none';
+}
+
+function colorRow(label, pickerId, codeId, defaultColor, onInput) {
+  const oi = onInput ? `oninput="${onInput}"` : '';
+  return `<div class="pp-row"><label>${label}</label><div style="display:flex;gap:4px;align-items:center">` +
+    `<input type="color" id="${pickerId}" value="${defaultColor}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer" oninput="syncColorCode('${pickerId}','${codeId}');${onInput||''}">` +
+    `<input type="text" id="${codeId}" value="${defaultColor}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('${codeId}','${pickerId}');${onInput||''}">` +
+    `${colorCodeBtns(codeId, pickerId)}</div></div>`;
 }
 
 function colorCodeBtns(codeId, pickerId) {
@@ -835,6 +843,24 @@ function syncColorPicker(codeId, pickerId) {
   if (!code || !picker) return;
   const v = code.value.trim();
   if (/^#[0-9a-fA-F]{6}$/.test(v)) picker.value = v;
+}
+
+function previewWireColor() {
+  const rp = document.getElementById('rp-body');
+  const wire = rp?._wire;
+  if (!wire) return;
+  const c = document.getElementById('pp-wcolorcode');
+  if (c && /^#[0-9a-fA-F]{6}$/.test(c.value)) wire.color = c.value;
+  draw();
+}
+
+function previewElColor() {
+  const rp = document.getElementById('rp-body');
+  const el = rp?._el;
+  if (!el) return;
+  const c = document.getElementById('pp-colorcode');
+  if (c && /^#[0-9a-fA-F]{6}$/.test(c.value)) el.color = c.value;
+  draw();
 }
 
 function previewLabelStyle() {
@@ -912,18 +938,18 @@ function applyRightPanel() {
     el.lineStyle  = v('pp-dimls') || undefined;
     el.gap      = parseInt(v('pp-gap'));
     el.ext      = parseInt(v('pp-ext'));
-    el.color    = v('pp-color') || undefined;
+    el.color    = v('pp-colorcode') || v('pp-color') || undefined;
     el.layer    = v('pp-layer');
   } else if (el && el.type === 'leader') {
     el.leaderText = v('pp-ldrtext');
     el.leaderFs   = parseInt(v('pp-ldrfs')) || 11;
     el.leaderTx   = parseInt(v('pp-ldrtx')) || 0;
     el.leaderTy   = parseInt(v('pp-ldrty')) || 0;
-    el.color      = v('pp-color') || undefined;
+    el.color      = v('pp-colorcode') || v('pp-color') || undefined;
     el.layer      = v('pp-layer');
   } else if (wire) {
     wire.wireNo    = v('pp-wireno'); wire.layer = v('pp-layer');
-    if (v('pp-wcolor')) wire.color = v('pp-wcolor');
+    wire.color = v('pp-wcolorcode') || v('pp-wcolor') || undefined;
     if (v('pp-lw')) wire.lineWidth = parseFloat(v('pp-lw'));
     if (v('pp-ls') !== undefined) wire.lineStyle = v('pp-ls') || undefined;
   } else if (el) {
