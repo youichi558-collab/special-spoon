@@ -776,6 +776,7 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-term" value="${el.terminals||''}"></div>`;
     html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${el.wireNo||''}"></div>`;
     html += `<div class="pp-row"><label>回転(°)</label><input type="number" id="pp-rot" value="${el.rot||0}" step="90"></div>`;
+    html += `<div class="pp-row"><label>スケール</label><input type="number" id="pp-scale" value="${el.scale||1}" step="0.1" min="0.1" max="5" oninput="previewScale()"></div>`;
     html += `<div class="pp-row"><label>ラベル位置X補正</label><input type="number" id="pp-lox" value="${el.labelOffX||0}" step="5" oninput="previewLabelOff()"></div>`;
     html += `<div class="pp-row"><label>ラベル位置Y補正</label><input type="number" id="pp-loy" value="${el.labelOffY||''}" placeholder="自動" step="5" oninput="previewLabelOff()"></div>`;
     html += `<div class="pp-row"><button onclick="cancelLabelOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">ラベル位置リセット</button></div>`;
@@ -790,6 +791,16 @@ function updateRightPanel() {
 
   html += `<button class="pp-apply" onclick="applyRightPanel()">適用</button>`;
   rp.innerHTML = html; rp._el = el; rp._wire = wire;
+}
+
+function previewScale() {
+  const rp = document.getElementById('rp-body');
+  const el = rp?._el;
+  if (!el) return;
+  const sc = document.getElementById('pp-scale');
+  if (sc) el.scale = Math.max(0.1, Math.min(5, parseFloat(sc.value)||1));
+  draw();
+  updateResizeHandles();
 }
 
 function previewLabelOff() {
@@ -867,6 +878,7 @@ function applyRightPanel() {
     el.terminals = v('pp-term');
     el.wireNo    = v('pp-wireno');
     el.rot       = parseInt(v('pp-rot'))||0;
+    el.scale     = Math.max(0.1, Math.min(5, parseFloat(v('pp-scale'))||1));
     el.labelOffX = parseInt(v('pp-lox'))||0;
     el.labelOffY = v('pp-loy') ? parseInt(v('pp-loy')) : undefined;
     el.layer     = v('pp-layer');
