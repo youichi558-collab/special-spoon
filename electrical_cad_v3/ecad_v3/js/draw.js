@@ -299,7 +299,7 @@ function drawSymEl(el, sel, lc) {
     const d   = getDef(el.type) || { w:64, h:34 };
     const sc  = el.scale || 1;
     const lox = el.labelOffX || 0;
-    const loy = el.labelOffY || (d.h*sc/2+15);
+    const loy = el.labelOffY || (d.h*sc/2 + 15*sc);
     const rot = (el.rot||0) * Math.PI/180;
     const lx  = el.x + lox*Math.cos(rot) - loy*Math.sin(rot);
     const ly  = el.y + lox*Math.sin(rot) + loy*Math.cos(rot);
