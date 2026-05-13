@@ -797,6 +797,9 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
   } else if (wire || (el && el.pts)) {
     const lay = LAYERS.find(l => l.name === item.layer);
+    const wPts = item.pts || [{x:item.x1,y:item.y1},{x:item.x2,y:item.y2}];
+    const wAng = wPts.length>=2 ? Math.round(Math.atan2(wPts[wPts.length-1].y-wPts[0].y, wPts[wPts.length-1].x-wPts[0].x)*180/Math.PI*10)/10 : 0;
+    html += `<div class="pp-row"><label>角度(°)</label><input type="number" id="pp-wangle" value="${wAng}" step="1"></div>`;
     html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${item.wireNo||''}"></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${item.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
     html += colorRow('色（個別上書き）', 'pp-wcolor', 'pp-wcolorcode', item.color||lay?.color||'#0F6E56', 'previewWireColor()');
@@ -807,6 +810,12 @@ function updateRightPanel() {
     // 図形専用プロパティ
     const defColor = el.color || layColor(el.layer) || '#1d6fb5';
     html += colorRow('色', 'pp-symcolor', 'pp-symcolorcode', defColor, 'previewSymColor()');
+    if (el.type === 'fline') {
+      const fAng = Math.round(Math.atan2(el.y2-el.y1, el.x2-el.x1)*180/Math.PI*10)/10;
+      const fLen = Math.round(Math.hypot(el.x2-el.x1, el.y2-el.y1)*10)/10;
+      html += `<div class="pp-row"><label>角度(°)</label><input type="number" id="pp-fangle" value="${fAng}" step="1"></div>`;
+      html += `<div class="pp-row"><label>長さ</label><input type="number" id="pp-flen" value="${fLen}" step="1" min="1"></div>`;
+    }
     html += `<div class="pp-row"><label>線幅</label><select id="pp-lw"><option value="0.5"${(el.lineWidth||1.5)==0.5?' selected':''}>極細(0.5)</option><option value="1"${(el.lineWidth||1.5)==1?' selected':''}>細(1)</option><option value="1.5"${(el.lineWidth||1.5)==1.5?' selected':''}>標準(1.5)</option><option value="2"${(el.lineWidth||1.5)==2?' selected':''}>太(2)</option><option value="3"${(el.lineWidth||1.5)==3?' selected':''}>極太(3)</option></select></div>`;
     html += `<div class="pp-row"><label>線種</label><select id="pp-ls"><option value=""${!el.lineStyle?' selected':''}>実線</option><option value="dash"${el.lineStyle==='dash'?' selected':''}>破線</option><option value="dot"${el.lineStyle==='dot'?' selected':''}>点線</option><option value="dashdot"${el.lineStyle==='dashdot'?' selected':''}>一点鎖線</option></select></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
@@ -1031,12 +1040,25 @@ function applyRightPanel() {
   } else if (wire) {
     wire.wireNo    = v('pp-wireno'); wire.layer = v('pp-layer');
     wire.color = v('pp-wcolorcode') || v('pp-wcolor') || undefined;
+    if (v('pp-wangle') !== '') {
+      const ang = parseFloat(v('pp-wangle')) * Math.PI / 180;
+      const pts = wire.pts || [{x:wire.x1,y:wire.y1},{x:wire.x2,y:wire.y2}];
+      const len = Math.hypot(pts[pts.length-1].x-pts[0].x, pts[pts.length-1].y-pts[0].y);
+      wire.x2 = wire.x1 + Math.cos(ang)*len; wire.y2 = wire.y1 + Math.sin(ang)*len;
+      wire.pts = [{x:wire.x1,y:wire.y1},{x:wire.x2,y:wire.y2}];
+    }
     if (v('pp-lw')) wire.lineWidth = parseFloat(v('pp-lw'));
     if (v('pp-ls') !== undefined) wire.lineStyle = v('pp-ls') || undefined;
   } else if (el && ['fline','rect','circle','arc','triangle'].includes(el.type)) {
     el.color     = v('pp-symcolorcode') || v('pp-symcolor') || undefined;
     if (v('pp-lw')) el.lineWidth = parseFloat(v('pp-lw'));
     el.lineStyle = v('pp-ls') || undefined;
+    if (el.type === 'fline' && v('pp-fangle') !== '') {
+      const ang = parseFloat(v('pp-fangle')) * Math.PI / 180;
+      const len = parseFloat(v('pp-flen')) || Math.hypot(el.x2-el.x1, el.y2-el.y1);
+      el.x2 = el.x1 + Math.cos(ang) * len;
+      el.y2 = el.y1 + Math.sin(ang) * len;
+    }
     el.layer     = v('pp-layer');
     el.note      = v('pp-note');
   } else if (el) {
