@@ -69,7 +69,8 @@ function renderLayers() {
         <td colspan="6"></td>
       </tr>`;
     tbody.innerHTML = bulkRow + LAYERS.map((l, i) => `
-      <tr style="background:${l.active?'var(--acc-dim,rgba(0,103,192,0.12))':'var(--bg2)'};border-bottom:1px solid var(--bd2);cursor:pointer" onclick="setActLayer(${i})">
+      <tr draggable="true" data-layidx="${i}" style="background:${l.active?'var(--acc-dim,rgba(0,103,192,0.12))':'var(--bg2)'};border-bottom:1px solid var(--bd2);cursor:pointer" onclick="setActLayer(${i})" ondragstart="layDragStart(event,${i})" ondragover="layDragOver(event)" ondrop="layDrop(event,${i})" ondragend="layDragEnd(event)">
+        <td style="padding:4px 6px;text-align:center;cursor:grab;color:var(--fg3)" title="ドラッグで並び替え">⠿</td>
         <td style="padding:4px 6px;text-align:center" onclick="event.stopPropagation();togLayVis(${i})" title="表示切替">
           <span style="font-size:13px;color:${l.visible?'var(--fg)':'var(--fg3)'}">${l.visible?'●':'○'}</span>
         </td>
@@ -114,6 +115,31 @@ function renderLayers() {
   if (ll) ll.innerHTML = '';
   document.getElementById('s-lay').textContent = LAYERS.find(l => l.active)?.name || '回路';
 }
+// レイヤー並び替えドラッグ
+let _layDragFrom = -1;
+function layDragStart(e, i) {
+  _layDragFrom = i;
+  e.dataTransfer.effectAllowed = 'move';
+  e.currentTarget.style.opacity = '0.5';
+}
+function layDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+}
+function layDrop(e, toIdx) {
+  e.preventDefault();
+  if (_layDragFrom < 0 || _layDragFrom === toIdx) return;
+  pushH();
+  const moved = LAYERS.splice(_layDragFrom, 1)[0];
+  LAYERS.splice(toIdx, 0, moved);
+  _layDragFrom = -1;
+  renderLayers(); draw();
+}
+function layDragEnd(e) {
+  e.currentTarget.style.opacity = '';
+  _layDragFrom = -1;
+}
+
 function setActLayer(i) { LAYERS.forEach((l,j) => l.active = j===i); renderLayers(); }
 function togLayVis(i)   { LAYERS[i].visible = !LAYERS[i].visible; renderLayers(); draw(); }
 function togLayLock(i)  {
