@@ -529,8 +529,8 @@ function drawAngleDimEl(el, isSel) {
   ctx.beginPath(); ctx.arc(el.cx, el.cy, r, a1, a2, ccw); ctx.stroke();
   // テキスト
   const aMid = a1 + (ccw ? -(Math.PI*2-da)/2 : da/2);
-  const tx = el.cx + Math.cos(aMid)*(r+14);
-  const ty = el.cy + Math.sin(aMid)*(r+14);
+  const tx = el.cx + Math.cos(aMid)*(r+14) + (el.dimTx||0);
+  const ty = el.cy + Math.sin(aMid)*(r+14) + (el.dimTy||0);
   const fs = el.dimFs || 11;
   ctx.font=`bold ${fs}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
   const txt = el.dimText || '';

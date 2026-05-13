@@ -749,6 +749,8 @@ function updateRightPanel() {
     html += colorRow('色', 'pp-color', 'pp-colorcode', el.color||'#744da9', 'previewElColor()');
     html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-angfs" value="${el.dimFs||11}" min="6" max="32"></div>`;
     html += `<div class="pp-row"><label>弧の半径</label><input type="number" id="pp-angr" value="${el.r||30}" min="10" step="5"></div>`;
+    html += `<div class="pp-row"><label>テキストX補正</label><input type="number" id="pp-angtx" value="${el.dimTx||0}" step="5"></div>`;
+    html += `<div class="pp-row"><label>テキストY補正</label><input type="number" id="pp-angty" value="${el.dimTy||0}" step="5"></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
   } else if (el && el.type === 'dim') {
     const len = Math.round(Math.hypot(el.x2-el.x1, el.y2-el.y1));
@@ -1001,6 +1003,8 @@ function applyRightPanel() {
     el.color   = v('pp-colorcode') || v('pp-color') || undefined;
     el.dimFs   = parseInt(v('pp-angfs'))||11;
     el.r       = parseFloat(v('pp-angr'))||30;
+    el.dimTx   = parseInt(v('pp-angtx'))||0;
+    el.dimTy   = parseInt(v('pp-angty'))||0;
     el.layer   = v('pp-layer');
   } else if (el && el.type === 'dim') {
     el.dimText  = v('pp-dimtext');
