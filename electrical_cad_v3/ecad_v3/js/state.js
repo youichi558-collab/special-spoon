@@ -100,7 +100,8 @@ const state = {
   pdfDpi:       96,       // PDF出力DPI
   pendingRef:   null,
   pendingTerm:  null,
-  dimState:     null,
+  dimState:      null,
+  angleDimState: null,
   dimDef: { fs:11, tx:0, ty:-8, gap:null, ext:null, color:'#744da9', arrowStyle:'filled', arrowSz:8 },
 
   // ----------------------------------------------------------------

@@ -495,7 +495,55 @@ const leaderTool = {
 };
 
 // ----------------------------------------------------------------
-// ツールマップに追加
 // ----------------------------------------------------------------
+// 角度寸法線ツール (angle_dim): 頂点→点1→点2の3点クリック
+// ----------------------------------------------------------------
+const angleDimTool = {
+  onDown(wx, wy) {
+    const sx=snap(wx), sy=snap(wy);
+    if (!state.angleDimState) {
+      state.angleDimState = { step:1, cx:sx, cy:sy };
+    } else if (state.angleDimState.step === 1) {
+      state.angleDimState.x1 = sx; state.angleDimState.y1 = sy;
+      state.angleDimState.step = 2;
+    } else {
+      const ds = state.angleDimState;
+      const a1 = Math.atan2(ds.y1-ds.cy, ds.x1-ds.cx);
+      const a2 = Math.atan2(sy-ds.cy, sx-ds.cx);
+      let deg = (a2-a1)*180/Math.PI;
+      if (deg < 0) deg += 360;
+      if (deg > 180) deg = 360-deg;
+      const r = Math.min(
+        Math.hypot(ds.x1-ds.cx, ds.y1-ds.cy),
+        Math.hypot(sx-ds.cy, sy-ds.cy)
+      ) * 0.5 + 20;
+      const txt = prompt('角度テキスト（空欄で自動）:', '') ?? '';
+      const def = state.dimDef || {};
+      pushH();
+      state.elements.push({
+        id: genId('el'), type: 'angle_dim',
+        cx: ds.cx, cy: ds.cy,
+        x1: ds.x1, y1: ds.y1,
+        x2: sx, y2: sy,
+        r, dimText: txt || (Math.round(deg*10)/10 + '°'),
+        layer: '寸法', dimFs: def.fs||11,
+        x: ds.cx, y: ds.cy
+      });
+      state.angleDimState = null; state.preview = null;
+      setMode('select');
+    }
+  },
+  onMove(wx, wy) {
+    const ds = state.angleDimState;
+    if (!ds) return;
+    const sx=snap(wx), sy=snap(wy);
+    if (ds.step === 1) state.preview = { type:'angle_dim_prev1', cx:ds.cx, cy:ds.cy, x1:sx, y1:sy };
+    else               state.preview = { type:'angle_dim_prev2', cx:ds.cx, cy:ds.cy, x1:ds.x1, y1:ds.y1, x2:sx, y2:sy };
+  },
+  onUp() {},
+  onHover(wx, wy) { this.onMove(wx, wy); }
+};
+
 TOOLS.dim    = dimTool;
 TOOLS.leader = leaderTool;
+TOOLS.angle_dim = angleDimTool;

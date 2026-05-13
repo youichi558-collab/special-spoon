@@ -189,6 +189,8 @@ function drawElements() {
       drawJunctionEl(el, sel, lc);
     } else if (el.type === 'dim') {
       drawDimEl(el, sel);
+    } else if (el.type === 'angle_dim') {
+      drawAngleDimEl(el, sel);
     } else if (el.type === 'leader') {
       drawLeaderEl(el, sel);
     } else {
@@ -353,6 +355,11 @@ function drawPreview() {
     ctx.stroke();
   } else if (prev.type === 'arc_preview') {
     ctx.beginPath(); ctx.arc(prev.x, prev.y, prev.r, prev.startA, prev.endA, prev.ccw || false); ctx.stroke();
+  } else if (prev.type === 'angle_dim_prev1') {
+    ctx.beginPath(); ctx.moveTo(prev.cx, prev.cy); ctx.lineTo(prev.x1, prev.y1); ctx.stroke();
+  } else if (prev.type === 'angle_dim_prev2') {
+    ctx.beginPath(); ctx.moveTo(prev.cx, prev.cy); ctx.lineTo(prev.x1, prev.y1); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(prev.cx, prev.cy); ctx.lineTo(prev.x2, prev.y2); ctx.stroke();
   } else if (prev.type === 'arc_preview_line') {
     ctx.beginPath(); ctx.moveTo(prev.x1, prev.y1); ctx.lineTo(prev.x2, prev.y2); ctx.stroke();
   } else if (prev.type === 'sym_preview') {
@@ -499,6 +506,38 @@ function drawDimEl(el, isSel) {
   ctx.fillRect(tx2-tw2/2-3, ty2-fs*0.6, tw2+6, fs+4);
   ctx.fillStyle=c; ctx.fillText(txt, tx2, ty2);
   ctx.textBaseline='alphabetic';
+  ctx.restore();
+}
+
+function drawAngleDimEl(el, isSel) {
+  if (el.cx==null||el.x1==null||el.x2==null) return;
+  const a1 = Math.atan2(el.y1-el.cy, el.x1-el.cx);
+  const a2 = Math.atan2(el.y2-el.cy, el.x2-el.cx);
+  const r = el.r || 30;
+  const c = isSel ? '#0067c0' : (el.color||layColor(el.layer)||'#744da9');
+  const lw = el.lineWidth || 1;
+  ctx.save(); ctx.strokeStyle=c; ctx.fillStyle=c;
+  ctx.lineWidth = (isSel ? lw+0.5 : lw);
+  // 引出し線
+  ctx.beginPath(); ctx.moveTo(el.cx, el.cy); ctx.lineTo(el.cx+(el.x1-el.cx)/Math.hypot(el.x1-el.cx,el.y1-el.cy)*(r+10), el.cy+(el.y1-el.cy)/Math.hypot(el.x1-el.cx,el.y1-el.cy)*(r+10)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(el.cx, el.cy); ctx.lineTo(el.cx+(el.x2-el.cx)/Math.hypot(el.x2-el.cx,el.y2-el.cy)*(r+10), el.cy+(el.y2-el.cy)/Math.hypot(el.x2-el.cx,el.y2-el.cy)*(r+10)); ctx.stroke();
+  // 弧
+  let ccw = false;
+  let da = a2 - a1;
+  if (da < 0) da += Math.PI*2;
+  if (da > Math.PI) { ccw = true; }
+  ctx.beginPath(); ctx.arc(el.cx, el.cy, r, a1, a2, ccw); ctx.stroke();
+  // テキスト
+  const aMid = a1 + (ccw ? -(Math.PI*2-da)/2 : da/2);
+  const tx = el.cx + Math.cos(aMid)*(r+14);
+  const ty = el.cy + Math.sin(aMid)*(r+14);
+  const fs = el.dimFs || 11;
+  ctx.font=`bold ${fs}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+  const txt = el.dimText || '';
+  const tw = ctx.measureText(txt).width;
+  ctx.fillStyle=state.darkMode?'#252525':'#fff';
+  ctx.fillRect(tx-tw/2-2, ty-fs*0.6, tw+4, fs+4);
+  ctx.fillStyle=c; ctx.fillText(txt, tx, ty);
   ctx.restore();
 }
 
