@@ -236,6 +236,10 @@ function setMode(m, sym) {
   state.wirePoints = [];
   state.dimState = null;
   state.angleDimState = null;
+  state.mouse.down      = false;
+  state.mouse.dragging  = false;
+  state.mouse.selboxing = false;
+  state.mouse.panning   = false;
   state.mouse.shapeStart = null;
   state.mouse.arcP1 = null;
   state.mouse.arcP2 = null;
