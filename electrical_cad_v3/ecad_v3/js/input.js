@@ -82,6 +82,14 @@ cv.addEventListener('mousedown', e => {
       }
       state.preview = null; draw(); return;
     }
+    if (state.mode === 'angle_dim' && state.angleDimState) {
+      if (state.angleDimState.step === 2) {
+        state.angleDimState.step = 1;
+      } else {
+        state.angleDimState = null;
+      }
+      state.preview = null; draw(); return;
+    }
     // 作図中のキャンセル（rect/circle/fline/arc）
     if (state.mouse.shapeStart || state.mouse.arcP1) {
       state.mouse.shapeStart = null;
@@ -227,6 +235,7 @@ function setMode(m, sym) {
   state.preview  = null;
   state.wirePoints = [];
   state.dimState = null;
+  state.angleDimState = null;
   state.mouse.shapeStart = null;
   state.mouse.arcP1 = null;
   state.mouse.arcP2 = null;
