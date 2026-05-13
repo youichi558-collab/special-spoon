@@ -520,8 +520,6 @@ const angleDimTool = {
         Math.hypot(ds.x1-ds.cx, ds.y1-ds.cy),
         Math.hypot(sx-ds.cy, sy-ds.cy)
       ) * 0.5 + 20;
-      const txt = prompt('角度テキスト（空欄で自動）:', '') ?? '';
-      state.mouse.down = false; state.mouse.dragging = false; // promptで失われたmouseupを補完
       const def = state.dimDef || {};
       pushH();
       state.elements.push({
@@ -529,7 +527,7 @@ const angleDimTool = {
         cx: ds.cx, cy: ds.cy,
         x1: ds.x1, y1: ds.y1,
         x2: sx, y2: sy,
-        r, dimText: txt || (Math.round(deg*10)/10 + '°'),
+        r, dimText: Math.round(deg*10)/10 + '°',
         layer: '寸法', dimFs: def.fs||11,
         x: ds.cx, y: ds.cy
       });
