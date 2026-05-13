@@ -532,7 +532,7 @@ const angleDimTool = {
         x: ds.cx, y: ds.cy
       });
       state.angleDimState = null; state.preview = null;
-      setMode('select');
+      state._angleDimDone = true; // onUpでsetModeを呼ぶ
     }
   },
   onMove(wx, wy) {
@@ -542,7 +542,12 @@ const angleDimTool = {
     if (ds.step === 1) state.preview = { type:'angle_dim_prev1', cx:ds.cx, cy:ds.cy, x1:sx, y1:sy };
     else               state.preview = { type:'angle_dim_prev2', cx:ds.cx, cy:ds.cy, x1:ds.x1, y1:ds.y1, x2:sx, y2:sy };
   },
-  onUp() {},
+  onUp() {
+    if (state._angleDimDone) {
+      state._angleDimDone = false;
+      setMode('select');
+    }
+  },
   onHover(wx, wy) { this.onMove(wx, wy); }
 };
 
