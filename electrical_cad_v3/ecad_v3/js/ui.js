@@ -811,9 +811,9 @@ function updateRightPanel() {
     const delay = e.target.tagName === 'SELECT' || e.target.type === 'color' || e.target.type === 'number' ? 0 : 400;
     _autoApplyTimer = setTimeout(() => applyRightPanel(), delay);
   };
-  rp.onblur = (e) => {
+  rp.addEventListener('focusout', (e) => {
     if (e.target.tagName === 'TEXTAREA') applyRightPanel();
-  };
+  });
 }
 
 function colorRow(label, pickerId, codeId, defaultColor, onInput) {
