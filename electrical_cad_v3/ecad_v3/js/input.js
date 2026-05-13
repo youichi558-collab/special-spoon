@@ -189,6 +189,21 @@ cv.addEventListener('mouseleave', () => {
   draw();
 });
 
+// キャンバス外でマウスを離した場合のリセット
+document.addEventListener('mouseup', e => {
+  if (!state.mouse.down) return;
+  if (state.mouse.selboxing) {
+    state.mouse.selboxing = false;
+    state.mouse.down = false;
+    draw();
+  } else if (state.mouse.panning) {
+    state.mouse.panning = false;
+    state.mouse.down = false;
+  } else {
+    state.mouse.down = false;
+  }
+});
+
 cv.addEventListener('contextmenu', e => e.preventDefault());
 
 // ダブルクリック → dim/leader/text のテキスト直接編集（selectモードのみ）
