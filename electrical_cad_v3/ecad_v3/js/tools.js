@@ -173,6 +173,7 @@ const symTool = {
 const textTool = {
   onDown(wx, wy, e) {
     const text = prompt('テキスト:',''); if (!text) return;
+    state.mouse.down = false; state.mouse.dragging = false;
     pushH();
     state.elements.push({ id: genId('el'), type:'text', x:snap(wx), y:snap(wy), text, fs:(LAYERS.find(l=>l.active)?.fontSize||14), layer:activeLayer() });
     state.preview = null;
@@ -429,6 +430,7 @@ const dimTool = {
       const offset = Math.max(15, Math.abs(dot));
       const dist = Math.round(len * (state.drawScale||1));
       const txt = prompt('寸法テキスト（空欄で自動）:', '') ?? '';
+      state.mouse.down = false; state.mouse.dragging = false;
       state.mouse.down = false;
       pushH();
       const def = state.dimDef;
@@ -475,6 +477,7 @@ const leaderTool = {
     } else if (state.dimState.step === 2) {
       const ds = state.dimState;
       const txt = prompt('引出線テキスト:', '') ?? '';
+      state.mouse.down = false; state.mouse.dragging = false;
       state.mouse.down = false;  // promptのOK後にmouseupがcanvasに届かないためリセット
       pushH();
       state.elements.push({ id: genId('el'), type:'leader', x1:ds.x1, y1:ds.y1,
@@ -518,6 +521,7 @@ const angleDimTool = {
         Math.hypot(sx-ds.cy, sy-ds.cy)
       ) * 0.5 + 20;
       const txt = prompt('角度テキスト（空欄で自動）:', '') ?? '';
+      state.mouse.down = false; state.mouse.dragging = false; // promptで失われたmouseupを補完
       const def = state.dimDef || {};
       pushH();
       state.elements.push({
