@@ -22,6 +22,22 @@ function getAllSnapPoints(wx, wy) {
       });
       return;
     }
+    // 三角形スナップ：3頂点
+    if (el.type === 'triangle') {
+      [{x:el.x1,y:el.y1},{x:el.x2,y:el.y2},{x:el.x3,y:el.y3}].forEach(p => {
+        const d = Math.hypot(wx-p.x, wy-p.y);
+        if (d < bestD) { bestD=d; best={x:p.x, y:p.y, snapType:'endpoint'}; }
+      });
+      return;
+    }
+    // fline・arc：端点スナップ
+    if (el.type === 'fline') {
+      [{x:el.x1,y:el.y1},{x:el.x2,y:el.y2}].forEach(p => {
+        const d = Math.hypot(wx-p.x, wy-p.y);
+        if (d < bestD) { bestD=d; best={x:p.x, y:p.y, snapType:'endpoint'}; }
+      });
+      return;
+    }
     if (state.snapEnd && !['text','rect','circle','fline','dim','leader'].includes(el.type)) {
       const d = getDef(el.type) || {};
       const cS = state.customSymbols.find(s => s.type === el.type);
