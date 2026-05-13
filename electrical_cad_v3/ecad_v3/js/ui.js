@@ -806,9 +806,13 @@ function updateRightPanel() {
   let _autoApplyTimer = null;
   rp.oninput = rp.onchange = (e) => {
     if (e.target.tagName === 'BUTTON') return;
+    if (e.target.tagName === 'TEXTAREA') return; // テキストエリアはblurで適用
     clearTimeout(_autoApplyTimer);
     const delay = e.target.tagName === 'SELECT' || e.target.type === 'color' || e.target.type === 'number' ? 0 : 400;
     _autoApplyTimer = setTimeout(() => applyRightPanel(), delay);
+  };
+  rp.onblur = (e) => {
+    if (e.target.tagName === 'TEXTAREA') applyRightPanel();
   };
 }
 
