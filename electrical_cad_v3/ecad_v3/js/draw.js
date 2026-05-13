@@ -200,13 +200,17 @@ function drawElements() {
 function drawTextEl(el, sel, lc, lay) {
   ctx.save();
   ctx.fillStyle = el.color || lc;
-  ctx.font      = `${el.fs || lay?.fontSize || 14}px sans-serif`;
-  ctx.fillText(el.text, el.x, el.y);
+  const fs = el.fs || lay?.fontSize || 14;
+  ctx.font = `${fs}px sans-serif`;
+  const lines = (el.text || '').split('\n');
+  const lineH = fs * 1.4;
+  lines.forEach((line, i) => ctx.fillText(line, el.x, el.y + i * lineH));
   if (sel) {
-    const m = ctx.measureText(el.text);
+    const maxW = Math.max(...lines.map(l => ctx.measureText(l).width));
+    const totalH = lines.length * lineH;
     ctx.strokeStyle = el.color || lc; ctx.lineWidth = 1.5/state.zoom;
     ctx.setLineDash([4/state.zoom, 3/state.zoom]);
-    ctx.strokeRect(el.x-3, el.y-14, m.width+6, 18);
+    ctx.strokeRect(el.x-3, el.y-fs*0.8, maxW+6, totalH+4);
     ctx.setLineDash([]);
   }
   ctx.restore();
