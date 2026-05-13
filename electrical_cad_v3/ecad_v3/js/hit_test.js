@@ -46,6 +46,18 @@ function hitTest(wx, wy) {
       continue;
     }
     if (el.type === 'junction') { if (Math.hypot(wx-el.x,wy-el.y) < (el.r||4)+R) return el; continue; }
+    if (el.type === 'angle_dim') {
+      // 弧の近くかテキスト近くでヒット
+      const a1=Math.atan2(el.y1-el.cy,el.x1-el.cx), a2=Math.atan2(el.y2-el.cy,el.x2-el.cx);
+      const dist=Math.hypot(wx-el.cx,wy-el.cy);
+      if (Math.abs(dist-(el.r||30)) < R*2) return el;
+      // テキスト近く
+      let da=a2-a1; if(da<0)da+=Math.PI*2;
+      const aMid=a1+(da>Math.PI?-(Math.PI*2-da)/2:da/2);
+      const tx=el.cx+Math.cos(aMid)*((el.r||30)+14), ty=el.cy+Math.sin(aMid)*((el.r||30)+14);
+      if (Math.hypot(wx-tx,wy-ty) < 20) return el;
+      continue;
+    }
     if (el.type === 'triangle') {
       if (distToSeg(wx,wy,el.x1,el.y1,el.x2,el.y2)<R || distToSeg(wx,wy,el.x2,el.y2,el.x3,el.y3)<R || distToSeg(wx,wy,el.x3,el.y3,el.x1,el.y1)<R) return el;
       continue;
@@ -104,8 +116,12 @@ function inBox(el, sx, sy, ex, ey, crossing) {
       ? el.x+el.r>=sx && el.x-el.r<=ex && el.y+el.r>=sy && el.y-el.r<=ey
       : el.x-el.r>=sx && el.x+el.r<=ex && el.y-el.r>=sy && el.y+el.r<=ey;
   }
+  if (el.type === 'angle_dim') {
+    return crossing
+      ? (el.cx>=sx&&el.cx<=ex&&el.cy>=sy&&el.cy<=ey)
+      : (el.cx>=sx&&el.cx<=ex&&el.cy>=sy&&el.cy<=ey&&el.x1>=sx&&el.x1<=ex&&el.y1>=sy&&el.y1<=ey&&el.x2>=sx&&el.x2<=ex&&el.y2>=sy&&el.y2<=ey);
+  }
   if (el.type === 'triangle') {
-    const pts3 = [{x:el.x1,y:el.y1},{x:el.x2,y:el.y2},{x:el.x3,y:el.y3}];
     return crossing
       ? pts3.some(p => p.x>=sx&&p.x<=ex&&p.y>=sy&&p.y<=ey)
       : pts3.every(p => p.x>=sx&&p.x<=ex&&p.y>=sy&&p.y<=ey);

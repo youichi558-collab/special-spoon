@@ -744,6 +744,12 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>テキスト</label><textarea rows="2" id="pp-text">${el.text||''}</textarea></div>`;
     html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-fs" value="${el.fs||14}" min="8" max="72"></div>`;
     html += colorRow('色', 'pp-textcolor', 'pp-textcolorcode', el.color||'#222222', 'previewElColor()');
+  } else if (el && el.type === 'angle_dim') {
+    html += `<div class="pp-row"><label>角度テキスト</label><input type="text" id="pp-angtext" value="${el.dimText||''}"></div>`;
+    html += colorRow('色', 'pp-color', 'pp-colorcode', el.color||'#744da9', 'previewElColor()');
+    html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-angfs" value="${el.dimFs||11}" min="6" max="32"></div>`;
+    html += `<div class="pp-row"><label>弧の半径</label><input type="number" id="pp-angr" value="${el.r||30}" min="10" step="5"></div>`;
+    html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
   } else if (el && el.type === 'dim') {
     const len = Math.round(Math.hypot(el.x2-el.x1, el.y2-el.y1));
     html += `<div class="pp-row"><label>寸法テキスト</label><input type="text" id="pp-dimtext" value="${el.dimText||len}"></div>`;
@@ -990,6 +996,12 @@ function applyRightPanel() {
   if (el && el.type === 'text') {
     el.text = v('pp-text'); el.fs = parseInt(v('pp-fs'))||14;
     el.color = v('pp-textcolorcode') || v('pp-textcolor') || undefined;
+  } else if (el && el.type === 'angle_dim') {
+    el.dimText = v('pp-angtext');
+    el.color   = v('pp-colorcode') || v('pp-color') || undefined;
+    el.dimFs   = parseInt(v('pp-angfs'))||11;
+    el.r       = parseFloat(v('pp-angr'))||30;
+    el.layer   = v('pp-layer');
   } else if (el && el.type === 'dim') {
     el.dimText  = v('pp-dimtext');
     el.dimFs    = parseInt(v('pp-dimfs')) || 11;

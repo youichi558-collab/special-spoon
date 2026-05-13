@@ -162,6 +162,8 @@ function dl(text, fname, mime) {
 // 共通移動関数
 // ----------------------------------------------------------------
 function moveEntity(el, dx, dy) {
+  if (el.cx != null) el.cx += dx;
+  if (el.cy != null) el.cy += dy;
   if (el.x  != null) el.x  += dx;
   if (el.y  != null) el.y  += dy;
   if (el.x1 != null) el.x1 += dx;
