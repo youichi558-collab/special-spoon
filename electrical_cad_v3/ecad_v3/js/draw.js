@@ -351,6 +351,7 @@ function drawPreview() {
     ctx.beginPath(); ctx.moveTo(prev.p1.x, prev.p1.y); ctx.lineTo(prev.p2.x, prev.p2.y);
     if (prev.p3) { ctx.lineTo(prev.p3.x, prev.p3.y); ctx.closePath(); }
     ctx.stroke();
+  } else if (prev.type === 'arc_preview') {
     ctx.beginPath(); ctx.arc(prev.x, prev.y, prev.r, prev.startA, prev.endA, prev.ccw || false); ctx.stroke();
   } else if (prev.type === 'arc_preview_line') {
     ctx.beginPath(); ctx.moveTo(prev.x1, prev.y1); ctx.lineTo(prev.x2, prev.y2); ctx.stroke();

@@ -158,6 +158,27 @@ function dl(text, fname, mime) {
 // ----------------------------------------------------------------
 // クリップボード
 // ----------------------------------------------------------------
+// ----------------------------------------------------------------
+// 共通移動関数
+// ----------------------------------------------------------------
+function moveEntity(el, dx, dy) {
+  if (el.x  != null) el.x  += dx;
+  if (el.y  != null) el.y  += dy;
+  if (el.x1 != null) el.x1 += dx;
+  if (el.y1 != null) el.y1 += dy;
+  if (el.x2 != null) el.x2 += dx;
+  if (el.y2 != null) el.y2 += dy;
+  if (el.x3 != null) el.x3 += dx;
+  if (el.y3 != null) el.y3 += dy;
+  if (el.bx != null) el.bx += dx;
+  if (el.by != null) el.by += dy;
+  if (el.pts) {
+    el.pts = el.pts.map(p => ({ x: p.x+dx, y: p.y+dy }));
+    el.x1 = el.pts[0]?.x; el.y1 = el.pts[0]?.y;
+    el.x2 = el.pts[el.pts.length-1]?.x; el.y2 = el.pts[el.pts.length-1]?.y;
+  }
+}
+
 function copySelected() {
   const els   = state.elements.filter(el => state.sel.els.has(el.id));
   const wires = state.wires.filter(w   => state.sel.wires.has(w.id));
@@ -177,17 +198,7 @@ function pasteSelected() {
   function offsetEl(el) {
     const ne = JSON.parse(JSON.stringify(el));
     ne.id = genId('el');
-    // x,y（中心・基準点）
-    if (ne.x != null) ne.x += off;
-    if (ne.y != null) ne.y += off;
-    // 2点系（fline/dim/leader）
-    if (ne.x1 != null) ne.x1 += off;
-    if (ne.y1 != null) ne.y1 += off;
-    if (ne.x2 != null) ne.x2 += off;
-    if (ne.y2 != null) ne.y2 += off;
-    // leader折れ曲がり点
-    if (ne.bx != null) ne.bx += off;
-    if (ne.by != null) ne.by += off;
+    moveEntity(ne, off, off);
     return ne;
   }
   const newEls = state.clipboard.els.map(offsetEl);
@@ -339,14 +350,10 @@ document.addEventListener('keydown', e => {
     e.preventDefault();
     const step = e.shiftKey ? state.G : 2;
     pushH();
-    state.elements.filter(el => state.sel.els.has(el.id)).forEach(el => {
-      if (el.x != null) {
-        if (e.key === 'ArrowLeft')  el.x -= step;
-        if (e.key === 'ArrowRight') el.x += step;
-        if (e.key === 'ArrowUp')    el.y -= step;
-        if (e.key === 'ArrowDown')  el.y += step;
-      }
-    });
+    const dx = e.key==='ArrowLeft' ? -step : e.key==='ArrowRight' ? step : 0;
+    const dy = e.key==='ArrowUp'   ? -step : e.key==='ArrowDown'  ? step : 0;
+    state.elements.filter(el => state.sel.els.has(el.id)).forEach(el => moveEntity(el, dx, dy));
+    state.wires.filter(w => state.sel.wires.has(w.id)).forEach(w => moveEntity(w, dx, dy));
     draw();
   }
 });
