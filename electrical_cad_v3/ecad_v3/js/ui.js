@@ -813,6 +813,7 @@ function updateRightPanel() {
     if (el.type === 'fline') {
       const fAng = Math.round(Math.atan2(el.y2-el.y1, el.x2-el.x1)*180/Math.PI*10)/10;
       const fLen = Math.round(Math.hypot(el.x2-el.x1, el.y2-el.y1)*10)/10;
+      html += `<div class="pp-row"><label>回転基準</label><select id="pp-fbase"><option value="p1">始点固定</option><option value="p2">終点固定</option></select></div>`;
       html += `<div class="pp-row"><label>角度(°)</label><input type="number" id="pp-fangle" value="${fAng}" step="1"></div>`;
       html += `<div class="pp-row"><label>長さ</label><input type="number" id="pp-flen" value="${fLen}" step="1" min="1"></div>`;
       html += `<div class="pp-row"><label>始点X</label><input type="number" id="pp-x1" value="${Math.round(el.x1*10)/10}" step="1"></div>`;
@@ -826,6 +827,8 @@ function updateRightPanel() {
       html += `<div class="pp-row"><label>開始角(°)</label><input type="number" id="pp-arca1" value="${Math.round(el.startA*180/Math.PI*10)/10}" step="1"></div>`;
       html += `<div class="pp-row"><label>終了角(°)</label><input type="number" id="pp-arca2" value="${Math.round(el.endA*180/Math.PI*10)/10}" step="1"></div>`;
     } else if (el.type === 'triangle') {
+      html += `<div class="pp-row"><label>回転基準</label><select id="pp-tribase"><option value="p1">頂点1固定</option><option value="p2">頂点2固定</option><option value="p3">頂点3固定</option></select></div>`;
+      html += `<div class="pp-row"><label>回転角(°)</label><input type="number" id="pp-triangle" value="0" step="1"></div>`;
       html += `<div class="pp-row"><label>頂点1 X</label><input type="number" id="pp-tx1" value="${Math.round(el.x1*10)/10}" step="1"></div>`;
       html += `<div class="pp-row"><label>頂点1 Y</label><input type="number" id="pp-ty1" value="${Math.round(el.y1*10)/10}" step="1"></div>`;
       html += `<div class="pp-row"><label>頂点2 X</label><input type="number" id="pp-tx2" value="${Math.round(el.x2*10)/10}" step="1"></div>`;
@@ -1078,10 +1081,12 @@ function applyRightPanel() {
     if (el.type === 'fline') {
       if (v('pp-x1')!=='') { el.x1=parseFloat(v('pp-x1')); el.y1=parseFloat(v('pp-y1')); }
       if (v('pp-x2')!=='') { el.x2=parseFloat(v('pp-x2')); el.y2=parseFloat(v('pp-y2')); }
-      if (v('pp-fangle')!=='' && v('pp-x2')==='') {
+      if (v('pp-fangle')!=='') {
         const ang=parseFloat(v('pp-fangle'))*Math.PI/180;
         const len=parseFloat(v('pp-flen'))||Math.hypot(el.x2-el.x1,el.y2-el.y1);
-        el.x2=el.x1+Math.cos(ang)*len; el.y2=el.y1+Math.sin(ang)*len;
+        const base=v('pp-fbase');
+        if (base==='p2') { el.x1=el.x2-Math.cos(ang)*len; el.y1=el.y2-Math.sin(ang)*len; }
+        else             { el.x2=el.x1+Math.cos(ang)*len; el.y2=el.y1+Math.sin(ang)*len; }
       }
     } else if (el.type === 'arc') {
       if (v('pp-x1')!=='') { el.x=parseFloat(v('pp-x1')); el.y=parseFloat(v('pp-y1')); }
@@ -1092,6 +1097,17 @@ function applyRightPanel() {
       if (v('pp-tx1')!=='') { el.x1=parseFloat(v('pp-tx1')); el.y1=parseFloat(v('pp-ty1')); }
       if (v('pp-tx2')!=='') { el.x2=parseFloat(v('pp-tx2')); el.y2=parseFloat(v('pp-ty2')); }
       if (v('pp-tx3')!=='') { el.x3=parseFloat(v('pp-tx3')); el.y3=parseFloat(v('pp-ty3')); }
+      const trot=parseFloat(v('pp-triangle'))||0;
+      if (trot!==0) {
+        const rad=trot*Math.PI/180;
+        const base=v('pp-tribase')||'p1';
+        const bx=base==='p1'?el.x1:base==='p2'?el.x2:el.x3;
+        const by=base==='p1'?el.y1:base==='p2'?el.y2:el.y3;
+        const rot2=(x,y)=>({x:bx+(x-bx)*Math.cos(rad)-(y-by)*Math.sin(rad), y:by+(x-bx)*Math.sin(rad)+(y-by)*Math.cos(rad)});
+        if (base!=='p1') { const p=rot2(el.x1,el.y1); el.x1=p.x; el.y1=p.y; }
+        if (base!=='p2') { const p=rot2(el.x2,el.y2); el.x2=p.x; el.y2=p.y; }
+        if (base!=='p3') { const p=rot2(el.x3,el.y3); el.x3=p.x; el.y3=p.y; }
+      }
     } else if (el.type === 'rect') {
       if (v('pp-rx')!=='') { el.x=parseFloat(v('pp-rx')); el.y=parseFloat(v('pp-ry')); }
       if (v('pp-rw')!=='') { el.w=parseFloat(v('pp-rw')); el.h=parseFloat(v('pp-rh')); }
