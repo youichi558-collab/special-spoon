@@ -815,6 +815,28 @@ function updateRightPanel() {
       const fLen = Math.round(Math.hypot(el.x2-el.x1, el.y2-el.y1)*10)/10;
       html += `<div class="pp-row"><label>角度(°)</label><input type="number" id="pp-fangle" value="${fAng}" step="1"></div>`;
       html += `<div class="pp-row"><label>長さ</label><input type="number" id="pp-flen" value="${fLen}" step="1" min="1"></div>`;
+      html += `<div class="pp-row"><label>始点X</label><input type="number" id="pp-x1" value="${Math.round(el.x1*10)/10}" step="1"></div>`;
+      html += `<div class="pp-row"><label>始点Y</label><input type="number" id="pp-y1" value="${Math.round(el.y1*10)/10}" step="1"></div>`;
+      html += `<div class="pp-row"><label>終点X</label><input type="number" id="pp-x2" value="${Math.round(el.x2*10)/10}" step="1"></div>`;
+      html += `<div class="pp-row"><label>終点Y</label><input type="number" id="pp-y2" value="${Math.round(el.y2*10)/10}" step="1"></div>`;
+    } else if (el.type === 'arc') {
+      html += `<div class="pp-row"><label>中心X</label><input type="number" id="pp-x1" value="${Math.round(el.x*10)/10}" step="1"></div>`;
+      html += `<div class="pp-row"><label>中心Y</label><input type="number" id="pp-y1" value="${Math.round(el.y*10)/10}" step="1"></div>`;
+      html += `<div class="pp-row"><label>半径</label><input type="number" id="pp-arcr" value="${Math.round((el.r||10)*10)/10}" step="1" min="1"></div>`;
+      html += `<div class="pp-row"><label>開始角(°)</label><input type="number" id="pp-arca1" value="${Math.round(el.startA*180/Math.PI*10)/10}" step="1"></div>`;
+      html += `<div class="pp-row"><label>終了角(°)</label><input type="number" id="pp-arca2" value="${Math.round(el.endA*180/Math.PI*10)/10}" step="1"></div>`;
+    } else if (el.type === 'triangle') {
+      html += `<div class="pp-row"><label>頂点1 X</label><input type="number" id="pp-tx1" value="${Math.round(el.x1*10)/10}" step="1"></div>`;
+      html += `<div class="pp-row"><label>頂点1 Y</label><input type="number" id="pp-ty1" value="${Math.round(el.y1*10)/10}" step="1"></div>`;
+      html += `<div class="pp-row"><label>頂点2 X</label><input type="number" id="pp-tx2" value="${Math.round(el.x2*10)/10}" step="1"></div>`;
+      html += `<div class="pp-row"><label>頂点2 Y</label><input type="number" id="pp-ty2" value="${Math.round(el.y2*10)/10}" step="1"></div>`;
+      html += `<div class="pp-row"><label>頂点3 X</label><input type="number" id="pp-tx3" value="${Math.round(el.x3*10)/10}" step="1"></div>`;
+      html += `<div class="pp-row"><label>頂点3 Y</label><input type="number" id="pp-ty3" value="${Math.round(el.y3*10)/10}" step="1"></div>`;
+    } else if (el.type === 'rect') {
+      html += `<div class="pp-row"><label>X</label><input type="number" id="pp-rx" value="${Math.round(el.x*10)/10}" step="1"></div>`;
+      html += `<div class="pp-row"><label>Y</label><input type="number" id="pp-ry" value="${Math.round(el.y*10)/10}" step="1"></div>`;
+      html += `<div class="pp-row"><label>幅</label><input type="number" id="pp-rw" value="${Math.round(el.w*10)/10}" step="1" min="1"></div>`;
+      html += `<div class="pp-row"><label>高さ</label><input type="number" id="pp-rh" value="${Math.round(el.h*10)/10}" step="1" min="1"></div>`;
     }
     html += `<div class="pp-row"><label>線幅</label><select id="pp-lw"><option value="0.5"${(el.lineWidth||1.5)==0.5?' selected':''}>極細(0.5)</option><option value="1"${(el.lineWidth||1.5)==1?' selected':''}>細(1)</option><option value="1.5"${(el.lineWidth||1.5)==1.5?' selected':''}>標準(1.5)</option><option value="2"${(el.lineWidth||1.5)==2?' selected':''}>太(2)</option><option value="3"${(el.lineWidth||1.5)==3?' selected':''}>極太(3)</option></select></div>`;
     html += `<div class="pp-row"><label>線種</label><select id="pp-ls"><option value=""${!el.lineStyle?' selected':''}>実線</option><option value="dash"${el.lineStyle==='dash'?' selected':''}>破線</option><option value="dot"${el.lineStyle==='dot'?' selected':''}>点線</option><option value="dashdot"${el.lineStyle==='dashdot'?' selected':''}>一点鎖線</option></select></div>`;
@@ -1053,11 +1075,26 @@ function applyRightPanel() {
     el.color     = v('pp-symcolorcode') || v('pp-symcolor') || undefined;
     if (v('pp-lw')) el.lineWidth = parseFloat(v('pp-lw'));
     el.lineStyle = v('pp-ls') || undefined;
-    if (el.type === 'fline' && v('pp-fangle') !== '') {
-      const ang = parseFloat(v('pp-fangle')) * Math.PI / 180;
-      const len = parseFloat(v('pp-flen')) || Math.hypot(el.x2-el.x1, el.y2-el.y1);
-      el.x2 = el.x1 + Math.cos(ang) * len;
-      el.y2 = el.y1 + Math.sin(ang) * len;
+    if (el.type === 'fline') {
+      if (v('pp-x1')!=='') { el.x1=parseFloat(v('pp-x1')); el.y1=parseFloat(v('pp-y1')); }
+      if (v('pp-x2')!=='') { el.x2=parseFloat(v('pp-x2')); el.y2=parseFloat(v('pp-y2')); }
+      if (v('pp-fangle')!=='' && v('pp-x2')==='') {
+        const ang=parseFloat(v('pp-fangle'))*Math.PI/180;
+        const len=parseFloat(v('pp-flen'))||Math.hypot(el.x2-el.x1,el.y2-el.y1);
+        el.x2=el.x1+Math.cos(ang)*len; el.y2=el.y1+Math.sin(ang)*len;
+      }
+    } else if (el.type === 'arc') {
+      if (v('pp-x1')!=='') { el.x=parseFloat(v('pp-x1')); el.y=parseFloat(v('pp-y1')); }
+      if (v('pp-arcr')!=='') el.r=parseFloat(v('pp-arcr'));
+      if (v('pp-arca1')!=='') el.startA=parseFloat(v('pp-arca1'))*Math.PI/180;
+      if (v('pp-arca2')!=='') el.endA=parseFloat(v('pp-arca2'))*Math.PI/180;
+    } else if (el.type === 'triangle') {
+      if (v('pp-tx1')!=='') { el.x1=parseFloat(v('pp-tx1')); el.y1=parseFloat(v('pp-ty1')); }
+      if (v('pp-tx2')!=='') { el.x2=parseFloat(v('pp-tx2')); el.y2=parseFloat(v('pp-ty2')); }
+      if (v('pp-tx3')!=='') { el.x3=parseFloat(v('pp-tx3')); el.y3=parseFloat(v('pp-ty3')); }
+    } else if (el.type === 'rect') {
+      if (v('pp-rx')!=='') { el.x=parseFloat(v('pp-rx')); el.y=parseFloat(v('pp-ry')); }
+      if (v('pp-rw')!=='') { el.w=parseFloat(v('pp-rw')); el.h=parseFloat(v('pp-rh')); }
     }
     el.layer     = v('pp-layer');
     el.note      = v('pp-note');
