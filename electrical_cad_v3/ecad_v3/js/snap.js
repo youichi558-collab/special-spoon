@@ -83,8 +83,12 @@ function getAllSnapPoints(wx, wy) {
 function snapWirePoint(wx, wy, prevX, prevY) {
   const sp = getAllSnapPoints(wx, wy);
   if (sp) {
-    if (state.ortho && prevX != null) { const o = applyOrtho(prevX, prevY, sp.x, sp.y); return { x:o.x, y:o.y, snapType:sp.snapType }; }
-    return { x:sp.x, y:sp.y, snapType:sp.snapType };
+    if (state.ortho && prevX != null) {
+      const o = applyOrtho(prevX, prevY, sp.x, sp.y);
+      // elId・termIdx を引き継ぐ
+      return { x:o.x, y:o.y, snapType:sp.snapType, elId:sp.elId, termIdx:sp.termIdx };
+    }
+    return { x:sp.x, y:sp.y, snapType:sp.snapType, elId:sp.elId, termIdx:sp.termIdx };
   }
   let sx = snap(wx), sy = snap(wy);
   if (state.ortho && prevX != null) { const o = applyOrtho(prevX, prevY, sx, sy); sx=o.x; sy=o.y; }

@@ -108,7 +108,7 @@ const wireTool = {
       const fromSnap = snaps[0];
       const toSnap   = snaps[snaps.length - 1];
       pushH();
-      state.wires.push({ id: genId('w'),
+      const newWire = { id: genId('w'),
         pts, x1: pts[0].x, y1: pts[0].y,
         x2: pts[pts.length-1].x, y2: pts[pts.length-1].y,
         layer: activeLayer(), wireNo: '',
@@ -116,7 +116,9 @@ const wireTool = {
         fromTermIdx:fromSnap?.termIdx ?? '',
         toElId:     toSnap?.elId     || '',
         toTermIdx:  toSnap?.termIdx  ?? '',
-      });
+      };
+      console.log('[wire] fromSnap:', fromSnap, 'toSnap:', toSnap, 'wire:', newWire);
+      state.wires.push(newWire);
       state.wirePoints = [{ x: sp.x, y: sp.y }];
       state.wireSnapPts = [sp.snapType === 'terminal' ? { elId: sp.elId, termIdx: sp.termIdx } : null];
       state.preview = null;
