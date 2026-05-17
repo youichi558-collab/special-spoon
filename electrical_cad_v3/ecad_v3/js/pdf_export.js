@@ -371,7 +371,7 @@ function _exportPDFPages(indices, filename) {
         }
         const imgW = Math.round(pdfW * pxPerMM);
         const imgH = Math.round(pdfH * pxPerMM);
-        const sc2 = Math.min(imgW / pageW2, imgH / pageH2);
+        const sc2 = imgW / pageW2; // 幅基準でzoom計算（縦横比はpdfW/pdfHで保証）
 
         const oc = document.createElement('canvas');
         oc.width = imgW; oc.height = imgH;
