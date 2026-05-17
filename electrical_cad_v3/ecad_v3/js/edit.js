@@ -72,6 +72,12 @@ function saveProject() {
   // 現在ページのみ保存
   _syncCurrentPage();
   const pg = state.pages[state.currentPage];
+  const defaultName = _pageFileName(pg, state.currentPage);
+  const name = prompt('保存ファイル名を入力してください', defaultName);
+  if (name === null) return; // キャンセル
+  const fname = (name.trim() || defaultName).replace(/[\\/:*?"<>|]/g, '_');
+  // saveFileNameを更新
+  state.saveFileName = fname.replace(/_[^_]+$/, ''); // ページ名部分を除いた部分を保存
   const data = {
     version: 2,
     saveFileName: state.saveFileName,
@@ -81,7 +87,7 @@ function saveProject() {
     layers:        LAYERS,
     pages: [pg],
   };
-  dl(JSON.stringify(data, null, 2), _pageFileName(pg, state.currentPage) + '.json', 'application/json');
+  dl(JSON.stringify(data, null, 2), fname + '.json', 'application/json');
   pg.dirty = false;
   renderPageTabs();
 }
@@ -89,6 +95,11 @@ function saveProject() {
 function saveAllProject() {
   // 全ページまとめて保存
   _syncCurrentPage();
+  const defaultBase = (state.saveFileName || '図面').replace(/[\\/:*?"<>|]/g, '_');
+  const name = prompt('保存ファイル名を入力してください', defaultBase);
+  if (name === null) return; // キャンセル
+  const base = (name.trim() || defaultBase).replace(/[\\/:*?"<>|]/g, '_');
+  state.saveFileName = base;
   const data = {
     version: 2,
     saveFileName: state.saveFileName,
@@ -98,7 +109,6 @@ function saveAllProject() {
     layers:        LAYERS,
     pages: state.pages,
   };
-  const base = (state.saveFileName || '図面').replace(/[\\/:*?"<>|]/g, '_');
   dl(JSON.stringify(data, null, 2), base + '_all.json', 'application/json');
   state.pages.forEach(p => p.dirty = false);
   renderPageTabs();
