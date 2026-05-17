@@ -386,9 +386,10 @@ function _exportPDFPages(indices, filename) {
         const origSel = { els: new Set(state.sel.els), wires: new Set(state.sel.wires) };
         cv = oc; ctx = octx;
         state.zoom = sc2;
+        state.pdfZoom = sc2;
+        state.pdfMode = true;
         state.sel.els.clear(); state.sel.wires.clear();
 
-        // プレビューと完全同一のpan設定
         if (fr2) {
           state.pan = { x: 0, y: 0 };
         } else {
@@ -399,6 +400,8 @@ function _exportPDFPages(indices, filename) {
         draw();
 
         state.pdfSkipText = false;
+        state.pdfMode = false;
+        state.pdfZoom = null;
         cv = origCv; ctx = origCtx;
         state.zoom = origZoom;
         state.pan = origPan;
