@@ -205,7 +205,7 @@ function parseDXF(text, isOwnFile){
   allLayers.forEach(name=>{if(name&&!LAYERS.find(l=>l.name===name)){LAYERS.push({name,color:'#228844',visible:true,locked:false,active:false,lineWidth:1,lineDash:'solid',fontSize:null});}});
   renderLayers();
   document.getElementById('dxf-log-body').innerHTML=`<p style="font-size:11px;margin-bottom:8px">読込完了: <b>${total}</b>要素</p><table class="tbl"><tr><th>種別</th><th>件数</th></tr><tr><td>配線</td><td>${lc}</td></tr><tr><td>円</td><td>${cc}</td></tr><tr><td>テキスト</td><td>${tc}</td></tr><tr><td>シンボル</td><td>${ic}</td></tr></table>${total===0?'<p style="font-size:11px;color:var(--red);margin-top:6px">要素が読み込めませんでした</p>':''}`;
-  // 座標範囲を検出して縮尺ダイアログを表示（外部DXFのみ）
+  // 座標範囲を検出（外部DXFのみ縮尺ダイアログを表示）
   if (!isOwnFile) {
     const allX = [], allY = [];
     state.elements.forEach(el => {
@@ -217,38 +217,44 @@ function parseDXF(text, isOwnFile){
     if (allX.length > 0) {
       const rangeW = Math.round(Math.max(...allX) - Math.min(...allX));
       const rangeH = Math.round(Math.max(...allY) - Math.min(...allY));
-      const ans = prompt(
-        `DXF座標範囲: ${rangeW} × ${rangeH} 単位\n\n` +
-        `縮尺倍率を入力してください\n` +
-        `例: 1=そのまま / 2=2倍 / 0.5=半分\n` +
-        `（mm単位DXF→グリッド10px合わせは "2" 推奨）`,
-        '1'
-      );
-      if (ans !== null) {
-        const sc = parseFloat(ans);
-        if (!isNaN(sc) && sc > 0 && sc !== 1) {
-          state.elements.forEach(el => {
-            if (el.x1 != null) {
-              el.x1 *= sc; el.y1 *= sc; el.x2 *= sc; el.y2 *= sc;
-              if (el.bx != null) { el.bx *= sc; el.by *= sc; }
-            } else if (el.x != null) {
-              el.x *= sc; el.y *= sc;
-              if (el.r != null) el.r *= sc;
-              if (el.w != null) { el.w *= sc; if (el.h != null) el.h *= sc; }
-              if (el.fs != null) el.fs = Math.max(8, Math.min(72, Math.round(el.fs * sc)));
-            }
-          });
-          state.wires.forEach(w => {
-            w.x1 *= sc; w.y1 *= sc; w.x2 *= sc; w.y2 *= sc;
-            if (w.pts) w.pts = w.pts.map(p => ({ x: p.x * sc, y: p.y * sc }));
-          });
-        }
-      }
+      const recScale = rangeH > 0 ? (594 / rangeH).toFixed(2) : '1';
+      document.getElementById('dxf-scale-range').textContent =
+        `座標範囲: ${rangeW} × ${rangeH} 単位　（A3高さ基準の推奨倍率: ${recScale}）`;
+      document.getElementById('dxf-scale-val').value = recScale;
+      document.getElementById('dxf-scale-overlay').style.display = 'flex';
+      return; // applyDXFScale()でdraw()を呼ぶ
     }
   }
 
   const ov = document.getElementById('dxf-log-overlay');
   ov.style.display = 'flex';
+  draw();
+}
+
+function applyDXFScale(skip) {
+  document.getElementById('dxf-scale-overlay').style.display = 'none';
+  if (!skip) {
+    const sc = parseFloat(document.getElementById('dxf-scale-val').value);
+    const applyFs = document.getElementById('dxf-scale-fs').checked;
+    if (!isNaN(sc) && sc > 0 && sc !== 1) {
+      state.elements.forEach(el => {
+        if (el.x1 != null) {
+          el.x1 *= sc; el.y1 *= sc; el.x2 *= sc; el.y2 *= sc;
+          if (el.bx != null) { el.bx *= sc; el.by *= sc; }
+        } else if (el.x != null) {
+          el.x *= sc; el.y *= sc;
+          if (el.r != null) el.r *= sc;
+          if (el.w != null) { el.w *= sc; if (el.h != null) el.h *= sc; }
+          if (applyFs && el.fs != null) el.fs = Math.max(8, Math.min(72, Math.round(el.fs * sc)));
+        }
+      });
+      state.wires.forEach(w => {
+        w.x1 *= sc; w.y1 *= sc; w.x2 *= sc; w.y2 *= sc;
+        if (w.pts) w.pts = w.pts.map(p => ({ x: p.x * sc, y: p.y * sc }));
+      });
+    }
+  }
+  document.getElementById('dxf-log-overlay').style.display = 'flex';
   draw();
 }
 
