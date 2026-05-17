@@ -361,7 +361,7 @@ function _exportPDFPages(indices, filename) {
         const dpi = 300;
         const pxPerMM = dpi / 25.4;
         // プレビューと同じ: pageW/pageH（world単位）を基準にzoom計算
-        const fr2 = pg.frameObj;
+        const fr2 = maskedFrame(pg.frameObj);
         let pageW2, pageH2;
         if (fr2) {
           pageW2 = (fr2.wMM || fr2.w || 297) * (fr2.sc || 1);

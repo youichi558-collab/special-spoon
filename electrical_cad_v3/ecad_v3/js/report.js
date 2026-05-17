@@ -114,7 +114,7 @@ function exportTerminalCSV() {
 // ================================================================
 function exportAIAnalysis() {
   const skip = ['text','rect','circle','fline','dim','leader','angle_dim'];
-  const frame = state.pages[state.currentPage]?.frameObj || {};
+  const frame = maskedFrame(state.pages[state.currentPage]?.frameObj) || {};
 
   // 部品リスト
   const parts = state.elements

@@ -96,6 +96,7 @@ const state = {
   // ----------------------------------------------------------------
   snapPreview:  null,
   pdfMode:      false,   // PDF出力中フラグ
+  maskMode:     false,   // マスクモード（個人情報マスク）
   pdfZoom:      0,        // PDF出力時の実キャンバス倍率（線幅は state.zoom で計算）
   pdfDpi:       96,       // PDF出力DPI
   pendingRef:   null,

@@ -493,3 +493,28 @@ function insertCoverPage() {
   alert('表紙ページを先頭に挿入しました。');
 }
 
+
+// ================================================================
+// マスクモード
+// ================================================================
+const MASK_FIELDS = ['company', 'equip', 'author', 'approve', 'date'];
+
+function toggleMask() {
+  state.maskMode = !state.maskMode;
+  const btn = document.getElementById('rb-mask');
+  if (btn) {
+    btn.style.background = state.maskMode ? 'var(--accent)' : '';
+    btn.style.color = state.maskMode ? '#fff' : '';
+  }
+  const status = state.maskMode ? 'ON（個人情報マスク中）' : 'OFF';
+  console.log('[mask] マスクモード:', status);
+}
+
+// frameObjのマスク済みコピーを返す
+function maskedFrame(frameObj) {
+  if (!frameObj || !state.maskMode) return frameObj;
+  const f = { ...frameObj };
+  MASK_FIELDS.forEach(k => { if (f[k]) f[k] = '***'; });
+  return f;
+}
+
