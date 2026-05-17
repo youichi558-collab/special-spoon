@@ -108,6 +108,99 @@ function exportTerminalCSV() {
   dl(rows.join('\n'), 'terminal_table.csv', 'text/csv');
 }
 
+
+// ================================================================
+// AI解析エクスポート
+// ================================================================
+function exportAIAnalysis() {
+  const skip = ['text','rect','circle','fline','dim','leader','angle_dim'];
+  const frame = state.pages[state.currentPage]?.frameObj || {};
+
+  // 部品リスト
+  const parts = state.elements
+    .filter(el => !skip.includes(el.type))
+    .map(el => ({
+      id:        el.id,
+      partRef:   el.partRef || '',
+      label:     el.label   || '',
+      type:      el.type,
+      terminals: el.terminals || '',
+      note:      el.note    || '',
+      layer:     el.layer   || '',
+    }));
+
+  // 配線リスト（From-To付き）
+  const getLabel = id => {
+    const el = state.elements.find(e => e.id === id);
+    return el ? (el.partRef || el.label || el.type) : '';
+  };
+  const wires = state.wires.map(w => ({
+    wireNo:      w.wireNo || '',
+    fromPartRef: getLabel(w.fromElId),
+    fromElId:    w.fromElId    || '',
+    fromTermIdx: w.fromTermIdx !== '' ? w.fromTermIdx : '',
+    toPartRef:   getLabel(w.toElId),
+    toElId:      w.toElId      || '',
+    toTermIdx:   w.toTermIdx   !== '' ? w.toTermIdx   : '',
+  }));
+
+  // ページ情報
+  const pageInfo = {
+    title:   frame.title   || '',
+    drawno:  frame.drawno  || '',
+    equip:   frame.equip   || '',
+    date:    frame.date    || '',
+    page:    frame.page    || '',
+    rev:     frame.rev     || '',
+  };
+
+  // Markdown形式（Claudeに貼りやすい）
+  const lines = [];
+  lines.push(`# 電気図面 AI解析データ`);
+  lines.push(``);
+  lines.push(`## 図面情報`);
+  lines.push(`- 図面名: ${pageInfo.title}`);
+  lines.push(`- 図面番号: ${pageInfo.drawno}`);
+  lines.push(`- 設備名: ${pageInfo.equip}`);
+  lines.push(`- 日付: ${pageInfo.date}`);
+  lines.push(`- ページ: ${pageInfo.page}`);
+  lines.push(``);
+
+  lines.push(`## 部品リスト（${parts.length}件）`);
+  lines.push(`| 部品番号 | ラベル | 種別 | 端子番号 | メモ |`);
+  lines.push(`|---------|--------|------|---------|------|`);
+  parts.forEach(p => {
+    lines.push(`| ${p.partRef||'-'} | ${p.label||'-'} | ${p.type} | ${p.terminals||'-'} | ${p.note||''} |`);
+  });
+  lines.push(``);
+
+  const connWires = wires.filter(w => w.fromElId || w.toElId);
+  lines.push(`## 配線リスト（接続情報あり: ${connWires.length}件 / 計${wires.length}件）`);
+  lines.push(`| 線番 | From部品 | To部品 |`);
+  lines.push(`|------|---------|--------|`);
+  connWires.forEach(w => {
+    lines.push(`| ${w.wireNo||'-'} | ${w.fromPartRef||'-'} | ${w.toPartRef||'-'} |`);
+  });
+  lines.push(``);
+
+  const noConn = wires.filter(w => !w.fromElId && !w.toElId);
+  if (noConn.length) {
+    lines.push(`## 接続情報なし配線（${noConn.length}件）`);
+    lines.push(noConn.map(w => w.wireNo || '-').join(', '));
+    lines.push(``);
+  }
+
+  lines.push(`---`);
+  lines.push(`*このデータは電気CADから自動生成されました*`);
+
+  const md = lines.join('\n');
+  dl(md, 'ai_analysis.md', 'text/markdown');
+
+  // JSON版も出力
+  const json = JSON.stringify({ pageInfo, parts, wires }, null, 2);
+  dl(json, 'ai_analysis.json', 'application/json');
+}
+
 // ================================================================
 // DXF・印刷
 // ================================================================
