@@ -99,15 +99,26 @@ const wireTool = {
   onDown(wx, wy, e) {
     const sp = snapWirePoint(wx, wy, state.wirePoints.at(-1)?.x, state.wirePoints.at(-1)?.y);
     state.wirePoints.push({ x: sp.x, y: sp.y });
+    // スナップ先の端子情報を記録
+    if (!state.wireSnapPts) state.wireSnapPts = [];
+    state.wireSnapPts.push(sp.snapType === 'terminal' ? { elId: sp.elId, termIdx: sp.termIdx } : null);
     if (state.wirePoints.length >= 2) {
       const pts = [...state.wirePoints];
+      const snaps = state.wireSnapPts || [];
+      const fromSnap = snaps[0];
+      const toSnap   = snaps[snaps.length - 1];
       pushH();
       state.wires.push({ id: genId('w'),
         pts, x1: pts[0].x, y1: pts[0].y,
         x2: pts[pts.length-1].x, y2: pts[pts.length-1].y,
         layer: activeLayer(), wireNo: '',
+        fromElId:   fromSnap?.elId   || '',
+        fromTermIdx:fromSnap?.termIdx ?? '',
+        toElId:     toSnap?.elId     || '',
+        toTermIdx:  toSnap?.termIdx  ?? '',
       });
       state.wirePoints = [{ x: sp.x, y: sp.y }];
+      state.wireSnapPts = [sp.snapType === 'terminal' ? { elId: sp.elId, termIdx: sp.termIdx } : null];
       state.preview = null;
     }
   },

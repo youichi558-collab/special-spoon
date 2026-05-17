@@ -43,19 +43,20 @@ function getAllSnapPoints(wx, wy) {
       const cS = state.customSymbols.find(s => s.type === el.type);
       const rot = (el.rot || 0) * Math.PI / 180;
       if (cS && cS.terminals?.length) {
-        cS.terminals.forEach(t => {
+        cS.terminals.forEach((t, ti) => {
           const rx = t.x * Math.cos(rot) - t.y * Math.sin(rot);
           const ry = t.x * Math.sin(rot) + t.y * Math.cos(rot);
           const dist = Math.hypot(wx - (el.x+rx), wy - (el.y+ry));
-          if (dist < bestD) { bestD = dist; best = { x: el.x+rx, y: el.y+ry, snapType:'endpoint' }; }
+          if (dist < bestD) { bestD = dist; best = { x: el.x+rx, y: el.y+ry, snapType:'terminal', elId: el.id, termIdx: ti }; }
         });
       } else {
         const sc = el.scale || 1;
         const hw = (d.w||0)/2 * sc;
-        [+hw, -hw].forEach(dx => {
+        const termDefs = d.terminals || [];
+        [+hw, -hw].forEach((dx, ti) => {
           const rx = dx * Math.cos(rot), ry = dx * Math.sin(rot);
           const dist = Math.hypot(wx - (el.x+rx), wy - (el.y+ry));
-          if (dist < bestD) { bestD = dist; best = { x: el.x+rx, y: el.y+ry, snapType:'endpoint' }; }
+          if (dist < bestD) { bestD = dist; best = { x: el.x+rx, y: el.y+ry, snapType:'terminal', elId: el.id, termIdx: ti }; }
         });
       }
     }
