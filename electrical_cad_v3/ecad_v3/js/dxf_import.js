@@ -27,14 +27,14 @@ function loadDXF(input){
     }
 
     const rd2=new FileReader();
-    rd2.onload=e2=>parseDXF(e2.target.result);
+    rd2.onload=e2=>parseDXF(e2.target.result, isOwnFile);
     rd2.readAsText(f,enc);
   };
   rd.readAsArrayBuffer(f);
   input.value='';
 }
 
-function parseDXF(text){
+function parseDXF(text, isOwnFile){
   // 改行コード正規化（CR/LF両対応）
   const lines=text.split('\n').map(l=>l.replace(/\r/g,'').trim());
   const pairs=[];
@@ -205,6 +205,47 @@ function parseDXF(text){
   allLayers.forEach(name=>{if(name&&!LAYERS.find(l=>l.name===name)){LAYERS.push({name,color:'#228844',visible:true,locked:false,active:false,lineWidth:1,lineDash:'solid',fontSize:null});}});
   renderLayers();
   document.getElementById('dxf-log-body').innerHTML=`<p style="font-size:11px;margin-bottom:8px">読込完了: <b>${total}</b>要素</p><table class="tbl"><tr><th>種別</th><th>件数</th></tr><tr><td>配線</td><td>${lc}</td></tr><tr><td>円</td><td>${cc}</td></tr><tr><td>テキスト</td><td>${tc}</td></tr><tr><td>シンボル</td><td>${ic}</td></tr></table>${total===0?'<p style="font-size:11px;color:var(--red);margin-top:6px">要素が読み込めませんでした</p>':''}`;
+  // 座標範囲を検出して縮尺ダイアログを表示（外部DXFのみ）
+  if (!isOwnFile) {
+    const allX = [], allY = [];
+    state.elements.forEach(el => {
+      if (el.x1 != null) { allX.push(el.x1, el.x2); allY.push(el.y1, el.y2); }
+      else if (el.x != null) { allX.push(el.x); allY.push(el.y); }
+    });
+    state.wires.forEach(w => { allX.push(w.x1, w.x2); allY.push(w.y1, w.y2); });
+
+    if (allX.length > 0) {
+      const rangeW = Math.round(Math.max(...allX) - Math.min(...allX));
+      const rangeH = Math.round(Math.max(...allY) - Math.min(...allY));
+      const ans = prompt(
+        `DXF座標範囲: ${rangeW} × ${rangeH} 単位\n\n` +
+        `縮尺倍率を入力してください\n` +
+        `例: 1=そのまま / 2=2倍 / 0.5=半分\n` +
+        `（mm単位DXF→グリッド10px合わせは "2" 推奨）`,
+        '1'
+      );
+      if (ans !== null) {
+        const sc = parseFloat(ans);
+        if (!isNaN(sc) && sc > 0 && sc !== 1) {
+          state.elements.forEach(el => {
+            if (el.x1 != null) {
+              el.x1 *= sc; el.y1 *= sc; el.x2 *= sc; el.y2 *= sc;
+              if (el.bx != null) { el.bx *= sc; el.by *= sc; }
+            } else if (el.x != null) {
+              el.x *= sc; el.y *= sc;
+              if (el.r != null) el.r *= sc;
+              if (el.w != null) { el.w *= sc; if (el.h != null) el.h *= sc; }
+            }
+          });
+          state.wires.forEach(w => {
+            w.x1 *= sc; w.y1 *= sc; w.x2 *= sc; w.y2 *= sc;
+            if (w.pts) w.pts = w.pts.map(p => ({ x: p.x * sc, y: p.y * sc }));
+          });
+        }
+      }
+    }
+  }
+
   const ov = document.getElementById('dxf-log-overlay');
   ov.style.display = 'flex';
   draw();
