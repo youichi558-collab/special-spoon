@@ -118,7 +118,7 @@ function drawWires() {
     }
 
     // 線番
-    if (w.wireNo) {
+    if (w.wireNo && !state.pdfSkipText) {
       const n = pts.length;
       const i = Math.floor((n-1)/2), j = Math.ceil((n-1)/2);
       const mp = n >= 2 ? { x:(pts[i].x+pts[j].x)/2, y:(pts[i].y+pts[j].y)/2 } : pts[0];
@@ -174,7 +174,7 @@ function drawElements() {
     const lc  = lay ? lay.color : fgC();
 
     if (el.type === 'text') {
-      drawTextEl(el, sel, lc, lay);
+      if (!state.pdfSkipText) drawTextEl(el, sel, lc, lay);
     } else if (el.type === 'rect') {
       drawRectEl(el, sel, lc, lay);
     } else if (el.type === 'circle') {
@@ -305,7 +305,7 @@ function drawSymEl(el, sel, lc) {
   } else {
     drawSym(el.type, el.x, el.y, sel, el.rot||0, el.flipH, el.flipV, el.color||lc, el.lineStyle);
   }
-  if (el.label) {
+  if (el.label && !state.pdfSkipText) {
     const d   = getDef(el.type) || { w:64, h:34 };
     const sc  = el.scale || 1;
     const lox = el.labelOffX || 0;

@@ -370,19 +370,20 @@ function _exportPDFPages(indices, filename) {
         octx.fillStyle = '#ffffff';
         octx.fillRect(0, 0, imgW, imgH);
 
-        // draw.jsの描画関数を使ってオフスクリーンcanvasに描画
+        // draw.jsの描画関数を使ってオフスクリーンcanvasに描画（テキストなし）
         const origCv = cv, origCtx = ctx, origZoom = state.zoom;
         const origOffX = state.offsetX, origOffY = state.offsetY;
         cv = oc; ctx = octx;
 
-        // ズーム・オフセットを設定（contentの左上がcanvasの(0,0)に来るように）
         const zoom = imgW / contentW;
         state.zoom = zoom;
         state.offsetX = -b.minX * zoom;
         state.offsetY = -b.minY * zoom;
+        state.pdfSkipText = true;  // テキストをスキップ
 
         draw();
 
+        state.pdfSkipText = false;
         cv = origCv; ctx = origCtx;
         state.zoom = origZoom;
         state.offsetX = origOffX; state.offsetY = origOffY;
@@ -391,6 +392,95 @@ function _exportPDFPages(indices, filename) {
         const dataURL = oc.toDataURL('image/png');
         pdf.addImage(dataURL, 'PNG', 0, 0, pdfW, pdfH, '', 'FAST');
       }
+
+      // ================================================================
+      // テキストレイヤー（検索可能なベクターテキスト）
+      // ================================================================
+      function pdfVecText(wx, wy, text, color, fsPt, align) {
+        if (!text) return;
+        const m = (color||'#000').match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+        if (m) pdf.setTextColor(parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16));
+        else pdf.setTextColor(0,0,0);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(fsPt || 8);
+        pdf.text(String(text), tx(wx), ty(wy), { align: align||'center', renderingMode: 'invisible' });
+        pdf.setTextColor(0,0,0);
+      }
+
+      const baseFsPt = 10 * s * 2.835;
+
+      // 線番
+      (pg.wires||[]).forEach(w => {
+        if (!w.wireNo) return;
+        const pts2 = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
+        if (pts2.length < 2) return;
+        const n2 = pts2.length;
+        const i2 = Math.floor((n2-1)/2), j2 = Math.ceil((n2-1)/2);
+        const mp = { x:(pts2[i2].x+pts2[j2].x)/2, y:(pts2[i2].y+pts2[j2].y)/2 };
+        pdfVecText(mp.x, mp.y - 16, w.wireNo, '#1e40af', baseFsPt * 0.9);
+      });
+
+      // テキスト要素
+      (pg.elements||[]).forEach(el => {
+        const lay2 = LAYERS.find(l => l.name===el.layer);
+        if (lay2 && !lay2.visible) return;
+        const elColor = el.color || (lay2 ? lay2.color : '#000000');
+        const sc2 = el.scale || 1;
+
+        if (el.type === 'text') {
+          const fsPt = (el.fs || 12) * s * 2.835;
+          const lines2 = (el.text || '').split('\n');
+          lines2.forEach((line, li) => {
+            pdfVecText(el.x, el.y + li * (el.fs||12) * s, line, elColor, fsPt);
+          });
+        } else if (el.label) {
+          const def2 = getDef(el.type) || { w:40, h:20 };
+          const hw2 = (def2.w * sc2) / 2;
+          const rot2 = el.rot || 0;
+          const lox = el.labelOffX || 0;
+          const loy = el.labelOffY || (def2.h * sc2 / 2 + 15 * sc2);
+          const ang = rot2 * Math.PI / 180;
+          const lx2 = el.x + (lox * Math.cos(ang) - loy * Math.sin(ang));
+          const ly2 = el.y + (lox * Math.sin(ang) + loy * Math.cos(ang));
+          const fsPt2 = (el.labelFs || 11) * sc2 * s * 2.835;
+          pdfVecText(lx2, ly2, el.label, elColor, fsPt2);
+        }
+
+        // 寸法テキスト
+        if (el.type === 'dim' && el.dimText) {
+          const dx2=el.x2-el.x1, dy2=el.y2-el.y1, len2=Math.hypot(dx2,dy2);
+          if (len2 > 0.1) {
+            const sign2=el.offsetSign||1, off2=(el.offset||30)*sign2;
+            const ux2=dx2/len2, uy2=dy2/len2;
+            const mx2=(el.x1+el.x2)/2 - uy2*off2 + (el.dimTx||0);
+            const my2=(el.y1+el.y2)/2 + ux2*off2 + (el.dimTy||0);
+            const fsPt3 = (el.dimFs||11) * s * 2.835;
+            pdfVecText(mx2, my2, el.dimText, el.color||'#744da9', fsPt3);
+          }
+        }
+
+        // 引き出し線テキスト
+        if (el.type === 'leader' && el.leaderText) {
+          const ltx2 = el.x2 + (el.leaderTx||0);
+          const lty2 = el.y2 + (el.leaderTy||0);
+          const fsPt4 = (el.leaderFs||11) * s * 2.835;
+          pdfVecText(ltx2, lty2, el.leaderText, el.color||'#744da9', fsPt4, 'left');
+        }
+
+        // 角度寸法テキスト
+        if (el.type === 'angle_dim' && el.dimText) {
+          const a1_2 = Math.atan2(el.y1-el.cy, el.x1-el.cx);
+          const a2_2 = Math.atan2(el.y2-el.cy, el.x2-el.cx);
+          let da2 = a2_2 - a1_2;
+          if (da2 < 0) da2 += Math.PI*2;
+          const aMid2 = a1_2 + (da2 > Math.PI ? -(Math.PI*2-da2)/2 : da2/2);
+          const r2 = (el.r||30) + 14;
+          const dtx2 = el.cx + Math.cos(aMid2)*r2 + (el.dimTx||0);
+          const dty2 = el.cy + Math.sin(aMid2)*r2 + (el.dimTy||0);
+          const fsPt5 = (el.dimFs||11) * s * 2.835;
+          pdfVecText(dtx2, dty2, el.dimText, el.color||'#744da9', fsPt5);
+        }
+      });
 
 
 
