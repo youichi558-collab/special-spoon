@@ -35,6 +35,13 @@ function calcElHandles(elId) {
       { wx:el.x-r, wy:el.y,   hid:'w', el },
     ];
   }
+  // fline: 端点ハンドル（p1=始点, p2=終点）
+  if (el.type === 'fline') {
+    return [
+      { wx: el.x1, wy: el.y1, hid: 'p1', el },
+      { wx: el.x2, wy: el.y2, hid: 'p2', el },
+    ];
+  }
   const d = getDef(el.type);
   if (!d || d.w === 0) return [];
   const rot = (el.rot||0)*Math.PI/180;
@@ -124,6 +131,10 @@ function applyElResize(wx, wy) {
     else if (handle==='nw') { const nx=snap(wx),ny=snap(wy); el.x=nx; el.y=ny; el.w=Math.max(10,orig.x+orig.w-nx); el.h=Math.max(10,orig.y+orig.h-ny); }
   } else if (el.type === 'circle') {
     el.r = Math.max(5, Math.hypot(wx-orig.x, wy-orig.y));
+  } else if (el.type === 'fline') {
+    // 端点ドラッグ（伸縮）
+    if (handle === 'p1') { el.x1 = snap(wx); el.y1 = snap(wy); }
+    if (handle === 'p2') { el.x2 = snap(wx); el.y2 = snap(wy); }
   } else {
     // ハンドル開始距離とマウス現在距離の比でscaleを計算
     const currentDist = Math.hypot(wx - orig.x, wy - orig.y);
