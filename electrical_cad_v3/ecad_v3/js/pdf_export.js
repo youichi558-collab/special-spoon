@@ -558,11 +558,11 @@ function _exportPDFPages(indices, filename) {
             let da = a2 - a1;
             if (da < 0) da += Math.PI*2;
             const ccw = da > Math.PI;
-            const rPDF = r * s; // px→mm変換
-            // Y軸反転に合わせて角度を反転（canvasはY下向き、PDFはY上向き）
+            // tx/tyで変換した中心座標を使って弧を描く
+            // r はworld座標なのでtx(cx+r)-tx(cx)でmm換算する
+            const rPDF = tx(el.cx + r) - tx(el.cx);
             const pa1 = -a1, pa2 = -a2;
             let pda = pa2 - pa1;
-            // Y反転で弧の方向が逆になるため条件を反転
             if (da > Math.PI) {
               if (pda > 0) pda -= Math.PI*2;
             } else {
