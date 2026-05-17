@@ -355,33 +355,42 @@ function _exportPDFPages(indices, filename) {
       pdf.rect(0, 0, pdfW, pdfH, 'F');
 
       // ================================================================
-      // Canvas高解像度画像としてPDFに貼り付け（プレビューと完全一致）
+      // Canvas高解像度画像としてPDFに貼り付け（プレビューと完全同一の描画方式）
       // ================================================================
       {
         const dpi = 300;
         const pxPerMM = dpi / 25.4;
+        // プレビューと同じ: pageW/pageH（world単位）を基準にzoom計算
+        const fr2 = pg.frameObj;
+        let pageW2, pageH2;
+        if (fr2) {
+          pageW2 = (fr2.wMM || fr2.w || 297) * (fr2.sc || 1);
+          pageH2 = (fr2.hMM || fr2.h || 210) * (fr2.sc || 1);
+        } else {
+          pageW2 = contentW; pageH2 = contentH;
+        }
         const imgW = Math.round(pdfW * pxPerMM);
         const imgH = Math.round(pdfH * pxPerMM);
+        const sc2 = Math.min(imgW / pageW2, imgH / pageH2);
 
-        // オフスクリーンcanvasに描画
         const oc = document.createElement('canvas');
         oc.width = imgW; oc.height = imgH;
         const octx = oc.getContext('2d');
         octx.fillStyle = '#ffffff';
         octx.fillRect(0, 0, imgW, imgH);
 
-        // draw.jsの描画関数を使ってオフスクリーンcanvasに描画（テキストなし）
         const origCv = cv, origCtx = ctx, origZoom = state.zoom;
         const origPan = { ...state.pan };
+        const origSel = { els: new Set(state.sel.els), wires: new Set(state.sel.wires) };
         cv = oc; ctx = octx;
+        state.zoom = sc2;
+        state.sel.els.clear(); state.sel.wires.clear();
 
-        const zoom = imgW / contentW;
-        state.zoom = zoom;
-        // プレビューと同じ方式：frameObjあり→pan(0,0)、なし→minX/minYを考慮
-        if (pg.frameObj) {
+        // プレビューと完全同一のpan設定
+        if (fr2) {
           state.pan = { x: 0, y: 0 };
         } else {
-          state.pan = { x: -b.minX * zoom, y: -b.minY * zoom };
+          state.pan = { x: -b.minX * sc2, y: -b.minY * sc2 };
         }
         state.pdfSkipText = true;
 
@@ -391,9 +400,12 @@ function _exportPDFPages(indices, filename) {
         cv = origCv; ctx = origCtx;
         state.zoom = origZoom;
         state.pan = origPan;
+        state.sel.els = origSel.els; state.sel.wires = origSel.wires;
 
-        // PDFに貼り付け
         const dataURL = oc.toDataURL('image/png');
+        // 画像をページ中央に配置（プレビューと同じアスペクト比を維持）
+        const imgWmm = pageW2 * (pdfW / pageW2);
+        const imgHmm = pageH2 * (pdfH / pageH2);
         pdf.addImage(dataURL, 'PNG', 0, 0, pdfW, pdfH, '', 'FAST');
       }
 
