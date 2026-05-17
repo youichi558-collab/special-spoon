@@ -235,6 +235,7 @@ function parseDXF(text, isOwnFile){
               el.x *= sc; el.y *= sc;
               if (el.r != null) el.r *= sc;
               if (el.w != null) { el.w *= sc; if (el.h != null) el.h *= sc; }
+              if (el.fs != null) el.fs = Math.max(8, Math.min(72, Math.round(el.fs * sc)));
             }
           });
           state.wires.forEach(w => {
