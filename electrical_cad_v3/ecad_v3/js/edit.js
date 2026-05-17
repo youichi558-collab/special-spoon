@@ -396,58 +396,89 @@ function insertCoverPage() {
     return { id, type:'text', x, y, rot:0, flipH:false, flipV:false,
              label:'', text, fs, partRef:'', terminals:'', layer:'注記', wireNo:'', note:'' };
   }
-  function fl(id, x1, y1, x2, y2) {
+  function fl(id, x1, y1, x2, y2, lw=1) {
     return { id, type:'fline', x1, y1, x2, y2, rot:0, flipH:false, flipV:false,
-             label:'', partRef:'', terminals:'', layer:'外形', wireNo:'', note:'', lineWidth:1 };
+             label:'', partRef:'', terminals:'', layer:'外形', wireNo:'', note:'', lineWidth:lw };
   }
 
   const els = []; let n = 0;
   const id = () => 'cv_' + (n++);
 
-  // 外枠
-  els.push(fl(id(),20,20,820,20),fl(id(),820,20,820,574),fl(id(),820,574,20,574),fl(id(),20,574,20,20));
+  // 外枠（太線）
+  els.push(fl(id(),20,20,820,20,2),fl(id(),820,20,820,574,2),fl(id(),820,574,20,574,2),fl(id(),20,574,20,20,2));
 
-  // タイトルブロック
-  els.push(fl(id(),120,150,720,150),fl(id(),120,280,720,280),fl(id(),120,150,120,280),fl(id(),720,150,720,280));
-  els.push(txt(id(),cx,205,title,28));
-  if (equip) els.push(txt(id(),cx,248,equip,16));
+  // ロゴエリア（左上）
+  els.push(fl(id(),20,20,200,90));
+  els.push(txt(id(),110,58,'（ロゴ）',9));
 
-  // 情報ブロック
-  els.push(fl(id(),120,320,720,320),fl(id(),120,440,720,440));
-  els.push(fl(id(),120,320,120,440),fl(id(),720,320,720,440));
-  els.push(fl(id(),120,380,720,380));
-  els.push(fl(id(),300,320,300,440),fl(id(),480,320,480,440));
+  // タイトルエリア（上部、大きく）
+  els.push(fl(id(),200,20,820,90));
+  els.push(txt(id(),510,42,company,10));
+  els.push(txt(id(),510,68,title,24));
 
-  els.push(txt(id(),150,330,'図面番号',9),txt(id(),210,360,drawno,12));
-  els.push(txt(id(),330,330,'作成',9),txt(id(),390,360,author,12));
-  els.push(txt(id(),510,330,'承認',9),txt(id(),600,360,approve,12));
-  els.push(txt(id(),150,390,'日付',9),txt(id(),210,420,date,12));
-  els.push(txt(id(),330,390,'会社名',9),txt(id(),390,420,company,12));
-  els.push(txt(id(),510,390,'Rev',9),txt(id(),600,420,rev,12));
+  // 設備名（タイトル下）
+  if (equip) {
+    els.push(fl(id(),20,90,820,120));
+    els.push(txt(id(),cx,107,equip,13));
+  }
 
-  // ページリスト
-  const lt = 460, lh = 22;
-  const lb = lt + 40 + frames.length * lh;
-  els.push(fl(id(),120,lt,720,lt),fl(id(),120,lb,720,lb));
-  els.push(fl(id(),120,lt,120,lb),fl(id(),720,lt,720,lb));
-  els.push(fl(id(),120,lt+22,720,lt+22));
-  els.push(fl(id(),200,lt,200,lb),fl(id(),460,lt,460,lb));
-  els.push(txt(id(),cx,lt+14,'ページリスト',10));
-  els.push(txt(id(),160,lt+34,'No.',9),txt(id(),330,lt+34,'ページ名',9),txt(id(),590,lt+34,'図面番号',9));
-  els.push(fl(id(),120,lt+40,720,lt+40));
+  // ページリスト（中央エリア）
+  const lt = equip ? 130 : 100;
+  const lh = 20;
+  const lb = lt + 32 + frames.length * lh;
+  els.push(fl(id(),20,lt,820,lt),fl(id(),20,lb,820,lb));
+  els.push(fl(id(),20,lt,20,lb),fl(id(),820,lt,820,lb));
+  els.push(fl(id(),20,lt+18,820,lt+18));
+  els.push(txt(id(),cx,lt+11,'ページリスト',10));
+  // 列区切り
+  els.push(fl(id(),100,lt,100,lb));   // No列
+  els.push(fl(id(),500,lt,500,lb));   // 図面番号列
+  els.push(fl(id(),700,lt,700,lb));   // Rev列
+  // ヘッダ
+  els.push(fl(id(),20,lt+32,820,lt+32));
+  els.push(txt(id(),60,lt+24,'No.',9));
+  els.push(txt(id(),300,lt+24,'ページ名',9));
+  els.push(txt(id(),600,lt+24,'図面番号',9));
+  els.push(txt(id(),760,lt+24,'Rev',9));
 
   frames.forEach((pg,i) => {
-    const y = lt + 52 + i * lh;
-    els.push(txt(id(),160,y,String(i+1),10));
-    els.push(txt(id(),330,y,pg.name,10));
-    els.push(txt(id(),590,y,pg.f.drawno||'',10));
-    if (i < frames.length-1) els.push(fl(id(),120,y+12,720,y+12));
+    const y = lt + 44 + i * lh;
+    els.push(txt(id(),60,y,String(i+1),10));
+    els.push(txt(id(),300,y,pg.name,10));
+    els.push(txt(id(),600,y,pg.f.drawno||'',10));
+    els.push(txt(id(),760,y,pg.f.rev||'',10));
+    if (i < frames.length-1) els.push(fl(id(),20,y+10,820,y+10));
   });
+
+  // 下部情報ブロック（コンパクト）
+  const bt = lb + 10;
+  const bh = 28; // 行高さ
+  els.push(fl(id(),20,bt,820,bt),fl(id(),20,bt+bh*2,820,bt+bh*2));
+  els.push(fl(id(),20,bt,20,bt+bh*2),fl(id(),820,bt,820,bt+bh*2));
+  els.push(fl(id(),20,bt+bh,820,bt+bh));
+  // 縦区切り（6列）
+  [170,320,470,620,720].forEach(x => {
+    els.push(fl(id(),x,bt,x,bt+bh*2));
+  });
+  // 1行目ラベル
+  els.push(txt(id(),22,bt+5,'図面番号',8));
+  els.push(txt(id(),172,bt+5,'作成',8));
+  els.push(txt(id(),322,bt+5,'承認',8));
+  els.push(txt(id(),472,bt+5,'日付',8));
+  els.push(txt(id(),622,bt+5,'Rev',8));
+  els.push(txt(id(),722,bt+5,'会社名',8));
+  // 2行目 値
+  els.push(txt(id(),22,bt+bh+8,drawno,10));
+  els.push(txt(id(),172,bt+bh+8,author,10));
+  els.push(txt(id(),322,bt+bh+8,approve,10));
+  els.push(txt(id(),472,bt+bh+8,date,10));
+  els.push(txt(id(),622,bt+bh+8,rev,10));
+  els.push(txt(id(),722,bt+bh+8,company,10));
 
   pushH();
   const coverFrame = Object.assign({}, state.frameObj, { title, drawno, page:'表紙' });
   state.pages.unshift({ name:'表紙', elements:els, wires:[], groups:[], frameObj:coverFrame, dirty:true });
   switchPage(0);
-  alert('表紙ページを先頭に挿入しました。\nページ番号はそれぞれの図面枠で更新してください。');
+  alert('表紙ページを先頭に挿入しました。');
 }
 
