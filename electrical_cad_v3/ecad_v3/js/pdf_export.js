@@ -406,10 +406,9 @@ function _exportPDFPages(indices, filename) {
         state.sel.els = origSel.els; state.sel.wires = origSel.wires;
 
         const dataURL = oc.toDataURL('image/png');
-        // 画像をページ中央に配置（プレビューと同じアスペクト比を維持）
-        const imgWmm = pageW2 * (pdfW / pageW2);
-        const imgHmm = pageH2 * (pdfH / pageH2);
-        pdf.addImage(dataURL, 'PNG', 0, 0, pdfW, pdfH, '', 'FAST');
+        const actualW = pdf.internal.pageSize.getWidth();
+        const actualH = pdf.internal.pageSize.getHeight();
+        pdf.addImage(dataURL, 'PNG', 0, 0, actualW, actualH, '', 'FAST');
       }
 
       // ================================================================
