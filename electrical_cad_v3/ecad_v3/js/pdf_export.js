@@ -558,20 +558,23 @@ function _exportPDFPages(indices, filename) {
             let da = a2 - a1;
             if (da < 0) da += Math.PI*2;
             const ccw = da > Math.PI;
-            const rMM = r * s;
-            // Y軸反転に合わせて角度を反転
+            const rPDF = r * s; // px→mm変換
+            // Y軸反転に合わせて角度を反転（canvasはY下向き、PDFはY上向き）
             const pa1 = -a1, pa2 = -a2;
             let pda = pa2 - pa1;
-            if (ccw ? pda > 0 : pda < 0) pda = ccw ? pda - Math.PI*2 : pda + Math.PI*2;
+            if (da <= Math.PI) { // 元のcanvas空間でのccwでない場合
+              if (pda > 0) pda -= Math.PI*2;
+            } else {
+              if (pda < 0) pda += Math.PI*2;
+            }
             const steps = Math.max(8, Math.ceil(Math.abs(pda) / (Math.PI/8)));
             const stepA = pda / steps;
-            let prevX = tx(el.cx) + Math.cos(pa1) * rMM;
-            let prevY = ty(el.cy) + Math.sin(pa1) * rMM;
-            pdf.lines([], prevX, prevY);
+            let prevX = tx(el.cx) + Math.cos(pa1) * rPDF;
+            let prevY = ty(el.cy) + Math.sin(pa1) * rPDF;
             for (let k = 1; k <= steps; k++) {
               const ang = pa1 + stepA * k;
-              const nx = tx(el.cx) + Math.cos(ang) * rMM;
-              const ny = ty(el.cy) + Math.sin(ang) * rMM;
+              const nx = tx(el.cx) + Math.cos(ang) * rPDF;
+              const ny = ty(el.cy) + Math.sin(ang) * rPDF;
               pdf.line(prevX, prevY, nx, ny);
               prevX = nx; prevY = ny;
             }
