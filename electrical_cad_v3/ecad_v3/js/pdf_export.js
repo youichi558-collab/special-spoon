@@ -395,8 +395,6 @@ function _exportPDFPages(indices, filename) {
           state.pan = { x: -b.minX * sc2, y: -b.minY * sc2 };
         }
         state.pdfSkipText = true;
-        console.log('[PDF] imgW', imgW, 'imgH', imgH, 'sc2', sc2.toFixed(3), 'pan.x', state.pan.x, 'pan.y', state.pan.y);
-        console.log('[PDF] pdfW', pdfW, 'pdfH', pdfH);
 
         draw();
 
@@ -411,11 +409,7 @@ function _exportPDFPages(indices, filename) {
         // 画像をページ中央に配置（プレビューと同じアスペクト比を維持）
         const imgWmm = pageW2 * (pdfW / pageW2);
         const imgHmm = pageH2 * (pdfH / pageH2);
-        // jsPDFの実際のページサイズを確認
-        const actualW = pdf.internal.pageSize.getWidth();
-        const actualH = pdf.internal.pageSize.getHeight();
-        console.log('[PDF] jsPDF pageSize', actualW, 'x', actualH);
-        pdf.addImage(dataURL, 'PNG', 0, 0, actualW, actualH, '', 'FAST');
+        pdf.addImage(dataURL, 'PNG', 0, 0, pdfW, pdfH, '', 'FAST');
       }
 
       // ================================================================
