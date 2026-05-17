@@ -403,7 +403,7 @@ function _exportPDFPages(indices, filename) {
         else pdf.setTextColor(0,0,0);
         pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(fsPt || 8);
-        pdf.text(String(text), tx(wx), ty(wy), { align: align||'center', renderingMode: 'invisible' });
+        pdf.text(String(text), tx(wx), ty(wy), { align: align||'center' });
         pdf.setTextColor(0,0,0);
       }
 
