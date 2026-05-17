@@ -421,53 +421,55 @@ function insertCoverPage() {
   els.push(...box('logo', mx, my, mx+150, my+60));
   els.push(txt(id(), mx+75, my+33, '（ロゴ）', 9));
 
-  // ── タイトルエリア（中央上寄り、余白たっぷり）
-  // タイトル上部の余白: 上枠から約100px
-  const titleY = my + 130;
-  els.push(txt(id(), cx, titleY, title, 36));
+  // ── 下部情報欄の高さを先に計算
+  const infoH = 40;
+  const infoY = my + mh - infoH;
 
-  // 設備名（タイトル直下）
-  if (equip) els.push(txt(id(), cx, titleY + 50, equip, 18));
-
-  // 水平区切り線（タイトルエリアと下部の境界）
-  const divY = my + 280;
-  els.push(fl(id(), mx, divY, mx+mw, divY, 1));
-
-  // ── ページリスト（中段）
-  const lt = divY + 10;
-  const lh = 20;
-  const listW = mw - 40; // 左右余白20ずつ
-  const lx = mx + 20;
+  // ── ページリストの高さを計算
+  const lh = 22;
+  const listH = 42 + frames.length * lh; // ヘッダ+行
+  const listW = mw - 80;
+  const lx = mx + 40;
   const lrx = lx + listW;
-  const lb = lt + 30 + frames.length * lh + 2;
 
+  // ── 残り高さを3分割: タイトルエリア / ページリスト / 余白
+  const bodyH = infoY - my;           // 情報欄より上の高さ
+  const listTop = my + bodyH / 2 - listH / 2; // ページリストを縦中央に
+  const lt = Math.round(listTop);
+  const lb = lt + listH;
+
+  // タイトル位置（ページリストより上の空間の中央）
+  const titleAreaMid = my + (lt - my) / 2;
+  const titleY = Math.round(titleAreaMid - 10);
+  els.push(txt(id(), cx, titleY, title, 36));
+  if (equip) els.push(txt(id(), cx, titleY + 46, equip, 16));
+
+  // ── ページリスト
   els.push(...box('plst', lx, lt, lrx, lb));
-  // ヘッダ行
+  // ヘッダ
   els.push(fl(id(), lx, lt+20, lrx, lt+20));
   els.push(txt(id(), cx, lt+12, 'ページリスト', 10));
-  // 列区切り（No / ページ名 / 図面番号 / Rev）- 枠内に収める
-  const c1 = lx+60, c2 = lx+380, c3 = lx+620;
-  els.push(fl(id(),c1,lt+1,c1,lb-1), fl(id(),c2,lt+1,c2,lb-1), fl(id(),c3,lt+1,c3,lb-1));
-  // ヘッダラベル
-  els.push(fl(id(), lx, lt+38, lrx, lt+38));
-  els.push(txt(id(), lx+30, lt+30, 'No.', 9));
-  els.push(txt(id(), lx+220, lt+30, 'ページ名', 9));
-  els.push(txt(id(), lx+500, lt+30, '図面番号', 9));
-  els.push(txt(id(), lx+listW-40, lt+30, 'Rev', 9));
+  // 列区切り（枠内のみ: lt+1 〜 lb-1）
+  const nc = lx+60, pc = lx+Math.round(listW*0.45), dc = lx+Math.round(listW*0.75);
+  [nc, pc, dc].forEach(x => els.push(fl(id(), x, lt+1, x, lb-1)));
+  // 列ヘッダ
+  els.push(fl(id(), lx, lt+40, lrx, lt+40));
+  els.push(txt(id(), lx+30, lt+32, 'No.', 9));
+  els.push(txt(id(), (lx+nc+pc)/2, lt+32, 'ページ名', 9));
+  els.push(txt(id(), (nc+pc+dc)/2, lt+32, '図面番号', 9));
+  els.push(txt(id(), (dc+lrx)/2, lt+32, 'Rev', 9));
 
   frames.forEach((pg, i) => {
-    const y = lt + 50 + i * lh;
+    const y = lt + 52 + i * lh;
     els.push(txt(id(), lx+30, y, String(i+1), 10));
-    els.push(txt(id(), lx+220, y, pg.name, 10));
-    els.push(txt(id(), lx+500, y, pg.f.drawno||'', 10));
-    els.push(txt(id(), lx+listW-40, y, pg.f.rev||'', 10));
-    if (i < frames.length-1) els.push(fl(id(), lx, y+10, lrx, y+10));
+    els.push(txt(id(), (lx+60+pc)/2, y, pg.name, 10));
+    els.push(txt(id(), (pc+dc)/2, y, pg.f.drawno||'', 10));
+    els.push(txt(id(), (dc+lrx)/2, y, pg.f.rev||'', 10));
+    if (i < frames.length-1) els.push(fl(id(), lx, y+12, lrx, y+12));
   });
 
-  // ── 情報欄（最下部 1行、コンパクト）
-  const infoY = my + mh - 40;
+  // ── 情報欄（最下部）
   els.push(fl(id(), mx, infoY, mx+mw, infoY));
-  // 6列
   const cols = [
     { lbl:'図面番号', val:drawno, w:150 },
     { lbl:'作成',     val:author, w:110 },
