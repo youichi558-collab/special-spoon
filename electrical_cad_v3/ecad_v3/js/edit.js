@@ -449,9 +449,8 @@ function insertCoverPage() {
   // ヘッダ
   els.push(fl(id(), lx, lt+20, lrx, lt+20));
   els.push(txt(id(), cx, lt+12, 'ページリスト', 10));
-  // 列区切り（枠内のみ: lt+1 〜 lb-1）
+  // 列位置定義（縦線なし）
   const nc = lx+60, pc = lx+Math.round(listW*0.45), dc = lx+Math.round(listW*0.75);
-  [nc, pc, dc].forEach(x => els.push(fl(id(), x, lt+1, x, lb-1)));
   // 列ヘッダ
   els.push(fl(id(), lx, lt+40, lrx, lt+40));
   els.push(txt(id(), lx+30, lt+32, 'No.', 9));
