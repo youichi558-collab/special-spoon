@@ -562,7 +562,8 @@ function _exportPDFPages(indices, filename) {
             // Y軸反転に合わせて角度を反転（canvasはY下向き、PDFはY上向き）
             const pa1 = -a1, pa2 = -a2;
             let pda = pa2 - pa1;
-            if (da <= Math.PI) { // 元のcanvas空間でのccwでない場合
+            // Y反転で弧の方向が逆になるため条件を反転
+            if (da > Math.PI) {
               if (pda > 0) pda -= Math.PI*2;
             } else {
               if (pda < 0) pda += Math.PI*2;
