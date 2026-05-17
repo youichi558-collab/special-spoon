@@ -417,7 +417,9 @@ function _exportPDFPages(indices, filename) {
         const n2 = pts2.length;
         const i2 = Math.floor((n2-1)/2), j2 = Math.ceil((n2-1)/2);
         const mp = { x:(pts2[i2].x+pts2[j2].x)/2, y:(pts2[i2].y+pts2[j2].y)/2 };
-        pdfVecText(mp.x, mp.y - 16, w.wireNo, '#1e40af', baseFsPt * 0.9);
+        const wireFs = 10;
+        const wireOff = wireFs + 6;
+        pdfVecText(mp.x, mp.y - wireOff, w.wireNo, '#1e40af', wireFs * s * 2.835);
       });
 
       // テキスト要素
