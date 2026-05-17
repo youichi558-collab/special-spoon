@@ -108,9 +108,9 @@ function drawFrame(fr){
   ctx.lineWidth=1/state.zoom;
   ctx.strokeRect(MGpx,MGpx,innerW,innerH);
 
-  // 区域分割・ラベル（PDF出力時はスキップ）
+  // 区域分割・ラベル
   const colW=innerW/cols,rowH=drawH/rows;
-  if (!state.pdfMode) {
+  if (true) { // PDF出力時も描画
     ctx.strokeStyle=state.darkMode?'#555':'#999';ctx.lineWidth=0.5/state.zoom;
     ctx.fillStyle=state.darkMode?'#aaa':'#666';
     ctx.font=`${9}px sans-serif`;ctx.textAlign='center';
