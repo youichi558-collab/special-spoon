@@ -93,7 +93,7 @@ function drawWires() {
     if (lay && !lay.visible) return;
     const sel   = state.sel.wires.has(w.id);
     const color = sel ? '#0067c0' : (w.color || (lay ? lay.color : '#0F6E56'));
-    const lw    = w.lineWidth || lay?.lineWidth || 1;
+    const lw    = w.lineWidth || lay?.lineWidth || 1.5;
     const pts   = w.pts || [{ x:w.x1, y:w.y1 }, { x:w.x2, y:w.y2 }];
 
     ctx.save();
