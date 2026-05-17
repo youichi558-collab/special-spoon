@@ -384,9 +384,11 @@ function _exportPDFPages(indices, filename) {
         const origCv = cv, origCtx = ctx, origZoom = state.zoom;
         const origPan = { ...state.pan };
         const origSel = { els: new Set(state.sel.els), wires: new Set(state.sel.wires) };
+        const origFrameObj = state.frameObj;
         cv = oc; ctx = octx;
         state.zoom = sc2;
         state.pdfMode = true;
+        state.frameObj = maskedFrame(state.frameObj) || state.frameObj;
         state.sel.els.clear(); state.sel.wires.clear();
 
         if (fr2) {
@@ -400,6 +402,7 @@ function _exportPDFPages(indices, filename) {
 
         state.pdfSkipText = false;
         state.pdfMode = false;
+        state.frameObj = origFrameObj;
         cv = origCv; ctx = origCtx;
         state.zoom = origZoom;
         state.pan = origPan;
