@@ -539,6 +539,35 @@ function _exportPDFPages(indices, filename) {
             pdfText(tx(ltx)+0.5, ty(lty), el.leaderText, (el.leaderFs||11)*0.35, lc2, false, 'left');
           }
 
+        } else if (el.type === 'angle_dim') {
+          // 角度寸法
+          if (el.cx==null||el.x1==null||el.x2==null) { /* skip */ }
+          else {
+            const ac = el.color || '#744da9';
+            applyColor(ac);
+            pdf.setLineWidth(Math.max(0.05, (el.lineWidth||1)*s));
+            const a1 = Math.atan2(el.y1-el.cy, el.x1-el.cx);
+            const a2 = Math.atan2(el.y2-el.cy, el.x2-el.cx);
+            const r = el.r || 30;
+            // 引出し線
+            const d1 = Math.hypot(el.x1-el.cx, el.y1-el.cy);
+            const d2 = Math.hypot(el.x2-el.cx, el.y2-el.cy);
+            pdf.line(tx(el.cx), ty(el.cy), tx(el.cx+(el.x1-el.cx)/d1*(r+10)), ty(el.cy+(el.y1-el.cy)/d1*(r+10)));
+            pdf.line(tx(el.cx), ty(el.cy), tx(el.cx+(el.x2-el.cx)/d2*(r+10)), ty(el.cy+(el.y2-el.cy)/d2*(r+10)));
+            // 弧
+            let da = a2 - a1;
+            if (da < 0) da += Math.PI*2;
+            const ccw = da > Math.PI;
+            const rMM = r * s;
+            pdf.arc(tx(el.cx), ty(el.cy), rMM, a1*(180/Math.PI), a2*(180/Math.PI), ccw ? 'CCW' : 'CW', false);
+            // テキスト
+            const aMid = a1 + (ccw ? -(Math.PI*2-da)/2 : da/2);
+            const dtx = el.cx + Math.cos(aMid)*(r+14) + (el.dimTx||0);
+            const dty = el.cy + Math.sin(aMid)*(r+14) + (el.dimTy||0);
+            const txt = el.dimText || '';
+            if (txt) pdfText(tx(dtx), ty(dty), txt, (el.dimFs||11)*0.35, ac, true, 'center');
+          }
+
         } else {
           // カスタムシンボル: ベクター直接描画
           const cS = state.customSymbols?.find(cs => cs.type === el.type);
