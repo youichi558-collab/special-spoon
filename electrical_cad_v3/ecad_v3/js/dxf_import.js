@@ -231,6 +231,14 @@ function parseDXF(text, isOwnFile){
   draw();
 }
 
+function cancelDXFScale() {
+  document.getElementById('dxf-scale-overlay').style.display = 'none';
+  // 読み込んだ要素を破棄
+  state.elements = state.page.elements;
+  state.wires = state.page.wires;
+  draw();
+}
+
 function applyDXFScale(skip) {
   document.getElementById('dxf-scale-overlay').style.display = 'none';
   if (!skip) {
