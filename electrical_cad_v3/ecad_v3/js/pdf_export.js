@@ -155,9 +155,16 @@ function rasterizeSymEl(el, s) {
   const dpi = 200;
   const def = getDef(el.type) || { w:40, h:40 };
   const sc  = el.scale || 1;
-  const pad = 4;
-  const wW = (def.w * sc || 40) + pad*2;
-  const hW = (def.h * sc || 40) + pad*2;
+  const pad = 8;
+  // 回転を考慮して正方形ベースで確保（90°/270°でw/hが入れ替わるため）
+  const rot = el.rot || 0;
+  const isSwapped = (rot === 90 || rot === 270 || rot === -90);
+  const rawW = (def.w * sc || 40);
+  const rawH = (def.h * sc || 40);
+  const boxW = isSwapped ? rawH : rawW;
+  const boxH = isSwapped ? rawW : rawH;
+  const wW = boxW + pad*2;
+  const hW = boxH + pad*2;
   const zoom = s * dpi / 25.4;
   const pxW = Math.max(4, Math.round(wW * zoom));
   const pxH = Math.max(4, Math.round(hW * zoom));
@@ -167,7 +174,7 @@ function rasterizeSymEl(el, s) {
   const oc = document.createElement('canvas');
   oc.width = pxW; oc.height = pxH;
   const octx = oc.getContext('2d');
-  octx.clearRect(0, 0, pxW, pxH); // 透明背景
+  octx.clearRect(0, 0, pxW, pxH);
 
   const origCv = cv, origCtx = ctx, origZoom = state.zoom;
   cv = oc; ctx = octx;
