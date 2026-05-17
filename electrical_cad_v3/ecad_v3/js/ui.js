@@ -1083,9 +1083,14 @@ function applyRightPanel() {
     if (v('pp-lw')) el.lineWidth = parseFloat(v('pp-lw'));
     el.lineStyle = v('pp-ls') || undefined;
     if (el.type === 'fline') {
+      const x1Changed = v('pp-x1')!=='' && parseFloat(v('pp-x1')) !== Math.round(el.x1*10)/10;
+      const x2Changed = v('pp-x2')!=='' && parseFloat(v('pp-x2')) !== Math.round(el.x2*10)/10;
+      const y1Changed = v('pp-y1')!=='' && parseFloat(v('pp-y1')) !== Math.round(el.y1*10)/10;
+      const y2Changed = v('pp-y2')!=='' && parseFloat(v('pp-y2')) !== Math.round(el.y2*10)/10;
       if (v('pp-x1')!=='') { el.x1=parseFloat(v('pp-x1')); el.y1=parseFloat(v('pp-y1')); }
       if (v('pp-x2')!=='') { el.x2=parseFloat(v('pp-x2')); el.y2=parseFloat(v('pp-y2')); }
-      if (v('pp-fangle')!=='') {
+      // 始点・終点を直接変更した場合は角度計算をスキップ
+      if (!x1Changed && !x2Changed && !y1Changed && !y2Changed && v('pp-fangle')!=='') {
         const ang=parseFloat(v('pp-fangle'))*Math.PI/180;
         const len=parseFloat(v('pp-flen'))||Math.hypot(el.x2-el.x1,el.y2-el.y1);
         const base=v('pp-fbase');
