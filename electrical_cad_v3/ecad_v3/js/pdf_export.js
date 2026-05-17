@@ -558,12 +558,19 @@ function _exportPDFPages(indices, filename) {
             let da = a2 - a1;
             if (da < 0) da += Math.PI*2;
             const ccw = da > Math.PI;
-            // tx/tyで変換した中心座標を使って弧を描く
-            // r はworld座標なのでtx(cx+r)-tx(cx)でmm換算する
+            // r はworld座標なのでtx変換でmm換算
             const rPDF = tx(el.cx + r) - tx(el.cx);
-            const pa1 = -a1, pa2 = -a2;
+            // PDF座標系ではY軸が上向き（ty()でY反転済み）
+            // 弧の端点をtx/tyで変換して正確に描く
+            const cx_pdf = tx(el.cx), cy_pdf = ty(el.cy);
+            // 端点1のPDF座標から開始角を逆算
+            const ep1x = tx(el.cx + Math.cos(a1)*r) - cx_pdf;
+            const ep1y = ty(el.cy + Math.sin(a1)*r) - cy_pdf;
+            const ep2x = tx(el.cx + Math.cos(a2)*r) - cx_pdf;
+            const ep2y = ty(el.cy + Math.sin(a2)*r) - cy_pdf;
+            const pa1 = Math.atan2(ep1y, ep1x);
+            const pa2 = Math.atan2(ep2y, ep2x);
             let pda = pa2 - pa1;
-            // Y反転後: ccw=falseなら負方向(短い弧)、ccw=trueなら正方向(短い弧)
             if (!ccw) {
               if (pda > 0) pda -= Math.PI*2;
             } else {
@@ -571,12 +578,12 @@ function _exportPDFPages(indices, filename) {
             }
             const steps = Math.max(8, Math.ceil(Math.abs(pda) / (Math.PI/8)));
             const stepA = pda / steps;
-            let prevX = tx(el.cx) + Math.cos(pa1) * rPDF;
-            let prevY = ty(el.cy) + Math.sin(pa1) * rPDF;
+            let prevX = cx_pdf + Math.cos(pa1) * rPDF;
+            let prevY = cy_pdf + Math.sin(pa1) * rPDF;
             for (let k = 1; k <= steps; k++) {
               const ang = pa1 + stepA * k;
-              const nx = tx(el.cx) + Math.cos(ang) * rPDF;
-              const ny = ty(el.cy) + Math.sin(ang) * rPDF;
+              const nx = cx_pdf + Math.cos(ang) * rPDF;
+              const ny = cy_pdf + Math.sin(ang) * rPDF;
               pdf.line(prevX, prevY, nx, ny);
               prevX = nx; prevY = ny;
             }
