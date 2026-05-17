@@ -408,7 +408,6 @@ function _exportPDFPages(indices, filename) {
         const dataURL = oc.toDataURL('image/png');
         const actualW = pdf.internal.pageSize.getWidth();
         const actualH = pdf.internal.pageSize.getHeight();
-        console.log('[PDF] actualW', actualW, 'actualH', actualH, 'imgW', imgW, 'imgH', imgH, 'ratio canvas', (imgW/imgH).toFixed(4), 'ratio pdf', (actualW/actualH).toFixed(4));
         pdf.addImage(dataURL, 'PNG', 0, 0, actualW, actualH, '', 'FAST');
       }
 
