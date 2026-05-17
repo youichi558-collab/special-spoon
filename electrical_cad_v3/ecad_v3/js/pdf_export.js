@@ -377,7 +377,12 @@ function _exportPDFPages(indices, filename) {
 
         const zoom = imgW / contentW;
         state.zoom = zoom;
-        state.pan = { x: -b.minX * zoom, y: -b.minY * zoom };
+        // プレビューと同じ方式：frameObjあり→pan(0,0)、なし→minX/minYを考慮
+        if (pg.frameObj) {
+          state.pan = { x: 0, y: 0 };
+        } else {
+          state.pan = { x: -b.minX * zoom, y: -b.minY * zoom };
+        }
         state.pdfSkipText = true;
 
         draw();
