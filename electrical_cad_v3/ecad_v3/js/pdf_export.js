@@ -369,10 +369,11 @@ function _exportPDFPages(indices, filename) {
         } else {
           pageW2 = contentW; pageH2 = contentH;
         }
-        // imgWとimgHをpageW2/pageH2の縦横比に合わせる
-        const sc2 = Math.min(pdfW / pageW2, pdfH / pageH2) * pxPerMM;
-        const imgW = Math.round(pageW2 * sc2);
-        const imgH = Math.round(pageH2 * sc2);
+        // PDFページと同じ縦横比でCanvasを作る
+        const imgW = Math.round(pdfW * pxPerMM);
+        const imgH = Math.round(pdfH * pxPerMM);
+        // zoomはpageW2/pageH2の縦横比を維持しつつCanvasに収まるように
+        const sc2 = imgW / pageW2;
 
         const oc = document.createElement('canvas');
         oc.width = imgW; oc.height = imgH;
