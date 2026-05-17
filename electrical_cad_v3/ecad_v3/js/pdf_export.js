@@ -372,21 +372,20 @@ function _exportPDFPages(indices, filename) {
 
         // draw.jsの描画関数を使ってオフスクリーンcanvasに描画（テキストなし）
         const origCv = cv, origCtx = ctx, origZoom = state.zoom;
-        const origOffX = state.offsetX, origOffY = state.offsetY;
+        const origPan = { ...state.pan };
         cv = oc; ctx = octx;
 
         const zoom = imgW / contentW;
         state.zoom = zoom;
-        state.offsetX = -b.minX * zoom;
-        state.offsetY = -b.minY * zoom;
-        state.pdfSkipText = true;  // テキストをスキップ
+        state.pan = { x: -b.minX * zoom, y: -b.minY * zoom };
+        state.pdfSkipText = true;
 
         draw();
 
         state.pdfSkipText = false;
         cv = origCv; ctx = origCtx;
         state.zoom = origZoom;
-        state.offsetX = origOffX; state.offsetY = origOffY;
+        state.pan = origPan;
 
         // PDFに貼り付け
         const dataURL = oc.toDataURL('image/png');
