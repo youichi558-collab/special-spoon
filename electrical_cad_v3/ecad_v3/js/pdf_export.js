@@ -571,7 +571,7 @@ function _exportPDFPages(indices, filename) {
             const pa1 = Math.atan2(ep1y, ep1x);
             const pa2 = Math.atan2(ep2y, ep2x);
             let pda = pa2 - pa1;
-            if (!ccw) {
+            if (ccw) {
               if (pda > 0) pda -= Math.PI*2;
             } else {
               if (pda < 0) pda += Math.PI*2;
