@@ -78,6 +78,7 @@ function showFramePanel(){
   openFP('frame-p');
 }
 function drawFrame(fr){
+  if (fr.isCover) return; // 表紙ページは図面枠を描画しない
   const {sc,wMM,hMM,mg,thMM,cols,rows}=fr;
   const W=wMM*sc,H=hMM*sc,MGpx=mg*sc,TH=thMM*sc;
   const innerW=W-MGpx*2,innerH=H-MGpx*2;

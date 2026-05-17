@@ -445,9 +445,9 @@ function insertCoverPage() {
   // ヘッダ行
   els.push(fl(id(), lx, lt+20, lrx, lt+20));
   els.push(txt(id(), cx, lt+12, 'ページリスト', 10));
-  // 列区切り（No / ページ名 / 図面番号 / Rev）
+  // 列区切り（No / ページ名 / 図面番号 / Rev）- 枠内に収める
   const c1 = lx+60, c2 = lx+380, c3 = lx+620;
-  els.push(fl(id(),c1,lt,c1,lb), fl(id(),c2,lt,c2,lb), fl(id(),c3,lt,c3,lb));
+  els.push(fl(id(),c1,lt+1,c1,lb-1), fl(id(),c2,lt+1,c2,lb-1), fl(id(),c3,lt+1,c3,lb-1));
   // ヘッダラベル
   els.push(fl(id(), lx, lt+38, lrx, lt+38));
   els.push(txt(id(), lx+30, lt+30, 'No.', 9));
@@ -485,7 +485,8 @@ function insertCoverPage() {
   });
 
   pushH();
-  const coverFrame = Object.assign({}, state.frameObj, { title, drawno, page:'表紙' });
+  // 表紙ページは図面枠を描画しない（isCover=trueで制御）
+  const coverFrame = Object.assign({}, state.frameObj, { title, drawno, page:'表紙', isCover:true });
   state.pages.unshift({ name:'表紙', elements:els, wires:[], groups:[], frameObj:coverFrame, dirty:true });
   switchPage(0);
   alert('表紙ページを先頭に挿入しました。');
