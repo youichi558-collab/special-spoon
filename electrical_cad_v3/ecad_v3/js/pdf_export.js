@@ -395,6 +395,7 @@ function _exportPDFPages(indices, filename) {
           state.pan = { x: -b.minX * sc2, y: -b.minY * sc2 };
         }
         state.pdfSkipText = true;
+        console.log('[PDF] imgW', imgW, 'imgH', imgH, 'sc2', sc2, 'pageW2', pageW2, 'pageH2', pageH2, 'pan', state.pan);
 
         draw();
 
