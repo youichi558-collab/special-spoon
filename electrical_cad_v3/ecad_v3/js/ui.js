@@ -875,18 +875,16 @@ function updateRightPanel() {
   let _autoApplyTimer = null;
   rp.oninput = rp.onchange = (e) => {
     if (e.target.tagName === 'BUTTON') return;
-    if (e.target.tagName === 'TEXTAREA') return; // テキストエリアはblurで適用
+    if (e.target.tagName === 'TEXTAREA') return; // テキストエリアはfocusoutで適用
     clearTimeout(_autoApplyTimer);
-    const _snapEl = el, _snapWire = wire;
     const delay = e.target.tagName === 'SELECT' || e.target.type === 'color' || e.target.type === 'number' ? 0 : 400;
-    _autoApplyTimer = setTimeout(() => {
-      // タイマー発火時点でパネルが別要素に切り替わっていたら無視
-      if (rp._el !== _snapEl || rp._wire !== _snapWire) return;
-      applyRightPanel();
-    }, delay);
+    _autoApplyTimer = setTimeout(() => applyRightPanel(), delay);
   };
+  // パネル外にフォーカスが移った時（選択解除前）に即時保存
   rp.addEventListener('focusout', (e) => {
-    if (e.target.tagName === 'TEXTAREA') applyRightPanel();
+    if (rp.contains(e.relatedTarget)) return; // パネル内の移動はスキップ
+    clearTimeout(_autoApplyTimer);
+    applyRightPanel();
   });
 }
 
