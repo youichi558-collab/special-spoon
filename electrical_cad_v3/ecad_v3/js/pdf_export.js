@@ -563,7 +563,8 @@ function _exportPDFPages(indices, filename) {
             const rPDF = tx(el.cx + r) - tx(el.cx);
             const pa1 = -a1, pa2 = -a2;
             let pda = pa2 - pa1;
-            if (da > Math.PI) {
+            // Y反転後: ccw=falseなら負方向(短い弧)、ccw=trueなら正方向(短い弧)
+            if (!ccw) {
               if (pda > 0) pda -= Math.PI*2;
             } else {
               if (pda < 0) pda += Math.PI*2;
