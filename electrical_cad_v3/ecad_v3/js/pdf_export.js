@@ -554,13 +554,27 @@ function _exportPDFPages(indices, filename) {
             const d2 = Math.hypot(el.x2-el.cx, el.y2-el.cy);
             pdf.line(tx(el.cx), ty(el.cy), tx(el.cx+(el.x1-el.cx)/d1*(r+10)), ty(el.cy+(el.y1-el.cy)/d1*(r+10)));
             pdf.line(tx(el.cx), ty(el.cy), tx(el.cx+(el.x2-el.cx)/d2*(r+10)), ty(el.cy+(el.y2-el.cy)/d2*(r+10)));
-            // 弧（PDFはY軸上向きなので角度を反転）
+            // 弧（Bezier近似で描画）
             let da = a2 - a1;
             if (da < 0) da += Math.PI*2;
             const ccw = da > Math.PI;
             const rMM = r * s;
-            // Y反転により角度符号を反転、CCW/CWも反転
-            pdf.arc(tx(el.cx), ty(el.cy), rMM, -a1*(180/Math.PI), -a2*(180/Math.PI), ccw ? 'CW' : 'CCW', false);
+            // Y軸反転に合わせて角度を反転
+            const pa1 = -a1, pa2 = -a2;
+            let pda = pa2 - pa1;
+            if (ccw ? pda > 0 : pda < 0) pda = ccw ? pda - Math.PI*2 : pda + Math.PI*2;
+            const steps = Math.max(8, Math.ceil(Math.abs(pda) / (Math.PI/8)));
+            const stepA = pda / steps;
+            let prevX = tx(el.cx) + Math.cos(pa1) * rMM;
+            let prevY = ty(el.cy) + Math.sin(pa1) * rMM;
+            pdf.lines([], prevX, prevY);
+            for (let k = 1; k <= steps; k++) {
+              const ang = pa1 + stepA * k;
+              const nx = tx(el.cx) + Math.cos(ang) * rMM;
+              const ny = ty(el.cy) + Math.sin(ang) * rMM;
+              pdf.line(prevX, prevY, nx, ny);
+              prevX = nx; prevY = ny;
+            }
             // テキスト
             const aMid = a1 + (ccw ? -(Math.PI*2-da)/2 : da/2);
             const dtx = el.cx + Math.cos(aMid)*(r+14) + (el.dimTx||0);
