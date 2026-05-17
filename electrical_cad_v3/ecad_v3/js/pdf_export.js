@@ -341,7 +341,7 @@ function _exportPDFPages(indices, filename) {
         pdf.addPage([pdfW, pdfH], pdfW>=pdfH ? 'l' : 'p');
       }
 
-      // スケール: mm per world unit（アスペクト比を保って中央揃え）
+      // スケール: mm per world unit
       const sx = pdfW / contentW, sy = pdfH / contentH;
       const s = Math.min(sx, sy);
       const ox = (pdfW - s * contentW) / 2;
@@ -354,303 +354,99 @@ function _exportPDFPages(indices, filename) {
       pdf.setFillColor(255, 255, 255);
       pdf.rect(0, 0, pdfW, pdfH, 'F');
 
-      // ---- ワイヤー（ベクター） ----
+      // ================================================================
+      // Canvas高解像度画像としてPDFに貼り付け（プレビューと完全一致）
+      // ================================================================
+      {
+        const dpi = 300;
+        const pxPerMM = dpi / 25.4;
+        const imgW = Math.round(pdfW * pxPerMM);
+        const imgH = Math.round(pdfH * pxPerMM);
+
+        // オフスクリーンcanvasに描画
+        const oc = document.createElement('canvas');
+        oc.width = imgW; oc.height = imgH;
+        const octx = oc.getContext('2d');
+        octx.fillStyle = '#ffffff';
+        octx.fillRect(0, 0, imgW, imgH);
+
+        // draw.jsの描画関数を使ってオフスクリーンcanvasに描画
+        const origCv = cv, origCtx = ctx, origZoom = state.zoom;
+        const origOffX = state.offsetX, origOffY = state.offsetY;
+        cv = oc; ctx = octx;
+
+        // ズーム・オフセットを設定（contentの左上がcanvasの(0,0)に来るように）
+        const zoom = imgW / contentW;
+        state.zoom = zoom;
+        state.offsetX = -b.minX * zoom;
+        state.offsetY = -b.minY * zoom;
+
+        draw();
+
+        cv = origCv; ctx = origCtx;
+        state.zoom = origZoom;
+        state.offsetX = origOffX; state.offsetY = origOffY;
+
+        // PDFに貼り付け
+        const dataURL = oc.toDataURL('image/png');
+        pdf.addImage(dataURL, 'PNG', 0, 0, pdfW, pdfH, '', 'FAST');
+      }
+
+      // ================================================================
+      // テキストレイヤー（検索可能なベクターテキスト）
+      // ================================================================
+      // 各要素のラベル・テキスト・線番をjsPDFのtext()で重ねる
+      const fsMM_base = 3.5 * s;
+
+      function pdfVecText(wx, wy, text, color, fsMM, align) {
+        if (!text) return;
+        const m = (color||'#000').match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+        if (m) pdf.setTextColor(parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16));
+        else pdf.setTextColor(0,0,0);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize((fsMM||fsMM_base) * 2.835);
+        pdf.text(String(text), tx(wx), ty(wy), { align: align||'center' });
+        pdf.setTextColor(0,0,0);
+      }
+
+      // 線番
       (pg.wires||[]).forEach(w => {
-        const lay = LAYERS.find(l => l.name===w.layer);
-        if (lay && !lay.visible) return;
-        const lw  = w.lineWidth || 2;
-        const wColor = w.color || (lay ? lay.color : '#000000');
-        applyColor(wColor);
-        pdf.setLineWidth(Math.max(0.05, lw * s));
-        applyDash(w.lineStyle || lay?.lineDash, s);
+        if (!w.wireNo) return;
         const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
-        for (let i=0; i<pts.length-1; i++) {
-          pdf.line(tx(pts[i].x), ty(pts[i].y), tx(pts[i+1].x), ty(pts[i+1].y));
-        }
-        pdf.setLineDashPattern([], 0);
-
-        // arrowStart / arrowEnd
-        if (w.arrowStart && w.arrowStart !== 'none' && pts.length >= 2) {
-          const dx=pts[0].x-pts[1].x, dy=pts[0].y-pts[1].y, len=Math.hypot(dx,dy);
-          if (len>0.1) pdfArrow(pdf, tx(pts[0].x), ty(pts[0].y), dx/len*s, dy/len*s, 2.5, wColor);
-        }
-        if (w.arrowEnd && w.arrowEnd !== 'none' && pts.length >= 2) {
-          const p1=pts[pts.length-2], p2=pts[pts.length-1];
-          const dx=p2.x-p1.x, dy=p2.y-p1.y, len=Math.hypot(dx,dy);
-          if (len>0.1) pdfArrow(pdf, tx(p2.x), ty(p2.y), dx/len*s, dy/len*s, 2.5, wColor);
-        }
-
-        // wireNo
-        if (w.wireNo) {
-          const n = pts.length;
-          const i = Math.floor((n-1)/2), j = Math.ceil((n-1)/2);
-          const mp = n >= 2 ? { x:(pts[i].x+pts[j].x)/2, y:(pts[i].y+pts[j].y)/2 } : pts[0];
-          // 線番：中点から上方向に固定オフセット（draw.jsと同じ方式）
-          pdfText(tx(mp.x), ty(mp.y) - 4, w.wireNo, 3.5, '#1e40af', true, 'center');
-        }
+        if (pts.length < 2) return;
+        const mx = (pts[0].x + pts[pts.length-1].x) / 2;
+        const my = (pts[0].y + pts[pts.length-1].y) / 2;
+        pdfVecText(mx, my - 4, w.wireNo, '#0f6e56', fsMM_base * 0.85);
       });
 
-      // ---- 要素 ----
+      // 要素ラベル・テキスト
       (pg.elements||[]).forEach(el => {
-        try {
         const lay = LAYERS.find(l => l.name===el.layer);
         if (lay && !lay.visible) return;
-        // 枠レイヤーの要素はframeObjが別途描画するのでスキップ
-        if (el.layer && (el.layer==='図面枠'||el.layer.toLowerCase().includes('frame')||el.layer.toLowerCase().includes('border')||el.layer==='defpoints')) return;
-        const lc = lay ? lay.color : '#000000';
+        const elColor = el.color || (lay ? lay.color : '#000000');
 
-        if (el.type==='fline') {
-          const lw = el.lineWidth || 1.5;
-          const fc = el.color || lc;
-          applyColor(fc);
-          pdf.setLineWidth(Math.max(0.05, lw * s));
-          applyDash(el.lineStyle || lay?.lineDash, s);
-          pdf.line(tx(el.x1), ty(el.y1), tx(el.x2), ty(el.y2));
-          pdf.setLineDashPattern([], 0);
-          if (el.arrowStart && el.arrowStart !== 'none') {
-            const dx=el.x1-el.x2, dy=el.y1-el.y2, len=Math.hypot(dx,dy);
-            if (len>0.1) pdfArrow(pdf, tx(el.x1), ty(el.y1), dx/len*s, dy/len*s, 2.5, fc);
-          }
-          if (el.arrowEnd && el.arrowEnd !== 'none') {
-            const dx=el.x2-el.x1, dy=el.y2-el.y1, len=Math.hypot(dx,dy);
-            if (len>0.1) pdfArrow(pdf, tx(el.x2), ty(el.y2), dx/len*s, dy/len*s, 2.5, fc);
-          }
-
-        } else if (el.type==='rect') {
-          const lw = el.lineWidth || 1.5;
-          applyColor(el.color || lc);
-          pdf.setLineWidth(Math.max(0.05, lw * s));
-          applyDash(el.lineStyle || lay?.lineDash, s);
-          if (el.fillColor) {
-            const m = el.fillColor.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
-            if (m) { pdf.setFillColor(parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16)); pdf.rect(tx(el.x), ty(el.y), tm(el.w||0), tm(el.h||0), 'FD'); }
-            else pdf.rect(tx(el.x), ty(el.y), tm(el.w||0), tm(el.h||0), 'S');
-          } else {
-            pdf.rect(tx(el.x), ty(el.y), tm(el.w||0), tm(el.h||0), 'S');
-          }
-          pdf.setLineDashPattern([], 0);
-
-        } else if (el.type==='circle') {          const lw = el.lineWidth || 1.5;
-          applyColor(el.color || lc);
-          pdf.setLineWidth(Math.max(0.05, lw * s));
-          applyDash(el.lineStyle || lay?.lineDash, s);
-          if (el.fillColor) {
-            const m = el.fillColor.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
-            if (m) { pdf.setFillColor(parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16)); pdf.circle(tx(el.x), ty(el.y), tm(el.r||1), 'FD'); }
-            else pdf.circle(tx(el.x), ty(el.y), tm(el.r||1), 'S');
-          } else {
-            pdf.circle(tx(el.x), ty(el.y), tm(el.r||1), 'S');
-          }
-          pdf.setLineDashPattern([], 0);
-
-        } else if (el.type==='arc') {
-          const lw = el.lineWidth || 1.5;
-          applyColor(el.color || lc);
-          pdf.setLineWidth(Math.max(0.05, lw * s));
-          // jsPDFにはarcがないのでベジェ近似（複数分割）
-          const steps = 16;
-          const sa = el.startA, ea = el.endA;
-          const r = tm(el.r || 1);
-          const cx2 = tx(el.x), cy2 = ty(el.y);
-          pdf.lines(
-            Array.from({length: steps}, (_, i) => {
-              const a0 = sa + (ea - sa) * i / steps;
-              const a1 = sa + (ea - sa) * (i + 1) / steps;
-              return [Math.cos(a1)*r - Math.cos(a0)*r, Math.sin(a1)*r - Math.sin(a0)*r];
-            }),
-            cx2 + Math.cos(sa)*r, cy2 + Math.sin(sa)*r, [1,1], 'S', false
-          );
-
-        } else if (el.type==='triangle') {
-          const lw = el.lineWidth || 1.5;
-          applyColor(el.color || lc);
-          pdf.setLineWidth(Math.max(0.05, lw*s));
-          applyDash(el.lineStyle || lay?.lineDash, s);
-          pdf.triangle(tx(el.x1),ty(el.y1), tx(el.x2),ty(el.y2), tx(el.x3),ty(el.y3), el.fillColor ? 'FD' : 'S');
-          pdf.setLineDashPattern([],0);
-
-        } else if (el.type==='junction') {
-          const jc = el.color || lc;
-          const m2 = (jc||'#000').match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
-          if (m2) pdf.setFillColor(parseInt(m2[1],16),parseInt(m2[2],16),parseInt(m2[3],16));
-          else pdf.setFillColor(0,0,0);
-          pdf.circle(tx(el.x), ty(el.y), tm(el.r||4), 'F');
-
-        } else if (el.type==='text') {
-          // テキスト: el.fsはスクリーンpx → 0.35mm/px で変換（72dpi相当）
-          const fsMM = (el.fs || 14) * 0.35;
-          const res = rasterizeTextEl(el, fsMM);
-          if (res) {
-            pdf.addImage(res.dataURL, 'PNG', tx(el.x)-2*s, ty(el.y) - res.hMM * 0.72, res.wMM, res.hMM, '', 'FAST');
-          }
-
-        } else if (el.type === 'dim') {
-          // 寸法線
-          const dx=el.x2-el.x1, dy=el.y2-el.y1, len=Math.hypot(dx,dy);
-          if (len >= 0.1) {
-            const sign=el.offsetSign||1, off=(el.offset||30)*sign;
-            const ux=dx/len, uy=dy/len, px=-uy*sign, py=ux*sign;
-            const absOff=Math.abs(off);
-            const gap=el.gap!=null?el.gap:state.G, ext=el.ext!=null?el.ext:state.G;
-            const ax1=el.x1+px*absOff, ay1=el.y1+py*absOff;
-            const ax2=el.x2+px*absOff, ay2=el.y2+py*absOff;
-            const dc = el.color || '#744da9';
-            applyColor(dc);
-            pdf.setLineWidth(Math.max(0.05, (el.lineWidth||1) * 0.3));
-            const dimDash = el.lineStyle==='dash'?[3,2]:el.lineStyle==='dashdot'?[4,2,1,2]:el.lineStyle==='dot'?[1,2]:null;
-            if (dimDash) pdf.setLineDashPattern(dimDash, 0); else pdf.setLineDashPattern([], 0);
-            // 引出し線（gap空け・ext伸び）
-            pdf.line(tx(el.x1+px*gap), ty(el.y1+py*gap), tx(el.x1+px*(absOff+ext)), ty(el.y1+py*(absOff+ext)));
-            pdf.line(tx(el.x2+px*gap), ty(el.y2+py*gap), tx(el.x2+px*(absOff+ext)), ty(el.y2+py*(absOff+ext)));
-            pdf.line(tx(ax1), ty(ay1), tx(ax2), ty(ay2));
-            const aStyle = el.arrowStyle || 'filled';
-            const aSize  = (el.arrowSz||8) * s;  // プロパティのサイズをそのままmm変換
-            const dimLenMM = Math.hypot(tx(ax2)-tx(ax1), ty(ay2)-ty(ay1));
-            const flipPdf = dimLenMM < aSize * 2.5;
-            if (aStyle !== 'none') {
-              if (aStyle === 'dot') {
-                applyColor(dc);
-                pdf.circle(tx(ax1), ty(ay1), aSize*0.4, 'F');
-                pdf.circle(tx(ax2), ty(ay2), aSize*0.4, 'F');
-              } else if (aStyle === 'tick') {
-                pdf.line(tx(ax1)-(-uy*s)*aSize*0.5, ty(ay1)-(ux*s)*aSize*0.5, tx(ax1)+(-uy*s)*aSize*0.5, ty(ay1)+(ux*s)*aSize*0.5);
-                pdf.line(tx(ax2)-(-uy*s)*aSize*0.5, ty(ay2)-(ux*s)*aSize*0.5, tx(ax2)+(-uy*s)*aSize*0.5, ty(ay2)+(ux*s)*aSize*0.5);
-              } else if (flipPdf) {
-                pdfArrow(pdf, tx(ax1), ty(ay1), -ux*s, -uy*s, aSize, dc);
-                pdfArrow(pdf, tx(ax2), ty(ay2),  ux*s,  uy*s, aSize, dc);
-              } else {
-                pdfArrow(pdf, tx(ax1), ty(ay1),  ux*s,  uy*s, aSize, dc);
-                pdfArrow(pdf, tx(ax2), ty(ay2), -ux*s, -uy*s, aSize, dc);
-              }
-            }
-            const mx=(ax1+ax2)/2, my=(ay1+ay2)/2;
-            const txt = el.dimText || String(Math.round(len));
-            const dtx = mx + (el.dimTx||0) + px*(el.dimFs||11)*0.35*1.4;
-            const dty = my + (el.dimTy||0) + py*(el.dimFs||11)*0.35*1.4;
-            pdfText(tx(dtx), ty(dty), txt, (el.dimFs||11)*0.35, dc, true, 'center');
-          }
-
-        } else if (el.type === 'leader') {
-          // 引き出し線
-          const bx=el.bx??el.x2, by=el.by??el.y2;
-          const lc2 = el.color || '#744da9';
-          applyColor(lc2);
-          pdf.setLineWidth(Math.max(0.05, 0.3));
-          pdf.line(tx(el.x1), ty(el.y1), tx(bx), ty(by));
-          if (el.bx != null) pdf.line(tx(bx), ty(by), tx(el.x2), ty(el.y2));
-          const dx=bx-el.x1, dy=by-el.y1, len=Math.hypot(dx,dy);
-          if (len>0.1) pdfArrow(pdf, tx(el.x1), ty(el.y1), (bx-el.x1)/len*s, (by-el.y1)/len*s, 2, lc2);
-          if (el.leaderText) {
-            const ltx = el.x2 + (el.leaderTx||0);
-            const lty = el.y2 + (el.leaderTy||0);
-            pdfText(tx(ltx)+0.5, ty(lty), el.leaderText, (el.leaderFs||11)*0.35, lc2, false, 'left');
-          }
-
-        } else if (el.type === 'angle_dim') {
-          // 角度寸法
-          if (el.cx==null||el.x1==null||el.x2==null) { /* skip */ }
-          else {
-            const ac = el.color || '#744da9';
-            applyColor(ac);
-            pdf.setLineWidth(Math.max(0.05, (el.lineWidth||1)*s));
-            const a1 = Math.atan2(el.y1-el.cy, el.x1-el.cx);
-            const a2 = Math.atan2(el.y2-el.cy, el.x2-el.cx);
-            const r = el.r || 30;
-            // 引出し線
-            const d1 = Math.hypot(el.x1-el.cx, el.y1-el.cy);
-            const d2 = Math.hypot(el.x2-el.cx, el.y2-el.cy);
-            pdf.line(tx(el.cx), ty(el.cy), tx(el.cx+(el.x1-el.cx)/d1*(r+10)), ty(el.cy+(el.y1-el.cy)/d1*(r+10)));
-            pdf.line(tx(el.cx), ty(el.cy), tx(el.cx+(el.x2-el.cx)/d2*(r+10)), ty(el.cy+(el.y2-el.cy)/d2*(r+10)));
-            // 弧（Bezier近似で描画）
-            let da = a2 - a1;
-            if (da < 0) da += Math.PI*2;
-            const ccw = da > Math.PI;
-            // r はworld座標なのでtx変換でmm換算
-            const rPDF = tx(el.cx + r) - tx(el.cx);
-            // PDF座標系ではY軸が上向き（ty()でY反転済み）
-            // 弧の端点をtx/tyで変換して正確に描く
-            const cx_pdf = tx(el.cx), cy_pdf = ty(el.cy);
-            // 端点1のPDF座標から開始角を逆算
-            const ep1x = tx(el.cx + Math.cos(a1)*r) - cx_pdf;
-            const ep1y = ty(el.cy + Math.sin(a1)*r) - cy_pdf;
-            const ep2x = tx(el.cx + Math.cos(a2)*r) - cx_pdf;
-            const ep2y = ty(el.cy + Math.sin(a2)*r) - cy_pdf;
-            const pa1 = Math.atan2(ep1y, ep1x);
-            const pa2 = Math.atan2(ep2y, ep2x);
-            let pda = pa2 - pa1;
-            if (ccw) {
-              if (pda > 0) pda -= Math.PI*2;
-            } else {
-              if (pda < 0) pda += Math.PI*2;
-            }
-            const steps = Math.max(8, Math.ceil(Math.abs(pda) / (Math.PI/8)));
-            const stepA = pda / steps;
-            let prevX = cx_pdf + Math.cos(pa1) * rPDF;
-            let prevY = cy_pdf + Math.sin(pa1) * rPDF;
-            for (let k = 1; k <= steps; k++) {
-              const ang = pa1 + stepA * k;
-              const nx = cx_pdf + Math.cos(ang) * rPDF;
-              const ny = cy_pdf + Math.sin(ang) * rPDF;
-              pdf.line(prevX, prevY, nx, ny);
-              prevX = nx; prevY = ny;
-            }
-            // テキスト
-            const aMid = a1 + (ccw ? -(Math.PI*2-da)/2 : da/2);
-            const dtx = el.cx + Math.cos(aMid)*(r+14) + (el.dimTx||0);
-            const dty = el.cy + Math.sin(aMid)*(r+14) + (el.dimTy||0);
-            const txt = el.dimText || '';
-            if (txt) pdfText(tx(dtx), ty(dty), txt, (el.dimFs||11)*0.35, ac, true, 'center');
-          }
-
-        } else {
-          // カスタムシンボル: ベクター直接描画
-          const cS = state.customSymbols?.find(cs => cs.type === el.type);
-          if (cS && cS.shapes?.length) {
-            const sc2 = el.scale || 1;
-            const rot = (el.rot||0) * Math.PI/180;
-            const cosR = Math.cos(rot), sinR = Math.sin(rot);
-            const rotate = (sx, sy) => ({
-              x: el.x + (sx*cosR - sy*sinR)*sc2,
-              y: el.y + (sx*sinR + sy*cosR)*sc2
-            });
-            applyColor(el.color || lc);
-            pdf.setLineWidth(Math.max(0.1, s * 0.5));
-            cS.shapes.forEach(sh => {
-              if (sh.t==='L') {
-                const p1=rotate(sh.x1,sh.y1), p2=rotate(sh.x2,sh.y2);
-                pdf.line(tx(p1.x),ty(p1.y),tx(p2.x),ty(p2.y));
-              } else if (sh.t==='C') {
-                const p=rotate(sh.cx,sh.cy);
-                pdf.circle(tx(p.x),ty(p.y),tm(sh.r*sc2),'S');
-              } else if (sh.t==='R') {
-                const cx=sh.x+sh.w/2, cy=sh.y+sh.h/2;
-                const p=rotate(cx,cy);
-                pdf.rect(tx(p.x)-tm(sh.w*sc2/2),ty(p.y)-tm(sh.h*sc2/2),tm(sh.w*sc2),tm(sh.h*sc2),'S');
-              }
-            });
-          } else {
-            // ビルトインシンボル: ラスタライズ
-            const res = rasterizeSymEl(el, s);
-            pdf.addImage(res.dataURL, 'PNG', tx(el.x)-res.dispW/2, ty(el.y)-res.dispH/2, res.dispW, res.dispH, '', 'FAST');
-          }
-
-          // シンボルラベル（el.label）を別途描画 — 3.5mm固定
-          if (el.label) {
-            const def2 = getDef(el.type) || { w:64, h:34 };
-            const lox = el.labelOffX || 0;
-            const loy = el.labelOffY || (def2.h/2+15);
-            const rot = (el.rot||0) * Math.PI/180;
-            const lx = el.x + lox*Math.cos(rot) - loy*Math.sin(rot);
-            const ly = el.y + lox*Math.sin(rot) + loy*Math.cos(rot);
-            const lblEl2 = { text: el.label, color: '#555555' };
-            const lblRes2 = rasterizeTextEl(lblEl2, 3.5);
-            if (lblRes2) pdf.addImage(lblRes2.dataURL, 'PNG', tx(lx) - lblRes2.wMM/2, ty(ly) - lblRes2.hMM/2, lblRes2.wMM, lblRes2.hMM, '', 'FAST');
-          }
+        if (el.type === 'text') {
+          // テキスト要素
+          const fsMM = (el.fs || 12) * s;
+          pdfVecText(el.x, el.y, el.text || el.label, elColor, fsMM);
+        } else if (el.label) {
+          // シンボルのラベル
+          const fsMM = fsMM_base;
+          const def = getDef(el.type) || { w:40, h:20 };
+          const hw = (def.w * (el.scale||1)) / 2;
+          const rot = el.rot || 0;
+          let lx = el.x, ly = el.y;
+          if (rot === 0)   { lx = el.x + hw + 6; ly = el.y; }
+          else if (rot === 90)  { lx = el.x + 6; ly = el.y - hw - 4; }
+          else if (rot === 180) { lx = el.x - hw - 6; ly = el.y; }
+          else if (rot === 270) { lx = el.x - 6; ly = el.y + hw + 4; }
+          pdfVecText(lx, ly, el.label, elColor, fsMM, 'left');
         }
-        } catch(e) { console.warn('PDF element render error:', el.type, e); }
       });
 
-      // ---- 図面枠・表題欄（ベクター＋ラスタライズテキスト） ----
+      // 白背景・ベクター枠線は後述の図面枠処理で行う
+
+            // ---- 図面枠・表題欄（ベクター＋ラスタライズテキスト） ----
       if (pg.frameObj) {
         const fr = pg.frameObj;
         const mg = fr.mg || 10;
