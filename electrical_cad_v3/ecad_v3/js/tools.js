@@ -49,19 +49,21 @@ const selectTool = {
       pushH();
       state.mouse.dragHistPushed = true;
     }
+    // 移動量をスナップ（個々の座標ではなく差分にスナップ→グリッド外座標の相対関係を保持）
+    const sdx = snap(dx); const sdy = snap(dy);
     state.mouse.dragGroup.forEach(({ el, ox, oy, obx, oby, ox1, oy1, ox2, oy2, opts }) => {
       if (el.x != null) {
-        el.x = snap(ox+dx); el.y = snap(oy+dy);
-        if (obx != null) { el.bx = snap(obx+dx); el.by = snap(oby+dy); }
+        el.x = ox + sdx; el.y = oy + sdy;
+        if (obx != null) { el.bx = obx + sdx; el.by = oby + sdy; }
       }
       if (el.x1 != null) {
         if (opts) {
-          el.pts = opts.map(p => ({ x: snap(p.x+dx), y: snap(p.y+dy) }));
+          el.pts = opts.map(p => ({ x: p.x + sdx, y: p.y + sdy }));
           el.x1 = el.pts[0].x; el.y1 = el.pts[0].y;
           el.x2 = el.pts[el.pts.length-1].x; el.y2 = el.pts[el.pts.length-1].y;
         } else {
-          el.x1 = snap(ox1+dx); el.y1 = snap(oy1+dy);
-          el.x2 = snap(ox2+dx); el.y2 = snap(oy2+dy);
+          el.x1 = ox1 + sdx; el.y1 = oy1 + sdy;
+          el.x2 = ox2 + sdx; el.y2 = oy2 + sdy;
         }
       }
     });
