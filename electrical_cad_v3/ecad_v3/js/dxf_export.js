@@ -139,6 +139,11 @@ function exportDXF(){
       for(let r=0;r<rows;r++){T(MGpx/2,MGpx+r*rh+rh/2,6,String(r+1));T(MGpx+iW+MGpx/2,MGpx+r*rh+rh/2,6,String(r+1));}}
   }
   state.wires.forEach(w=>{const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];const layer=dxfLayer(w.layer||'配線');for(let i=0;i<pts.length-1;i++)ls.push('0','LINE','8',layer,'10',pts[i].x.toFixed(2),'20',(-pts[i].y).toFixed(2),'30','0','11',pts[i+1].x.toFixed(2),'21',(-pts[i+1].y).toFixed(2),'31','0');if(w.wireNo){const mp=pts[Math.floor(pts.length/2)];ls.push('0','TEXT','8',layer,'10',mp.x.toFixed(2),'20',(-mp.y+8).toFixed(2),'30','0','40','8','1',w.wireNo,'72','1');}});
+
+  const dxfAng = a => ((-a * 180 / Math.PI) % 360 + 360) % 360;
+  const addLine = (layer,x1,y1,x2,y2) => ls.push('0','LINE','8',layer,'10',x1.toFixed(2),'20',(-y1).toFixed(2),'30','0','11',x2.toFixed(2),'21',(-y2).toFixed(2),'31','0');
+  const addText = (layer,x,y,h,text) => { if(text) ls.push('0','TEXT','8',layer,'10',x.toFixed(2),'20',(-y).toFixed(2),'30','0','40',String(h),'1',String(text)); };
+
   state.elements.forEach(el=>{const layer=dxfLayer(el.layer||'回路');
     if(el.type==='dim') return; // dimは上で既に出力済み
     if(el.type==='leader'){
@@ -148,7 +153,47 @@ function exportDXF(){
       if(el.leaderText)ls.push('0','TEXT','8',layer,'10',el.x2.toFixed(2),'20',(-el.y2).toFixed(2),'30','0','40','10','1',el.leaderText);
       return;
     }
-    if(el.type==='text')ls.push('0','TEXT','8',layer,'10',el.x.toFixed(2),'20',(-el.y).toFixed(2),'30','0','40',String(el.fs||14),'1',el.text);else if(el.type==='rect')addRect(ls,layer,el.x,el.y,el.x+el.w,el.y+el.h);else if(el.type==='circle')ls.push('0','CIRCLE','8',layer,'10',el.x.toFixed(2),'20',(-el.y).toFixed(2),'30','0','40',el.r.toFixed(2));else if(el.type==='fline')ls.push('0','LINE','8',layer,'10',el.x1.toFixed(2),'20',(-el.y1).toFixed(2),'30','0','11',el.x2.toFixed(2),'21',(-el.y2).toFixed(2),'31','0');else{const d=getDef(el.type);const sc=el.scale||1;ls.push('0','INSERT','8',layer,'2',el.type,'10',el.x.toFixed(3),'20',(-el.y).toFixed(3),'30','0','50',String(el.rot||0),'41',String(sc),'42',String(sc),'66','1');if(el.label){const lox=el.labelOffX||0,loy=el.labelOffY||(d.h/2+15);const rot=(el.rot||0)*Math.PI/180;const lx=el.x+lox*Math.cos(rot)-loy*Math.sin(rot);const ly=el.y+lox*Math.sin(rot)+loy*Math.cos(rot);ls.push('0','ATTRIB','8',layer,'10',lx.toFixed(3),'20',(-ly).toFixed(3),'30','0','40','10','1',el.label,'2','LABEL','70','0','72','1');}ls.push('0','SEQEND','8',layer);}
+    if (el.type === 'text') {
+      addText(layer, el.x, el.y, el.fs || 14, el.text);
+    } else if (el.type === 'rect') {
+      addRect(ls, layer, el.x, el.y, el.x + el.w, el.y + el.h);
+    } else if (el.type === 'circle') {
+      ls.push('0','CIRCLE','8',layer,'10',el.x.toFixed(2),'20',(-el.y).toFixed(2),'30','0','40',el.r.toFixed(2));
+    } else if (el.type === 'fline') {
+      addLine(layer, el.x1, el.y1, el.x2, el.y2);
+    } else if (el.type === 'triangle') {
+      ls.push('0','LWPOLYLINE','8',layer,'90','3','70','1','43','0',
+        '10',el.x1.toFixed(2),'20',(-el.y1).toFixed(2),
+        '10',el.x2.toFixed(2),'20',(-el.y2).toFixed(2),
+        '10',el.x3.toFixed(2),'20',(-el.y3).toFixed(2));
+    } else if (el.type === 'arc') {
+      let sa = dxfAng(el.startA || 0), ea = dxfAng(el.endA || 0);
+      if (el.ccw) { const t = sa; sa = ea; ea = t; }
+      ls.push('0','ARC','8',layer,'10',el.x.toFixed(2),'20',(-el.y).toFixed(2),'30','0','40',(el.r||0).toFixed(2),'50',sa.toFixed(2),'51',ea.toFixed(2));
+    } else if (el.type === 'junction') {
+      const r = el.r || 4;
+      ls.push('0','CIRCLE','8',layer,'10',el.x.toFixed(2),'20',(-el.y).toFixed(2),'30','0','40',r.toFixed(2));
+    } else if (el.type === 'angle_dim') {
+      addLine(layer, el.cx, el.cy, el.x1, el.y1);
+      addLine(layer, el.cx, el.cy, el.x2, el.y2);
+      const a1 = Math.atan2(el.y1-el.cy, el.x1-el.cx);
+      const a2 = Math.atan2(el.y2-el.cy, el.x2-el.cx);
+      ls.push('0','ARC','8',layer,'10',el.cx.toFixed(2),'20',(-el.cy).toFixed(2),'30','0','40',(el.r||30).toFixed(2),'50',dxfAng(a2).toFixed(2),'51',dxfAng(a1).toFixed(2));
+      addText(layer, el.x || el.cx, (el.y || el.cy) - (el.r || 30) - 8, el.dimFs || 11, el.dimText || '');
+    } else {
+      const d = getDef(el.type);
+      if (!d || el.x == null || el.y == null) return;
+      const sc = el.scale || 1;
+      ls.push('0','INSERT','8',layer,'2',el.type,'10',el.x.toFixed(3),'20',(-el.y).toFixed(3),'30','0','50',String(el.rot||0),'41',String(sc),'42',String(sc),'66','1');
+      if (el.label) {
+        const lox=el.labelOffX||0, loy=el.labelOffY||(d.h/2+15);
+        const rot=(el.rot||0)*Math.PI/180;
+        const lx=el.x+lox*Math.cos(rot)-loy*Math.sin(rot);
+        const ly=el.y+lox*Math.sin(rot)+loy*Math.cos(rot);
+        ls.push('0','ATTRIB','8',layer,'10',lx.toFixed(3),'20',(-ly).toFixed(3),'30','0','40','10','1',el.label,'2','LABEL','70','0','72','1');
+      }
+      ls.push('0','SEQEND','8',layer);
+    }
   });
   ls.push('0','ENDSEC','0','EOF');
   const pg = state.pages[state.currentPage];

@@ -122,6 +122,11 @@ function inBox(el, sx, sy, ex, ey, crossing) {
       : (el.cx>=sx&&el.cx<=ex&&el.cy>=sy&&el.cy<=ey&&el.x1>=sx&&el.x1<=ex&&el.y1>=sy&&el.y1<=ey&&el.x2>=sx&&el.x2<=ex&&el.y2>=sy&&el.y2<=ey);
   }
   if (el.type === 'triangle') {
+    const pts3 = [
+      { x: el.x1, y: el.y1 },
+      { x: el.x2, y: el.y2 },
+      { x: el.x3, y: el.y3 },
+    ];
     return crossing
       ? pts3.some(p => p.x>=sx&&p.x<=ex&&p.y>=sy&&p.y<=ey)
       : pts3.every(p => p.x>=sx&&p.x<=ex&&p.y>=sy&&p.y<=ey);

@@ -447,7 +447,7 @@ const dimTool = {
       const def = state.dimDef;
       state.elements.push({ id: genId('el'), type:'dim', x1:ds.x1, y1:ds.y1, x2:ds.x2, y2:ds.y2,
         dimText: txt || String(dist), offset, offsetSign:sign,
-        arrowSz:8, layer:'寸法', x:(ds.x1+ds.x2)/2, y:(ds.y1+ds.y2)/2,
+        layer:'寸法', x:(ds.x1+ds.x2)/2, y:(ds.y1+ds.y2)/2,
         dimFs: def.fs, dimTx: def.tx, dimTy: def.ty,
         gap: def.gap, ext: def.ext, color: def.color,
         arrowStyle: def.arrowStyle||'filled', arrowSz: def.arrowSz||8 });
@@ -529,7 +529,7 @@ const angleDimTool = {
       if (deg > 180) deg = 360-deg;
       const r = Math.min(
         Math.hypot(ds.x1-ds.cx, ds.y1-ds.cy),
-        Math.hypot(sx-ds.cy, sy-ds.cy)
+        Math.hypot(sx-ds.cx, sy-ds.cy)
       ) * 0.5 + 20;
       const def = state.dimDef || {};
       pushH();

@@ -202,7 +202,7 @@ function parseDXF(text, isOwnFile){
 
   // DXFで出現したレイヤーをLAYERSに自動登録
   const allLayers=new Set([...state.elements.map(e=>e.layer),...state.wires.map(w=>w.layer)]);
-  allLayers.forEach(name=>{if(name&&!LAYERS.find(l=>l.name===name)){LAYERS.push({name,color:'#228844',visible:true,locked:false,active:false,lineWidth:1,lineDash:'solid',fontSize:null});}});
+  allLayers.forEach(name=>{if(name&&!LAYERS.find(l=>l.name===name)){LAYERS.push({name,color:'#228844',visible:true,locked:false,active:false,lineWidth:1,lineDash:'solid',fontSize:null,attr:''});}});
   renderLayers();
   document.getElementById('dxf-log-body').innerHTML=`<p style="font-size:11px;margin-bottom:8px">読込完了: <b>${total}</b>要素</p><table class="tbl"><tr><th>種別</th><th>件数</th></tr><tr><td>配線</td><td>${lc}</td></tr><tr><td>円</td><td>${cc}</td></tr><tr><td>テキスト</td><td>${tc}</td></tr><tr><td>シンボル</td><td>${ic}</td></tr></table>${total===0?'<p style="font-size:11px;color:var(--red);margin-top:6px">要素が読み込めませんでした</p>':''}`;
   // 座標範囲を検出（外部DXFのみ縮尺ダイアログを表示）
@@ -232,11 +232,10 @@ function parseDXF(text, isOwnFile){
 }
 
 function cancelDXFScale() {
-  document.getElementById('dxf-scale-overlay').style.display = 'none';
-  // 読み込んだ要素を破棄
-  state.elements = state.page.elements;
-  state.wires = state.page.wires;
-  draw();
+  // ここは「縮尺適用をキャンセルして等倍で読み込む」動作にする。
+  // 以前は getter-only の state.elements / state.wires に代入していたため、
+  // 実際には読み込んだDXFを破棄できていなかった。
+  applyDXFScale(true);
 }
 
 function applyDXFScale(skip) {
