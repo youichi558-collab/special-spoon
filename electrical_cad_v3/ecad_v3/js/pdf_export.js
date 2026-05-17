@@ -554,12 +554,13 @@ function _exportPDFPages(indices, filename) {
             const d2 = Math.hypot(el.x2-el.cx, el.y2-el.cy);
             pdf.line(tx(el.cx), ty(el.cy), tx(el.cx+(el.x1-el.cx)/d1*(r+10)), ty(el.cy+(el.y1-el.cy)/d1*(r+10)));
             pdf.line(tx(el.cx), ty(el.cy), tx(el.cx+(el.x2-el.cx)/d2*(r+10)), ty(el.cy+(el.y2-el.cy)/d2*(r+10)));
-            // 弧
+            // 弧（PDFはY軸上向きなので角度を反転）
             let da = a2 - a1;
             if (da < 0) da += Math.PI*2;
             const ccw = da > Math.PI;
             const rMM = r * s;
-            pdf.arc(tx(el.cx), ty(el.cy), rMM, a1*(180/Math.PI), a2*(180/Math.PI), ccw ? 'CCW' : 'CW', false);
+            // Y反転により角度符号を反転、CCW/CWも反転
+            pdf.arc(tx(el.cx), ty(el.cy), rMM, -a1*(180/Math.PI), -a2*(180/Math.PI), ccw ? 'CW' : 'CCW', false);
             // テキスト
             const aMid = a1 + (ccw ? -(Math.PI*2-da)/2 : da/2);
             const dtx = el.cx + Math.cos(aMid)*(r+14) + (el.dimTx||0);
