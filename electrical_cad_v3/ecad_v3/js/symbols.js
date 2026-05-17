@@ -15,14 +15,14 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc, lineStyle) {
   const c = lc || fgC(); // 選択状態に関わらず設定色を使用
   ctx.strokeStyle = c; ctx.fillStyle = c;
   if (lineStyle) applyLineStyle(ctx, lineStyle, zoom);
-  const lw = (isSel ? 2.5 : 1.5) / zoom; // 選択時は線幅のみ太くする
+  const lw = (isSel ? 2.5 : 1.5); // 選択時は線幅のみ太くする
   ctx.lineWidth = lw;
-  const ln = w => { ctx.lineWidth = w / zoom; };
+  const ln = w => { ctx.lineWidth = w; };
 
   // カスタムシンボル
   const cS = state.customSymbols.find(s => s.type === type);
   if (cS) {
-    ctx.lineWidth = (isSel ? 2 : 1.5) / zoom;
+    ctx.lineWidth = (isSel ? 2 : 1.5);
     if (cS.shapes && cS.shapes.length) {
       cS.shapes.forEach(s => {
         if (s.t==='L') { ctx.beginPath(); ctx.moveTo(s.x1,s.y1); ctx.lineTo(s.x2,s.y2); ctx.stroke(); }
