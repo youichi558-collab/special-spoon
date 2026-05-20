@@ -431,8 +431,8 @@ const guideTool = {
       state.guides.push({
         id: genId('guide'),
         type: mode,
-        x: wx,
-        y: wy,
+        x: snap(wx),
+        y: snap(wy),
       });
     }
     draw();
