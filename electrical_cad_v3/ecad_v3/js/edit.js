@@ -332,28 +332,32 @@ function explodeSelected() {
     const lay = el.layer || activeLayer();
     const col = el.color || undefined;
     cS.shapes.forEach(s => {
-      const id = genId('el');
-      newIds.push(id);
       if (s.t === 'L') {
+        const id = genId('el');
         const p1 = tx(s.x1, s.y1), p2 = tx(s.x2, s.y2);
         state.elements.push({ id, type: 'fline', x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, layer: lay, color: col });
+        newIds.push(id);
       } else if (s.t === 'C') {
+        const id = genId('el');
         const c = tx(s.cx, s.cy);
         state.elements.push({ id, type: 'circle', x: c.x, y: c.y, r: s.r * sc, layer: lay, color: col });
+        newIds.push(id);
       } else if (s.t === 'A') {
+        const id = genId('el');
         const c = tx(s.cx, s.cy);
         state.elements.push({ id, type: 'arc', x: c.x, y: c.y, r: s.r * sc, startA: s.sa * Math.PI / 180 + rot, endA: s.ea * Math.PI / 180 + rot, layer: lay, color: col });
+        newIds.push(id);
       } else if (s.t === 'P' && s.pts && s.pts.length >= 2) {
         const pts = s.pts.map(p => tx(p[0], p[1]));
         for (let k = 0; k < pts.length - 1; k++) {
-          const lid = genId('el');
-          newIds.push(lid);
-          state.elements.push({ id: lid, type: 'fline', x1: pts[k].x, y1: pts[k].y, x2: pts[k+1].x, y2: pts[k+1].y, layer: lay, color: col });
+          const id = genId('el');
+          state.elements.push({ id, type: 'fline', x1: pts[k].x, y1: pts[k].y, x2: pts[k+1].x, y2: pts[k+1].y, layer: lay, color: col });
+          newIds.push(id);
         }
         if (s.cl && pts.length >= 2) {
-          const lid = genId('el');
-          newIds.push(lid);
-          state.elements.push({ id: lid, type: 'fline', x1: pts[pts.length-1].x, y1: pts[pts.length-1].y, x2: pts[0].x, y2: pts[0].y, layer: lay, color: col });
+          const id = genId('el');
+          state.elements.push({ id, type: 'fline', x1: pts[pts.length-1].x, y1: pts[pts.length-1].y, x2: pts[0].x, y2: pts[0].y, layer: lay, color: col });
+          newIds.push(id);
         }
       }
     });
