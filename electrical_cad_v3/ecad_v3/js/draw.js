@@ -618,11 +618,9 @@ function drawLineEnd(ctx, x, y, vx, vy, type, size, color, zoom) {
 function drawGuides() {
   const guides = state.guides;
   if (!guides || !guides.length) return;
-  const fr = state.frameObj;
-  const W = fr ? (fr.wMM || 420) * (fr.sc || 1) : cv.width / state.zoom;
-  const H = fr ? (fr.hMM || 297) * (fr.sc || 1) : cv.height / state.zoom;
+  // 画面全体をカバーする無限線（world座標で画面外まで伸ばす）
+  const inf = cv.width / state.zoom + Math.abs(state.pan.x / state.zoom) + 9999;
 
-  // 既にpan/zoom変換済みのコンテキスト内で描画
   const prevStroke = ctx.strokeStyle;
   const prevLW = ctx.lineWidth;
   ctx.strokeStyle = '#e879f9';
@@ -632,9 +630,9 @@ function drawGuides() {
   guides.forEach(g => {
     ctx.beginPath();
     if (g.type === 'guide_h') {
-      ctx.moveTo(0, g.y); ctx.lineTo(W, g.y);
+      ctx.moveTo(-inf, g.y); ctx.lineTo(inf, g.y);
     } else {
-      ctx.moveTo(g.x, 0); ctx.lineTo(g.x, H);
+      ctx.moveTo(g.x, -inf); ctx.lineTo(g.x, inf);
     }
     ctx.stroke();
   });
