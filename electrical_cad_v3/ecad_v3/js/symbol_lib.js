@@ -238,9 +238,9 @@ const symLib = (() => {
       if (s.t==='L') { ctx.moveTo(tx(s.x1),ty(s.y1)); ctx.lineTo(tx(s.x2),ty(s.y2)); ctx.stroke(); }
       else if (s.t==='C') { ctx.arc(tx(s.cx),ty(s.cy),s.r*scale,0,Math.PI*2); ctx.stroke(); }
       else if (s.t==='A') {
-        // DXFのARCは反時計回り、canvasは時計回り（Y反転で逆転）
-        const sa=-s.sa*Math.PI/180, ea=-s.ea*Math.PI/180;
-        ctx.arc(tx(s.cx),ty(s.cy),s.r*scale,sa,ea,true); ctx.stroke();
+        // DXFのARCはCCW(Y上向き)→Y反転でCW(canvas Y下向き)
+        // 角度数値はそのまま（Y反転で方向だけ変わる）、anticlockwise=false
+        ctx.arc(tx(s.cx),ty(s.cy),s.r*scale,s.sa*Math.PI/180,s.ea*Math.PI/180,false); ctx.stroke();
       }
       else if (s.t==='P') {
         if (!s.pts.length) return;
@@ -272,7 +272,7 @@ const symLib = (() => {
     const canvasShapes = shapes.map(s => {
       if (s.t==='L') return {t:'L',x1:s.x1*SCALE,y1:-s.y1*SCALE,x2:s.x2*SCALE,y2:-s.y2*SCALE};
       if (s.t==='C') return {t:'C',cx:s.cx*SCALE,cy:-s.cy*SCALE,r:s.r*SCALE};
-      if (s.t==='A') return {t:'A',cx:s.cx*SCALE,cy:-s.cy*SCALE,r:s.r*SCALE,sa:-(s.ea),ea:-(s.sa)};
+      if (s.t==='A') return {t:'A',cx:s.cx*SCALE,cy:-s.cy*SCALE,r:s.r*SCALE,sa:s.sa,ea:s.ea};
       if (s.t==='P') return {t:'P',pts:s.pts.map(p=>[p[0]*SCALE,-p[1]*SCALE]),cl:s.cl};
       return s;
     });
