@@ -45,7 +45,7 @@ function hitTest(wx, wy) {
       }
       continue;
     }
-    if (el.type === 'junction') { if (Math.hypot(wx-el.x,wy-el.y) < (el.r||4)+R) return el; continue; }
+    if (el.type === 'junction') { if (Math.hypot(wx-el.x,wy-el.y) < (el.r||5)+R) return el; continue; }
     if (el.type === 'angle_dim') {
       // 弧の近くかテキスト近くでヒット
       const a1=Math.atan2(el.y1-el.cy,el.x1-el.cx), a2=Math.atan2(el.y2-el.cy,el.x2-el.cx);

@@ -740,7 +740,14 @@ function updateRightPanel() {
   const item = el || wire;
   let html = '';
 
-  if (el && el.type === 'text') {
+  if (el && el.type === 'junction') {
+    html += `<p style="font-size:10px;font-weight:600;color:var(--fg4);padding:6px 10px 2px">接続点</p>`;
+    html += `<div class="pp-row"><label>X</label><input type="number" id="pp-jx" value="${Math.round(el.x*10)/10}" step="1"></div>`;
+    html += `<div class="pp-row"><label>Y</label><input type="number" id="pp-jy" value="${Math.round(el.y*10)/10}" step="1"></div>`;
+    html += `<div class="pp-row"><label>半径</label><input type="number" id="pp-jr" value="${el.r||5}" min="1" max="30" step="1"></div>`;
+    html += colorRow('色', 'pp-jcolor', 'pp-jcolorcode', el.color||'#000000', 'previewJunctionColor()');
+    html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
+  } else if (el && el.type === 'text') {
     html += `<div class="pp-row"><label>テキスト</label><textarea rows="2" id="pp-text">${el.text||''}</textarea></div>`;
     html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-fs" value="${el.fs||14}" min="8" max="72"></div>`;
     html += colorRow('色', 'pp-textcolor', 'pp-textcolorcode', el.color||'#222222', 'previewElColor()');
@@ -943,6 +950,15 @@ function drawWithoutSel() {
   state.sel.els = savedEls; state.sel.wires = savedWires;
 }
 
+function previewJunctionColor() {
+  const rp = document.getElementById('rp-body');
+  const el = rp?._el;
+  if (!el || el.type !== 'junction') return;
+  const c = document.getElementById('pp-jcolorcode');
+  if (c && /^#[0-9a-fA-F]{6}$/.test(c.value)) el.color = c.value;
+  drawWithoutSel();
+}
+
 function previewWireColor() {
   const rp = document.getElementById('rp-body');
   const wire = rp?._wire;
@@ -1033,7 +1049,12 @@ function applyRightPanel() {
   // 同じ要素の連続変更はundoスタックをまとめる
   if (_lastApplyItem !== item) { pushH(); _lastApplyItem = item; setTimeout(()=>{ _lastApplyItem = null; }, 1000); }
   const v = id => { const e = document.getElementById(id); return e ? e.value : ''; };
-  if (el && el.type === 'text') {
+  if (el && el.type === 'junction') {
+    if (v('pp-jx')!=='') { el.x = parseFloat(v('pp-jx')); el.y = parseFloat(v('pp-jy')); }
+    if (v('pp-jr')!=='') el.r = Math.max(1, parseFloat(v('pp-jr')));
+    el.color = v('pp-jcolorcode') || v('pp-jcolor') || undefined;
+    el.layer = v('pp-layer');
+  } else if (el && el.type === 'text') {
     el.text = v('pp-text'); el.fs = parseInt(v('pp-fs'))||14;
     el.color = v('pp-textcolorcode') || v('pp-textcolor') || undefined;
   } else if (el && el.type === 'angle_dim') {

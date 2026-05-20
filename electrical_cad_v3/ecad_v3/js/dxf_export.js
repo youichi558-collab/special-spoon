@@ -171,7 +171,7 @@ function exportDXF(){
       if (el.ccw) { const t = sa; sa = ea; ea = t; }
       ls.push('0','ARC','8',layer,'10',el.x.toFixed(2),'20',(-el.y).toFixed(2),'30','0','40',(el.r||0).toFixed(2),'50',sa.toFixed(2),'51',ea.toFixed(2));
     } else if (el.type === 'junction') {
-      const r = el.r || 4;
+      const r = el.r || 5;
       ls.push('0','CIRCLE','8',layer,'10',el.x.toFixed(2),'20',(-el.y).toFixed(2),'30','0','40',r.toFixed(2));
     } else if (el.type === 'angle_dim') {
       addLine(layer, el.cx, el.cy, el.x1, el.y1);

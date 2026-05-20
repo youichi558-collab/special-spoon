@@ -277,9 +277,13 @@ function drawArcEl(el, sel, lc, lay) {
 function drawJunctionEl(el, sel, lc) {
   ctx.save();
   const c = el.color || lc;
-  const r = (el.r || 4) / state.zoom * state.zoom;  // 固定4px相当
+  const r = el.r || 5;
   ctx.fillStyle = c;
-  ctx.beginPath(); ctx.arc(el.x, el.y, el.r || 4, 0, Math.PI*2); ctx.fill();
+  if (sel) {
+    ctx.strokeStyle = '#0067c0'; ctx.lineWidth = 1.5 / state.zoom;
+    ctx.beginPath(); ctx.arc(el.x, el.y, r + 2/state.zoom, 0, Math.PI*2); ctx.stroke();
+  }
+  ctx.beginPath(); ctx.arc(el.x, el.y, r, 0, Math.PI*2); ctx.fill();
   ctx.restore();
 }
 
@@ -367,6 +371,13 @@ function drawPreview() {
     ctx.setLineDash([]);
     ctx.globalAlpha = 0.5;
     drawSym(prev.symType, prev.x, prev.y, false, 0, false, false, fgC());
+    ctx.globalAlpha = 1;
+  } else if (prev.type === 'junction_preview') {
+    ctx.setLineDash([]);
+    const r = (state.junctionR || 5);
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = '#0067c0';
+    ctx.beginPath(); ctx.arc(prev.x, prev.y, r, 0, Math.PI*2); ctx.fill();
     ctx.globalAlpha = 1;
   } else if (prev.type === 'dim_prev1' || prev.type === 'dim_prev2' ||
              prev.type === 'leader_prev1' || prev.type === 'leader_prev2' ||

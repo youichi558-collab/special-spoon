@@ -396,12 +396,22 @@ const triTool = {
   onUp() {}, onHover(wx, wy, e) { this.onMove(wx, wy, e); }
 };
 
-const junctionTool = {  onDown(wx, wy) {
+const junctionTool = {
+  onDown(wx, wy) {
     const p = getAllSnapPoints(wx, wy);
     pushH();
-    state.elements.push({ id: genId('el'), type:'junction', x:p.x, y:p.y, layer: activeLayer() });
+    state.elements.push({ id: genId('el'), type:'junction', x:p.x, y:p.y, r: state.junctionR || 5, layer: activeLayer() });
+    draw();
   },
-  onMove() {}, onUp() {}, onHover() {}
+  onMove(wx, wy) {
+    const p = getAllSnapPoints(wx, wy);
+    state.preview = { type: 'junction_preview', x: p.x, y: p.y };
+  },
+  onUp() {},
+  onHover(wx, wy) {
+    const p = getAllSnapPoints(wx, wy);
+    state.preview = { type: 'junction_preview', x: p.x, y: p.y };
+  }
 };
 
 // ----------------------------------------------------------------
