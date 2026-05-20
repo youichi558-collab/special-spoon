@@ -175,3 +175,16 @@ function buildDragGroup() {
   });
   return group;
 }
+
+// ジャンクション専用ヒットテスト（ワイヤーより優先選択するため分離）
+function hitTestJunction(wx, wy) {
+  const R = 8 / state.zoom;
+  for (let i = state.elements.length - 1; i >= 0; i--) {
+    const el = state.elements[i];
+    if (el.type !== 'junction') continue;
+    const lay = LAYERS.find(l => l.name === el.layer);
+    if (lay && lay.locked) continue;
+    if (Math.hypot(wx - el.x, wy - el.y) < (el.r || 5) + R) return el;
+  }
+  return null;
+}

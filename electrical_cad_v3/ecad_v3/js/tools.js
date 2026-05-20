@@ -11,9 +11,10 @@
 // ----------------------------------------------------------------
 const selectTool = {
   onDown(wx, wy, e) {
-    // ワイヤーを先に判定（leaderより優先）
-    const wire = hitTestWire(wx, wy);
-    const el = wire ? null : hitTest(wx, wy);
+    // ジャンクションを最優先（ワイヤーと重なっていても選択できるよう）
+    const junc = hitTestJunction(wx, wy);
+    const wire = junc ? null : hitTestWire(wx, wy);
+    const el   = junc || (wire ? null : hitTest(wx, wy));
 
     if (!el && !wire) {
       if (!e.shiftKey) { state.sel.els.clear(); state.sel.wires.clear(); }
