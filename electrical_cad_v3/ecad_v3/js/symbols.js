@@ -15,14 +15,14 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc, lineStyle) {
   const c = lc || fgC(); // 選択状態に関わらず設定色を使用
   ctx.strokeStyle = c; ctx.fillStyle = c;
   if (lineStyle) applyLineStyle(ctx, lineStyle, zoom);
-  const lw = (isSel ? 2.5 : 1.5); // 選択時は線幅のみ太くする
+  const lw = (isSel ? 1.5 : 1.0); // 選択時は線幅のみ太くする
   ctx.lineWidth = lw;
   const ln = w => { ctx.lineWidth = w; };
 
   // カスタムシンボル
   const cS = state.customSymbols.find(s => s.type === type);
   if (cS) {
-    ctx.lineWidth = (isSel ? 2 : 1.5);
+    ctx.lineWidth = (isSel ? 1.5 : 1.0);
     if (cS.shapes && cS.shapes.length) {
       cS.shapes.forEach(s => {
         if (s.t==='L') { ctx.beginPath(); ctx.moveTo(s.x1,s.y1); ctx.lineTo(s.x2,s.y2); ctx.stroke(); }
@@ -58,7 +58,7 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc, lineStyle) {
     // JIS C 0617-11: 長短交互の縦棒（長=正極）
     ctx.beginPath(); ctx.moveTo(-36,0); ctx.lineTo(-14,0); ctx.stroke();
     [[-14,2.5],[-7,1.2],[0,2.5],[7,1.2],[14,2.5]].forEach(([px,w]) => { ln(w); ctx.beginPath(); ctx.moveTo(px,w>1.5?-9:-6); ctx.lineTo(px,w>1.5?9:6); ctx.stroke(); });
-    ln(1.5); ctx.beginPath(); ctx.moveTo(14,0); ctx.lineTo(36,0); ctx.stroke();
+    ln(1.0); ctx.beginPath(); ctx.moveTo(14,0); ctx.lineTo(36,0); ctx.stroke();
 
   } else if (type==='ac') {
     // JIS C 0617-11: 円に正弦波
@@ -70,7 +70,7 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc, lineStyle) {
   } else if (type==='ground') {
     // JIS C 0617-2: 3本平行線（下に向かって短く等間隔）
     ctx.beginPath(); ctx.moveTo(0,-18); ctx.lineTo(0,0); ctx.stroke();
-    ln(1.5);
+    ln(1.0);
     ctx.beginPath(); ctx.moveTo(-16,0);  ctx.lineTo(16,0);  ctx.stroke();
     ctx.beginPath(); ctx.moveTo(-10,6);  ctx.lineTo(10,6);  ctx.stroke();
     ctx.beginPath(); ctx.moveTo(-4,12);  ctx.lineTo(4,12);  ctx.stroke();
@@ -84,9 +84,9 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc, lineStyle) {
   } else if (type==='capacitor') {
     // JIS C 0617-4: 2本の平行線
     ctx.beginPath(); ctx.moveTo(-27,0); ctx.lineTo(-6,0); ctx.stroke();
-    ln(2.5); ctx.beginPath(); ctx.moveTo(-6,-12); ctx.lineTo(-6,12); ctx.stroke();
+    ln(1.5); ctx.beginPath(); ctx.moveTo(-6,-12); ctx.lineTo(-6,12); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(6,-12); ctx.lineTo(6,12); ctx.stroke();
-    ln(1.5); ctx.beginPath(); ctx.moveTo(6,0); ctx.lineTo(27,0); ctx.stroke();
+    ln(1.0); ctx.beginPath(); ctx.moveTo(6,0); ctx.lineTo(27,0); ctx.stroke();
 
   } else if (type==='inductor') {
     // JIS C 0617-4: 上向き半円4つ連続
@@ -142,7 +142,7 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc, lineStyle) {
     // 操作素子: 縦棒+横棒(T字)
     ctx.beginPath(); ctx.moveTo(0,-12); ctx.lineTo(0,-18); ctx.stroke();
     ln(2); ctx.beginPath(); ctx.moveTo(-8,-18); ctx.lineTo(8,-18); ctx.stroke();
-    ln(1.5);
+    ln(1.0);
 
   } else if (type==='sw_nc') {
     // JIS C 0617-7: b接点 両端小円、水平アーム(閉路)、上方に斜め開放線
