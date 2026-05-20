@@ -274,12 +274,19 @@ const symLib = (() => {
     const dxfW=Math.max(mxX-mnX,1), dxfH=Math.max(mxY-mnY,1);
     const SCALE = 8;
 
-    // Y軸反転してcanvas座標系に変換
+    // DXFの図形を(0,0)中心に正規化
+    const cxDxf = (mnX + mxX) / 2;
+    const cyDxf = (mnY + mxY) / 2;
     const canvasShapes = shapes.map(s => {
-      if (s.t==='L') return {t:'L',x1:s.x1*SCALE,y1:-s.y1*SCALE,x2:s.x2*SCALE,y2:-s.y2*SCALE};
-      if (s.t==='C') return {t:'C',cx:s.cx*SCALE,cy:-s.cy*SCALE,r:s.r*SCALE};
-      if (s.t==='A') return {t:'A',cx:s.cx*SCALE,cy:-s.cy*SCALE,r:s.r*SCALE,sa:s.sa,ea:s.ea};
-      if (s.t==='P') return {t:'P',pts:s.pts.map(p=>[p[0]*SCALE,-p[1]*SCALE]),cl:s.cl};
+      if (s.t==='L') return {t:'L',
+        x1:(s.x1-cxDxf)*SCALE, y1:-(s.y1-cyDxf)*SCALE,
+        x2:(s.x2-cxDxf)*SCALE, y2:-(s.y2-cyDxf)*SCALE};
+      if (s.t==='C') return {t:'C',
+        cx:(s.cx-cxDxf)*SCALE, cy:-(s.cy-cyDxf)*SCALE, r:s.r*SCALE};
+      if (s.t==='A') return {t:'A',
+        cx:(s.cx-cxDxf)*SCALE, cy:-(s.cy-cyDxf)*SCALE, r:s.r*SCALE, sa:s.sa, ea:s.ea};
+      if (s.t==='P') return {t:'P',
+        pts:s.pts.map(p=>[(p[0]-cxDxf)*SCALE, -(p[1]-cyDxf)*SCALE]), cl:s.cl};
       return s;
     });
 
@@ -329,7 +336,7 @@ const symLib = (() => {
 
     // DEFSに登録
     if (typeof DEFS !== 'undefined') {
-      DEFS[symType] = { w: dxfW*SCALE, h: dxfH*SCALE, cat: symDef.cat, name: previewEntry.label, jis:'', terminals:[] };
+      DEFS[symType] = { w: dxfW*SCALE, h: dxfH*SCALE, cat: symDef.cat, name: previewEntry.label, label: previewEntry.label, jis:'', terminals:[] };
     }
 
     pushH();
