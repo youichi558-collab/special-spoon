@@ -147,7 +147,7 @@ function drawWirePreview() {
 
   ctx.save();
   ctx.strokeStyle = '#0F6E56';
-  ctx.lineWidth   = 2;
+  ctx.lineWidth   = 1;
   ctx.lineCap = 'round'; ctx.setLineDash([6/state.zoom, 4/state.zoom]);
   ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
   pts.forEach(p => ctx.lineTo(p.x, p.y));
