@@ -284,22 +284,67 @@ const symLib = (() => {
     });
 
     const symType = 'lib_' + previewEntry.fname;
+
+    // プレビュー画像を生成
+    let preview = '';
+    try {
+      const pv = document.createElement('canvas');
+      pv.width = 80; pv.height = 60;
+      const pc = pv.getContext('2d');
+      pc.fillStyle = '#fff'; pc.fillRect(0,0,80,60);
+      const {mnX:bx1,mnY:by1,mxX:bx2,mxY:by2} = getBBox(shapes);
+      const pad=5, pw=70, ph=50;
+      const sc=Math.min(pw/Math.max(bx2-bx1,1), ph/Math.max(by2-by1,1))*0.85;
+      const ox=pad+(pw-(bx2-bx1)*sc)/2-bx1*sc;
+      const oy=pad+(ph-(by2-by1)*sc)/2+by2*sc;
+      pc.strokeStyle='#222'; pc.lineWidth=1.2; pc.lineCap='round';
+      shapes.forEach(s => {
+        const tx=x=>ox+x*sc, ty=y=>oy-y*sc;
+        pc.beginPath();
+        if (s.t==='L') { pc.moveTo(tx(s.x1),ty(s.y1)); pc.lineTo(tx(s.x2),ty(s.y2)); pc.stroke(); }
+        else if (s.t==='C') { pc.arc(tx(s.cx),ty(s.cy),s.r*sc,0,Math.PI*2); pc.stroke(); }
+        else if (s.t==='A') { pc.arc(tx(s.cx),ty(s.cy),s.r*sc,s.sa*Math.PI/180,s.ea*Math.PI/180,false); pc.stroke(); }
+        else if (s.t==='P' && s.pts.length) {
+          pc.moveTo(tx(s.pts[0][0]),ty(s.pts[0][1]));
+          for(let k=1;k<s.pts.length;k++) pc.lineTo(tx(s.pts[k][0]),ty(s.pts[k][1]));
+          if(s.cl) pc.closePath(); pc.stroke();
+        }
+      });
+      preview = pv.toDataURL('image/png');
+    } catch(e) {}
+
+    const symDef = {
+      type: symType,
+      name: previewEntry.label,
+      label: previewEntry.label,
+      cat: previewEntry.type3 || 'ライブラリ',
+      w: dxfW*SCALE, h: dxfH*SCALE,
+      shapes: canvasShapes,
+      terminals: [],
+      preview
+    };
     const existing = state.customSymbols.findIndex(s => s.type === symType);
-    const symDef = {type:symType, label:previewEntry.label, shapes:canvasShapes, w:dxfW*SCALE, h:dxfH*SCALE};
     if (existing >= 0) state.customSymbols[existing] = symDef;
     else state.customSymbols.push(symDef);
+
+    // DEFSに登録
+    if (typeof DEFS !== 'undefined') {
+      DEFS[symType] = { w: dxfW*SCALE, h: dxfH*SCALE, cat: symDef.cat, name: previewEntry.label, jis:'', terminals:[] };
+    }
 
     pushH();
     const cx = (window.innerWidth/2 - state.pan.x) / state.zoom;
     const cy = (window.innerHeight/2 - state.pan.y) / state.zoom;
     state.elements.push({
-      id: Date.now(), type: 'symbol', symType,
-      x: cx, y: cy, rot: 0, fH: false, fV: false,
+      id: Date.now(), type: symType,   // ← symTypeをtypeに直接セット
+      x: cx, y: cy, rot: 0, flipH: false, flipV: false,
       label: previewEntry.label,
-      labelPos: {x:0, y:-(dxfH*SCALE/2+14)},
+      labelOffX: 0, labelOffY: dxfH*SCALE/2+14,
       color: null, lineStyle: null,
       w: dxfW*SCALE, h: dxfH*SCALE
     });
+
+    if (typeof renderCustomSymbols === 'function') renderCustomSymbols();
     draw();
     alert(`「${previewEntry.label}」を追加しました`);
   }
