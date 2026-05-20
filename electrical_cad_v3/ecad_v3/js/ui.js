@@ -1233,7 +1233,7 @@ function showCtx(cx, cy) {
 
 function hideCtx() { document.getElementById('ctxmenu').classList.remove('open'); }
 
-document.addEventListener('click', () => hideCtx());
+document.addEventListener('click', e => { if (e.button === 0) hideCtx(); });
 
 // ----------------------------------------------------------------
 // ユーティリティ

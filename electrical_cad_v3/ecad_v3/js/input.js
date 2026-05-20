@@ -165,15 +165,10 @@ cv.addEventListener('mouseup', e => {
     state.mouse.panning = false;
     state.mouse.down    = false;
     cv.style.cursor = '';
-    // 右クリックでパン距離が小さい場合はコンテキストメニュー
-    if (e.button === 2 && !state.mouse.dragMoved) {
-      showCtx(e.clientX, e.clientY);
-    }
     return;
   }
 
   if (e.button === 2) {
-    showCtx(e.clientX, e.clientY);
     state.mouse.down = false;
     return;
   }
@@ -204,7 +199,15 @@ document.addEventListener('mouseup', e => {
   }
 });
 
-cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  e.stopPropagation();
+  if (!state.mouse.dragMoved) {
+    showCtx(e.clientX, e.clientY);
+  }
+  state.mouse.panning  = false;
+  state.mouse.dragMoved = false;
+});
 
 // ダブルクリック → dim/leader/text のテキスト直接編集（selectモードのみ）
 cv.addEventListener('dblclick', e => {
