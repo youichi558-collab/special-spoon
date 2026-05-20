@@ -404,7 +404,13 @@ document.addEventListener('keydown', e => {
 
   switch (e.key) {
     case 'Delete': case 'Backspace': e.preventDefault(); delSel(); break;
+    case 'Enter':
+      if (state.mode === 'bezier' && state.mouse.bezierPts?.length >= 2) {
+        e.preventDefault(); currentTool().confirm();
+      }
+      break;
     case 'Escape':
+      if (state.mode === 'bezier') { state.mouse.bezierPts = null; state.preview = null; draw(); break; }
       if (document.getElementById('pdf-preview-overlay')?.style.display === 'flex') { closePDFPreview(); break; }
       if (document.body.classList.contains('fullscreen')) { toggleExpand(); break; }
       state.wirePoints = []; state.preview = null; state.dimState = null;

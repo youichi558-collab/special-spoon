@@ -197,6 +197,8 @@ function drawElements() {
       drawArcEl(el, sel, lc, lay);
     } else if (el.type === 'junction') {
       drawJunctionEl(el, sel, lc);
+    } else if (el.type === 'bezier') {
+      drawBezierEl(el, sel, lc, lay);
     } else if (el.type === 'dim') {
       drawDimEl(el, sel);
     } else if (el.type === 'angle_dim') {
@@ -296,6 +298,41 @@ function drawJunctionEl(el, sel, lc) {
   ctx.restore();
 }
 
+function drawCatmullRom(pts, tension) {
+  if (pts.length < 2) return;
+  tension = tension || 0.5;
+  ctx.moveTo(pts[0].x, pts[0].y);
+  if (pts.length === 2) { ctx.lineTo(pts[1].x, pts[1].y); return; }
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i-1)];
+    const p1 = pts[i];
+    const p2 = pts[i+1];
+    const p3 = pts[Math.min(pts.length-1, i+2)];
+    const cp1x = p1.x + (p2.x - p0.x) * tension / 3;
+    const cp1y = p1.y + (p2.y - p0.y) * tension / 3;
+    const cp2x = p2.x - (p3.x - p1.x) * tension / 3;
+    const cp2y = p2.y - (p3.y - p1.y) * tension / 3;
+    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+  }
+}
+
+function drawBezierEl(el, sel, lc, lay) {
+  if (!el.pts || el.pts.length < 2) return;
+  ctx.save();
+  const c = el.color || lc;
+  const lw = el.lineWidth || lay?.lineWidth || 1.0;
+  ctx.strokeStyle = c; ctx.lineWidth = sel ? lw+1 : lw; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
+  ctx.beginPath();
+  drawCatmullRom(el.pts);
+  ctx.stroke(); ctx.setLineDash([]);
+  if (sel) {
+    ctx.fillStyle = '#0067c0';
+    el.pts.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, 3/state.zoom, 0, Math.PI*2); ctx.fill(); });
+  }
+  ctx.restore();
+}
+
 function drawFlineEl(el, sel, lc, lay) {
   ctx.save();
   const c  = el.color || lc;
@@ -388,6 +425,16 @@ function drawPreview() {
     ctx.fillStyle = '#0067c0';
     ctx.beginPath(); ctx.arc(prev.x, prev.y, r, 0, Math.PI*2); ctx.fill();
     ctx.globalAlpha = 1;
+  } else if (prev.type === 'bezier_preview') {
+    ctx.setLineDash([4/state.zoom, 3/state.zoom]);
+    const allPts = [...prev.pts, { x: prev.mx, y: prev.my }];
+    ctx.beginPath();
+    drawCatmullRom(allPts);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // 確定済み制御点を表示
+    ctx.fillStyle = '#0067c0';
+    prev.pts.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, 3/state.zoom, 0, Math.PI*2); ctx.fill(); });
   } else if (prev.type === 'dim_prev1' || prev.type === 'dim_prev2' ||
              prev.type === 'leader_prev1' || prev.type === 'leader_prev2' ||
              prev.type === 'chain_prev') {

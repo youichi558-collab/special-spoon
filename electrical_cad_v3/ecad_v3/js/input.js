@@ -211,6 +211,15 @@ cv.addEventListener('contextmenu', e => {
 
 // ダブルクリック → dim/leader/text のテキスト直接編集（selectモードのみ）
 cv.addEventListener('dblclick', e => {
+  // bezierモードのダブルクリック確定
+  if (state.mode === 'bezier') {
+    // ダブルクリックは2回のclickが来るので最後の点を1つ削除してから確定
+    if (state.mouse.bezierPts && state.mouse.bezierPts.length > 1) {
+      state.mouse.bezierPts.pop();
+    }
+    currentTool().confirm();
+    return;
+  }
   if (state.mode !== 'select') return;  // dim/leader配置中は無視
   const r = cv.getBoundingClientRect();
   const {x:wx, y:wy} = tw(e.clientX - r.left, e.clientY - r.top);

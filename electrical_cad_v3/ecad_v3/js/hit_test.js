@@ -46,6 +46,14 @@ function hitTest(wx, wy) {
       continue;
     }
     if (el.type === 'junction') { if (Math.hypot(wx-el.x,wy-el.y) < (el.r||2)+R) return el; continue; }
+    if (el.type === 'bezier') {
+      if (!el.pts || el.pts.length < 2) continue;
+      let hit = false;
+      for (let i = 0; i < el.pts.length - 1 && !hit; i++) {
+        if (distToSeg(wx, wy, el.pts[i].x, el.pts[i].y, el.pts[i+1].x, el.pts[i+1].y) < R * 2) hit = true;
+      }
+      if (hit) return el; continue;
+    }
     if (el.type === 'angle_dim') {
       // 弧の近くかテキスト近くでヒット
       const a1=Math.atan2(el.y1-el.cy,el.x1-el.cx), a2=Math.atan2(el.y2-el.cy,el.x2-el.cx);

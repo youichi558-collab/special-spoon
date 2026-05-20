@@ -419,6 +419,33 @@ const junctionTool = {
 };
 
 // ----------------------------------------------------------------
+// 曲線ツール（bezier）- クリックで制御点追加、ダブルクリック/Enterで確定
+// ----------------------------------------------------------------
+const bezierTool = {
+  onDown(wx, wy) {
+    const p = getAllSnapPoints(wx, wy);
+    if (!state.mouse.bezierPts) state.mouse.bezierPts = [];
+    state.mouse.bezierPts.push({ x: p.x, y: p.y });
+    state.preview = { type: 'bezier_preview', pts: [...state.mouse.bezierPts], mx: p.x, my: p.y };
+  },
+  onMove(wx, wy) {
+    if (!state.mouse.bezierPts || !state.mouse.bezierPts.length) return;
+    state.preview = { type: 'bezier_preview', pts: [...state.mouse.bezierPts], mx: wx, my: wy };
+  },
+  onUp() {},
+  onHover(wx, wy) { this.onMove(wx, wy); },
+  confirm() {
+    const pts = state.mouse.bezierPts;
+    if (!pts || pts.length < 2) { state.mouse.bezierPts = null; state.preview = null; draw(); return; }
+    pushH();
+    state.elements.push({ id: genId('el'), type: 'bezier', pts: [...pts], layer: activeLayer() });
+    state.mouse.bezierPts = null;
+    state.preview = null;
+    draw();
+  }
+};
+
+// ----------------------------------------------------------------
 // ツールマップ
 // ----------------------------------------------------------------
 // ================================================================
@@ -466,6 +493,7 @@ const TOOLS = {
   arc3:   arc3Tool,
   triangle: triTool,
   junction: junctionTool,
+  bezier: bezierTool,
   guide_h:  guideTool,
   guide_v:  guideTool,
 };
