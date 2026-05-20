@@ -777,8 +777,8 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>伸び(ext)</label><input type="number" id="pp-ext" value="${el.ext!=null?el.ext:state.G}" min="0" max="20"></div>`;
     html += `<div class="pp-row"><label>線幅</label><select id="pp-dimlw">
       <option value="0.5" ${(el.lineWidth||1)==0.5?'selected':''}>極細(0.5)</option>
-      <option value="1"   ${(el.lineWidth||1)==1  ?'selected':''}>細(1)</option>
-      <option value="1.5" ${(el.lineWidth||1)==1.5?'selected':''}>標準(1.5)</option>
+      <option value="1"   ${(el.lineWidth||1)==1  ?'selected':''}>標準(1)</option>
+      <option value="1.5" ${(el.lineWidth||1)==1.5?'selected':''}>やや太(1.5)</option>
       <option value="2"   ${(el.lineWidth||1)==2  ?'selected':''}>太(2)</option>
     </select></div>`;
     html += `<div class="pp-row"><label>線種</label><select id="pp-dimls">
@@ -810,7 +810,7 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${item.wireNo||''}"></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${item.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
     html += colorRow('色（個別上書き）', 'pp-wcolor', 'pp-wcolorcode', item.color||lay?.color||'#0F6E56', 'previewWireColor()');
-    html += `<div class="pp-row"><label>線幅</label><select id="pp-lw"><option value="0.5"${(item.lineWidth||1.5)==0.5?' selected':''}>極細(0.5)</option><option value="1"${(item.lineWidth||1.5)==1?' selected':''}>細(1)</option><option value="1.5"${(item.lineWidth||1.5)==1.5?' selected':''}>標準(1.5)</option><option value="2"${(item.lineWidth||1.5)==2?' selected':''}>太(2)</option><option value="3"${(item.lineWidth||1.5)==3?' selected':''}>極太(3)</option></select></div>`;
+    html += `<div class="pp-row"><label>線幅</label><select id="pp-lw"><option value="0.5"${(item.lineWidth||1.0)==0.5?' selected':''}>極細(0.5)</option><option value="1"${(item.lineWidth||1.0)==1?' selected':''}>標準(1)</option><option value="1.5"${(item.lineWidth||1.0)==1.5?' selected':''}>やや太(1.5)</option><option value="2"${(item.lineWidth||1.0)==2?' selected':''}>太(2)</option><option value="3"${(item.lineWidth||1.0)==3?' selected':''}>極太(3)</option></select></div>`;
     html += `<div class="pp-row"><label>線種</label><select id="pp-ls"><option value=""${!item.lineStyle?' selected':''}>実線</option><option value="dash"${item.lineStyle==='dash'?' selected':''}>破線</option><option value="dashdot"${item.lineStyle==='dashdot'?' selected':''}>一点鎖線</option><option value="dot"${item.lineStyle==='dot'?' selected':''}>点線</option></select></div>`;
     if (lay?.attr) html += `<div class="pp-row"><label>属性（レイヤー）</label><p style="font-size:11px;color:var(--fg3);padding:2px 5px">${lay.attr}</p></div>`;
   } else if (el && ['fline','rect','circle','arc','triangle'].includes(el.type)) {
@@ -848,7 +848,7 @@ function updateRightPanel() {
       html += `<div class="pp-row"><label>幅</label><input type="number" id="pp-rw" value="${Math.round(el.w*10)/10}" step="1" min="1"></div>`;
       html += `<div class="pp-row"><label>高さ</label><input type="number" id="pp-rh" value="${Math.round(el.h*10)/10}" step="1" min="1"></div>`;
     }
-    html += `<div class="pp-row"><label>線幅</label><select id="pp-lw"><option value="0.5"${(el.lineWidth||1.5)==0.5?' selected':''}>極細(0.5)</option><option value="1"${(el.lineWidth||1.5)==1?' selected':''}>細(1)</option><option value="1.5"${(el.lineWidth||1.5)==1.5?' selected':''}>標準(1.5)</option><option value="2"${(el.lineWidth||1.5)==2?' selected':''}>太(2)</option><option value="3"${(el.lineWidth||1.5)==3?' selected':''}>極太(3)</option></select></div>`;
+    html += `<div class="pp-row"><label>線幅</label><select id="pp-lw"><option value="0.5"${(el.lineWidth||1.0)==0.5?' selected':''}>極細(0.5)</option><option value="1"${(el.lineWidth||1.0)==1?' selected':''}>標準(1)</option><option value="1.5"${(el.lineWidth||1.0)==1.5?' selected':''}>やや太(1.5)</option><option value="2"${(el.lineWidth||1.0)==2?' selected':''}>太(2)</option><option value="3"${(el.lineWidth||1.0)==3?' selected':''}>極太(3)</option></select></div>`;
     html += `<div class="pp-row"><label>線種</label><select id="pp-ls"><option value=""${!el.lineStyle?' selected':''}>実線</option><option value="dash"${el.lineStyle==='dash'?' selected':''}>破線</option><option value="dot"${el.lineStyle==='dot'?' selected':''}>点線</option><option value="dashdot"${el.lineStyle==='dashdot'?' selected':''}>一点鎖線</option></select></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
     html += `<div class="pp-row"><label>メモ</label><textarea rows="2" id="pp-note">${el.note||''}</textarea></div>`;
