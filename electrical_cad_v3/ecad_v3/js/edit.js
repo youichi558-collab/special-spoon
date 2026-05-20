@@ -308,6 +308,67 @@ function ungroupSelected() {
 }
 
 // ----------------------------------------------------------------
+// シンボル分解
+// ----------------------------------------------------------------
+function explodeSelected() {
+  const selEls = state.elements.filter(e => state.sel.els.has(e.id));
+  const targets = selEls.filter(e => {
+    const cS = state.customSymbols.find(s => s.type === e.type);
+    return cS && cS.shapes && cS.shapes.length;
+  });
+  if (!targets.length) return;
+  pushH();
+  const newIds = [];
+  targets.forEach(el => {
+    const cS = state.customSymbols.find(s => s.type === el.type);
+    const sc = el.scale || 1;
+    const rot = (el.rot || 0) * Math.PI / 180;
+    const cosR = Math.cos(rot), sinR = Math.sin(rot);
+    const fH = el.flipH ? -1 : 1, fV = el.flipV ? -1 : 1;
+    const tx = (lx, ly) => {
+      const sx = lx * fH * sc, sy = ly * fV * sc;
+      return { x: el.x + sx * cosR - sy * sinR, y: el.y + sx * sinR + sy * cosR };
+    };
+    const lay = el.layer || activeLayer();
+    const col = el.color || undefined;
+    cS.shapes.forEach(s => {
+      const id = genId('el');
+      newIds.push(id);
+      if (s.t === 'L') {
+        const p1 = tx(s.x1, s.y1), p2 = tx(s.x2, s.y2);
+        state.elements.push({ id, type: 'fline', x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, layer: lay, color: col });
+      } else if (s.t === 'C') {
+        const c = tx(s.cx, s.cy);
+        state.elements.push({ id, type: 'circle', x: c.x, y: c.y, r: s.r * sc, layer: lay, color: col });
+      } else if (s.t === 'A') {
+        const c = tx(s.cx, s.cy);
+        state.elements.push({ id, type: 'arc', x: c.x, y: c.y, r: s.r * sc, startA: s.sa * Math.PI / 180 + rot, endA: s.ea * Math.PI / 180 + rot, layer: lay, color: col });
+      } else if (s.t === 'P' && s.pts && s.pts.length >= 2) {
+        const pts = s.pts.map(p => tx(p[0], p[1]));
+        for (let k = 0; k < pts.length - 1; k++) {
+          const lid = genId('el');
+          newIds.push(lid);
+          state.elements.push({ id: lid, type: 'fline', x1: pts[k].x, y1: pts[k].y, x2: pts[k+1].x, y2: pts[k+1].y, layer: lay, color: col });
+        }
+        if (s.cl && pts.length >= 2) {
+          const lid = genId('el');
+          newIds.push(lid);
+          state.elements.push({ id: lid, type: 'fline', x1: pts[pts.length-1].x, y1: pts[pts.length-1].y, x2: pts[0].x, y2: pts[0].y, layer: lay, color: col });
+        }
+      }
+    });
+    // 元のシンボル要素を削除
+    state.elements = state.elements.filter(e => e.id !== el.id);
+  });
+  // 分解後の要素を選択状態にする
+  state.sel.els.clear();
+  newIds.forEach(id => state.sel.els.add(id));
+  updateRightPanel();
+  updateResizeHandles();
+  draw();
+}
+
+// ----------------------------------------------------------------
 // キーボードショートカット
 // ----------------------------------------------------------------
 document.addEventListener('keydown', e => {
