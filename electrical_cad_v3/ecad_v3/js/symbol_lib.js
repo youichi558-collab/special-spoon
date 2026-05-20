@@ -290,8 +290,8 @@ const symLib = (() => {
     else state.customSymbols.push(symDef);
 
     pushH();
-    const cx = (-state.offsetX + window.innerWidth/2) / state.zoom;
-    const cy = (-state.offsetY + window.innerHeight/2) / state.zoom;
+    const cx = (window.innerWidth/2 - state.pan.x) / state.zoom;
+    const cy = (window.innerHeight/2 - state.pan.y) / state.zoom;
     state.elements.push({
       id: Date.now(), type: 'symbol', symType,
       x: cx, y: cy, rot: 0, fH: false, fV: false,
@@ -300,7 +300,7 @@ const symLib = (() => {
       color: null, lineStyle: null,
       w: dxfW*SCALE, h: dxfH*SCALE
     });
-    drawAll();
+    draw();
     alert(`「${previewEntry.label}」を追加しました`);
   }
 
