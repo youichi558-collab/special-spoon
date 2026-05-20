@@ -523,3 +523,121 @@ function _exportPDFPages(indices, filename) {
     draw();
   }
 }
+
+// ================================================================
+// SVGエクスポート
+// ================================================================
+function exportSVG() {
+  _syncCurrentPage();
+  const pg = state.pages[state.currentPage];
+  const fr = pg.frameObj;
+  const pdfW = fr ? (fr.wMM || 420) : 297;
+  const pdfH = fr ? (fr.hMM || 297) : 210;
+
+  // Canvas画像生成（PDF出力と同じ方式）
+  const dpi = 300;
+  const pxPerMM = dpi / 25.4;
+  const fr2 = maskedFrame(pg.frameObj);
+  let pageW2, pageH2;
+  if (fr2) {
+    pageW2 = (fr2.wMM || fr2.w || 297) * (fr2.sc || 1);
+    pageH2 = (fr2.hMM || fr2.h || 210) * (fr2.sc || 1);
+  } else {
+    const b = calcPageBounds(pg);
+    pageW2 = b.maxX - b.minX;
+    pageH2 = b.maxY - b.minY;
+  }
+  const imgW = Math.round(pdfW * pxPerMM);
+  const imgH = Math.round(pdfH * pxPerMM);
+  const sc2 = imgW / pageW2;
+
+  const oc = document.createElement('canvas');
+  oc.width = imgW; oc.height = imgH;
+  const octx = oc.getContext('2d');
+  octx.fillStyle = '#ffffff';
+  octx.fillRect(0, 0, imgW, imgH);
+
+  const origCv = cv, origCtx = ctx, origZoom = state.zoom;
+  const origPan = { ...state.pan };
+  const origFrameObj = state.frameObj;
+  const origSel = { els: new Set(state.sel.els), wires: new Set(state.sel.wires) };
+  cv = oc; ctx = octx;
+  state.zoom = sc2;
+  state.pdfMode = true;
+  state.frameObj = fr2 || state.frameObj;
+  state.pan = fr2 ? { x: 0, y: 0 } : { x: -calcPageBounds(pg).minX * sc2, y: -calcPageBounds(pg).minY * sc2 };
+  state.pdfSkipText = true;
+  state.sel.els.clear(); state.sel.wires.clear();
+
+  draw();
+
+  state.pdfSkipText = false;
+  state.pdfMode = false;
+  state.frameObj = origFrameObj;
+  cv = origCv; ctx = origCtx;
+  state.zoom = origZoom;
+  state.pan = origPan;
+  state.sel.els = origSel.els; state.sel.wires = origSel.wires;
+
+  const dataURL = oc.toDataURL('image/png');
+
+  // SVG生成
+  const b = calcPageBounds(pg);
+  const s = Math.min(pdfW / pageW2, pdfH / pageH2);
+  const ox = (pdfW - s * pageW2) / 2;
+  const oy = (pdfH - s * pageH2) / 2;
+  const tx = wx => ox + (wx - b.minX) * s;
+  const ty = wy => oy + (wy - b.minY) * s;
+
+  let svgTexts = '';
+
+  // テキスト要素
+  (pg.elements || []).forEach(el => {
+    const lay2 = LAYERS.find(l => l.name === el.layer);
+    if (lay2 && !lay2.visible) return;
+    const elColor = el.color || (lay2 ? lay2.color : '#000000');
+    const sc3 = el.scale || 1;
+
+    if (el.type === 'text') {
+      const fsPt = (el.fs || 12) * s * 3.779;
+      const lines2 = (el.text || '').split('\n');
+      lines2.forEach((line, li) => {
+        svgTexts += `<text x="${tx(el.x).toFixed(2)}" y="${ty(el.y + li * (el.fs||12) * s).toFixed(2)}" font-family="sans-serif" font-size="${fsPt.toFixed(1)}" fill="${elColor}" text-anchor="middle">${escSVG(line)}</text>\n`;
+      });
+    } else if (el.label) {
+      const def2 = getDef(el.type) || { w:40, h:20 };
+      const lox = el.labelOffX || 0;
+      const loy = el.labelOffY || (def2.h * sc3 / 2 + 15 * sc3);
+      const ang = (el.rot || 0) * Math.PI / 180;
+      const lx2 = el.x + (lox * Math.cos(ang) - loy * Math.sin(ang));
+      const ly2 = el.y + (lox * Math.sin(ang) + loy * Math.cos(ang));
+      const fsPt2 = (el.labelFs || 11) * sc3 * s * 3.779;
+      svgTexts += `<text x="${tx(lx2).toFixed(2)}" y="${ty(ly2).toFixed(2)}" font-family="sans-serif" font-size="${fsPt2.toFixed(1)}" fill="${elColor}" text-anchor="middle">${escSVG(el.label)}</text>\n`;
+    }
+  });
+
+  // 線番
+  (pg.wires || []).forEach(w => {
+    if (!w.wireNo) return;
+    const pts2 = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
+    if (pts2.length < 2) return;
+    const n2 = pts2.length;
+    const i2 = Math.floor((n2-1)/2), j2 = Math.ceil((n2-1)/2);
+    const mp = { x:(pts2[i2].x+pts2[j2].x)/2, y:(pts2[i2].y+pts2[j2].y)/2 };
+    const wireOff = (10 + 6) * s;
+    const fsPt3 = 10 * s * 3.779;
+    svgTexts += `<text x="${tx(mp.x).toFixed(2)}" y="${(ty(mp.y) - wireOff).toFixed(2)}" font-family="sans-serif" font-size="${fsPt3.toFixed(1)}" fill="#1e40af" text-anchor="middle">${escSVG(w.wireNo)}</text>\n`;
+  });
+
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="${pdfW}mm" height="${pdfH}mm" viewBox="0 0 ${pdfW} ${pdfH}">
+  <image x="0" y="0" width="${pdfW}" height="${pdfH}" xlink:href="${dataURL}"/>
+${svgTexts}</svg>`;
+
+  dl(svg, (state.saveFileName || '図面') + '.svg', 'image/svg+xml');
+}
+
+function escSVG(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
