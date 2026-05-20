@@ -622,7 +622,9 @@ function drawGuides() {
   const W = fr ? (fr.wMM || 420) * (fr.sc || 1) : cv.width / state.zoom;
   const H = fr ? (fr.hMM || 297) * (fr.sc || 1) : cv.height / state.zoom;
 
-  ctx.save();
+  // 既にpan/zoom変換済みのコンテキスト内で描画
+  const prevStroke = ctx.strokeStyle;
+  const prevLW = ctx.lineWidth;
   ctx.strokeStyle = '#e879f9';
   ctx.lineWidth = 1 / state.zoom;
   ctx.setLineDash([8 / state.zoom, 4 / state.zoom]);
@@ -638,5 +640,6 @@ function drawGuides() {
   });
 
   ctx.setLineDash([]);
-  ctx.restore();
+  ctx.strokeStyle = prevStroke;
+  ctx.lineWidth = prevLW;
 }
