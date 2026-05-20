@@ -166,8 +166,17 @@ function buildDragGroup() {
   const selEls   = state.elements.filter(el => state.sel.els.has(el.id));
   const selWires = state.wires.filter(w    => state.sel.wires.has(w.id));
   selEls.forEach(el => {
-    if (el.x != null)  group.push({ el, ox: el.x, oy: el.y, obx: el.bx, oby: el.by });
-    if (el.x1 != null) group.push({ el, ox1: el.x1, oy1: el.y1, ox2: el.x2, oy2: el.y2 });
+    if (el.type === 'triangle') {
+      group.push({ el, ox1:el.x1,oy1:el.y1, ox2:el.x2,oy2:el.y2, ox3:el.x3,oy3:el.y3 });
+    } else if (el.type === 'angle_dim') {
+      group.push({ el, ocx:el.cx,ocy:el.cy, ox1:el.x1,oy1:el.y1, ox2:el.x2,oy2:el.y2 });
+    } else if (el.type === 'dim' || el.type === 'leader') {
+      group.push({ el, ox1:el.x1,oy1:el.y1, ox2:el.x2,oy2:el.y2, obx:el.bx,oby:el.by });
+    } else if (el.x != null)  {
+      group.push({ el, ox: el.x, oy: el.y, obx: el.bx, oby: el.by });
+    } else if (el.x1 != null) {
+      group.push({ el, ox1: el.x1, oy1: el.y1, ox2: el.x2, oy2: el.y2 });
+    }
   });
   selWires.forEach(w => {
     const pts = w.pts || [{ x:w.x1,y:w.y1 },{ x:w.x2,y:w.y2 }];

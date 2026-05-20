@@ -466,7 +466,7 @@ const symLib = (() => {
       return s;
     });
 
-    const symType='lib_'+previewEntry.fname;
+    const symType = 'lib_' + previewEntry.path.replace(/[^a-zA-Z0-9_\-]/g, '_');
 
     // プレビュー画像生成
     let preview='';
@@ -505,9 +505,11 @@ const symLib = (() => {
     const cx=(window.innerWidth/2-state.pan.x)/state.zoom;
     const cy=(window.innerHeight/2-state.pan.y)/state.zoom;
     state.elements.push({
-      id:Date.now(), type:symType,
+      id:genId('el'), type:symType,
       x:cx, y:cy, rot:0, flipH:false, flipV:false,
       label:previewEntry.label,
+      layer: activeLayer(),
+      source: 'library', sourcePath: previewEntry.path,
       labelOffX:0, labelOffY:dxfH*SCALE/2+14,
       color:null, lineStyle:null,
       w:dxfW*SCALE, h:dxfH*SCALE

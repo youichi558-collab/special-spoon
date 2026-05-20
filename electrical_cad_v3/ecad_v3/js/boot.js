@@ -7,7 +7,7 @@
   // キャンバスサイズを初期化
   cv.width  = cwEl.clientWidth;
   cv.height = cwEl.clientHeight;
-  window.addEventListener('resize', () => { cv.width = cwEl.clientWidth; cv.height = cwEl.clientHeight; draw(); });
+  // resizeイベントはinput.jsで管理
 
   // カスタムシンボルをDEFSに登録
   state.customSymbols.forEach(s => { DEFS[s.type] = s; });

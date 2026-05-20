@@ -27,6 +27,12 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc, lineStyle) {
       cS.shapes.forEach(s => {
         if (s.t==='L') { ctx.beginPath(); ctx.moveTo(s.x1,s.y1); ctx.lineTo(s.x2,s.y2); ctx.stroke(); }
         else if (s.t==='C') { ctx.beginPath(); ctx.arc(s.cx,s.cy,s.r,0,Math.PI*2); ctx.stroke(); }
+        else if (s.t==='A') { ctx.beginPath(); ctx.arc(s.cx,s.cy,s.r, s.sa*Math.PI/180, s.ea*Math.PI/180, false); ctx.stroke(); }
+        else if (s.t==='P' && s.pts && s.pts.length) {
+          ctx.beginPath(); ctx.moveTo(s.pts[0][0],s.pts[0][1]);
+          for (let k=1;k<s.pts.length;k++) ctx.lineTo(s.pts[k][0],s.pts[k][1]);
+          if (s.cl) ctx.closePath(); ctx.stroke();
+        }
         else if (s.t==='R') { ctx.strokeRect(s.x,s.y,s.w,s.h); }
         else if (s.t==='T') { ctx.font=`${s.fs||14}px sans-serif`; ctx.textAlign='center'; ctx.fillText(s.text,s.x,s.y); }
       });
@@ -42,6 +48,8 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc, lineStyle) {
       (cS.shapes||[]).forEach(s => {
         if (s.t==='L') { mnX=Math.min(mnX,s.x1,s.x2);mxX=Math.max(mxX,s.x1,s.x2);mnY=Math.min(mnY,s.y1,s.y2);mxY=Math.max(mxY,s.y1,s.y2); }
         else if (s.t==='C') { mnX=Math.min(mnX,s.cx-s.r);mxX=Math.max(mxX,s.cx+s.r);mnY=Math.min(mnY,s.cy-s.r);mxY=Math.max(mxY,s.cy+s.r); }
+        else if (s.t==='A') { mnX=Math.min(mnX,s.cx-s.r);mxX=Math.max(mxX,s.cx+s.r);mnY=Math.min(mnY,s.cy-s.r);mxY=Math.max(mxY,s.cy+s.r); }
+        else if (s.t==='P' && s.pts) { s.pts.forEach(p=>{ mnX=Math.min(mnX,p[0]);mxX=Math.max(mxX,p[0]);mnY=Math.min(mnY,p[1]);mxY=Math.max(mxY,p[1]); }); }
         else if (s.t==='R') { mnX=Math.min(mnX,s.x,s.x+s.w);mxX=Math.max(mxX,s.x,s.x+s.w);mnY=Math.min(mnY,s.y,s.y+s.h);mxY=Math.max(mxY,s.y,s.y+s.h); }
       });
       if (!isFinite(mnX)) { mnX=-cS.w/2; mxX=cS.w/2; mnY=-cS.h/2; mxY=cS.h/2; }
