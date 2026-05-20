@@ -135,6 +135,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--acc);}
 
 /* ========= コンテキストメニュー ========= */
 #ctxmenu{display:none;position:absolute;background:var(--bg2);border:1px solid var(--bd);border-radius:4px;box-shadow:0 4px 16px var(--sh);z-index:50;min-width:160px;padding:3px 0;}
+#ctxmenu.open{display:block;}
 .ctx-item{padding:5px 16px;font-size:11px;cursor:pointer;color:var(--fg);}
 .ctx-item:hover{background:var(--abg);color:var(--afg);}
 .ctx-sep{height:1px;background:var(--bd);margin:3px 0;}
