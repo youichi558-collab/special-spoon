@@ -21,6 +21,7 @@ function draw() {
   ctx.fillRect(0, 0, cv.width, cv.height);
 
   if (!state.pdfMode) drawGrid();
+  if (!state.pdfMode) drawGuides();
 
   ctx.save();
   ctx.translate(state.pan.x, state.pan.y);
@@ -611,5 +612,31 @@ function drawLineEnd(ctx, x, y, vx, vy, type, size, color, zoom) {
   } else if (type==='dot') {
     ctx.beginPath(); ctx.arc(x-vx*a*0.5,y-vy*a*0.5,a*0.5,0,Math.PI*2); ctx.fill();
   }
+  ctx.restore();
+}
+
+function drawGuides() {
+  const guides = state.guides;
+  if (!guides || !guides.length) return;
+  const fr = state.frameObj;
+  const W = fr ? (fr.wMM || 420) * (fr.sc || 1) : cv.width / state.zoom;
+  const H = fr ? (fr.hMM || 297) * (fr.sc || 1) : cv.height / state.zoom;
+
+  ctx.save();
+  ctx.strokeStyle = '#e879f9';
+  ctx.lineWidth = 1 / state.zoom;
+  ctx.setLineDash([8 / state.zoom, 4 / state.zoom]);
+
+  guides.forEach(g => {
+    ctx.beginPath();
+    if (g.type === 'guide_h') {
+      ctx.moveTo(0, g.y); ctx.lineTo(W, g.y);
+    } else {
+      ctx.moveTo(g.x, 0); ctx.lineTo(g.x, H);
+    }
+    ctx.stroke();
+  });
+
+  ctx.setLineDash([]);
   ctx.restore();
 }

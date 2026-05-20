@@ -419,6 +419,8 @@ const TOOLS = {
   arc3:   arc3Tool,
   triangle: triTool,
   junction: junctionTool,
+  guide_h:  guideTool,
+  guide_v:  guideTool,
 };
 
 // ----------------------------------------------------------------
@@ -567,3 +569,38 @@ const angleDimTool = {
 TOOLS.dim    = dimTool;
 TOOLS.leader = leaderTool;
 TOOLS.angle_dim = angleDimTool;
+
+// ================================================================
+// 補助線ツール
+// ================================================================
+const guideTool = {
+  onDown(wx, wy) {
+    state.guides = state.guides || [];
+    const mode = state.mode;
+    const tol = 8 / state.zoom; // クリック許容距離
+
+    // 既存の補助線に近ければ削除
+    const hit = state.guides.findIndex(g => {
+      if (g.type !== mode) return false;
+      if (mode === 'guide_h') return Math.abs(g.y - wy) < tol;
+      if (mode === 'guide_v') return Math.abs(g.x - wx) < tol;
+      return false;
+    });
+
+    pushH();
+    if (hit >= 0) {
+      state.guides.splice(hit, 1);
+    } else {
+      state.guides.push({
+        id: genId('guide'),
+        type: mode,
+        x: snap(wx),
+        y: snap(wy),
+      });
+    }
+    draw();
+  },
+  onMove() {},
+  onUp() {},
+};
+

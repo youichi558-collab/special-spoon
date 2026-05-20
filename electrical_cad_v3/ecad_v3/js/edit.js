@@ -85,6 +85,7 @@ function saveProject() {
     customParts:   state.customParts,
     wireNoRule:    state.wireNoRule,
     layers:        LAYERS,
+    guides:        state.guides || [],
     pages: [pg],
   };
   dl(JSON.stringify(data, null, 2), fname + '.json', 'application/json');
@@ -107,6 +108,7 @@ function saveAllProject() {
     customParts:   state.customParts,
     wireNoRule:    state.wireNoRule,
     layers:        LAYERS,
+    guides:        state.guides || [],
     pages: state.pages,
   };
   dl(JSON.stringify(data, null, 2), base + '_all.json', 'application/json');
@@ -128,6 +130,7 @@ function loadProject(input) {
         state.wireNoRule   = d.wireNoRule || state.wireNoRule;
         state.customSymbols= d.customSymbols || [];
         state.customParts  = d.customParts   || [];
+        state.guides      = d.guides       || [];
         if (d.layers && d.layers.length) { LAYERS.length = 0; d.layers.forEach(l => LAYERS.push(l)); }
       } else {
         // v1以前（旧形式）からのマイグレーション
