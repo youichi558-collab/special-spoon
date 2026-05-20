@@ -599,7 +599,7 @@ function exportSVG() {
     const sc3 = el.scale || 1;
 
     if (el.type === 'text') {
-      const fsPt = (el.fs || 12) * s * 0.353; // px→mm変換
+      const fsPt = (el.fs || 12) * s; // world→mm変換
       const lines2 = (el.text || '').split('\n');
       lines2.forEach((line, li) => {
         svgTexts += `<text x="${tx(el.x).toFixed(2)}" y="${ty(el.y + li * (el.fs||12) * s).toFixed(2)}" font-family="sans-serif" font-size="${fsPt.toFixed(1)}" fill="${elColor}" text-anchor="middle">${escSVG(line)}</text>\n`;
@@ -611,7 +611,7 @@ function exportSVG() {
       const ang = (el.rot || 0) * Math.PI / 180;
       const lx2 = el.x + (lox * Math.cos(ang) - loy * Math.sin(ang));
       const ly2 = el.y + (lox * Math.sin(ang) + loy * Math.cos(ang));
-      const fsPt2 = (el.labelFs || 11) * sc3 * s * 0.353;
+      const fsPt2 = (el.labelFs || 11) * sc3 * s;
       svgTexts += `<text x="${tx(lx2).toFixed(2)}" y="${ty(ly2).toFixed(2)}" font-family="sans-serif" font-size="${fsPt2.toFixed(1)}" fill="${elColor}" text-anchor="middle">${escSVG(el.label)}</text>\n`;
     }
   });
@@ -625,7 +625,7 @@ function exportSVG() {
     const i2 = Math.floor((n2-1)/2), j2 = Math.ceil((n2-1)/2);
     const mp = { x:(pts2[i2].x+pts2[j2].x)/2, y:(pts2[i2].y+pts2[j2].y)/2 };
     const wireOff = (10 + 6) * s;
-    const fsPt3 = 10 * s * 0.353;
+    const fsPt3 = 10 * s;
     svgTexts += `<text x="${tx(mp.x).toFixed(2)}" y="${(ty(mp.y) - wireOff).toFixed(2)}" font-family="sans-serif" font-size="${fsPt3.toFixed(1)}" fill="#1e40af" text-anchor="middle">${escSVG(w.wireNo)}</text>\n`;
   });
 
