@@ -808,6 +808,8 @@ function updateRightPanel() {
     const wAng = wPts.length>=2 ? Math.round(Math.atan2(wPts[wPts.length-1].y-wPts[0].y, wPts[wPts.length-1].x-wPts[0].x)*180/Math.PI*10)/10 : 0;
     html += `<div class="pp-row"><label>角度(°)</label><input type="number" id="pp-wangle" value="${wAng}" step="1"></div>`;
     html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${item.wireNo||''}"></div>`;
+    html += `<div class="pp-row"><label>線番X補正</label><input type="number" id="pp-wno-ox" value="${item.wireNoOffX||0}" step="5"></div>`;
+    html += `<div class="pp-row"><label>線番Y補正</label><input type="number" id="pp-wno-oy" value="${item.wireNoOffY||0}" step="5"></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${item.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
     html += colorRow('色（個別上書き）', 'pp-wcolor', 'pp-wcolorcode', item.color||lay?.color||'#0F6E56', 'previewWireColor()');
     html += `<div class="pp-row"><label>線幅</label><select id="pp-lw"><option value="0.5"${(item.lineWidth||1.0)==0.5?' selected':''}>極細(0.5)</option><option value="1"${(item.lineWidth||1.0)==1?' selected':''}>標準(1)</option><option value="1.5"${(item.lineWidth||1.0)==1.5?' selected':''}>やや太(1.5)</option><option value="2"${(item.lineWidth||1.0)==2?' selected':''}>太(2)</option><option value="3"${(item.lineWidth||1.0)==3?' selected':''}>極太(3)</option></select></div>`;
@@ -1089,6 +1091,8 @@ function applyRightPanel() {
     el.layer      = v('pp-layer');
   } else if (wire) {
     wire.wireNo    = v('pp-wireno'); wire.layer = v('pp-layer');
+    wire.wireNoOffX = parseFloat(v('pp-wno-ox'))||0;
+    wire.wireNoOffY = parseFloat(v('pp-wno-oy'))||0;
     wire.color = v('pp-wcolorcode') || v('pp-wcolor') || undefined;
     if (v('pp-wangle') !== '') {
       const ang = parseFloat(v('pp-wangle')) * Math.PI / 180;

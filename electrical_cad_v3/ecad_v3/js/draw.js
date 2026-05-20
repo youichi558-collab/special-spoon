@@ -123,14 +123,23 @@ function drawWires() {
       const n = pts.length;
       const i = Math.floor((n-1)/2), j = Math.ceil((n-1)/2);
       const mp = n >= 2 ? { x:(pts[i].x+pts[j].x)/2, y:(pts[i].y+pts[j].y)/2 } : pts[0];
+      // ワイヤーの法線方向を計算（常に画面上側へ）
+      let nx = 0, ny = -1;
+      if (n >= 2) {
+        const dx = pts[j].x - pts[i].x, dy = pts[j].y - pts[i].y;
+        const len = Math.hypot(dx, dy);
+        if (len > 0.1) { nx = -dy/len; ny = dx/len; if (ny > 0) { nx=-nx; ny=-ny; } }
+      }
       const fs  = 10;
-      const off = fs + 6;   // ワイヤーから離す距離
+      const off = fs + 6;
+      const tx = mp.x + nx*off + (w.wireNoOffX||0);
+      const ty = mp.y + ny*off + (w.wireNoOffY||0);
       ctx.font  = `bold ${fs}px sans-serif`; ctx.textAlign = 'center';
       const tw2 = ctx.measureText(w.wireNo).width;
       ctx.fillStyle = state.darkMode ? '#252525' : '#fff';
-      ctx.fillRect(mp.x-tw2/2-2, mp.y-off-fs, tw2+4, fs+3);
+      ctx.fillRect(tx-tw2/2-2, ty-fs, tw2+4, fs+3);
       ctx.fillStyle = sel ? '#0067c0' : '#1e40af';
-      ctx.fillText(w.wireNo, mp.x, mp.y-off);
+      ctx.fillText(w.wireNo, tx, ty);
     }
     ctx.restore();
   });
