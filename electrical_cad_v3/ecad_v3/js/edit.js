@@ -362,7 +362,7 @@ function explodeSelected() {
       }
     });
     // 元のシンボル要素を削除
-    state.elements = state.elements.filter(e => e.id !== el.id);
+    state.page.elements = state.elements.filter(e => e.id !== el.id);
   });
   // 分解後の要素を選択状態にする
   state.sel.els.clear();
