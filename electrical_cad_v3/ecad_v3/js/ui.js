@@ -745,7 +745,7 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>X</label><input type="number" id="pp-jx" value="${Math.round(el.x*10)/10}" step="1"></div>`;
     html += `<div class="pp-row"><label>Y</label><input type="number" id="pp-jy" value="${Math.round(el.y*10)/10}" step="1"></div>`;
     html += `<div class="pp-row"><label>半径</label><input type="number" id="pp-jr" value="${el.r||5}" min="1" max="30" step="1"></div>`;
-    html += colorRow('色', 'pp-jcolor', 'pp-jcolorcode', el.color||'#000000', 'previewJunctionColor()');
+    html += colorRow('色', 'pp-jcolor', 'pp-jcolorcode', el.color||layColor(el.layer)||'#000000', 'previewJunctionColor()');
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
   } else if (el && el.type === 'text') {
     html += `<div class="pp-row"><label>テキスト</label><textarea rows="2" id="pp-text">${el.text||''}</textarea></div>`;
