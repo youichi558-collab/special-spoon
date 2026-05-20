@@ -401,7 +401,7 @@ const junctionTool = {
   onDown(wx, wy) {
     const p = getAllSnapPoints(wx, wy);
     pushH();
-    state.elements.push({ id: genId('el'), type:'junction', x:p.x, y:p.y, r: state.junctionR || 5, layer: activeLayer() });
+    state.elements.push({ id: genId('el'), type:'junction', x:p.x, y:p.y, r: state.junctionR || 2, layer: activeLayer() });
     draw();
   },
   onMove(wx, wy) {

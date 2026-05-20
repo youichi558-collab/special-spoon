@@ -374,7 +374,7 @@ function drawPreview() {
     ctx.globalAlpha = 1;
   } else if (prev.type === 'junction_preview') {
     ctx.setLineDash([]);
-    const r = (state.junctionR || 5);
+    const r = (state.junctionR || 2);
     ctx.globalAlpha = 0.5;
     ctx.fillStyle = '#0067c0';
     ctx.beginPath(); ctx.arc(prev.x, prev.y, r, 0, Math.PI*2); ctx.fill();
