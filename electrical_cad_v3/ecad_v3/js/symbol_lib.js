@@ -187,9 +187,15 @@ const symLib = (() => {
           const code = lines[j];
           if (code === '0' && STOP.has(lines[j+1])) break;
           const val = lines[j+1];
-          if (code === '10') pts.push([parseFloat(val)||0, 0]);
-          else if (code === '20' && pts.length) pts[pts.length-1][1] = parseFloat(val)||0;
-          else if (!(code in props)) props[code] = val;
+          if (code === '10') {
+          pts.push([parseFloat(val)||0, 0]);
+          if (!('10' in props)) props['10'] = val;  // LINEのx1用
+        }
+        else if (code === '20' && pts.length) {
+          pts[pts.length-1][1] = parseFloat(val)||0;
+          if (!('20' in props)) props['20'] = val;  // LINEのy1用
+        }
+        else if (!(code in props)) props[code] = val;
           j += 2;
         }
         const g = k => parseFloat(props[k]||0);
