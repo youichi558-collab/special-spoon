@@ -21,7 +21,6 @@ function draw() {
   ctx.fillRect(0, 0, cv.width, cv.height);
 
   if (!state.pdfMode) drawGrid();
-  if (!state.pdfMode) drawGuides();
 
   ctx.save();
   ctx.translate(state.pan.x, state.pan.y);
@@ -46,6 +45,7 @@ function draw() {
   drawSnapMarker();
 
   // ラバーバンド選択ボックス
+  if (!state.pdfMode) drawGuides();
   ctx.restore();
   drawSelBox();
 
