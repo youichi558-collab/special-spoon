@@ -410,7 +410,10 @@ document.addEventListener('keydown', e => {
       }
       break;
     case 'Escape':
-      if (state.mode === 'bezier') { state.mouse.bezierPts = null; state.preview = null; draw(); break; }
+      if (state.mode === 'bezier') {
+        state.mouse.bezierPts = null; state.preview = null;
+        setMode('select'); draw(); break;
+      }
       if (document.getElementById('pdf-preview-overlay')?.style.display === 'flex') { closePDFPreview(); break; }
       if (document.body.classList.contains('fullscreen')) { toggleExpand(); break; }
       state.wirePoints = []; state.preview = null; state.dimState = null;
