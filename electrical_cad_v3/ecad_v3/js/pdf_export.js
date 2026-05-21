@@ -387,7 +387,7 @@ function _exportPDFPages(indices, filename) {
         const imgW = Math.round(pdfW * pxPerMM);
         const imgH = Math.round(pdfH * pxPerMM);
         // zoomはpageW2/pageH2の縦横比を維持しつつCanvasに収まるように
-        const sc2 = imgW / pageW2;
+        const sc2 = Math.min(imgW / pageW2, imgH / pageH2);
 
         const oc = document.createElement('canvas');
         oc.width = imgW; oc.height = imgH;
@@ -563,7 +563,7 @@ function exportSVG() {
   }
   const imgW = Math.round(pdfW * pxPerMM);
   const imgH = Math.round(pdfH * pxPerMM);
-  const sc2 = imgW / pageW2;
+  const sc2 = Math.min(imgW / pageW2, imgH / pageH2);
 
   const oc = document.createElement('canvas');
   oc.width = imgW; oc.height = imgH;
