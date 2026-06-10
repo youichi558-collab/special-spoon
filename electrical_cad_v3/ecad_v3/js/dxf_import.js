@@ -44,10 +44,12 @@ function parseDXF(text, isOwnFile){
   }
   let lc=0,cc=0,tc=0,ic=0;let i=0;
   let parsedFrameObj=null;
+  let parsedJunctions=[];
   for(let j=0;j<pairs.length;j++){
-    if(pairs[j].code===999&&String(pairs[j].val).startsWith('ECAD_FRAME:')){
-      try{parsedFrameObj=JSON.parse(pairs[j].val.slice('ECAD_FRAME:'.length));}catch(e){console.warn('ECAD_FRAME parse error',e);}
-      break;
+    if(pairs[j].code===999){
+      const v=String(pairs[j].val);
+      if(v.startsWith('ECAD_FRAME:'))   {try{parsedFrameObj  =JSON.parse(v.slice('ECAD_FRAME:'.length));}catch(e){console.warn('ECAD_FRAME parse error',e);}}
+      if(v.startsWith('ECAD_JUNCTIONS:')){try{parsedJunctions=JSON.parse(v.slice('ECAD_JUNCTIONS:'.length));}catch(e){console.warn('ECAD_JUNCTIONS parse error',e);}}
     }
   }
 
@@ -89,7 +91,12 @@ function parseDXF(text, isOwnFile){
         const e=readEnt(pairs,i);
         if(isFrameLayer(e['8'])){i=e._end;continue;}
         const r=+e['40']||0;
-        if(r>0){state.elements.push({id:genId('el'),type:'circle',x:+e['10']||0,y:-(+e['20']||0),r,layer:e['8']||'外形'});cc++;}
+        if(r>0){
+          const cx=+e['10']||0, cy=-(+e['20']||0);
+          const jm=parsedJunctions.find(j=>Math.hypot(j.x-cx,j.y-cy)<0.1);
+          if(jm){state.elements.push({id:genId('el'),type:'junction',x:cx,y:cy,r:jm.r||r,color:jm.color,layer:jm.layer||e['8']||'回路'});cc++;}
+          else  {state.elements.push({id:genId('el'),type:'circle', x:cx,y:cy,r,           layer:e['8']||'外形'});cc++;}
+        }
         i=e._end;continue;
       }
       if(val==='TEXT'||val==='MTEXT'){

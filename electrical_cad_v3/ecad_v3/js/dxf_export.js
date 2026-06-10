@@ -47,6 +47,11 @@ function exportDXF(){
   if(state.frameObj){
     ls.push('999','ECAD_FRAME:'+JSON.stringify(state.frameObj));
   }
+  // ジャンクション点リストを保存（往復でtype:'junction'を復元するため）
+  const _juncList=state.elements.filter(e=>e.type==='junction').map(e=>({x:e.x,y:e.y,r:e.r||2,color:e.color,layer:e.layer}));
+  if(_juncList.length>0){
+    ls.push('999','ECAD_JUNCTIONS:'+JSON.stringify(_juncList));
+  }
   // 線種テーブル
   const ltypeMap = { solid:'CONTINUOUS', dashed:'DASHED', dotted:'DOT', dashdot:'DASHDOT' };
   ls.push('0','SECTION','2','TABLES');
