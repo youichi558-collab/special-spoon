@@ -163,7 +163,12 @@ function parseDXF(text, isOwnFile){
         const e=readEnt(pairs,i);
         if(isFrameLayer(e['8'])){i=e._end;continue;}
         const r=+e['40']||0;
-        if(r>0){state.elements.push({id:genId('el'),type:'circle',x:+e['10']||0,y:-(+e['20']||0),r,layer:e['8']||'外形'});cc++;}
+        if(r>0){
+          // DXF角度はDXF座標系（y上向）、Canvasはy反転でccwも反転
+          const sa=+e['50']||0, ea=+e['51']||0;
+          const startA=-sa*Math.PI/180, endA=-ea*Math.PI/180;
+          state.elements.push({id:genId('el'),type:'arc',x:+e['10']||0,y:-(+e['20']||0),r,startA,endA,ccw:true,layer:e['8']||'外形'});cc++;
+        }
         i=e._end;continue;
       }
       if(val==='ELLIPSE'){
