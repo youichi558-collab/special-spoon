@@ -54,6 +54,38 @@ function parseDXF(text, isOwnFile){
   }
 
   // 既存要素がある場合は確認してクリア
+  // 外部DXFの寸法線: BLOCKSセクションの*DブロックLINE/TEXTを収集
+  const _dimW=[],_dimE=[];
+  if(!isOwnFile){
+    let _inBl=false,_inD=false,_blLy='寸法';
+    for(let _j=0;_j<pairs.length;_j++){
+      const _c=pairs[_j].code,_v=pairs[_j].val;
+      if(_c===0&&_v==='SECTION'){_inBl=false;_inD=false;}
+      if(_c===2&&_v==='BLOCKS') _inBl=true;
+      if(_c===0&&_v==='ENDSEC'){_inBl=false;_inD=false;}
+      if(!_inBl) continue;
+      if(_c===0&&_v==='BLOCK') _inD=false;
+      if(_c===2&&String(_v).startsWith('*D')) _inD=true;
+      if(_c===8&&_inD&&pairs[_j-1]&&pairs[_j-1].code===0&&pairs[_j-1].val==='BLOCK') _blLy=_v;
+      if(_c===0&&_v==='ENDBLK') _inD=false;
+      if(!_inD) continue;
+      if(_c===0&&_v==='LINE'){
+        const _e=readEnt(pairs,_j);
+        const _x1=+_e['10']||0,_y1=-(+_e['20']||0),_x2=+_e['11']||0,_y2=-(+_e['21']||0);
+        if(Math.hypot(_x2-_x1,_y2-_y1)>0.1) _dimW.push({id:genId('w'),x1:_x1,y1:_y1,x2:_x2,y2:_y2,pts:[{x:_x1,y:_y1},{x:_x2,y:_y2}],layer:_e['8']||_blLy,wireNo:null});
+        _j=_e._end-1;
+      }
+      if(_c===0&&(_v==='TEXT'||_v==='MTEXT')){
+        const _e=readEnt(pairs,_j);
+        let _t=(_e['1']||_e['3']||'').replace(/\\[A-Za-z][^;]*;/g,'').replace(/[{}]/g,'').replace(/\\P/g,' ').trim();
+        _t=fromUnicodeDXF(_t);
+        const _h=+_e['40']||12;
+        if(_t&&_t!=='<>') _dimE.push({id:genId('el'),type:'text',x:+_e['10']||0,y:-(+_e['20']||0),text:_t,fs:Math.max(8,Math.min(72,_h)),layer:_e['8']||_blLy});
+        _j=_e._end-1;
+      }
+    }
+  }
+
   pushH(); // 読込全ルートでundoに乗る
   const hasContent=state.elements.length>0||state.wires.length>0;
   if(hasContent){
@@ -151,7 +183,7 @@ function parseDXF(text, isOwnFile){
         }
         i=e._end;continue;
       }
-      if(val==='DIMENSION'){
+      if(val==='DIMENSION'&&isOwnFile){
         const e=readEnt(pairs,i);
         let x1=+e['13']||0,y1=-(+e['23']||0),x2=+e['14']||0,y2=-(+e['24']||0);
         // code50があればP2をP1+dist*uに変換しdrawDimElと方向を揃える
@@ -243,6 +275,11 @@ function parseDXF(text, isOwnFile){
     }
   }
 
+  // *Dブロックから取り出した寸法線 LINE/TEXT を追加
+  if(_dimW.length||_dimE.length){
+    state.page.wires.push(..._dimW);
+    state.page.elements.push(..._dimE);
+  }
   const ov = document.getElementById('dxf-log-overlay');
   ov.style.display = 'flex';
   draw();
