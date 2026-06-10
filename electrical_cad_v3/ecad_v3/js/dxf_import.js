@@ -270,6 +270,7 @@ function parseDXF(text, isOwnFile){
       document.getElementById('dxf-scale-range').textContent =
         `座標範囲: ${rangeW} × ${rangeH} 単位　（A3高さ基準の推奨倍率: ${recScale}）`;
       document.getElementById('dxf-scale-val').value = recScale;
+      if(_dimW.length||_dimE.length){state.page.wires.push(..._dimW);state.page.elements.push(..._dimE);}
       document.getElementById('dxf-scale-overlay').style.display = 'flex';
       return; // applyDXFScale()でdraw()を呼ぶ
     }
