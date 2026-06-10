@@ -303,7 +303,7 @@ function applyDXFScale(skip) {
   document.getElementById('dxf-scale-overlay').style.display = 'none';
   if (!skip) {
     const sc = parseFloat(document.getElementById('dxf-scale-val').value);
-    const applyFs = document.getElementById('dxf-scale-fs').checked;
+    const fsScale = parseFloat(document.getElementById('dxf-scale-fs-val').value);
     if (!isNaN(sc) && sc > 0 && sc !== 1) {
       state.elements.forEach(el => {
         if (el.x1 != null) {
@@ -313,12 +313,16 @@ function applyDXFScale(skip) {
           el.x *= sc; el.y *= sc;
           if (el.r != null) el.r *= sc;
           if (el.w != null) { el.w *= sc; if (el.h != null) el.h *= sc; }
-          if (applyFs && el.fs != null) el.fs = Math.max(8, Math.min(72, Math.round(el.fs * sc)));
         }
       });
       state.wires.forEach(w => {
         w.x1 *= sc; w.y1 *= sc; w.x2 *= sc; w.y2 *= sc;
         if (w.pts) w.pts = w.pts.map(p => ({ x: p.x * sc, y: p.y * sc }));
+      });
+    }
+    if (!isNaN(fsScale) && fsScale > 0 && fsScale !== 1) {
+      state.elements.forEach(el => {
+        if (el.fs != null) el.fs = Math.max(8, Math.min(72, Math.round(el.fs * fsScale)));
       });
     }
   }
