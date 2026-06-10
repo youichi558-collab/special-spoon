@@ -151,7 +151,7 @@ function parseDXF(text, isOwnFile){
         }
         i=e._end;continue;
       }
-      if(val==='DIMENSION'){
+      if(val==='DIMENSION'&&isOwnFile){
         const e=readEnt(pairs,i);
         const x1=+e['13']||0,y1=-(+e['23']||0),x2=+e['14']||0,y2=-(+e['24']||0);
         // オフセット方向は group code 10/20（寸法線中点）から計算
