@@ -224,7 +224,7 @@ function parseDXF(text, isOwnFile){
     if (allX.length > 0) {
       const rangeW = Math.round(Math.max(...allX) - Math.min(...allX));
       const rangeH = Math.round(Math.max(...allY) - Math.min(...allY));
-      const recScale = rangeH > 0 ? (594 / rangeH).toFixed(2) : '1';
+      const recScale = rangeH > 0 ? (420 / rangeH).toFixed(2) : '1';
       document.getElementById('dxf-scale-range').textContent =
         `座標範囲: ${rangeW} × ${rangeH} 単位　（A3高さ基準の推奨倍率: ${recScale}）`;
       document.getElementById('dxf-scale-val').value = recScale;
