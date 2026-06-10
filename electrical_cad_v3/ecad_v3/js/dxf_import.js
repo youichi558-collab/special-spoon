@@ -169,8 +169,9 @@ function parseDXF(text, isOwnFile){
       if(val==='ELLIPSE'){
         const e=readEnt(pairs,i);
         if(isFrameLayer(e['8'])){i=e._end;continue;}
-        const r=Math.abs(+e['40']||0)*Math.hypot(+e['11']||0,+e['21']||0);
-        if(r>0){state.elements.push({id:genId('el'),type:'circle',x:+e['10']||0,y:-(+e['20']||0),r,layer:e['8']||'外形'});cc++;}
+        const _ratio=Math.abs(+e['40']||0);
+        const r=_ratio*Math.hypot(+e['11']||0,+e['21']||0);
+        if(r>0&&_ratio>=0.9){state.elements.push({id:genId('el'),type:'circle',x:+e['10']||0,y:-(+e['20']||0),r,layer:e['8']||'外形'});cc++;}
         i=e._end;continue;
       }
       if(val==='SPLINE'){
