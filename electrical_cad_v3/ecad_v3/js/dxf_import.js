@@ -151,7 +151,7 @@ function parseDXF(text, isOwnFile){
         }
         i=e._end;continue;
       }
-      if(val==='DIMENSION'&&isOwnFile){
+      if(val==='DIMENSION'){
         const e=readEnt(pairs,i);
         const x1=+e['13']||0,y1=-(+e['23']||0),x2=+e['14']||0,y2=-(+e['24']||0);
         // オフセット方向は group code 10/20（寸法線中点）から計算
@@ -165,8 +165,16 @@ function parseDXF(text, isOwnFile){
           offsetSign=dot>=0?1:-1;
           offset=Math.max(15,Math.abs(dot));
         }
+        let dimText=e['1']||'';
+        if(!dimText||dimText==='<>'){
+          const ang=e['50']!=null?(+e['50'])*Math.PI/180:null;
+          let dist;
+          if(ang!=null){dist=Math.abs((x2-x1)*Math.cos(ang)+(y2-y1)*Math.sin(ang));}
+          else{dist=Math.hypot(x2-x1,y2-y1);}
+          dimText=String(Math.round(dist*10)/10);
+        }
         state.elements.push({id:genId('el'),type:'dim',x1,y1,x2,y2,
-          dimText:e['1']||'',offset,offsetSign,arrowSz:state.dimDef?.arrowSz||8,
+          dimText,offset,offsetSign,arrowSz:state.dimDef?.arrowSz||8,
           dimFs:state.dimDef?.fs||11,dimTy:state.dimDef?.ty||0,dimTx:state.dimDef?.tx||0,
           layer:e['8']||'寸法',x:mx,y:my});
         i=e._end;continue;
