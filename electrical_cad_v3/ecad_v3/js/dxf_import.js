@@ -54,11 +54,11 @@ function parseDXF(text, isOwnFile){
   }
 
   // 既存要素がある場合は確認してクリア
+  pushH(); // 読込全ルートでundoに乗る
   const hasContent=state.elements.length>0||state.wires.length>0;
   if(hasContent){
     const replace=confirm('既存の図面にDXFを追加しますか?\nOK=追加  キャンセル=現在の内容を消してから読込');
     if(!replace){
-      pushH();
       state.page.elements=[];
       state.page.wires=[];
       state.sel.els.clear();state.sel.wires.clear();
