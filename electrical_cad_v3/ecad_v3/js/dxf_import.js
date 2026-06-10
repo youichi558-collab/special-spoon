@@ -153,8 +153,18 @@ function parseDXF(text, isOwnFile){
       }
       if(val==='DIMENSION'){
         const e=readEnt(pairs,i);
-        const x1=+e['13']||0,y1=-(+e['23']||0),x2=+e['14']||0,y2=-(+e['24']||0);
-        // オフセット方向は group code 10/20（寸法線中点）から計算
+        let x1=+e['13']||0,y1=-(+e['23']||0),x2=+e['14']||0,y2=-(+e['24']||0);
+        // code50があればP2をP1+dist*uに変換しdrawDimElと方向を揃える
+        let dimText=e['1']||'';
+        if(e['50']!=null){
+          const ang50=+e['50'];
+          const ux=Math.cos(ang50*Math.PI/180),uy=-Math.sin(ang50*Math.PI/180);
+          const dist=Math.abs((x2-x1)*ux+(y2-y1)*uy);
+          x2=x1+dist*ux; y2=y1+dist*uy;
+          if(!dimText||dimText==='<>') dimText=String(Math.round(dist*10)/10);
+        } else if(!dimText||dimText==='<>'){
+          dimText=String(Math.round(Math.hypot(x2-x1,y2-y1)*10)/10);
+        }
         const midX=+e['10']||0,midY=-(+e['20']||0);
         const mx=(x1+x2)/2,my=(y1+y2)/2;
         const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy);
@@ -164,14 +174,6 @@ function parseDXF(text, isOwnFile){
           const dot=(midX-mx)*px+(midY-my)*py;
           offsetSign=dot>=0?1:-1;
           offset=Math.max(15,Math.abs(dot));
-        }
-        let dimText=e['1']||'';
-        if(!dimText||dimText==='<>'){
-          const ang=e['50']!=null?(+e['50'])*Math.PI/180:null;
-          let dist;
-          if(ang!=null){dist=Math.abs((x2-x1)*Math.cos(ang)+(y2-y1)*Math.sin(ang));}
-          else{dist=Math.hypot(x2-x1,y2-y1);}
-          dimText=String(Math.round(dist*10)/10);
         }
         state.elements.push({id:genId('el'),type:'dim',x1,y1,x2,y2,
           dimText,offset,offsetSign,arrowSz:state.dimDef?.arrowSz||8,
