@@ -154,20 +154,7 @@ function changeLayColor(i) {
   const inp = document.createElement('input');
   inp.type = 'color';
   inp.value = LAYERS[i].color;
-  inp.oninput = () => {
-    const oldColor = LAYERS[i].color;
-    const newColor = inp.value;
-    LAYERS[i].color = newColor;
-    // 同レイヤーの全要素を無条件でレイヤー色に更新（完全BYLAYER）
-    const layName = LAYERS[i].name;
-    state.elements.forEach(el => {
-      if (el.layer === layName) el.color = newColor;
-    });
-    state.wires.forEach(w => {
-      if (w.layer === layName) w.color = newColor;
-    });
-    renderLayers(); draw();
-  };
+  inp.oninput = () => { LAYERS[i].color = inp.value; renderLayers(); draw(); };
   inp.click();
 }
 function renameLayer(i) {
@@ -758,15 +745,12 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>X</label><input type="number" id="pp-jx" value="${Math.round(el.x*10)/10}" step="1"></div>`;
     html += `<div class="pp-row"><label>Y</label><input type="number" id="pp-jy" value="${Math.round(el.y*10)/10}" step="1"></div>`;
     html += `<div class="pp-row"><label>半径</label><input type="number" id="pp-jr" value="${el.r||2}" min="1" max="30" step="1"></div>`;
-    html += colorRow('色', 'pp-jcolor', 'pp-jcolorcode', el.color||layColor(el.layer)||'#000000', 'previewJunctionColor()');
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
   } else if (el && el.type === 'text') {
     html += `<div class="pp-row"><label>テキスト</label><textarea rows="2" id="pp-text">${el.text||''}</textarea></div>`;
     html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-fs" value="${el.fs||14}" min="8" max="72"></div>`;
-    html += colorRow('色', 'pp-textcolor', 'pp-textcolorcode', el.color||'#222222', 'previewElColor()');
   } else if (el && el.type === 'angle_dim') {
     html += `<div class="pp-row"><label>角度テキスト</label><input type="text" id="pp-angtext" value="${el.dimText||''}"></div>`;
-    html += colorRow('色', 'pp-color', 'pp-colorcode', el.color||'#744da9', 'previewElColor()');
     html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-angfs" value="${el.dimFs||11}" min="6" max="32"></div>`;
     html += `<div class="pp-row"><label>弧の半径</label><input type="number" id="pp-angr" value="${el.r||30}" min="10" step="5"></div>`;
     html += `<div class="pp-row"><label>テキストX補正</label><input type="number" id="pp-angtx" value="${el.dimTx||0}" step="5"></div>`;
@@ -800,7 +784,6 @@ function updateRightPanel() {
       <option value="dashdot" ${el.lineStyle==='dashdot'?'selected':''}>一点鎖線</option>
       <option value="dot"     ${el.lineStyle==='dot'    ?'selected':''}>点線</option>
     </select></div>`;
-    html += colorRow('色', 'pp-color', 'pp-colorcode', el.color||'#744da9', 'previewElColor()');
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
     html += `<div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
       <button class="fp-btn primary" onclick="applyRightPanel()">適用</button>
@@ -813,7 +796,6 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-ldrfs" value="${el.leaderFs||11}" min="8" max="72"></div>`;
     html += `<div class="pp-row"><label>テキストX補正</label><input type="number" id="pp-ldrtx" value="${el.leaderTx||0}" step="5"></div>`;
     html += `<div class="pp-row"><label>テキストY補正</label><input type="number" id="pp-ldrty" value="${el.leaderTy||0}" step="5"></div>`;
-    html += colorRow('色', 'pp-color', 'pp-colorcode', el.color||'#744da9', 'previewElColor()');
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
   } else if (wire || (el && el.pts)) {
     const lay = LAYERS.find(l => l.name === item.layer);
@@ -824,14 +806,12 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>線番X補正</label><input type="number" id="pp-wno-ox" value="${item.wireNoOffX||0}" step="5"></div>`;
     html += `<div class="pp-row"><label>線番Y補正</label><input type="number" id="pp-wno-oy" value="${item.wireNoOffY||0}" step="5"></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${item.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
-    html += colorRow('色（個別上書き）', 'pp-wcolor', 'pp-wcolorcode', item.color||lay?.color||'#0F6E56', 'previewWireColor()');
     html += `<div class="pp-row"><label>線幅</label><select id="pp-lw"><option value="0.5"${(item.lineWidth||1.0)==0.5?' selected':''}>極細(0.5)</option><option value="1"${(item.lineWidth||1.0)==1?' selected':''}>標準(1)</option><option value="1.5"${(item.lineWidth||1.0)==1.5?' selected':''}>やや太(1.5)</option><option value="2"${(item.lineWidth||1.0)==2?' selected':''}>太(2)</option><option value="3"${(item.lineWidth||1.0)==3?' selected':''}>極太(3)</option></select></div>`;
     html += `<div class="pp-row"><label>線種</label><select id="pp-ls"><option value=""${!item.lineStyle?' selected':''}>実線</option><option value="dash"${item.lineStyle==='dash'?' selected':''}>破線</option><option value="dashdot"${item.lineStyle==='dashdot'?' selected':''}>一点鎖線</option><option value="dot"${item.lineStyle==='dot'?' selected':''}>点線</option></select></div>`;
     if (lay?.attr) html += `<div class="pp-row"><label>属性（レイヤー）</label><p style="font-size:11px;color:var(--fg3);padding:2px 5px">${lay.attr}</p></div>`;
   } else if (el && ['fline','rect','circle','arc','triangle'].includes(el.type)) {
     // 図形専用プロパティ
     const defColor = el.color || layColor(el.layer) || '#1d6fb5';
-    html += colorRow('色', 'pp-symcolor', 'pp-symcolorcode', defColor, 'previewSymColor()');
     if (el.type === 'fline') {
       const fAng = Math.round(Math.atan2(el.y2-el.y1, el.x2-el.x1)*180/Math.PI*10)/10;
       const fLen = Math.round(Math.hypot(el.x2-el.x1, el.y2-el.y1)*10)/10;
@@ -970,7 +950,7 @@ function previewJunctionColor() {
   const el = rp?._el;
   if (!el || el.type !== 'junction') return;
   const c = document.getElementById('pp-jcolorcode');
-  if (c && /^#[0-9a-fA-F]{6}$/.test(c.value)) el.color = c.value;
+  
   drawWithoutSel();
 }
 
@@ -988,7 +968,7 @@ function previewElColor() {
   const el = rp?._el;
   if (!el) return;
   const c = document.getElementById('pp-colorcode') || document.getElementById('pp-textcolorcode');
-  if (c && /^#[0-9a-fA-F]{6}$/.test(c.value)) el.color = c.value;
+  
   drawWithoutSel();
 }
 
@@ -1008,7 +988,7 @@ function previewSymColor() {
   const el = rp?._el;
   if (!el) return;
   const c = document.getElementById('pp-symcolorcode');
-  if (c && /^#[0-9a-fA-F]{6}$/.test(c.value)) el.color = c.value;
+  
   drawWithoutSel();
 }
 
@@ -1067,14 +1047,11 @@ function applyRightPanel() {
   if (el && el.type === 'junction') {
     if (v('pp-jx')!=='') { el.x = parseFloat(v('pp-jx')); el.y = parseFloat(v('pp-jy')); }
     if (v('pp-jr')!=='') el.r = Math.max(1, parseFloat(v('pp-jr')));
-    el.color = v('pp-jcolorcode') || v('pp-jcolor') || undefined;
     el.layer = v('pp-layer');
   } else if (el && el.type === 'text') {
     el.text = v('pp-text'); el.fs = parseInt(v('pp-fs'))||14;
-    el.color = v('pp-textcolorcode') || v('pp-textcolor') || undefined;
   } else if (el && el.type === 'angle_dim') {
     el.dimText = v('pp-angtext');
-    el.color   = v('pp-colorcode') || v('pp-color') || undefined;
     el.dimFs   = parseInt(v('pp-angfs'))||11;
     el.r       = parseFloat(v('pp-angr'))||30;
     el.dimTx   = parseInt(v('pp-angtx'))||0;
@@ -1093,20 +1070,17 @@ function applyRightPanel() {
     el.lineStyle  = v('pp-dimls') || undefined;
     el.gap      = parseInt(v('pp-gap'));
     el.ext      = parseInt(v('pp-ext'));
-    el.color    = v('pp-colorcode') || v('pp-color') || undefined;
     el.layer    = v('pp-layer');
   } else if (el && el.type === 'leader') {
     el.leaderText = v('pp-ldrtext');
     el.leaderFs   = parseInt(v('pp-ldrfs')) || 11;
     el.leaderTx   = parseInt(v('pp-ldrtx')) || 0;
     el.leaderTy   = parseInt(v('pp-ldrty')) || 0;
-    el.color      = v('pp-colorcode') || v('pp-color') || undefined;
     el.layer      = v('pp-layer');
   } else if (wire) {
     wire.wireNo    = v('pp-wireno'); wire.layer = v('pp-layer');
     wire.wireNoOffX = parseFloat(v('pp-wno-ox'))||0;
     wire.wireNoOffY = parseFloat(v('pp-wno-oy'))||0;
-    wire.color = v('pp-wcolorcode') || v('pp-wcolor') || undefined;
     if (v('pp-wangle') !== '') {
       const ang = parseFloat(v('pp-wangle')) * Math.PI / 180;
       const pts = wire.pts || [{x:wire.x1,y:wire.y1},{x:wire.x2,y:wire.y2}];
@@ -1183,10 +1157,10 @@ function applyDimToAll() {
   const el = rp._el;
   if (!el || el.type !== 'dim') return;
   applyRightPanel();
-  const fs=el.dimFs, tx=el.dimTx, ty=el.dimTy, fixed=el.dimFixed, color=el.color, gap=el.gap, ext=el.ext;
+  const fs=el.dimFs, tx=el.dimTx, ty=el.dimTy, fixed=el.dimFixed, gap=el.gap, ext=el.ext;
   pushH();
   state.elements.filter(e => e.type==='dim').forEach(e => {
-    e.dimFs=fs; e.dimTx=tx; e.dimTy=ty; e.dimFixed=fixed; e.color=color;
+    e.dimFs=fs; e.dimTx=tx; e.dimTy=ty; e.dimFixed=fixed;
     if (gap!=null) e.gap=gap; if (ext!=null) e.ext=ext;
   });
   draw();
@@ -1199,7 +1173,7 @@ function saveDimDef() {
   if (!el || el.type !== 'dim') return;
   applyRightPanel();
   state.dimDef = { fs:el.dimFs||11, tx:el.dimTx||0, ty:el.dimTy||0,
-    color:el.color||'#744da9', gap:el.gap!=null?el.gap:null, ext:el.ext!=null?el.ext:null,
+    gap:el.gap!=null?el.gap:null, ext:el.ext!=null?el.ext:null,
     arrowStyle:el.arrowStyle||'filled', arrowSz:el.arrowSz||8 };
   alert('デフォルト設定を保存しました');
 }
@@ -1211,7 +1185,7 @@ function resetDimDef() {
   const el = rp._el;
   if (!el || el.type !== 'dim') return;
   pushH();
-  el.dimFs=11; el.dimTx=0; el.dimTy=-8; el.color='#744da9';
+  el.dimFs=11; el.dimTx=0; el.dimTy=-8;
   el.gap=null; el.ext=null; el.arrowStyle='filled'; el.arrowSz=8;
   draw();
   updateRightPanel();

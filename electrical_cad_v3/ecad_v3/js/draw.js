@@ -93,7 +93,7 @@ function drawWires() {
     const lay = LAYERS.find(l => l.name === w.layer);
     if (lay && !lay.visible) return;
     const sel   = state.sel.wires.has(w.id);
-    const color = sel ? '#0067c0' : (w.color || (lay ? lay.color : '#0F6E56'));
+    const color = sel ? '#0067c0' : (lay ? lay.color : '#0F6E56');
     const lw    = w.lineWidth || lay?.lineWidth || 1.0;
     const pts   = w.pts || [{ x:w.x1, y:w.y1 }, { x:w.x2, y:w.y2 }];
 
@@ -213,7 +213,7 @@ function drawElements() {
 
 function drawTextEl(el, sel, lc, lay) {
   ctx.save();
-  ctx.fillStyle = el.color || lc;
+  ctx.fillStyle = lc;
   const fs = el.fs || lay?.fontSize || 14;
   ctx.font = `${fs}px sans-serif`;
   const lines = (el.text || '').split('\n');
@@ -222,7 +222,7 @@ function drawTextEl(el, sel, lc, lay) {
   if (sel) {
     const maxW = Math.max(...lines.map(l => ctx.measureText(l).width));
     const totalH = lines.length * lineH;
-    ctx.strokeStyle = el.color || lc; ctx.lineWidth = 1.5/state.zoom;
+    ctx.strokeStyle = lc; ctx.lineWidth = 1.5/state.zoom;
     ctx.setLineDash([4/state.zoom, 3/state.zoom]);
     ctx.strokeRect(el.x-3, el.y-fs*0.8, maxW+6, totalH+4);
     ctx.setLineDash([]);
@@ -232,7 +232,7 @@ function drawTextEl(el, sel, lc, lay) {
 
 function drawRectEl(el, sel, lc, lay) {
   ctx.save();
-  const c  = el.color || lc;
+  const c  = lc;
   const lw = el.lineWidth || lay?.lineWidth || 1.0;
   ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+1 : lw);
   applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
@@ -248,7 +248,7 @@ function drawRectEl(el, sel, lc, lay) {
 
 function drawCircleEl(el, sel, lc, lay) {
   ctx.save();
-  const c  = el.color || lc;
+  const c  = lc;
   const lw = el.lineWidth || lay?.lineWidth || 1.0;
   ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+1 : lw);
   applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
@@ -259,7 +259,7 @@ function drawCircleEl(el, sel, lc, lay) {
 
 function drawTriEl(el, sel, lc, lay) {
   ctx.save();
-  const c = el.color || lc;
+  const c = lc;
   const lw = el.lineWidth || lay?.lineWidth || 1.0;
   ctx.strokeStyle = c; ctx.lineWidth = sel ? lw+1 : lw;
   applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
@@ -276,7 +276,7 @@ function drawTriEl(el, sel, lc, lay) {
 
 function drawArcEl(el, sel, lc, lay) {
   ctx.save();
-  const c  = el.color || lc;
+  const c  = lc;
   const lw = el.lineWidth || lay?.lineWidth || 1.0;
   ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+1 : lw);
   applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
@@ -287,7 +287,7 @@ function drawArcEl(el, sel, lc, lay) {
 
 function drawJunctionEl(el, sel, lc) {
   ctx.save();
-  const c = el.color || lc;
+  const c = lc;
   const r = el.r || 5;
   ctx.fillStyle = c;
   if (sel) {
@@ -319,7 +319,7 @@ function drawCatmullRom(pts, tension) {
 function drawBezierEl(el, sel, lc, lay) {
   if (!el.pts || el.pts.length < 2) return;
   ctx.save();
-  const c = el.color || lc;
+  const c = lc;
   const lw = el.lineWidth || lay?.lineWidth || 1.0;
   ctx.strokeStyle = c; ctx.lineWidth = sel ? lw+1 : lw; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
@@ -335,7 +335,7 @@ function drawBezierEl(el, sel, lc, lay) {
 
 function drawFlineEl(el, sel, lc, lay) {
   ctx.save();
-  const c  = el.color || lc;
+  const c  = lc;
   const lw = el.lineWidth || lay?.lineWidth || 1.0;
   ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+1 : lw); ctx.lineCap = 'round';
   applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
@@ -351,10 +351,10 @@ function drawSymEl(el, sel, lc) {
     ctx.save();
     ctx.translate(el.x, el.y);
     ctx.scale(sc, sc);
-    drawSym(el.type, 0, 0, sel, el.rot||0, el.flipH, el.flipV, el.color||lc, el.lineStyle);
+    drawSym(el.type, 0, 0, sel, el.rot||0, el.flipH, el.flipV, lc, el.lineStyle);
     ctx.restore();
   } else {
-    drawSym(el.type, el.x, el.y, sel, el.rot||0, el.flipH, el.flipV, el.color||lc, el.lineStyle);
+    drawSym(el.type, el.x, el.y, sel, el.rot||0, el.flipH, el.flipV, lc, el.lineStyle);
   }
   if (el.label && !state.pdfSkipText) {
     const d   = getDef(el.type) || { w:64, h:34 };
@@ -519,7 +519,7 @@ function drawDimEl(el, isSel) {
   // 寸法線の端点
   const ax1=el.x1+px*absOff, ay1=el.y1+py*absOff;
   const ax2=el.x2+px*absOff, ay2=el.y2+py*absOff;
-  const c = isSel ? '#0067c0' : (el.color||layColor(el.layer)||'#744da9');
+  const c = isSel ? '#0067c0' : (layColor(el.layer)||'#744da9');
   const lw = el.lineWidth || 1;
   ctx.save(); ctx.strokeStyle=c; ctx.fillStyle=c; ctx.lineWidth=(isSel?lw+0.5:lw);
   applyLineStyle(ctx, el.lineStyle, state.zoom);
@@ -582,7 +582,7 @@ function drawAngleDimEl(el, isSel) {
   const a1 = Math.atan2(el.y1-el.cy, el.x1-el.cx);
   const a2 = Math.atan2(el.y2-el.cy, el.x2-el.cx);
   const r = el.r || 30;
-  const c = isSel ? '#0067c0' : (el.color||layColor(el.layer)||'#744da9');
+  const c = isSel ? '#0067c0' : (layColor(el.layer)||'#744da9');
   const lw = el.lineWidth || 1;
   ctx.save(); ctx.strokeStyle=c; ctx.fillStyle=c;
   ctx.lineWidth = (isSel ? lw+0.5 : lw);
