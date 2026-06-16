@@ -23,6 +23,7 @@ function loadDXF(input){
         const cpIdx=head.indexOf('DWGCODEPAGE');
         if(cpIdx>=0){
           const snip=head.slice(cpIdx,cpIdx+40);
+          console.log('[DXF] DWGCODEPAGE snip='+JSON.stringify(snip));
           if(/ANSI_932/i.test(snip))      enc='Shift-JIS';
           else if(/ANSI_\d/i.test(snip))  enc='UTF-8'; // 932以外はUTF-8扱い
           else                             enc=_detectSjis(u8);
