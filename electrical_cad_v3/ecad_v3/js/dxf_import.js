@@ -24,9 +24,8 @@ function loadDXF(input){
         if(cpIdx>=0){
           const snip=head.slice(cpIdx,cpIdx+40);
           console.log('[DXF] DWGCODEPAGE snip='+JSON.stringify(snip));
-          if(/ANSI_932/i.test(snip))      enc='Shift-JIS';
-          else if(/ANSI_\d/i.test(snip))  enc='UTF-8'; // 932以外はUTF-8扱い
-          else                             enc=_detectSjis(u8);
+          // ANSI_932でもAutoCAD 2016+は実際にUTF-8で保存するため、バイトスキャンで確認
+          enc=_detectSjis(u8);
         } else {
           // 3. バイトスキャンでShift-JIS判定（$DWGCODEPAGEなしの古いDXF向け）
           enc=_detectSjis(u8);
