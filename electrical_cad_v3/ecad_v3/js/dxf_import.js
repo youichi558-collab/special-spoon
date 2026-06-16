@@ -34,9 +34,15 @@ function loadDXF(input){
     }
 
     console.log('[DXF] encoding='+enc+' isOwn='+isOwnFile);
-    const rd2=new FileReader();
-    rd2.onload=e2=>parseDXF(e2.target.result, isOwnFile);
-    rd2.readAsText(f,enc);
+    // TextDecoderを使う（FileReader.readAsTextはShift-JISサポートがブラウザ依存）
+    try{
+      const decoder=new TextDecoder(enc);
+      parseDXF(decoder.decode(buf), isOwnFile);
+    }catch(e){
+      const rd2=new FileReader();
+      rd2.onload=e2=>parseDXF(e2.target.result, isOwnFile);
+      rd2.readAsText(f,enc);
+    }
   };
   rd.readAsArrayBuffer(f);
   input.value='';
