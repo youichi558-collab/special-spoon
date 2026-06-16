@@ -22,8 +22,6 @@ function loadDXF(input){
         const head=String.fromCharCode(...u8.slice(0,Math.min(u8.length,4000)));
         const cpIdx=head.indexOf('DWGCODEPAGE');
         if(cpIdx>=0){
-          const snip=head.slice(cpIdx,cpIdx+40);
-          console.log('[DXF] DWGCODEPAGE snip='+JSON.stringify(snip));
           // ANSI_932でもAutoCAD 2016+は実際にUTF-8で保存するため、バイトスキャンで確認
           enc=_detectSjis(u8);
         } else {
@@ -33,7 +31,6 @@ function loadDXF(input){
       }
     }
 
-    console.log('[DXF] encoding='+enc+' isOwn='+isOwnFile);
     // TextDecoderを使う（FileReader.readAsTextはShift-JISサポートがブラウザ依存）
     try{
       const decoder=new TextDecoder(enc);
@@ -367,7 +364,6 @@ function _detectSjis(u8){
       if(b2>=0x40&&b2<=0xFC&&b2!==0x7F){sjis++;i++;}
     }
   }
-  console.log('[DXF] sjisScore='+sjis+' utf8Score='+utf8);
   return utf8>sjis?'UTF-8':'Shift-JIS';
 }
 function mapBlock(name){const n=name.toLowerCase();const m=[
