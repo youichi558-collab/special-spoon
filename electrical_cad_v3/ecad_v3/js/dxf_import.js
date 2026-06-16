@@ -33,6 +33,7 @@ function loadDXF(input){
       }
     }
 
+    console.log('[DXF] encoding='+enc+' isOwn='+isOwnFile);
     const rd2=new FileReader();
     rd2.onload=e2=>parseDXF(e2.target.result, isOwnFile);
     rd2.readAsText(f,enc);
