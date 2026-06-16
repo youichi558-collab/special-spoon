@@ -14,16 +14,23 @@ function loadDXF(input){
 
     let enc='UTF-8';
     if(!isOwnFile){
-      // 外部ファイルはShift-JIS判定
-      let sjisScore=0;
-      for(let i=0;i<u8.length-1;i++){
-        const b=u8[i];
-        if((b>=0x81&&b<=0x9F)||(b>=0xE0&&b<=0xFC)){
-          const b2=u8[i+1];
-          if(b2>=0x40&&b2<=0xFC&&b2!==0x7F){sjisScore++;i++;}
+      // 1. UTF-8 BOM（EF BB BF）があれば確定
+      if(u8[0]===0xEF&&u8[1]===0xBB&&u8[2]===0xBF){
+        enc='UTF-8';
+      } else {
+        // 2. DXFヘッダーの$DWGCODEPAGEを確認（先頭4000バイト内に存在）
+        const head=String.fromCharCode(...u8.slice(0,Math.min(u8.length,4000)));
+        const cpIdx=head.indexOf('DWGCODEPAGE');
+        if(cpIdx>=0){
+          const snip=head.slice(cpIdx,cpIdx+40);
+          if(/ANSI_932/i.test(snip))      enc='Shift-JIS';
+          else if(/ANSI_\d/i.test(snip))  enc='UTF-8'; // 932以外はUTF-8扱い
+          else                             enc=_detectSjis(u8);
+        } else {
+          // 3. バイトスキャンでShift-JIS判定（$DWGCODEPAGEなしの古いDXF向け）
+          enc=_detectSjis(u8);
         }
       }
-      if(sjisScore>5)enc='Shift-JIS';
     }
 
     const rd2=new FileReader();
@@ -333,6 +340,7 @@ function applyDXFScale(skip) {
 function readEnt(pairs,start){const e={_end:start+1};let i=start+1;while(i<pairs.length){const{code,val}=pairs[i];if(code===0)break;if(e[String(code)]===undefined)e[String(code)]=val;i++;}e._end=i;return e;}
 function readPoly(pairs,start){const e={_end:start+1,pts:[]};let i=start+1,cx=null;while(i<pairs.length){const{code,val}=pairs[i];if(code===0&&i>start+1)break;if(e[String(code)]===undefined&&code!==10&&code!==20)e[String(code)]=val;if(code===10)cx=+val||0;if(code===20&&cx!==null){e.pts.push({x:cx,y:-(+val||0)});cx=null;}i++;}e._end=i;return e;}
 function fromUnicodeDXF(str){return str.replace(/\\U\+([0-9A-Fa-f]{4})/g,(_,h)=>String.fromCharCode(parseInt(h,16)));}
+function _detectSjis(u8){let s=0;for(let i=0;i<u8.length-1;i++){const b=u8[i];if((b>=0x81&&b<=0x9F)||(b>=0xE0&&b<=0xFC)){const b2=u8[i+1];if(b2>=0x40&&b2<=0xFC&&b2!==0x7F){s++;i++;}}}return s>5?'Shift-JIS':'UTF-8';}
 function mapBlock(name){const n=name.toLowerCase();const m=[
   ['timer_coil','timer_coil'],['timer_no','timer_no'],['timer_nc','timer_nc'],['timer','timer_coil'],
   ['coil','coil'],['relay','coil'],
