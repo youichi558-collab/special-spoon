@@ -471,6 +471,7 @@ const guideTool = {
       return false;
     });
 
+    const sp = state.snapPreview || getAllSnapPoints(wx, wy);
     pushH();
     if (hit >= 0) {
       state.guides.splice(hit, 1);
@@ -478,8 +479,8 @@ const guideTool = {
       state.guides.push({
         id: genId('guide'),
         type: mode,
-        x: snap(wx),
-        y: snap(wy),
+        x: sp.x,
+        y: sp.y,
       });
     }
     draw();
