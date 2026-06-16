@@ -204,10 +204,13 @@ const textTool = {
 const shapeTool = {
   onDown(wx, wy, e) {
     if (!state.mouse.shapeStart) {
-      state.mouse.shapeStart = { x: snap(wx), y: snap(wy) };
+      const p = getAllSnapPoints(wx, wy);
+      state.mouse.shapeStart = { x: p.x, y: p.y };
     } else {
       const p1 = state.mouse.shapeStart;
-      const p2 = { x: snap(wx), y: snap(wy) };
+      let p = getAllSnapPoints(wx, wy);
+      if (state.ortho) { const o = applyOrtho(p1.x, p1.y, p.x, p.y); p = {x:o.x, y:o.y}; }
+      const p2 = p;
       pushH();
       if (state.mode === 'rect') {
         state.elements.push({ id: genId('el'), type:'rect', x:Math.min(p1.x,p2.x), y:Math.min(p1.y,p2.y), w:Math.abs(p2.x-p1.x), h:Math.abs(p2.y-p1.y), layer:activeLayer() });
@@ -224,8 +227,9 @@ const shapeTool = {
   onMove(wx, wy, e) {
     if (!state.mouse.shapeStart) return;
     const p1 = state.mouse.shapeStart;
-    const p2 = { x: snap(wx), y: snap(wy) };
-    state.preview = { type:'shape_preview', shapeMode: state.mode, p1, p2 };
+    let p = getAllSnapPoints(wx, wy);
+    if (state.ortho) { const o = applyOrtho(p1.x, p1.y, p.x, p.y); p = {x:o.x, y:o.y}; }
+    state.preview = { type:'shape_preview', shapeMode: state.mode, p1, p2: p };
   },
 
   onUp(wx, wy, e) {},
@@ -233,8 +237,9 @@ const shapeTool = {
   onHover(wx, wy, e) {
     if (!state.mouse.shapeStart) return;
     const p1 = state.mouse.shapeStart;
-    const p2 = { x: snap(wx), y: snap(wy) };
-    state.preview = { type:'shape_preview', shapeMode: state.mode, p1, p2 };
+    let p = getAllSnapPoints(wx, wy);
+    if (state.ortho) { const o = applyOrtho(p1.x, p1.y, p.x, p.y); p = {x:o.x, y:o.y}; }
+    state.preview = { type:'shape_preview', shapeMode: state.mode, p1, p2: p };
   }
 };
 

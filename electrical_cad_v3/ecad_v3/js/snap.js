@@ -30,12 +30,17 @@ function getAllSnapPoints(wx, wy) {
       });
       return;
     }
-    // fline・arc：端点スナップ
+    // fline・arc：端点スナップ＋中点スナップ
     if (el.type === 'fline') {
       [{x:el.x1,y:el.y1},{x:el.x2,y:el.y2}].forEach(p => {
         const d = Math.hypot(wx-p.x, wy-p.y);
-        if (d < bestD) { bestD=d; best={x:p.x, y:p.y, snapType:'endpoint'}; }
+        if (state.snapEnd && d < bestD) { bestD=d; best={x:p.x, y:p.y, snapType:'endpoint'}; }
       });
+      if (state.snapMid) {
+        const mx=(el.x1+el.x2)/2, my=(el.y1+el.y2)/2;
+        const d = Math.hypot(wx-mx, wy-my);
+        if (d < bestD) { bestD=d; best={x:mx, y:my, snapType:'midpoint'}; }
+      }
       return;
     }
     if (state.snapEnd && !['text','rect','circle','fline','dim','leader'].includes(el.type)) {
