@@ -459,7 +459,6 @@ const bezierTool = {
 // ================================================================
 const guideTool = {
   onDown(wx, wy) {
-    state.guides = state.guides || [];
     const mode = state.mode;
     const tol = 8 / state.zoom; // クリック許容距離
 

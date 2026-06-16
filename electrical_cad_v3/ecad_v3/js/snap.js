@@ -3,6 +3,10 @@
 // ================================================================
 
 function getAllSnapPoints(wx, wy) {
+  // 補助線スナップを最優先チェック
+  const gs = guideSnap(wx, wy);
+  if (gs) return gs;
+
   const R = 12 / state.zoom;
   let best = null, bestD = R;
 
@@ -83,6 +87,37 @@ function getAllSnapPoints(wx, wy) {
   });
 
   return best || { x: snap(wx), y: snap(wy), snapType: 'grid' };
+}
+
+// 補助線スナップ：H×V交点 or 単独補助線（戻り値なければnull）
+function guideSnap(wx, wy) {
+  const guides = state.guides;
+  if (!guides || !guides.length) return null;
+  const R = 12 / state.zoom;
+  const hg = guides.filter(g => g.type === 'guide_h');
+  const vg = guides.filter(g => g.type === 'guide_v');
+
+  // H×V 交点スナップ（最優先）
+  let best = null, bestD = R;
+  hg.forEach(gh => {
+    vg.forEach(gv => {
+      const d = Math.hypot(wx - gv.x, wy - gh.y);
+      if (d < bestD) { bestD = d; best = { x: gv.x, y: gh.y, snapType: 'guide_cross' }; }
+    });
+  });
+  if (best) return best;
+
+  // 単独 guide_v → x固定、y はグリッド
+  vg.forEach(g => {
+    const d = Math.abs(wx - g.x);
+    if (d < bestD) { bestD = d; best = { x: g.x, y: snap(wy), snapType: 'guide' }; }
+  });
+  // 単独 guide_h → y固定、x はグリッド
+  hg.forEach(g => {
+    const d = Math.abs(wy - g.y);
+    if (d < bestD) { bestD = d; best = { x: snap(wx), y: g.y, snapType: 'guide' }; }
+  });
+  return best;
 }
 
 function snapWirePoint(wx, wy, prevX, prevY) {

@@ -85,7 +85,6 @@ function saveProject() {
     customParts:   state.customParts,
     wireNoRule:    state.wireNoRule,
     layers:        LAYERS,
-    guides:        state.guides || [],
     pages: [pg],
   };
   dl(JSON.stringify(data, null, 2), fname + '.json', 'application/json');
@@ -108,7 +107,6 @@ function saveAllProject() {
     customParts:   state.customParts,
     wireNoRule:    state.wireNoRule,
     layers:        LAYERS,
-    guides:        state.guides || [],
     pages: state.pages,
   };
   dl(JSON.stringify(data, null, 2), base + '_all.json', 'application/json');
@@ -126,11 +124,14 @@ function loadProject(input) {
 
       // バージョン別マイグレーション
       if (d.version === 2) {
-        state.pages        = d.pages || [{ name:'Sheet1', elements:[], wires:[], groups:[], frameObj:null }];
+        state.pages        = d.pages || [{ name:'Sheet1', elements:[], wires:[], groups:[], guides:[], frameObj:null }];
         state.wireNoRule   = d.wireNoRule || state.wireNoRule;
         state.customSymbols= d.customSymbols || [];
         state.customParts  = d.customParts   || [];
-        state.guides      = d.guides       || [];
+        // 旧フォーマット互換：トップレベルのguides → page[0].guides に移行
+        if (d.guides && d.guides.length) state.pages[0].guides = d.guides;
+        // 各ページにguidesがなければ初期化
+        state.pages.forEach(pg => { if (!pg.guides) pg.guides = []; });
         if (d.layers && d.layers.length) { LAYERS.length = 0; d.layers.forEach(l => LAYERS.push(l)); }
       } else {
         // v1以前（旧形式）からのマイグレーション

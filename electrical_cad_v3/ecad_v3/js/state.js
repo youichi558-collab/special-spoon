@@ -7,7 +7,7 @@ const state = {
   // ----------------------------------------------------------------
   // 図面データ（保存対象）
   // ----------------------------------------------------------------
-  pages: [{ name: 'Sheet1', elements: [], wires: [], groups: [], frameObj: null }],
+  pages: [{ name: 'Sheet1', elements: [], wires: [], groups: [], guides: [], frameObj: null }],
   currentPage: 0,
   saveFileName: '',
   customSymbols: [],
@@ -97,7 +97,6 @@ const state = {
   snapPreview:  null,
   pdfMode:      false,   // PDF出力中フラグ
   maskMode:     false,   // マスクモード（個人情報マスク）
-  guides:       [],       // 補助線リスト
   pdfZoom:      0,        // PDF出力時の実キャンバス倍率（線幅は state.zoom で計算）
   pdfDpi:       96,       // PDF出力DPI
   pendingRef:   null,
@@ -112,6 +111,7 @@ const state = {
   get page()     { return this.pages[this.currentPage]; },
   get elements() { return this.page.elements; },
   get wires()    { return this.page.wires; },
+  get guides()   { return this.page.guides || (this.page.guides = []); },
   get frameObj() { return this.page.frameObj; },
   set frameObj(v){ this.page.frameObj = v; },
 };

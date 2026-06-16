@@ -462,6 +462,18 @@ function drawSnapMarker() {
     ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2/state.zoom; ctx.fillStyle = 'rgba(245,158,11,0.15)';
     ctx.beginPath(); ctx.moveTo(sp.x, sp.y-s); ctx.lineTo(sp.x+s, sp.y); ctx.lineTo(sp.x, sp.y+s); ctx.lineTo(sp.x-s, sp.y); ctx.closePath();
     ctx.fill(); ctx.stroke();
+  } else if (stype === 'guide_cross') {
+    // 補助線交点：水色の二重円
+    const s = 7/state.zoom;
+    ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2/state.zoom;
+    ctx.beginPath(); ctx.arc(sp.x, sp.y, s, 0, Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(sp.x, sp.y, s*0.45, 0, Math.PI*2); ctx.stroke();
+  } else if (stype === 'guide') {
+    // 単独補助線：水色×印
+    const s = 6/state.zoom;
+    ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2/state.zoom;
+    ctx.beginPath(); ctx.moveTo(sp.x-s, sp.y-s); ctx.lineTo(sp.x+s, sp.y+s); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sp.x+s, sp.y-s); ctx.lineTo(sp.x-s, sp.y+s); ctx.stroke();
   } else {
     // グリッドスナップ：クロスヘアカーソル
     const s = 8/state.zoom;
