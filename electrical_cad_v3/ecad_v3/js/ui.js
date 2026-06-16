@@ -158,25 +158,14 @@ function changeLayColor(i) {
     const oldColor = LAYERS[i].color;
     const newColor = inp.value;
     LAYERS[i].color = newColor;
-    // 同レイヤーの要素で個別色が旧レイヤー色と一致するものを追従更新
+    // 同レイヤーの全要素を無条件でレイヤー色に更新（完全BYLAYER）
     const layName = LAYERS[i].name;
     state.elements.forEach(el => {
-      if (el.layer !== layName) return;
-      if (!el.color || el.color.toLowerCase() === oldColor.toLowerCase()) {
-        el.color = newColor;
-      }
+      if (el.layer === layName) el.color = newColor;
     });
-    // ワイヤーも同様に更新
-    if (state.pages) {
-      state.pages.forEach(pg => {
-        (pg.wires||[]).forEach(w => {
-          if (w.layer !== layName) return;
-          if (!w.color || w.color.toLowerCase() === oldColor.toLowerCase()) {
-            w.color = newColor;
-          }
-        });
-      });
-    }
+    state.wires.forEach(w => {
+      if (w.layer === layName) w.color = newColor;
+    });
     renderLayers(); draw();
   };
   inp.click();

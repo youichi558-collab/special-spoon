@@ -150,6 +150,11 @@ function loadProject(input) {
       state.customSymbols.forEach(s => { DEFS[s.type] = s; });
       state.saveFileName = d.saveFileName || '';
       state.sel.els.clear(); state.sel.wires.clear();
+      // ロード時に個別色をクリア → レイヤー色を継承（junction以外）
+      state.pages.forEach(pg => {
+        (pg.elements||[]).forEach(el => { if (el.type !== 'junction') el.color = undefined; });
+        (pg.wires||[]).forEach(w => { w.color = undefined; });
+      });
       renderCustomSymbols(); renderPartsAll(); renderPageTabs(); draw(); updateRightPanel();
       alert('読込完了');
     } catch(err) {
