@@ -117,10 +117,14 @@ function renderLayers() {
   // リボンのアクティブレイヤードロップダウンを同期
   const sel = document.getElementById('active-layer-sel');
   if (sel) {
-    const activeName = LAYERS.find(l => l.active)?.name || '';
+    const activeLayer = LAYERS.find(l => l.active);
+    const activeName = activeLayer?.name || '';
     sel.innerHTML = LAYERS.map(l =>
       `<option value="${l.name}" ${l.name===activeName?'selected':''}>${l.name}</option>`
     ).join('');
+    // カラーインジケーター更新
+    const colorBox = document.getElementById('active-layer-color');
+    if (colorBox) colorBox.style.background = activeLayer?.color || '#888';
   }
 }
 // レイヤー並び替えドラッグ
