@@ -15,6 +15,9 @@
   // localStorageからシンボルライブラリを読み込む
   loadSymbolsFromStorage();
 
+  // ダークモード初期適用
+  if (state.darkMode) document.body.classList.add('dk');
+
   // 初期描画
   renderLayers();
   renderPartsAll();
