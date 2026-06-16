@@ -114,6 +114,14 @@ function renderLayers() {
   const ll = document.getElementById('layer-list');
   if (ll) ll.innerHTML = '';
   document.getElementById('s-lay').textContent = LAYERS.find(l => l.active)?.name || '回路';
+  // リボンのアクティブレイヤードロップダウンを同期
+  const sel = document.getElementById('active-layer-sel');
+  if (sel) {
+    const activeName = LAYERS.find(l => l.active)?.name || '';
+    sel.innerHTML = LAYERS.map(l =>
+      `<option value="${l.name}" ${l.name===activeName?'selected':''}>${l.name}</option>`
+    ).join('');
+  }
 }
 // レイヤー並び替えドラッグ
 let _layDragFrom = -1;
@@ -141,6 +149,7 @@ function layDragEnd(e) {
 }
 
 function setActLayer(i) { LAYERS.forEach((l,j) => l.active = j===i); renderLayers(); }
+function setActLayerByName(name) { LAYERS.forEach(l => l.active = l.name===name); renderLayers(); }
 function togLayVis(i)   { LAYERS[i].visible = !LAYERS[i].visible; renderLayers(); draw(); }
 function togLayLock(i)  {
   if (LAYERS[i].active && !LAYERS[i].locked) {
