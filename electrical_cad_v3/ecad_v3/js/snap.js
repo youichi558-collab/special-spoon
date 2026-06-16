@@ -97,22 +97,58 @@ function guideSnap(wx, wy) {
   const hg = guides.filter(g => g.type === 'guide_h');
   const vg = guides.filter(g => g.type === 'guide_v');
 
-  // H×V 交点スナップ（最優先）
   let best = null, bestD = R;
+
+  // 線分と補助線の交点を求めるヘルパー
+  function checkSeg(ax, ay, bx, by) {
+    hg.forEach(gh => {
+      const dy = by - ay;
+      if (Math.abs(dy) < 1e-9) return;
+      const t = (gh.y - ay) / dy;
+      if (t < 0 || t > 1) return;
+      const ix = ax + t * (bx - ax);
+      const d = Math.hypot(wx - ix, wy - gh.y);
+      if (d < bestD) { bestD = d; best = { x: ix, y: gh.y, snapType: 'guide_cross' }; }
+    });
+    vg.forEach(gv => {
+      const dx = bx - ax;
+      if (Math.abs(dx) < 1e-9) return;
+      const t = (gv.x - ax) / dx;
+      if (t < 0 || t > 1) return;
+      const iy = ay + t * (by - ay);
+      const d = Math.hypot(wx - gv.x, wy - iy);
+      if (d < bestD) { bestD = d; best = { x: gv.x, y: iy, snapType: 'guide_cross' }; }
+    });
+  }
+
+  // H×V 交点（最優先）
   hg.forEach(gh => {
     vg.forEach(gv => {
       const d = Math.hypot(wx - gv.x, wy - gh.y);
       if (d < bestD) { bestD = d; best = { x: gv.x, y: gh.y, snapType: 'guide_cross' }; }
     });
   });
+
+  // wire セグメント × 補助線
+  state.wires.forEach(w => {
+    const pts = w.pts || [{ x:w.x1,y:w.y1 }, { x:w.x2,y:w.y2 }];
+    for (let i = 0; i < pts.length - 1; i++) {
+      checkSeg(pts[i].x, pts[i].y, pts[i+1].x, pts[i+1].y);
+    }
+  });
+
+  // fline × 補助線
+  state.elements.forEach(el => {
+    if (el.type === 'fline') checkSeg(el.x1, el.y1, el.x2, el.y2);
+  });
+
   if (best) return best;
 
-  // 単独 guide_v → x固定、y はグリッド
+  // 単独補助線スナップ
   vg.forEach(g => {
     const d = Math.abs(wx - g.x);
     if (d < bestD) { bestD = d; best = { x: g.x, y: snap(wy), snapType: 'guide' }; }
   });
-  // 単独 guide_h → y固定、x はグリッド
   hg.forEach(g => {
     const d = Math.abs(wy - g.y);
     if (d < bestD) { bestD = d; best = { x: snap(wx), y: g.y, snapType: 'guide' }; }
