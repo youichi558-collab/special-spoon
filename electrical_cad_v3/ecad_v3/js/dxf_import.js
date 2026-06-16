@@ -347,7 +347,29 @@ function applyDXFScale(skip) {
 function readEnt(pairs,start){const e={_end:start+1};let i=start+1;while(i<pairs.length){const{code,val}=pairs[i];if(code===0)break;if(e[String(code)]===undefined)e[String(code)]=val;i++;}e._end=i;return e;}
 function readPoly(pairs,start){const e={_end:start+1,pts:[]};let i=start+1,cx=null;while(i<pairs.length){const{code,val}=pairs[i];if(code===0&&i>start+1)break;if(e[String(code)]===undefined&&code!==10&&code!==20)e[String(code)]=val;if(code===10)cx=+val||0;if(code===20&&cx!==null){e.pts.push({x:cx,y:-(+val||0)});cx=null;}i++;}e._end=i;return e;}
 function fromUnicodeDXF(str){return str.replace(/\\U\+([0-9A-Fa-f]{4})/g,(_,h)=>String.fromCharCode(parseInt(h,16)));}
-function _detectSjis(u8){let s=0;for(let i=0;i<u8.length-1;i++){const b=u8[i];if((b>=0x81&&b<=0x9F)||(b>=0xE0&&b<=0xFC)){const b2=u8[i+1];if(b2>=0x40&&b2<=0xFC&&b2!==0x7F){s++;i++;}}}return s>5?'Shift-JIS':'UTF-8';}
+function _detectSjis(u8){
+  let sjis=0,utf8=0;
+  for(let i=0;i<u8.length-2;i++){
+    const b=u8[i];
+    // UTF-8 3バイトシーケンス (E0-EF 80-BF 80-BF)
+    if(b>=0xE0&&b<=0xEF){
+      const b2=u8[i+1],b3=u8[i+2];
+      if((b2&0xC0)===0x80&&(b3&0xC0)===0x80){utf8+=2;i+=2;continue;}
+    }
+    // UTF-8 2バイトシーケンス (C0-DF 80-BF)
+    if(b>=0xC0&&b<=0xDF){
+      const b2=u8[i+1];
+      if((b2&0xC0)===0x80){utf8++;i++;continue;}
+    }
+    // Shift-JIS 2バイト文字
+    if((b>=0x81&&b<=0x9F)||(b>=0xE0&&b<=0xFC)){
+      const b2=u8[i+1];
+      if(b2>=0x40&&b2<=0xFC&&b2!==0x7F){sjis++;i++;}
+    }
+  }
+  console.log('[DXF] sjisScore='+sjis+' utf8Score='+utf8);
+  return utf8>sjis?'UTF-8':'Shift-JIS';
+}
 function mapBlock(name){const n=name.toLowerCase();const m=[
   ['timer_coil','timer_coil'],['timer_no','timer_no'],['timer_nc','timer_nc'],['timer','timer_coil'],
   ['coil','coil'],['relay','coil'],
