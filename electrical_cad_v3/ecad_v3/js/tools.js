@@ -203,12 +203,13 @@ const textTool = {
 // ----------------------------------------------------------------
 const shapeTool = {
   onDown(wx, wy, e) {
+    // ホバー時に計算済みのスナップ座標を再利用（クリック時のマウスぶれ対策）
+    const sp = state.snapPreview || getAllSnapPoints(wx, wy);
     if (!state.mouse.shapeStart) {
-      const p = getAllSnapPoints(wx, wy);
-      state.mouse.shapeStart = { x: p.x, y: p.y };
+      state.mouse.shapeStart = { x: sp.x, y: sp.y };
     } else {
       const p1 = state.mouse.shapeStart;
-      let p = getAllSnapPoints(wx, wy);
+      let p = sp;
       if (state.ortho) { const o = applyOrtho(p1.x, p1.y, p.x, p.y); p = {x:o.x, y:o.y}; }
       const p2 = p;
       pushH();
