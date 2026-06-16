@@ -280,6 +280,10 @@ function setMode(m, sym) {
   const modeLabels = { select:'選択', wire:'配線', text:'テキスト', shape:'図形', dim:'寸法', sym:'シンボル', junction:'接続点' };
   const qbMode = document.getElementById('qb-mode');
   if (qbMode) qbMode.textContent = modeLabels[m] || m;
+  const qbSel = document.getElementById('qb-sel');
+  const qbWire = document.getElementById('qb-wire');
+  if (qbSel)  { qbSel.style.background  = m==='select' ? 'var(--acc)' : 'var(--bg)';  qbSel.style.color  = m==='select' ? '#fff' : 'var(--fg)'; }
+  if (qbWire) { qbWire.style.background = m==='wire'   ? 'var(--acc)' : 'var(--bg)';  qbWire.style.color = m==='wire'   ? '#fff' : 'var(--fg)'; }
   updateHint();
 }
 
