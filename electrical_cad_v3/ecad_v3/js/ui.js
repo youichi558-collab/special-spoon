@@ -122,8 +122,7 @@ function renderLayers() {
     sel.innerHTML = LAYERS.map(l =>
       `<option value="${l.name}" ${l.name===activeName?'selected':''}>${l.name}</option>`
     ).join('');
-    // カラーインジケーター更新
-    const colorBox = document.getElementById('active-layer-color');
+    const colorBox = document.getElementById('qb-layer-color');
     if (colorBox) colorBox.style.background = activeLayer?.color || '#888';
   }
 }

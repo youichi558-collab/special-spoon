@@ -276,6 +276,10 @@ function setMode(m, sym) {
   if (typeof updateResizeHandles === 'function') updateResizeHandles();
   document.querySelectorAll('.rb[id^=rb-]').forEach(b => b.classList.remove('on'));
   document.getElementById('rb-' + (m === 'sym' ? 'sym' : m))?.classList.add('on');
+  // クイックバーのモード表示更新
+  const modeLabels = { select:'選択', wire:'配線', text:'テキスト', shape:'図形', dim:'寸法', sym:'シンボル', junction:'接続点' };
+  const qbMode = document.getElementById('qb-mode');
+  if (qbMode) qbMode.textContent = modeLabels[m] || m;
   updateHint();
 }
 
