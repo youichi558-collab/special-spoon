@@ -734,15 +734,24 @@ function drawGuides() {
 function drawGroupBoxes() {
   const groups = state.page.groups || [];
   if (!groups.length) return;
+
+  // O(1)検索用Map（毎フレーム1回だけ構築）
+  const elMap   = new Map(state.elements.map(e => [e.id, e]));
+  const wireMap = new Map(state.wires.map(w => [w.id, w]));
+
   ctx.save();
+  const pad = 6 / state.zoom;
 
   groups.forEach(g => {
-    // グループメンバーの座標を収集
-    const pts = [];
-    const addP = (x, y) => { if (x != null && y != null) pts.push({x, y}); };
+    let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+    const addP = (x, y) => {
+      if (x == null || y == null) return;
+      if (x < minX) minX=x; if (x > maxX) maxX=x;
+      if (y < minY) minY=y; if (y > maxY) maxY=y;
+    };
 
     g.elIds.forEach(id => {
-      const el = state.elements.find(e => e.id === id);
+      const el = elMap.get(id);
       if (!el) return;
       addP(el.x, el.y);
       addP(el.x1, el.y1); addP(el.x2, el.y2); addP(el.x3, el.y3);
@@ -755,24 +764,18 @@ function drawGroupBoxes() {
       if (el.pts) el.pts.forEach(p => addP(p.x, p.y));
     });
     g.wireIds.forEach(id => {
-      const w = state.wires.find(w => w.id === id);
+      const w = wireMap.get(id);
       if (w?.pts) w.pts.forEach(p => addP(p.x, p.y));
     });
 
-    if (pts.length < 1) return;
-    const pad = 6 / state.zoom;
-    const minX = Math.min(...pts.map(p=>p.x)) - pad;
-    const minY = Math.min(...pts.map(p=>p.y)) - pad;
-    const maxX = Math.max(...pts.map(p=>p.x)) + pad;
-    const maxY = Math.max(...pts.map(p=>p.y)) + pad;
+    if (minX === Infinity) return;
 
-    // 選択中かどうかで色を変える
     const isSelected = g.elIds.some(id => state.sel.els.has(id)) ||
                        g.wireIds.some(id => state.sel.wires.has(id));
     ctx.strokeStyle = isSelected ? '#f59e0b' : (state.darkMode ? 'rgba(245,158,11,0.35)' : 'rgba(180,120,0,0.3)');
     ctx.lineWidth = (isSelected ? 1.5 : 1) / state.zoom;
     ctx.setLineDash([6/state.zoom, 3/state.zoom]);
-    ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
+    ctx.strokeRect(minX-pad, minY-pad, maxX-minX+pad*2, maxY-minY+pad*2);
     ctx.setLineDash([]);
   });
 
