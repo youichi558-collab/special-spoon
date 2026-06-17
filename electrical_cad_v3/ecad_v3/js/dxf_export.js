@@ -42,12 +42,19 @@ const DXF_LAYER_MAP={"回路":"CIRCUIT","配線":"WIRE","注記":"NOTE","外形"
 function dxfLayer(name){return DXF_LAYER_MAP[name]||name||"0";}
 function exportDXF(){
   const ls=[];
-  ls.push('0','SECTION','2','HEADER','9','$ACADVER','1','AC1015','9','$INSUNITS','70','4','999','ECAD_DXF_V1','0','ENDSEC');
-  // frameObjをコメントとして保存（HEADERの直後、TABLES前が最も互換性が高い）
+  ls.push('0','SECTION','2','HEADER');
+  ls.push('9','$ACADVER','1','AC1015');
+  ls.push('9','$ACADMAINTVER','70','6');
+  ls.push('9','$DWGCODEPAGE','3','ANSI_1252');
+  ls.push('9','$INSUNITS','70','4');
+  ls.push('9','$EXTMIN','10','0','20','0','30','0');
+  ls.push('9','$EXTMAX','10','100000','20','100000','30','0');
+  ls.push('0','ENDSEC');
+  // ECAD独自データをコメントとして保存（セクション間）
+  ls.push('999','ECAD_DXF_V1');
   if(state.frameObj){
     ls.push('999','ECAD_FRAME:'+JSON.stringify(state.frameObj));
   }
-  // ジャンクション点リストを保存（往復でtype:'junction'を復元するため）
   const _juncList=state.elements.filter(e=>e.type==='junction').map(e=>({x:e.x,y:e.y,r:e.r||2,color:e.color,layer:e.layer}));
   if(_juncList.length>0){
     ls.push('999','ECAD_JUNCTIONS:'+JSON.stringify(_juncList));
@@ -218,7 +225,13 @@ function exportDXF(){
   const pg = state.pages[state.currentPage];
   const base = (state.saveFileName || '図面').replace(/[\\/:*?"<>|]/g, '_');
   const name = (pg.name || ('Sheet'+(state.currentPage+1))).replace(/[\\/:*?"<>|]/g, '_');
-  dl(ls.join('\r\n'), `${base}_${name}.dxf`, 'application/dxf');
+  // グループコードを右揃え3桁にフォーマット（DXF仕様準拠）
+  const dxfLines = [];
+  for (let i = 0; i < ls.length; i += 2) {
+    dxfLines.push(String(ls[i]).padStart(3));
+    dxfLines.push(String(ls[i+1]));
+  }
+  dl(dxfLines.join('\r\n'), `${base}_${name}.dxf`, 'application/dxf');
 }
 
 
