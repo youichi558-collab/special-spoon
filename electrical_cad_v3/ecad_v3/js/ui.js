@@ -738,7 +738,7 @@ function updateRightPanel() {
     g.elIds.some(id => state.sel.els.has(id)) ||
     g.wireIds.some(id => state.sel.wires.has(id))
   );
-  if (selGroups.length > 0 && (state.sel.els.size > 1 || state.sel.wires.size > 0)) {
+  if (selGroups.length > 0) {
     // グループバウンディングボックスを計算
     let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
     const addP = (x,y) => { if(x==null||y==null)return; if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y; };
