@@ -241,9 +241,13 @@ const textTool = {
       if (e2.key === 'Enter')  { e2.preventDefault(); safeFinish(true); }
       if (e2.key === 'Escape') { safeFinish(false); }
     });
-    // 外側クリックで確定
+    // 外側クリックで確定（そのクリックをキャンバスに伝播させない）
     const onOutside = (e2) => {
-      if (!wrap.contains(e2.target)) { document.removeEventListener('mousedown', onOutside, true); safeFinish(true); }
+      if (!wrap.contains(e2.target)) {
+        document.removeEventListener('mousedown', onOutside, true);
+        e2.stopPropagation();
+        safeFinish(true);
+      }
     };
     document.addEventListener('mousedown', onOutside, true);
   },
@@ -643,9 +647,13 @@ function showLeaderTextInput(wx, wy, onConfirm) {
     if (e.key === 'Enter')  { e.preventDefault(); safeDone(true); }
     if (e.key === 'Escape') { safeDone(false); }
   });
-  // 外側クリックで確定
+  // 外側クリックで確定（そのクリックをキャンバスに伝播させない）
   const onOut = (e) => {
-    if (!wrap.contains(e.target)) { document.removeEventListener('mousedown', onOut, true); safeDone(true); }
+    if (!wrap.contains(e.target)) {
+      document.removeEventListener('mousedown', onOut, true);
+      e.stopPropagation();
+      safeDone(true);
+    }
   };
   document.addEventListener('mousedown', onOut, true);
 }
