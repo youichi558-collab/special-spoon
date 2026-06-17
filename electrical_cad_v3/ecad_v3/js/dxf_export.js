@@ -43,12 +43,11 @@ function dxfLayer(name){return DXF_LAYER_MAP[name]||name||"0";}
 function exportDXF(){
   const ls=[];
   ls.push('0','SECTION','2','HEADER');
-  ls.push('9','$ACADVER','1','AC1015');
-  ls.push('9','$ACADMAINTVER','70','6');
+  ls.push('9','$ACADVER','1','AC1009');
   ls.push('9','$DWGCODEPAGE','3','ANSI_1252');
-  ls.push('9','$INSUNITS','70','4');
   ls.push('9','$EXTMIN','10','0','20','0','30','0');
   ls.push('9','$EXTMAX','10','100000','20','100000','30','0');
+  ls.push('9','$HANDSEED','5','FFFF');
   ls.push('0','ENDSEC');
   // ECAD独自データをコメントとして保存（セクション間）
   ls.push('999','ECAD_DXF_V1');
@@ -224,11 +223,27 @@ function exportDXF(){
   const pg = state.pages[state.currentPage];
   const base = (state.saveFileName || '図面').replace(/[\\/:*?"<>|]/g, '_');
   const name = (pg.name || ('Sheet'+(state.currentPage+1))).replace(/[\\/:*?"<>|]/g, '_');
+  // 後処理: ハンドル自動付与 + 日本語Unicodeエスケープ
+  // R12形式でも各エンティティ/テーブルエントリに一意ハンドル(5コード)が必要
+  let handle = 0x100;
+  const noHandle = new Set(['SECTION','ENDSEC','TABLE','ENDTAB','EOF','ENDBLK']);
+  const out = [];
+  for (let i = 0; i < ls.length; i += 2) {
+    const code = String(ls[i]);
+    let val = String(ls[i+1]);
+    if (code === '1' || code === '3') val = toUnicodeDXF(val);
+    out.push(code, val);
+    if (code === '0' && !noHandle.has(val)) {
+      out.push('5', handle.toString(16).toUpperCase());
+      handle++;
+    }
+  }
+
   // グループコードを右揃え3桁にフォーマット（DXF仕様準拠）
   const dxfLines = [];
-  for (let i = 0; i < ls.length; i += 2) {
-    dxfLines.push(String(ls[i]).padStart(3));
-    dxfLines.push(String(ls[i+1]));
+  for (let i = 0; i < out.length; i += 2) {
+    dxfLines.push(String(out[i]).padStart(3));
+    dxfLines.push(String(out[i+1]));
   }
   dl(dxfLines.join('\r\n'), `${base}_${name}.dxf`, 'application/dxf');
 }
