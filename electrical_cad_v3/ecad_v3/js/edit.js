@@ -180,9 +180,20 @@ function dl(text, fname, mime) {
 // ----------------------------------------------------------------
 // 共通移動関数
 // ----------------------------------------------------------------
-// 全要素座標をグリッドに整列（DXFインポート後のズレ修正用）
-function snapAllToGrid() {
-  const sn = v => Math.round(v / state.G) * state.G;
+// グリッド近傍の座標だけスナップ（許容誤差以内のズレのみ修正）
+function snapNearGrid(tolerance) {
+  // 許容誤差未指定 → ダイアログで入力
+  if (tolerance == null) {
+    const val = prompt('グリッドから何以内の座標をスナップしますか？（例: 0.5）', '0.5');
+    if (val == null) return;
+    tolerance = parseFloat(val);
+    if (isNaN(tolerance) || tolerance <= 0) return;
+  }
+  // 許容誤差内ならスナップ、そうでなければそのまま
+  const sn = v => {
+    const snapped = Math.round(v / state.G) * state.G;
+    return Math.abs(snapped - v) <= tolerance ? snapped : v;
+  };
   const snP = (o, k) => { if (o[k] != null) o[k] = sn(o[k]); };
 
   pushH();
@@ -200,9 +211,6 @@ function snapAllToGrid() {
     snP(el,'x3'); snP(el,'y3');
     snP(el,'cx'); snP(el,'cy');
     snP(el,'bx'); snP(el,'by');
-    if (el.w != null) el.w = sn(el.w);
-    if (el.h != null) el.h = sn(el.h);
-    if (el.r != null) el.r = sn(el.r);
     if (el.pts) {
       el.pts = el.pts.map(p => ({ x: sn(p.x), y: sn(p.y) }));
       el.x1 = el.pts[0]?.x; el.y1 = el.pts[0]?.y;
@@ -217,8 +225,6 @@ function snapAllToGrid() {
     }
   });
   draw(); updateRightPanel();
-  const scope = (state.sel.els.size + state.sel.wires.size > 0) ? '選択要素' : '全要素';
-  alert(scope + 'をグリッドG:' + state.G + 'に整列しました');
 }
 
 function moveEntity(el, dx, dy) {
