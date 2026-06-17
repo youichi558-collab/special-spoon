@@ -752,10 +752,10 @@ function updateRightPanel() {
     state.wires.filter(w => state.sel.wires.has(w.id)).forEach(w => {
       if(w.pts)w.pts.forEach(p=>addP(p.x,p.y));
     });
-    const gx = minX===Infinity ? 0 : Math.round(minX);
-    const gy = minY===Infinity ? 0 : Math.round(minY);
-    const gw = maxX===Infinity ? 0 : Math.round(maxX-minX);
-    const gh = maxY===Infinity ? 0 : Math.round(maxY-minY);
+    const gx = minX===Infinity ? 0 : Math.round(minX*100)/100;
+    const gy = minY===Infinity ? 0 : Math.round(minY*100)/100;
+    const gw = maxX===Infinity ? 0 : Math.round((maxX-minX)*100)/100;
+    const gh = maxY===Infinity ? 0 : Math.round((maxY-minY)*100)/100;
     const isGrouped = selGroups.length > 0;
     const label = isGrouped ? `グループ選択 (${selGroups.length}個)` : `複数選択 (${totalSel}個)`;
     const groupBtn = isGrouped
@@ -763,14 +763,14 @@ function updateRightPanel() {
       : `<button class="pp-apply" onclick="groupSelected();updateRightPanel()">グループ化 (G)</button>`;
     rp.innerHTML = `
       <p style="font-size:10px;font-weight:600;color:var(--fg4);padding:6px 10px 2px">${label}</p>
-      <div class="pp-row"><label>X (左端)</label><input type="number" id="gp-x" value="${gx}" step="1"></div>
-      <div class="pp-row"><label>Y (上端)</label><input type="number" id="gp-y" value="${gy}" step="1"></div>
+      <div class="pp-row"><label>X (左端)</label><input type="number" id="gp-x" value="${gx}" step="any"></div>
+      <div class="pp-row"><label>Y (上端)</label><input type="number" id="gp-y" value="${gy}" step="any"></div>
       <div class="pp-row"><label>幅</label><span style="padding:2px 0;color:var(--fg2)">${gw}</span></div>
       <div class="pp-row"><label>高さ</label><span style="padding:2px 0;color:var(--fg2)">${gh}</span></div>
       <hr style="margin:6px 10px;border-color:var(--border)">
       <p style="font-size:10px;font-weight:600;color:var(--fg4);padding:2px 10px">移動量</p>
-      <div class="pp-row"><label>ΔX</label><input type="number" id="gp-dx" value="0" step="1"></div>
-      <div class="pp-row"><label>ΔY</label><input type="number" id="gp-dy" value="0" step="1"></div>
+      <div class="pp-row"><label>ΔX</label><input type="number" id="gp-dx" value="0" step="any"></div>
+      <div class="pp-row"><label>ΔY</label><input type="number" id="gp-dy" value="0" step="any"></div>
       <button class="pp-apply" onclick="applyGroupMove()">移動適用</button>
       ${groupBtn}
     `;
