@@ -650,7 +650,7 @@ document.addEventListener('keydown', e => {
   if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key) && state.sel.els.size) {
     e.preventDefault();
     // Ctrl+矢印: 0.001刻み / Alt+矢印: 0.1刻み / Shift+矢印: グリッド / 普通: 2
-    const step = e.ctrlKey ? 0.001 : e.altKey ? 0.1 : e.shiftKey ? state.G : 2;
+    const step = e.ctrlKey ? 0.1 : e.shiftKey ? state.G : 1;
     pushH();
     const dx = e.key==='ArrowLeft' ? -step : e.key==='ArrowRight' ? step : 0;
     const dy = e.key==='ArrowUp'   ? -step : e.key==='ArrowDown'  ? step : 0;
