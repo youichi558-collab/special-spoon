@@ -86,18 +86,26 @@ function getAllSnapPoints(wx, wy) {
     }
   });
 
-  // 交点スナップ：fline×fline / fline×ワイヤー / ワイヤー×ワイヤー
+  // 交点スナップ：マウス周辺のセグメントのみ対象（全体O(n²)を避ける）
   if (state.snapEnd) {
-    // 全線分を収集（fline + ワイヤーセグメント）
+    const IR = R * 4; // 絞り込み半径（スナップ半径の4倍以内のセグメントのみ）
     const segs = [];
+    // セグメントのAABBがマウス周辺に重なるものだけ収集
+    function nearSeg(x1,y1,x2,y2) {
+      return Math.min(x1,x2)-IR < wx && wx < Math.max(x1,x2)+IR &&
+             Math.min(y1,y2)-IR < wy && wy < Math.max(y1,y2)+IR;
+    }
     state.elements.forEach(el => {
-      if (el.type === 'fline') segs.push([el.x1,el.y1,el.x2,el.y2]);
+      if (el.type === 'fline' && nearSeg(el.x1,el.y1,el.x2,el.y2))
+        segs.push([el.x1,el.y1,el.x2,el.y2]);
     });
     state.wires.forEach(w => {
       const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
       for (let i=0;i<pts.length-1;i++)
-        segs.push([pts[i].x,pts[i].y,pts[i+1].x,pts[i+1].y]);
+        if (nearSeg(pts[i].x,pts[i].y,pts[i+1].x,pts[i+1].y))
+          segs.push([pts[i].x,pts[i].y,pts[i+1].x,pts[i+1].y]);
     });
+    // 近傍セグメントのみでO(k²)（kは通常数本）
     for (let i=0;i<segs.length;i++) {
       for (let j=i+1;j<segs.length;j++) {
         const p = segIntersect(...segs[i], ...segs[j]);
