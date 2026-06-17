@@ -67,8 +67,18 @@ function exportDXF(){
   ls.push('0','TABLE','2','LAYER','70',String(allLayerCount));
   LAYERS.forEach((l,i)=>ls.push('0','LAYER','2',dxfLayer(l.name),'70',String(l.locked?4:0),'62',String(i+1),'6',ltypeMap[l.lineDash||'solid']||'CONTINUOUS'));
   extraLayers.forEach((name,i)=>ls.push('0','LAYER','2',name,'70','0','62',String(LAYERS.length+i+1),'6','CONTINUOUS'));
-  ls.push('0','ENDTAB','0','ENDSEC');
+  ls.push('0','ENDTAB');
+  // STYLEテーブル（テキスト用、AC1015必須）
+  ls.push('0','TABLE','2','STYLE','70','1');
+  ls.push('0','STYLE','2','STANDARD','70','0','40','0','41','1.0','42','0.2','50','0','71','0','3','txt','4','');
+  ls.push('0','ENDTAB');
+  ls.push('0','ENDSEC');
   ls.push('0','SECTION','2','BLOCKS');
+  // *Model_Space/*Paper_SpaceはAC1015で必須
+  ls.push('0','BLOCK','8','0','2','*Model_Space','70','0','10','0','20','0','30','0','3','*Model_Space','1','');
+  ls.push('0','ENDBLK','8','0');
+  ls.push('0','BLOCK','8','0','2','*Paper_Space','70','0','10','0','20','0','30','0','3','*Paper_Space','1','');
+  ls.push('0','ENDBLK','8','0');
   ls.push(...buildSymBlocksDXF());
   ls.push('0','ENDSEC');
   ls.push('0','SECTION','2','ENTITIES');
