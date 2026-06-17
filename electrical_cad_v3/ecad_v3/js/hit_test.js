@@ -124,6 +124,12 @@ function inBox(el, sx, sy, ex, ey, crossing) {
       ? el.x+el.r>=sx && el.x-el.r<=ex && el.y+el.r>=sy && el.y-el.r<=ey
       : el.x-el.r>=sx && el.x+el.r<=ex && el.y-el.r>=sy && el.y+el.r<=ey;
   }
+  if (el.type === 'arc') {
+    // バウンディングボックスで近似（円全体のAABBを使用）
+    return crossing
+      ? el.x+el.r>=sx && el.x-el.r<=ex && el.y+el.r>=sy && el.y-el.r<=ey
+      : el.x-el.r>=sx && el.x+el.r<=ex && el.y-el.r>=sy && el.y+el.r<=ey;
+  }
   if (el.type === 'angle_dim') {
     return crossing
       ? (el.cx>=sx&&el.cx<=ex&&el.cy>=sy&&el.cy<=ey)
