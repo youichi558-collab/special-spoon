@@ -234,11 +234,15 @@ const textTool = {
       draw();
     };
 
+    let finished = false;
+    const safeFinish = (confirm) => { if (finished) return; finished = true; finish(confirm); };
+
     inp.addEventListener('keydown', e2 => {
-      if (e2.key === 'Enter')  { e2.preventDefault(); finish(true); }
-      if (e2.key === 'Escape') { finish(false); }
+      if (e2.key === 'Enter')  { e2.preventDefault(); safeFinish(true); }
+      if (e2.key === 'Escape') { safeFinish(false); }
     });
-    wrap.addEventListener('mouseleave', () => {}); // keep open
+    // フォーカスが外れたら確定（少し遅延してボタン等のクリックを先に処理させる）
+    inp.addEventListener('blur', () => setTimeout(() => safeFinish(true), 150));
   },
   onMove() {}, onUp() {}, onHover() {}
 };
@@ -629,11 +633,14 @@ function showLeaderTextInput(wx, wy, onConfirm) {
   inp.focus();
 
   const finish = () => { onConfirm(inp.value.trim()); wrap.remove(); };
-  btn.addEventListener('click', finish);
+  let done = false;
+  const safeDone = (ok) => { if (done) return; done = true; if (ok) finish(); else { wrap.remove(); state.dimState=null; state.preview=null; draw(); } };
+  btn.addEventListener('click', () => safeDone(true));
   inp.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); finish(); }
-    if (e.key === 'Escape') { wrap.remove(); state.dimState=null; state.preview=null; draw(); }
+    if (e.key === 'Enter')  { e.preventDefault(); safeDone(true); }
+    if (e.key === 'Escape') { safeDone(false); }
   });
+  inp.addEventListener('blur', () => setTimeout(() => safeDone(true), 150));
 }
 
 const leaderTool = {
