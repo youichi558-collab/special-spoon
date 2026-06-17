@@ -70,6 +70,9 @@ function draw() {
 // ----------------------------------------------------------------
 function drawGrid() {
   const { zoom, pan, G, darkMode } = state;
+  // ズーム後のグリッド間隔が4px未満なら描画スキップ（G=1等で重くなるのを防ぐ）
+  const pixelStep = G * zoom;
+  if (pixelStep < 4) return;
   ctx.save();
   ctx.strokeStyle = darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.07)';
   ctx.lineWidth = 0.5;
