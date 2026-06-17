@@ -564,8 +564,35 @@ const dimTool = {
 };
 
 // ----------------------------------------------------------------
-// 引出線ツール
+// 引出線ツール（2クリック: 始点→終点、折れ点自動計算、インライン文字入力）
 // ----------------------------------------------------------------
+function showLeaderTextInput(wx, wy, onConfirm) {
+  // キャンバス座標→画面座標に変換
+  const cv = document.getElementById('canvas');
+  const r  = cv.getBoundingClientRect();
+  const sx = wx * state.zoom + state.pan.x + r.left;
+  const sy = wy * state.zoom + state.pan.y + r.top;
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = `position:fixed;left:${sx+8}px;top:${sy-16}px;z-index:9999;display:flex;gap:4px;align-items:center;background:var(--bg2,#2a2a2a);border:1px solid var(--border,#555);border-radius:4px;padding:3px 5px;box-shadow:0 2px 8px rgba(0,0,0,.5)`;
+  const inp = document.createElement('input');
+  inp.type = 'text'; inp.placeholder = 'テキスト';
+  inp.style.cssText = 'width:120px;background:transparent;border:none;outline:none;color:inherit;font-size:12px;';
+  const btn = document.createElement('button');
+  btn.textContent = 'OK';
+  btn.style.cssText = 'font-size:11px;padding:1px 6px;cursor:pointer;';
+  wrap.appendChild(inp); wrap.appendChild(btn);
+  document.body.appendChild(wrap);
+  inp.focus();
+
+  const finish = () => { onConfirm(inp.value.trim()); wrap.remove(); };
+  btn.addEventListener('click', finish);
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); finish(); }
+    if (e.key === 'Escape') { wrap.remove(); state.dimState=null; state.preview=null; draw(); }
+  });
+}
+
 const leaderTool = {
   onDown(wx, wy, e) {
     const pt = getAllSnapPoints(wx, wy);
@@ -573,17 +600,20 @@ const leaderTool = {
     if (!state.dimState) {
       state.dimState = { step:1, x1:sx, y1:sy };
     } else if (state.dimState.step === 1) {
-      state.dimState.bx = sx; state.dimState.by = sy; state.dimState.step = 2;
-    } else if (state.dimState.step === 2) {
       const ds = state.dimState;
-      const txt = prompt('引出線テキスト:', '') ?? '';
+      // 折れ点を自動計算（始点から45°→水平）
+      const ddx = sx - ds.x1, ddy = sy - ds.y1;
+      const bx = ds.x1 + (ddx >= 0 ? Math.abs(ddy) : -Math.abs(ddy));
+      const by = sy;
       state.mouse.down = false; state.mouse.dragging = false;
-      state.mouse.down = false;  // promptのOK後にmouseupがcanvasに届かないためリセット
-      pushH();
-      state.elements.push({ id: genId('el'), type:'leader', x1:ds.x1, y1:ds.y1,
-        bx:ds.bx, by:ds.by, x2:sx, y2:sy,
-        leaderText:txt, layer:activeLayer(), x:(ds.x1+sx)/2, y:(ds.y1+sy)/2 });
-      state.dimState = null; state.preview = null;
+      showLeaderTextInput(sx, sy, (txt) => {
+        pushH();
+        state.elements.push({ id: genId('el'), type:'leader',
+          x1:ds.x1, y1:ds.y1, bx, by, x2:sx, y2:sy,
+          leaderText:txt, layer:activeLayer(), x:(ds.x1+sx)/2, y:(ds.y1+sy)/2 });
+        state.dimState = null; state.preview = null;
+        draw();
+      });
     }
   },
   onMove(wx, wy) {
@@ -591,8 +621,11 @@ const leaderTool = {
     const sx = pt.x, sy = pt.y;
     const ds = state.dimState;
     if (!ds) return;
-    if (ds.step === 1) state.preview = { type:'leader_prev1', x1:ds.x1, y1:ds.y1, x2:sx, y2:sy };
-    else if (ds.step === 2) state.preview = { type:'leader_prev2', x1:ds.x1, y1:ds.y1, bx:ds.bx, by:ds.by, x2:sx, y2:sy };
+    // 折れ点自動計算でプレビュー表示
+    const ddx = sx - ds.x1, ddy = sy - ds.y1;
+    const bx = ds.x1 + (ddx >= 0 ? Math.abs(ddy) : -Math.abs(ddy));
+    const by = sy;
+    state.preview = { type:'leader_prev2', x1:ds.x1, y1:ds.y1, bx, by, x2:sx, y2:sy };
   },
   onUp() {}, onHover(wx, wy) { this.onMove(wx, wy); }
 };
