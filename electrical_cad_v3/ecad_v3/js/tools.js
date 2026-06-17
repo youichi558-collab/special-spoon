@@ -228,7 +228,8 @@ const textTool = {
       if (confirm && inp.value.trim()) {
         pushH();
         state.elements.push({ id: genId('el'), type:'text', x:sx, y:sy,
-          text:inp.value.trim(), fs, layer:activeLayer() });
+          text:inp.value.trim(), fs, layer:activeLayer(),
+          textBox: state.textBoxDefault || false });
       }
       draw();
     };

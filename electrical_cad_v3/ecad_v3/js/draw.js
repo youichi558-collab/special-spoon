@@ -225,13 +225,23 @@ function drawTextEl(el, sel, lc, lay) {
   ctx.font = `${fs}px sans-serif`;
   const lines = (el.text || '').split('\n');
   const lineH = fs * 1.4;
+  const maxW = Math.max(...lines.map(l => ctx.measureText(l).width));
+  const totalH = lines.length * lineH;
+  const pad = el.textBoxPad ?? 4;
+
+  // 枠あり
+  if (el.textBox) {
+    const lw = el.lineWidth || lay?.lineWidth || 1.0;
+    ctx.strokeStyle = lc; ctx.lineWidth = lw;
+    ctx.strokeRect(el.x - pad, el.y - fs * 0.85, maxW + pad * 2, totalH + pad * 0.5);
+  }
+
   lines.forEach((line, i) => ctx.fillText(line, el.x, el.y + i * lineH));
+
   if (sel) {
-    const maxW = Math.max(...lines.map(l => ctx.measureText(l).width));
-    const totalH = lines.length * lineH;
     ctx.strokeStyle = lc; ctx.lineWidth = 1.5/state.zoom;
     ctx.setLineDash([4/state.zoom, 3/state.zoom]);
-    ctx.strokeRect(el.x-3, el.y-fs*0.8, maxW+6, totalH+4);
+    ctx.strokeRect(el.x - pad - 3, el.y - fs * 0.85 - 3, maxW + pad * 2 + 6, totalH + pad * 0.5 + 6);
     ctx.setLineDash([]);
   }
   ctx.restore();

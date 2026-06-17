@@ -811,6 +811,7 @@ function updateRightPanel() {
   } else if (el && el.type === 'text') {
     html += `<div class="pp-row"><label>テキスト</label><textarea rows="2" id="pp-text">${el.text||''}</textarea></div>`;
     html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-fs" value="${el.fs||14}" min="8" max="72"></div>`;
+    html += `<div class="pp-row"><label>枠</label><input type="checkbox" id="pp-textbox" ${el.textBox?'checked':''}><label for="pp-textbox" style="margin-left:4px">枠あり</label></div>`;
   } else if (el && el.type === 'angle_dim') {
     html += `<div class="pp-row"><label>角度テキスト</label><input type="text" id="pp-angtext" value="${el.dimText||''}"></div>`;
     html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-angfs" value="${el.dimFs||11}" min="6" max="32"></div>`;
@@ -1112,6 +1113,7 @@ function applyRightPanel() {
     el.layer = v('pp-layer');
   } else if (el && el.type === 'text') {
     el.text = v('pp-text'); el.fs = parseInt(v('pp-fs'))||14;
+    el.textBox = document.getElementById('pp-textbox')?.checked || false;
   } else if (el && el.type === 'angle_dim') {
     el.dimText = v('pp-angtext');
     el.dimFs   = parseInt(v('pp-angfs'))||11;
