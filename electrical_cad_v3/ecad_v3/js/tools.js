@@ -241,8 +241,11 @@ const textTool = {
       if (e2.key === 'Enter')  { e2.preventDefault(); safeFinish(true); }
       if (e2.key === 'Escape') { safeFinish(false); }
     });
-    // フォーカスが外れたら確定（少し遅延してボタン等のクリックを先に処理させる）
-    inp.addEventListener('blur', () => setTimeout(() => safeFinish(true), 150));
+    // 外側クリックで確定
+    const onOutside = (e2) => {
+      if (!wrap.contains(e2.target)) { document.removeEventListener('mousedown', onOutside, true); safeFinish(true); }
+    };
+    document.addEventListener('mousedown', onOutside, true);
   },
   onMove() {}, onUp() {}, onHover() {}
 };
@@ -640,7 +643,11 @@ function showLeaderTextInput(wx, wy, onConfirm) {
     if (e.key === 'Enter')  { e.preventDefault(); safeDone(true); }
     if (e.key === 'Escape') { safeDone(false); }
   });
-  inp.addEventListener('blur', () => setTimeout(() => safeDone(true), 150));
+  // 外側クリックで確定
+  const onOut = (e) => {
+    if (!wrap.contains(e.target)) { document.removeEventListener('mousedown', onOut, true); safeDone(true); }
+  };
+  document.addEventListener('mousedown', onOut, true);
 }
 
 const leaderTool = {
