@@ -703,7 +703,7 @@ function drawGuides() {
   const prevStroke = ctx.strokeStyle;
   const prevLW = ctx.lineWidth;
   ctx.strokeStyle = '#e879f9';
-  ctx.lineWidth = 0.5 / state.zoom;
+  ctx.lineWidth = 0.3 / state.zoom;
   ctx.setLineDash([8 / state.zoom, 4 / state.zoom]);
 
   guides.forEach(g => {
