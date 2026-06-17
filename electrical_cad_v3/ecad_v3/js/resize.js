@@ -133,8 +133,16 @@ function applyElResize(wx, wy) {
     el.r = Math.max(5, Math.hypot(wx-orig.x, wy-orig.y));
   } else if (el.type === 'fline') {
     // 端点ドラッグ（伸縮）
-    if (handle === 'p1') { el.x1 = snap(wx); el.y1 = snap(wy); }
-    if (handle === 'p2') { el.x2 = snap(wx); el.y2 = snap(wy); }
+    if (handle === 'p1') {
+      let ex = snap(wx), ey = snap(wy);
+      if (state.ortho) { const o = applyOrtho(el.x2, el.y2, ex, ey); ex=o.x; ey=o.y; }
+      el.x1 = ex; el.y1 = ey;
+    }
+    if (handle === 'p2') {
+      let ex = snap(wx), ey = snap(wy);
+      if (state.ortho) { const o = applyOrtho(el.x1, el.y1, ex, ey); ex=o.x; ey=o.y; }
+      el.x2 = ex; el.y2 = ey;
+    }
   } else {
     // ハンドル開始距離とマウス現在距離の比でscaleを計算
     const currentDist = Math.hypot(wx - orig.x, wy - orig.y);
