@@ -42,12 +42,19 @@ const DXF_LAYER_MAP={"回路":"CIRCUIT","配線":"WIRE","注記":"NOTE","外形"
 function dxfLayer(name){return DXF_LAYER_MAP[name]||name||"0";}
 function exportDXF(){
   const ls=[];
+  // 実座標のバウンディングボックスを計算（$EXTMIN/$EXTMAX用、DXFはY反転）
+  let _minX=1e20,_minY=1e20,_maxX=-1e20,_maxY=-1e20;
+  const _ext=(x,y)=>{ if(x<_minX)_minX=x; if(x>_maxX)_maxX=x; if(y<_minY)_minY=y; if(y>_maxY)_maxY=y; };
+  state.wires.forEach(w=>{const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];pts.forEach(p=>_ext(p.x,-p.y));});
+  state.elements.forEach(el=>{['x','x1','x2','cx'].forEach(k=>{if(el[k]!=null)['y','y1','y2','cy'].forEach(yk=>{if(el[yk]!=null)_ext(el[k],-el[yk]);});});});
+  if(_minX>_maxX){_minX=0;_minY=0;_maxX=420;_maxY=297;}
   ls.push('0','SECTION','2','HEADER');
   ls.push('9','$ACADVER','1','AC1009');
   ls.push('9','$DWGCODEPAGE','3','ANSI_1252');
-  ls.push('9','$EXTMIN','10','0','20','0','30','0');
-  ls.push('9','$EXTMAX','10','100000','20','100000','30','0');
-  ls.push('9','$HANDSEED','5','FFFF');
+  ls.push('9','$EXTMIN','10',_minX.toFixed(2),'20',_minY.toFixed(2),'30','0');
+  ls.push('9','$EXTMAX','10',_maxX.toFixed(2),'20',_maxY.toFixed(2),'30','0');
+  ls.push('9','$LIMMIN','10',_minX.toFixed(2),'20',_minY.toFixed(2));
+  ls.push('9','$LIMMAX','10',_maxX.toFixed(2),'20',_maxY.toFixed(2));
   ls.push('0','ENDSEC');
   // ECAD独自データをコメントとして保存（セクション間）
   ls.push('999','ECAD_DXF_V1');
@@ -61,11 +68,13 @@ function exportDXF(){
   // 線種テーブル
   const ltypeMap = { solid:'CONTINUOUS', dashed:'DASHED', dotted:'DOT', dashdot:'DASHDOT' };
   ls.push('0','SECTION','2','TABLES');
-  // VPORT（ビューポート、DWG TrueView表示に必須）
+  // VPORT（ビューポート、DWG TrueView表示に必須）図面中心・全体が映るよう設定
+  const _cx=((_minX+_maxX)/2).toFixed(2), _cy=((_minY+_maxY)/2).toFixed(2);
+  const _vh=Math.max((_maxY-_minY)*1.1,(_maxX-_minX)*1.1*0.6,100).toFixed(2);
   ls.push('0','TABLE','2','VPORT','70','1');
   ls.push('0','VPORT','2','*ACTIVE','70','0','10','0','20','0','11','1','21','1',
-    '12','0','22','0','13','0','23','0','14','10','24','10','15','10','25','10',
-    '16','0','26','0','36','1','17','0','27','0','37','0','40','297','41','1.5',
+    '12',_cx,'22',_cy,'13','0','23','0','14','10','24','10','15','10','25','10',
+    '16','0','26','0','36','1','17','0','27','0','37','0','40',_vh,'41','1.5',
     '42','50','43','0','44','0','50','0','51','0','71','0','72','100','73','1','74','3','75','0','76','0','77','0','78','0');
   ls.push('0','ENDTAB');
   ls.push('0','TABLE','2','LTYPE','70','4');
@@ -113,13 +122,8 @@ function exportDXF(){
     const dimLyr = dxfLayer(el.layer||'寸法');
     const gap=el.gap!=null?el.gap:10, ext=el.ext!=null?el.ext:5;
     const isOwnLyr = (el.layer||'寸法')==='寸法';
-    // 寸法レイヤーならDIMENSION（自ツール読込用）も出力
-    if(isOwnLyr){
-      ls.push('0','DIMENSION','8',dimLyr,'10',mx.toFixed(3),'20',(-my).toFixed(3),'30','0',
-        '11',mx.toFixed(3),'21',(-my).toFixed(3),'31','0','70','32',
-        '13',el.x1.toFixed(3),'23',(-el.y1).toFixed(3),'33','0',
-        '14',el.x2.toFixed(3),'24',(-el.y2).toFixed(3),'34','0','1',el.dimText||'');
-    }
+    // DIMENSIONエンティティはブロック参照必須でAutoCAD系が描画停止するため出力しない
+    // （寸法線は下のLINE+TEXT+矢印で完全再現される）
     // LINE+TEXT+矢印（他CAD表示用・寸法レイヤー以外も出力）
     const drawLyr = isOwnLyr ? 'DIM_VIS' : dimLyr;
     // 引出し線（gap空け）
@@ -239,18 +243,26 @@ function exportDXF(){
   const base = (state.saveFileName || '図面').replace(/[\\/:*?"<>|]/g, '_');
   const name = (pg.name || ('Sheet'+(state.currentPage+1))).replace(/[\\/:*?"<>|]/g, '_');
   // 後処理: ハンドル自動付与 + 日本語Unicodeエスケープ
-  // R12形式でも各エンティティ/テーブルエントリに一意ハンドル(5コード)が必要
+  // R12形式でも各エンティティ/テーブル/テーブルエントリに一意ハンドル(5コード)が必要
+  // ただしHEADERセクション内とSECTION/ENDSEC/ENDTAB/EOF/ENDBLKには付けない
   let handle = 0x100;
   const noHandle = new Set(['SECTION','ENDSEC','TABLE','ENDTAB','EOF','ENDBLK']);
   const out = [];
+  let inHeader = false;
   for (let i = 0; i < ls.length; i += 2) {
     const code = String(ls[i]);
     let val = String(ls[i+1]);
     if (code === '1' || code === '3') val = toUnicodeDXF(val);
+    // HEADERセクションの開始/終了を追跡
+    if (code === '2' && val === 'HEADER') inHeader = true;
     out.push(code, val);
-    if (code === '0' && !noHandle.has(val)) {
-      out.push('5', handle.toString(16).toUpperCase());
-      handle++;
+    if (code === '0') {
+      if (val === 'ENDSEC') inHeader = false;
+      // HEADER外で、実体(エンティティ/TABLE/テーブルエントリ)にハンドル付与
+      if (!inHeader && !noHandle.has(val)) {
+        out.push('5', handle.toString(16).toUpperCase());
+        handle++;
+      }
     }
   }
 
