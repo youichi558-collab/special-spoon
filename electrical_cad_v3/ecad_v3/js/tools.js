@@ -603,12 +603,13 @@ const leaderTool = {
       state.dimState.bx = sx; state.dimState.by = sy; state.dimState.step = 2;
     } else if (state.dimState.step === 2) {
       const ds = state.dimState;
+      const ex = sx, ey = ds.by; // Y は折れ点に固定（水平シェルフ）
       state.mouse.down = false; state.mouse.dragging = false;
-      showLeaderTextInput(sx, sy, (txt) => {
+      showLeaderTextInput(ex, ey, (txt) => {
         pushH();
         state.elements.push({ id: genId('el'), type:'leader',
-          x1:ds.x1, y1:ds.y1, bx:ds.bx, by:ds.by, x2:sx, y2:sy,
-          leaderText:txt, layer:activeLayer(), x:(ds.x1+sx)/2, y:(ds.y1+sy)/2 });
+          x1:ds.x1, y1:ds.y1, bx:ds.bx, by:ds.by, x2:ex, y2:ey,
+          leaderText:txt, layer:activeLayer(), x:(ds.x1+ex)/2, y:(ds.y1+ey)/2 });
         state.dimState = null; state.preview = null;
         draw();
       });
@@ -620,7 +621,7 @@ const leaderTool = {
     const ds = state.dimState;
     if (!ds) return;
     if (ds.step === 1) state.preview = { type:'leader_prev1', x1:ds.x1, y1:ds.y1, x2:sx, y2:sy };
-    else if (ds.step === 2) state.preview = { type:'leader_prev2', x1:ds.x1, y1:ds.y1, bx:ds.bx, by:ds.by, x2:sx, y2:sy };
+    else if (ds.step === 2) state.preview = { type:'leader_prev2', x1:ds.x1, y1:ds.y1, bx:ds.bx, by:ds.by, x2:sx, y2:ds.by };
   },
   onUp() {}, onHover(wx, wy) { this.onMove(wx, wy); }
 };
