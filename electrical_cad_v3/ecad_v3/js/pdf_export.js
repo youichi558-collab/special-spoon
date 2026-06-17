@@ -372,7 +372,7 @@ function _exportPDFPages(indices, filename) {
       // Canvas高解像度画像としてPDFに貼り付け（プレビューと完全同一の描画方式）
       // ================================================================
       {
-        const dpi = 400;
+        const dpi = 300;
         const pxPerMM = dpi / 25.4;
         // プレビューと同じ: pageW/pageH（world単位）を基準にzoom計算
         const fr2 = maskedFrame(pg.frameObj);
@@ -419,10 +419,10 @@ function _exportPDFPages(indices, filename) {
         state.pan = origPan;
         state.sel.els = origSel.els; state.sel.wires = origSel.wires;
 
-        const dataURL = oc.toDataURL('image/png');
+        const dataURL = oc.toDataURL('image/jpeg', 0.95);
         const actualW = pdf.internal.pageSize.getWidth();
         const actualH = pdf.internal.pageSize.getHeight();
-        pdf.addImage(dataURL, 'PNG', 0, 0, actualW, actualH, '', 'NONE');
+        pdf.addImage(dataURL, 'JPEG', 0, 0, actualW, actualH, '', 'FAST');
       }
 
       // テキストはCanvasで描画済み（文字化け防止のためjsPDFテキストレイヤーは使わない）
