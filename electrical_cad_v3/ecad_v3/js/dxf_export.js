@@ -61,8 +61,12 @@ function exportDXF(){
   ls.push('0','LTYPE','2','DOT','70','0','3','Dot','72','65','73','2','40','3.175','49','0.0','49','-3.175');
   ls.push('0','LTYPE','2','DASHDOT','70','0','3','Dash dot','72','65','73','4','40','12.7','49','6.35','49','-3.175','49','0.0','49','-3.175');
   ls.push('0','ENDTAB');
-  ls.push('0','TABLE','2','LAYER','70',String(LAYERS.length));
-  LAYERS.forEach((l,i)=>ls.push('0','LAYER','2',l.name,'70',String(l.locked?4:0),'62',String(i+1),'6',ltypeMap[l.lineDash||'solid']||'CONTINUOUS'));
+  // 追加レイヤー（ENTITIESで使用するがLAYERSに含まれないもの）
+  const extraLayers = ['FRAME','DIM_VIS','CIRCUIT','WIRE','NOTE','OUTLINE','DIM'];
+  const allLayerCount = LAYERS.length + extraLayers.length;
+  ls.push('0','TABLE','2','LAYER','70',String(allLayerCount));
+  LAYERS.forEach((l,i)=>ls.push('0','LAYER','2',dxfLayer(l.name),'70',String(l.locked?4:0),'62',String(i+1),'6',ltypeMap[l.lineDash||'solid']||'CONTINUOUS'));
+  extraLayers.forEach((name,i)=>ls.push('0','LAYER','2',name,'70','0','62',String(LAYERS.length+i+1),'6','CONTINUOUS'));
   ls.push('0','ENDTAB','0','ENDSEC');
   ls.push('0','SECTION','2','BLOCKS');
   ls.push(...buildSymBlocksDXF());
@@ -204,7 +208,7 @@ function exportDXF(){
   const pg = state.pages[state.currentPage];
   const base = (state.saveFileName || '図面').replace(/[\\/:*?"<>|]/g, '_');
   const name = (pg.name || ('Sheet'+(state.currentPage+1))).replace(/[\\/:*?"<>|]/g, '_');
-  dl(ls.join('\n'), `${base}_${name}.dxf`, 'application/dxf');
+  dl(ls.join('\r\n'), `${base}_${name}.dxf`, 'application/dxf');
 }
 
 
