@@ -28,6 +28,7 @@ const selectTool = {
     }
     if (el)   state.sel.els.add(el.id);
     if (wire) state.sel.wires.add(wire.id);
+    expandSelToGroups();
 
     state.mouse.dragging  = true;
     state.mouse.dragMoved = false;
@@ -83,6 +84,7 @@ const selectTool = {
       if (!e.shiftKey) { state.sel.els.clear(); state.sel.wires.clear(); }
       state.elements.forEach(el => { if (inBox(el, sx, sy, ex, ey, crossing)) state.sel.els.add(el.id); });
       state.wires.forEach(w => { if (wireInBox(w, sx, sy, ex, ey, crossing)) state.sel.wires.add(w.id); });
+      expandSelToGroups();
       state.mouse.selboxing = false;
       updateRightPanel();
       updateResizeHandles();

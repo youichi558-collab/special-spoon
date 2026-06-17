@@ -386,18 +386,43 @@ function flipSel(axis) {
 // ----------------------------------------------------------------
 // グループ操作
 // ----------------------------------------------------------------
+// 選択をグループ全体に拡張（クリック・範囲選択後に呼ぶ）
+function expandSelToGroups() {
+  const groups = state.page.groups || [];
+  let changed = true;
+  while (changed) {
+    changed = false;
+    groups.forEach(g => {
+      const hit = g.elIds.some(id => state.sel.els.has(id)) ||
+                  g.wireIds.some(id => state.sel.wires.has(id));
+      if (hit) {
+        g.elIds.forEach(id => { if (!state.sel.els.has(id))    { state.sel.els.add(id);    changed = true; } });
+        g.wireIds.forEach(id => { if (!state.sel.wires.has(id)) { state.sel.wires.add(id); changed = true; } });
+      }
+    });
+  }
+}
+
 function groupSelected() {
   const elIds   = [...state.sel.els];
   const wireIds = [...state.sel.wires];
   if (!elIds.length && !wireIds.length) return;
   pushH();
-  const id = genId('g');
   state.page.groups = state.page.groups || [];
-  state.page.groups.push({ id, elIds, wireIds });
+  // 既存グループに含まれるメンバーを一旦解除してから新グループを作る
+  state.page.groups = state.page.groups.filter(g =>
+    !g.elIds.some(id => state.sel.els.has(id)) &&
+    !g.wireIds.some(id => state.sel.wires.has(id))
+  );
+  state.page.groups.push({ id: genId('g'), elIds, wireIds });
   draw();
 }
 
 function ungroupSelected() {
+  if (!(state.page.groups || []).some(g =>
+    g.elIds.some(id => state.sel.els.has(id)) ||
+    g.wireIds.some(id => state.sel.wires.has(id))
+  )) return;
   pushH();
   state.page.groups = (state.page.groups || []).filter(g =>
     !g.elIds.some(id => state.sel.els.has(id)) &&
@@ -493,7 +518,11 @@ document.addEventListener('keydown', e => {
       case 'c': case 'C': e.preventDefault(); copySelected(); break;
       case 'x': case 'X': e.preventDefault(); cutSelected(); break;
       case 'v': case 'V': e.preventDefault(); pasteSelected(); break;
-      case 'g': case 'G': e.preventDefault(); groupSelected(); break;
+      case 'g': case 'G':
+        e.preventDefault();
+        if (e.shiftKey) ungroupSelected();
+        else groupSelected();
+        break;
       case 'Tab': e.preventDefault();
         switchPage((state.currentPage + (e.shiftKey ? -1 : 1) + state.pages.length) % state.pages.length);
         break;
