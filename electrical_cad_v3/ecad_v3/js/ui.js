@@ -804,8 +804,8 @@ function updateRightPanel() {
 
   if (el && el.type === 'junction') {
     html += `<p style="font-size:10px;font-weight:600;color:var(--fg4);padding:6px 10px 2px">接続点</p>`;
-    html += `<div class="pp-row"><label>X</label><input type="number" id="pp-jx" value="${Math.round(el.x*10)/10}" step="1"></div>`;
-    html += `<div class="pp-row"><label>Y</label><input type="number" id="pp-jy" value="${Math.round(el.y*10)/10}" step="1"></div>`;
+    html += `<div class="pp-row"><label>X</label><input type="number" id="pp-jx" value="${Math.round(el.x*1000)/1000}" step="any"></div>`;
+    html += `<div class="pp-row"><label>Y</label><input type="number" id="pp-jy" value="${Math.round(el.y*1000)/1000}" step="any"></div>`;
     html += `<div class="pp-row"><label>半径</label><input type="number" id="pp-jr" value="${el.r||2}" min="1" max="30" step="1"></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
   } else if (el && el.type === 'text') {
@@ -880,30 +880,30 @@ function updateRightPanel() {
       html += `<div class="pp-row"><label>回転基準</label><select id="pp-fbase"><option value="p1">始点固定</option><option value="p2">終点固定</option></select></div>`;
       html += `<div class="pp-row"><label>角度(°)</label><input type="number" id="pp-fangle" value="${fAng}" step="1"></div>`;
       html += `<div class="pp-row"><label>長さ</label><input type="number" id="pp-flen" value="${fLen}" step="1" min="1"></div>`;
-      html += `<div class="pp-row"><label>始点X</label><input type="number" id="pp-x1" value="${Math.round(el.x1*10)/10}" step="1"></div>`;
-      html += `<div class="pp-row"><label>始点Y</label><input type="number" id="pp-y1" value="${Math.round(el.y1*10)/10}" step="1"></div>`;
-      html += `<div class="pp-row"><label>終点X</label><input type="number" id="pp-x2" value="${Math.round(el.x2*10)/10}" step="1"></div>`;
-      html += `<div class="pp-row"><label>終点Y</label><input type="number" id="pp-y2" value="${Math.round(el.y2*10)/10}" step="1"></div>`;
+      html += `<div class="pp-row"><label>始点X</label><input type="number" id="pp-x1" value="${Math.round(el.x1*1000)/1000}" step="any"></div>`;
+      html += `<div class="pp-row"><label>始点Y</label><input type="number" id="pp-y1" value="${Math.round(el.y1*1000)/1000}" step="any"></div>`;
+      html += `<div class="pp-row"><label>終点X</label><input type="number" id="pp-x2" value="${Math.round(el.x2*1000)/1000}" step="any"></div>`;
+      html += `<div class="pp-row"><label>終点Y</label><input type="number" id="pp-y2" value="${Math.round(el.y2*1000)/1000}" step="any"></div>`;
     } else if (el.type === 'arc') {
-      html += `<div class="pp-row"><label>中心X</label><input type="number" id="pp-x1" value="${Math.round(el.x*10)/10}" step="1"></div>`;
-      html += `<div class="pp-row"><label>中心Y</label><input type="number" id="pp-y1" value="${Math.round(el.y*10)/10}" step="1"></div>`;
+      html += `<div class="pp-row"><label>中心X</label><input type="number" id="pp-x1" value="${Math.round(el.x*1000)/1000}" step="any"></div>`;
+      html += `<div class="pp-row"><label>中心Y</label><input type="number" id="pp-y1" value="${Math.round(el.y*1000)/1000}" step="any"></div>`;
       html += `<div class="pp-row"><label>半径</label><input type="number" id="pp-arcr" value="${Math.round((el.r||10)*10)/10}" step="1" min="1"></div>`;
-      html += `<div class="pp-row"><label>開始角(°)</label><input type="number" id="pp-arca1" value="${Math.round(el.startA*180/Math.PI*10)/10}" step="1"></div>`;
-      html += `<div class="pp-row"><label>終了角(°)</label><input type="number" id="pp-arca2" value="${Math.round(el.endA*180/Math.PI*10)/10}" step="1"></div>`;
+      html += `<div class="pp-row"><label>開始角(°)</label><input type="number" id="pp-arca1" value="${Math.round(el.startA*180/Math.PI*1000)/1000}" step="any"></div>`;
+      html += `<div class="pp-row"><label>終了角(°)</label><input type="number" id="pp-arca2" value="${Math.round(el.endA*180/Math.PI*1000)/1000}" step="any"></div>`;
     } else if (el.type === 'triangle') {
       html += `<div class="pp-row"><label>回転基準</label><select id="pp-tribase"><option value="p1">頂点1固定</option><option value="p2">頂点2固定</option><option value="p3">頂点3固定</option></select></div>`;
       html += `<div class="pp-row"><label>回転角(°)</label><input type="number" id="pp-triangle" value="0" step="1"></div>`;
-      html += `<div class="pp-row"><label>頂点1 X</label><input type="number" id="pp-tx1" value="${Math.round(el.x1*10)/10}" step="1"></div>`;
-      html += `<div class="pp-row"><label>頂点1 Y</label><input type="number" id="pp-ty1" value="${Math.round(el.y1*10)/10}" step="1"></div>`;
-      html += `<div class="pp-row"><label>頂点2 X</label><input type="number" id="pp-tx2" value="${Math.round(el.x2*10)/10}" step="1"></div>`;
-      html += `<div class="pp-row"><label>頂点2 Y</label><input type="number" id="pp-ty2" value="${Math.round(el.y2*10)/10}" step="1"></div>`;
-      html += `<div class="pp-row"><label>頂点3 X</label><input type="number" id="pp-tx3" value="${Math.round(el.x3*10)/10}" step="1"></div>`;
-      html += `<div class="pp-row"><label>頂点3 Y</label><input type="number" id="pp-ty3" value="${Math.round(el.y3*10)/10}" step="1"></div>`;
+      html += `<div class="pp-row"><label>頂点1 X</label><input type="number" id="pp-tx1" value="${Math.round(el.x1*1000)/1000}" step="any"></div>`;
+      html += `<div class="pp-row"><label>頂点1 Y</label><input type="number" id="pp-ty1" value="${Math.round(el.y1*1000)/1000}" step="any"></div>`;
+      html += `<div class="pp-row"><label>頂点2 X</label><input type="number" id="pp-tx2" value="${Math.round(el.x2*1000)/1000}" step="any"></div>`;
+      html += `<div class="pp-row"><label>頂点2 Y</label><input type="number" id="pp-ty2" value="${Math.round(el.y2*1000)/1000}" step="any"></div>`;
+      html += `<div class="pp-row"><label>頂点3 X</label><input type="number" id="pp-tx3" value="${Math.round(el.x3*1000)/1000}" step="any"></div>`;
+      html += `<div class="pp-row"><label>頂点3 Y</label><input type="number" id="pp-ty3" value="${Math.round(el.y3*1000)/1000}" step="any"></div>`;
     } else if (el.type === 'rect') {
-      html += `<div class="pp-row"><label>X</label><input type="number" id="pp-rx" value="${Math.round(el.x*10)/10}" step="1"></div>`;
-      html += `<div class="pp-row"><label>Y</label><input type="number" id="pp-ry" value="${Math.round(el.y*10)/10}" step="1"></div>`;
-      html += `<div class="pp-row"><label>幅</label><input type="number" id="pp-rw" value="${Math.round(el.w*10)/10}" step="1" min="1"></div>`;
-      html += `<div class="pp-row"><label>高さ</label><input type="number" id="pp-rh" value="${Math.round(el.h*10)/10}" step="1" min="1"></div>`;
+      html += `<div class="pp-row"><label>X</label><input type="number" id="pp-rx" value="${Math.round(el.x*1000)/1000}" step="any"></div>`;
+      html += `<div class="pp-row"><label>Y</label><input type="number" id="pp-ry" value="${Math.round(el.y*1000)/1000}" step="any"></div>`;
+      html += `<div class="pp-row"><label>幅</label><input type="number" id="pp-rw" value="${Math.round(el.w*1000)/1000}" step="any" min="1"></div>`;
+      html += `<div class="pp-row"><label>高さ</label><input type="number" id="pp-rh" value="${Math.round(el.h*1000)/1000}" step="any" min="1"></div>`;
     }
     html += `<div class="pp-row"><label>線幅</label><select id="pp-lw"><option value="0.5"${(el.lineWidth||1.0)==0.5?' selected':''}>極細(0.5)</option><option value="1"${(el.lineWidth||1.0)==1?' selected':''}>標準(1)</option><option value="1.5"${(el.lineWidth||1.0)==1.5?' selected':''}>やや太(1.5)</option><option value="2"${(el.lineWidth||1.0)==2?' selected':''}>太(2)</option><option value="3"${(el.lineWidth||1.0)==3?' selected':''}>極太(3)</option></select></div>`;
     html += `<div class="pp-row"><label>線種</label><select id="pp-ls"><option value=""${!el.lineStyle?' selected':''}>実線</option><option value="dash"${el.lineStyle==='dash'?' selected':''}>破線</option><option value="dot"${el.lineStyle==='dot'?' selected':''}>点線</option><option value="dashdot"${el.lineStyle==='dashdot'?' selected':''}>一点鎖線</option></select></div>`;
