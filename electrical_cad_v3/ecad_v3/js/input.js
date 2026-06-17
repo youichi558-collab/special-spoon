@@ -12,7 +12,7 @@ function tc(wx, wy) { // world → canvas
 function tw(cx, cy) { // canvas → world
   return { x: (cx - state.pan.x) / state.zoom, y: (cy - state.pan.y) / state.zoom };
 }
-function snap(v)   { return Math.round(v / state.G) * state.G; }
+function snap(v)   { return Math.round(Math.round(v / state.G) * state.G * 1000) / 1000; }
 function snapPt(wx, wy) { return { x: snap(wx), y: snap(wy) }; }
 
 function resize() {

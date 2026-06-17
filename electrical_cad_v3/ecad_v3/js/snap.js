@@ -214,5 +214,6 @@ function segIntersect(ax1,ay1,ax2,ay2, bx1,by1,bx2,by2) {
   const t = ((bx1-ax1)*dy2 - (by1-ay1)*dx2) / denom;
   const u = ((bx1-ax1)*dy1 - (by1-ay1)*dx1) / denom;
   if (t<-0.01||t>1.01||u<-0.01||u>1.01) return null;
-  return { x: ax1+t*dx1, y: ay1+t*dy1 };
+  // グリッドスナップして浮動小数点誤差を除去
+  return { x: snap(ax1+t*dx1), y: snap(ay1+t*dy1) };
 }

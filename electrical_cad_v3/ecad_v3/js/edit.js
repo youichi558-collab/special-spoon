@@ -341,10 +341,12 @@ function rotateSel(deg) {
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2;
 
-  // 点を中心回りに回転
+  // 点を中心回りに回転（浮動小数点誤差を丸める）
   function rotPt(x, y) {
     const dx = x - cx, dy = y - cy;
-    return { x: cx + dx*cos - dy*sin, y: cy + dx*sin + dy*cos };
+    const rx = cx + dx*cos - dy*sin;
+    const ry = cy + dx*sin + dy*cos;
+    return { x: Math.round(rx * 1000) / 1000, y: Math.round(ry * 1000) / 1000 };
   }
 
   // 各要素を回転
