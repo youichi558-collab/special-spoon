@@ -51,11 +51,8 @@ const selectTool = {
       pushH();
       state.mouse.dragHistPushed = true;
     }
-    // マウス位置をgetAllSnapPointsでスナップしてからdeltaを計算
-    const sp = getAllSnapPoints(wx, wy);
-    state.snapPreview = sp;
-    const sdx = sp.x - state.mouse.startWx;
-    const sdy = sp.y - state.mouse.startWy;
+    // 移動量をグリッドスナップ（相対関係を保持）
+    const sdx = snap(dx); const sdy = snap(dy);
     state.mouse.dragGroup.forEach(({ el, ox, oy, obx, oby, ox1, oy1, ox2, oy2, ox3, oy3, ocx, ocy, opts }) => {
       if (el.type === 'triangle') {
         el.x1=ox1+sdx; el.y1=oy1+sdy; el.x2=ox2+sdx; el.y2=oy2+sdy; el.x3=ox3+sdx; el.y3=oy3+sdy;

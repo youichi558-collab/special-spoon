@@ -428,6 +428,16 @@ function expandSelToGroups() {
   }
 }
 
+function applyGroupMove() {
+  const dx = +document.getElementById('gp-dx')?.value || 0;
+  const dy = +document.getElementById('gp-dy')?.value || 0;
+  if (dx === 0 && dy === 0) return;
+  pushH();
+  state.elements.filter(el => state.sel.els.has(el.id)).forEach(el => moveEntity(el, dx, dy));
+  state.wires.filter(w => state.sel.wires.has(w.id)).forEach(w => moveEntity(w, dx, dy));
+  draw(); updateRightPanel();
+}
+
 function groupSelected() {
   const elIds   = [...state.sel.els];
   const wireIds = [...state.sel.wires];

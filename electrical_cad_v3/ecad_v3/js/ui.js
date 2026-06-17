@@ -733,6 +733,56 @@ function updateRightPanel() {
   const wire= state.sel.wires.size === 1 ? state.wires.find(w    => state.sel.wires.has(w.id)) : null;
   const rp  = document.getElementById('rp-body');
 
+  // グループ選択チェック
+  const selGroups = (state.page.groups || []).filter(g =>
+    g.elIds.some(id => state.sel.els.has(id)) ||
+    g.wireIds.some(id => state.sel.wires.has(id))
+  );
+  if (selGroups.length > 0 && (state.sel.els.size > 1 || state.sel.wires.size > 0)) {
+    // グループバウンディングボックスを計算
+    let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+    const addP = (x,y) => { if(x==null||y==null)return; if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y; };
+    state.elements.filter(e => state.sel.els.has(e.id)).forEach(e => {
+      addP(e.x,e.y); addP(e.x1,e.y1); addP(e.x2,e.y2);
+      if(e.w!=null){addP(e.x+e.w,e.y); addP(e.x,e.y+e.h);}
+      if(e.r!=null){addP(e.x+e.r,e.y); addP(e.x-e.r,e.y); addP(e.x,e.y+e.r); addP(e.x,e.y-e.r);}
+      if(e.pts)e.pts.forEach(p=>addP(p.x,p.y));
+    });
+    state.wires.filter(w => state.sel.wires.has(w.id)).forEach(w => {
+      if(w.pts)w.pts.forEach(p=>addP(p.x,p.y));
+    });
+    const gx = minX===Infinity ? 0 : Math.round(minX);
+    const gy = minY===Infinity ? 0 : Math.round(minY);
+    const gw = maxX===Infinity ? 0 : Math.round(maxX-minX);
+    const gh = maxY===Infinity ? 0 : Math.round(maxY-minY);
+    const gc = selGroups.length;
+    rp.innerHTML = `
+      <p style="font-size:10px;font-weight:600;color:var(--fg4);padding:6px 10px 2px">グループ (${gc}個)</p>
+      <div class="pp-row"><label>X (左端)</label><input type="number" id="gp-x" value="${gx}" step="1"></div>
+      <div class="pp-row"><label>Y (上端)</label><input type="number" id="gp-y" value="${gy}" step="1"></div>
+      <div class="pp-row"><label>幅</label><span style="padding:2px 0;color:var(--fg2)">${gw}</span></div>
+      <div class="pp-row"><label>高さ</label><span style="padding:2px 0;color:var(--fg2)">${gh}</span></div>
+      <hr style="margin:6px 10px;border-color:var(--border)">
+      <p style="font-size:10px;font-weight:600;color:var(--fg4);padding:2px 10px">移動量</p>
+      <div class="pp-row"><label>ΔX</label><input type="number" id="gp-dx" value="0" step="1"></div>
+      <div class="pp-row"><label>ΔY</label><input type="number" id="gp-dy" value="0" step="1"></div>
+      <button class="pp-apply" onclick="applyGroupMove()">移動適用</button>
+      <button class="pp-apply" style="margin-top:4px;background:var(--accent2,#e55)" onclick="ungroupSelected();updateRightPanel()">グループ解除</button>
+    `;
+    // X/Y直接入力で移動
+    document.getElementById('gp-x').addEventListener('change', function() {
+      const nx = +this.value, dx = nx - gx;
+      if(dx===0) return;
+      document.getElementById('gp-dx').value = dx;
+    });
+    document.getElementById('gp-y').addEventListener('change', function() {
+      const ny = +this.value, dy = ny - gy;
+      if(dy===0) return;
+      document.getElementById('gp-dy').value = dy;
+    });
+    return;
+  }
+
   if (!el && !wire) {
     // 選択なし → 保存ファイル名 + 図面枠プロパティ
     let html = `<div class="pp-row"><label>保存ファイル名</label><input type="text" id="rp-savename" value="${state.saveFileName}" placeholder="例: 制御盤A回路図" onchange="state.saveFileName=this.value.trim()"></div>`;
