@@ -204,9 +204,20 @@ function copySelected() {
   const els   = state.elements.filter(el => state.sel.els.has(el.id));
   const wires = state.wires.filter(w   => state.sel.wires.has(w.id));
   if (!els.length && !wires.length) return;
+  // コピー元のID集合
+  const elIdSet   = new Set(els.map(e => e.id));
+  const wireIdSet = new Set(wires.map(w => w.id));
+  // コピー元が属するグループ構造を保存（コピー範囲内のメンバーのみ）
+  const groups = (state.page.groups || [])
+    .map(g => ({
+      elIds:   g.elIds.filter(id => elIdSet.has(id)),
+      wireIds: g.wireIds.filter(id => wireIdSet.has(id)),
+    }))
+    .filter(g => g.elIds.length + g.wireIds.length > 0);
   state.clipboard = {
     els:   JSON.parse(JSON.stringify(els)),
     wires: JSON.parse(JSON.stringify(wires)),
+    groups,
   };
 }
 
@@ -216,16 +227,21 @@ function pasteSelected() {
   if (!state.clipboard?.els) return;
   pushH();
   const off = state.G * 2;
+  const idMap = {}; // 旧ID → 新ID のマッピング
   function offsetEl(el) {
     const ne = JSON.parse(JSON.stringify(el));
-    ne.id = genId('el');
+    const newId = genId('el');
+    idMap[el.id] = newId;
+    ne.id = newId;
     moveEntity(ne, off, off);
     return ne;
   }
   const newEls = state.clipboard.els.map(offsetEl);
   const newWires = state.clipboard.wires.map(w => {
     const nw = JSON.parse(JSON.stringify(w));
-    nw.id  = genId('w');
+    const newId = genId('w');
+    idMap[w.id] = newId;
+    nw.id  = newId;
     nw.pts = (nw.pts||[]).map(p => ({ x: p.x+off, y: p.y+off }));
     nw.x1  = nw.pts[0]?.x; nw.y1 = nw.pts[0]?.y;
     nw.x2  = nw.pts[nw.pts.length-1]?.x; nw.y2 = nw.pts[nw.pts.length-1]?.y;
@@ -233,6 +249,15 @@ function pasteSelected() {
   });
   state.elements.push(...newEls);
   state.wires.push(...newWires);
+  // グループ構造を新IDで再作成
+  state.page.groups = state.page.groups || [];
+  (state.clipboard.groups || []).forEach(g => {
+    const elIds   = g.elIds.map(id => idMap[id]).filter(Boolean);
+    const wireIds = g.wireIds.map(id => idMap[id]).filter(Boolean);
+    if (elIds.length + wireIds.length > 0) {
+      state.page.groups.push({ id: genId('g'), elIds, wireIds });
+    }
+  });
   state.sel.els.clear(); state.sel.wires.clear();
   newEls.forEach(el => state.sel.els.add(el.id));
   newWires.forEach(w  => state.sel.wires.add(w.id));
