@@ -61,6 +61,13 @@ function exportDXF(){
   // 線種テーブル
   const ltypeMap = { solid:'CONTINUOUS', dashed:'DASHED', dotted:'DOT', dashdot:'DASHDOT' };
   ls.push('0','SECTION','2','TABLES');
+  // VPORT（ビューポート、DWG TrueView表示に必須）
+  ls.push('0','TABLE','2','VPORT','70','1');
+  ls.push('0','VPORT','2','*ACTIVE','70','0','10','0','20','0','11','1','21','1',
+    '12','0','22','0','13','0','23','0','14','10','24','10','15','10','25','10',
+    '16','0','26','0','36','1','17','0','27','0','37','0','40','297','41','1.5',
+    '42','50','43','0','44','0','50','0','51','0','71','0','72','100','73','1','74','3','75','0','76','0','77','0','78','0');
+  ls.push('0','ENDTAB');
   ls.push('0','TABLE','2','LTYPE','70','4');
   ls.push('0','LTYPE','2','CONTINUOUS','70','0','3','Solid line','72','65','73','0','40','0.0');
   ls.push('0','LTYPE','2','DASHED','70','0','3','Dashed','72','65','73','2','40','9.5','49','6.35','49','-3.175');
@@ -77,6 +84,14 @@ function exportDXF(){
   // STYLEテーブル（テキスト用、AC1015必須）
   ls.push('0','TABLE','2','STYLE','70','1');
   ls.push('0','STYLE','2','STANDARD','70','0','40','0','41','1.0','42','0.2','50','0','71','0','3','txt','4','');
+  ls.push('0','ENDTAB');
+  // APPIDテーブル（DWG TrueView必須）
+  ls.push('0','TABLE','2','APPID','70','1');
+  ls.push('0','APPID','2','ACAD','70','0');
+  ls.push('0','ENDTAB');
+  // DIMSTYLEテーブル
+  ls.push('0','TABLE','2','DIMSTYLE','70','1');
+  ls.push('0','DIMSTYLE','2','STANDARD','70','0');
   ls.push('0','ENDTAB');
   ls.push('0','ENDSEC');
   ls.push('0','SECTION','2','BLOCKS');
