@@ -733,14 +733,14 @@ function updateRightPanel() {
   const wire= state.sel.wires.size === 1 ? state.wires.find(w    => state.sel.wires.has(w.id)) : null;
   const rp  = document.getElementById('rp-body');
 
-  // グループ選択チェック
+  // 複数選択 or グループ選択チェック
+  const totalSel = state.sel.els.size + state.sel.wires.size;
   const selGroups = (state.page.groups || []).filter(g =>
     g.elIds.some(id => state.sel.els.has(id)) ||
     g.wireIds.some(id => state.sel.wires.has(id))
   );
-  console.log('[GP] groups:', state.page.groups?.length, 'selGroups:', selGroups.length, 'selEls:', state.sel.els.size, 'selWires:', state.sel.wires.size);
-  if (selGroups.length > 0) {
-    // グループバウンディングボックスを計算
+  if (totalSel >= 2 || selGroups.length > 0) {
+    // バウンディングボックスを計算
     let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
     const addP = (x,y) => { if(x==null||y==null)return; if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y; };
     state.elements.filter(e => state.sel.els.has(e.id)).forEach(e => {
@@ -756,9 +756,13 @@ function updateRightPanel() {
     const gy = minY===Infinity ? 0 : Math.round(minY);
     const gw = maxX===Infinity ? 0 : Math.round(maxX-minX);
     const gh = maxY===Infinity ? 0 : Math.round(maxY-minY);
-    const gc = selGroups.length;
+    const isGrouped = selGroups.length > 0;
+    const label = isGrouped ? `グループ選択 (${selGroups.length}個)` : `複数選択 (${totalSel}個)`;
+    const groupBtn = isGrouped
+      ? `<button class="pp-apply" style="margin-top:4px;background:#e55" onclick="ungroupSelected();updateRightPanel()">グループ解除</button>`
+      : `<button class="pp-apply" onclick="groupSelected();updateRightPanel()">グループ化 (G)</button>`;
     rp.innerHTML = `
-      <p style="font-size:10px;font-weight:600;color:var(--fg4);padding:6px 10px 2px">グループ (${gc}個)</p>
+      <p style="font-size:10px;font-weight:600;color:var(--fg4);padding:6px 10px 2px">${label}</p>
       <div class="pp-row"><label>X (左端)</label><input type="number" id="gp-x" value="${gx}" step="1"></div>
       <div class="pp-row"><label>Y (上端)</label><input type="number" id="gp-y" value="${gy}" step="1"></div>
       <div class="pp-row"><label>幅</label><span style="padding:2px 0;color:var(--fg2)">${gw}</span></div>
@@ -768,18 +772,13 @@ function updateRightPanel() {
       <div class="pp-row"><label>ΔX</label><input type="number" id="gp-dx" value="0" step="1"></div>
       <div class="pp-row"><label>ΔY</label><input type="number" id="gp-dy" value="0" step="1"></div>
       <button class="pp-apply" onclick="applyGroupMove()">移動適用</button>
-      <button class="pp-apply" style="margin-top:4px;background:var(--accent2,#e55)" onclick="ungroupSelected();updateRightPanel()">グループ解除</button>
+      ${groupBtn}
     `;
-    // X/Y直接入力で移動
     document.getElementById('gp-x').addEventListener('change', function() {
-      const nx = +this.value, dx = nx - gx;
-      if(dx===0) return;
-      document.getElementById('gp-dx').value = dx;
+      document.getElementById('gp-dx').value = +this.value - gx;
     });
     document.getElementById('gp-y').addEventListener('change', function() {
-      const ny = +this.value, dy = ny - gy;
-      if(dy===0) return;
-      document.getElementById('gp-dy').value = dy;
+      document.getElementById('gp-dy').value = +this.value - gy;
     });
     return;
   }
