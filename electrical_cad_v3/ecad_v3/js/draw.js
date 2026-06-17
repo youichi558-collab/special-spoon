@@ -478,6 +478,13 @@ function drawSnapMarker() {
     ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2/state.zoom;
     ctx.beginPath(); ctx.moveTo(sp.x-s, sp.y-s); ctx.lineTo(sp.x+s, sp.y+s); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(sp.x+s, sp.y-s); ctx.lineTo(sp.x-s, sp.y+s); ctx.stroke();
+  } else if (stype === 'intersection') {
+    // 交点スナップ：オレンジ×印＋円
+    const s = 6/state.zoom;
+    ctx.strokeStyle = '#f97316'; ctx.lineWidth = 2/state.zoom;
+    ctx.beginPath(); ctx.arc(sp.x, sp.y, s, 0, Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sp.x-s, sp.y-s); ctx.lineTo(sp.x+s, sp.y+s); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sp.x+s, sp.y-s); ctx.lineTo(sp.x-s, sp.y+s); ctx.stroke();
   } else {
     // グリッドスナップ：クロスヘアカーソル
     const s = 8/state.zoom;

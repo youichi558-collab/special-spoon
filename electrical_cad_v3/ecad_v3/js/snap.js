@@ -86,6 +86,28 @@ function getAllSnapPoints(wx, wy) {
     }
   });
 
+  // 交点スナップ：fline×fline / fline×ワイヤー / ワイヤー×ワイヤー
+  if (state.snapEnd) {
+    // 全線分を収集（fline + ワイヤーセグメント）
+    const segs = [];
+    state.elements.forEach(el => {
+      if (el.type === 'fline') segs.push([el.x1,el.y1,el.x2,el.y2]);
+    });
+    state.wires.forEach(w => {
+      const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
+      for (let i=0;i<pts.length-1;i++)
+        segs.push([pts[i].x,pts[i].y,pts[i+1].x,pts[i+1].y]);
+    });
+    for (let i=0;i<segs.length;i++) {
+      for (let j=i+1;j<segs.length;j++) {
+        const p = segIntersect(...segs[i], ...segs[j]);
+        if (!p) continue;
+        const d = Math.hypot(wx-p.x, wy-p.y);
+        if (d < bestD) { bestD=d; best={x:p.x, y:p.y, snapType:'intersection'}; }
+      }
+    }
+  }
+
   return best || { x: snap(wx), y: snap(wy), snapType: 'grid' };
 }
 
@@ -173,4 +195,16 @@ function snapWirePoint(wx, wy, prevX, prevY) {
 
 function applyOrtho(x1, y1, x2, y2) {
   return Math.abs(x2-x1) >= Math.abs(y2-y1) ? { x:x2, y:y1 } : { x:x1, y:y2 };
+}
+
+// 2線分の交点を求める（交差していなければnull）
+function segIntersect(ax1,ay1,ax2,ay2, bx1,by1,bx2,by2) {
+  const dx1=ax2-ax1, dy1=ay2-ay1;
+  const dx2=bx2-bx1, dy2=by2-by1;
+  const denom = dx1*dy2 - dy1*dx2;
+  if (Math.abs(denom) < 1e-10) return null; // 平行
+  const t = ((bx1-ax1)*dy2 - (by1-ay1)*dx2) / denom;
+  const u = ((bx1-ax1)*dy1 - (by1-ay1)*dx1) / denom;
+  if (t<-0.01||t>1.01||u<-0.01||u>1.01) return null;
+  return { x: ax1+t*dx1, y: ay1+t*dy1 };
 }
