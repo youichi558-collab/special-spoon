@@ -132,14 +132,18 @@ function applyElResize(wx, wy) {
   } else if (el.type === 'circle') {
     el.r = Math.max(5, Math.hypot(wx-orig.x, wy-orig.y));
   } else if (el.type === 'fline') {
-    // 端点ドラッグ（伸縮）
+    // 端点ドラッグ（伸縮）- getAllSnapPointsで端点/中点/交点スナップも効かせる
     if (handle === 'p1') {
-      let ex = snap(wx), ey = snap(wy);
+      const sp = getAllSnapPoints(wx, wy);
+      state.snapPreview = sp;
+      let ex = sp.x, ey = sp.y;
       if (state.ortho) { const o = applyOrtho(el.x2, el.y2, ex, ey); ex=o.x; ey=o.y; }
       el.x1 = ex; el.y1 = ey;
     }
     if (handle === 'p2') {
-      let ex = snap(wx), ey = snap(wy);
+      const sp = getAllSnapPoints(wx, wy);
+      state.snapPreview = sp;
+      let ex = sp.x, ey = sp.y;
       if (state.ortho) { const o = applyOrtho(el.x1, el.y1, ex, ey); ex=o.x; ey=o.y; }
       el.x2 = ex; el.y2 = ey;
     }
