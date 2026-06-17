@@ -136,9 +136,10 @@ function drawWires() {
       const ty = mp.y + ny*off + (w.wireNoOffY||0);
       ctx.font  = `bold ${fs}px sans-serif`; ctx.textAlign = 'center';
       const tw2 = ctx.measureText(w.wireNo).width;
-      ctx.fillStyle = state.darkMode ? '#252525' : '#fff';
-      ctx.fillRect(tx-tw2/2-2, ty-fs, tw2+4, fs+3);
       ctx.fillStyle = sel ? '#0067c0' : '#1e40af';
+      ctx.strokeStyle = state.darkMode ? '#252525' : '#fff';
+      ctx.lineWidth = 3/state.zoom; ctx.lineJoin='round';
+      ctx.strokeText(w.wireNo, tx, ty);
       ctx.fillText(w.wireNo, tx, ty);
     }
     ctx.restore();
@@ -582,8 +583,9 @@ function drawDimEl(el, isSel) {
   const ty2 = cy0 + (el.dimTy||0)/state.zoom + py*(fs+4);
   ctx.font=`bold ${fs}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
   const tw2=ctx.measureText(txt).width;
-  ctx.fillStyle=state.darkMode?'#252525':'#fff';
-  ctx.fillRect(tx2-tw2/2-3, ty2-fs*0.6, tw2+6, fs+4);
+  ctx.strokeStyle=state.darkMode?'#252525':'#fff';
+  ctx.lineWidth=3/state.zoom; ctx.lineJoin='round';
+  ctx.strokeText(txt, tx2, ty2);
   ctx.fillStyle=c; ctx.fillText(txt, tx2, ty2);
   ctx.textBaseline='alphabetic';
   ctx.restore();
@@ -615,8 +617,9 @@ function drawAngleDimEl(el, isSel) {
   ctx.font=`bold ${fs}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
   const txt = el.dimText || '';
   const tw = ctx.measureText(txt).width;
-  ctx.fillStyle=state.darkMode?'#252525':'#fff';
-  ctx.fillRect(tx-tw/2-2, ty-fs*0.6, tw+4, fs+4);
+  ctx.strokeStyle=state.darkMode?'#252525':'#fff';
+  ctx.lineWidth=3/state.zoom; ctx.lineJoin='round';
+  ctx.strokeText(txt, tx, ty);
   ctx.fillStyle=c; ctx.fillText(txt, tx, ty);
   ctx.restore();
 }
@@ -647,8 +650,9 @@ function drawLeaderEl(el, isSel) {
     const fs = el.leaderFs||11;  // ズーム追従
     ctx.font=`${fs}px sans-serif`; ctx.textAlign='left';
     const tw2 = ctx.measureText(el.leaderText).width;
-    ctx.fillStyle=state.darkMode?'#252525':'#fff';
-    ctx.fillRect(tx+4, ty-fs-2, tw2+4, fs+4);
+    ctx.strokeStyle=state.darkMode?'#252525':'#fff';
+    ctx.lineWidth=3/state.zoom; ctx.lineJoin='round';
+    ctx.strokeText(el.leaderText, tx+6, ty-2);
     ctx.fillStyle=c;
     ctx.fillText(el.leaderText, tx+6, ty-2);
   }
