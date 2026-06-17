@@ -372,7 +372,7 @@ function _exportPDFPages(indices, filename) {
       // Canvas高解像度画像としてPDFに貼り付け（プレビューと完全同一の描画方式）
       // ================================================================
       {
-        const dpi = 300;
+        const dpi = 400;
         const pxPerMM = dpi / 25.4;
         // プレビューと同じ: pageW/pageH（world単位）を基準にzoom計算
         const fr2 = maskedFrame(pg.frameObj);
@@ -410,11 +410,8 @@ function _exportPDFPages(indices, filename) {
         } else {
           state.pan = { x: -b.minX * sc2, y: -b.minY * sc2 };
         }
-        state.pdfSkipText = true;
-
         draw();
 
-        state.pdfSkipText = false;
         state.pdfMode = false;
         state.frameObj = origFrameObj;
         cv = origCv; ctx = origCtx;
@@ -425,101 +422,10 @@ function _exportPDFPages(indices, filename) {
         const dataURL = oc.toDataURL('image/png');
         const actualW = pdf.internal.pageSize.getWidth();
         const actualH = pdf.internal.pageSize.getHeight();
-        pdf.addImage(dataURL, 'PNG', 0, 0, actualW, actualH, '', 'FAST');
+        pdf.addImage(dataURL, 'PNG', 0, 0, actualW, actualH, '', 'NONE');
       }
 
-      // ================================================================
-      // テキストレイヤー（検索可能なベクターテキスト）
-      // ================================================================
-      function pdfVecText(wx, wy, text, color, fsPt, align) {
-        if (!text) return;
-        const m = (color||'#000').match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
-        if (m) pdf.setTextColor(parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16));
-        else pdf.setTextColor(0,0,0);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(fsPt || 8);
-        pdf.text(String(text), tx(wx), ty(wy), { align: align||'center' });
-        pdf.setTextColor(0,0,0);
-      }
-
-      const baseFsPt = 10 * s * 2.835;
-
-      // 線番
-      (pg.wires||[]).forEach(w => {
-        if (!w.wireNo) return;
-        const pts2 = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
-        if (pts2.length < 2) return;
-        const n2 = pts2.length;
-        const i2 = Math.floor((n2-1)/2), j2 = Math.ceil((n2-1)/2);
-        const mp = { x:(pts2[i2].x+pts2[j2].x)/2, y:(pts2[i2].y+pts2[j2].y)/2 };
-        const wireFs = 10;
-        const wireOff = wireFs + 6;
-        pdfVecText(mp.x, mp.y - wireOff, w.wireNo, '#1e40af', wireFs * s * 2.835);
-      });
-
-      // テキスト要素
-      (pg.elements||[]).forEach(el => {
-        const lay2 = LAYERS.find(l => l.name===el.layer);
-        if (lay2 && !lay2.visible) return;
-        const elColor = el.color || (lay2 ? lay2.color : '#000000');
-        const sc2 = el.scale || 1;
-
-        if (el.type === 'text') {
-          const fsPt = (el.fs || 12) * s * 2.835;
-          const lines2 = (el.text || '').split('\n');
-          lines2.forEach((line, li) => {
-            pdfVecText(el.x, el.y + li * (el.fs||12) * s, line, elColor, fsPt);
-          });
-        } else if (el.label) {
-          const def2 = getDef(el.type) || { w:40, h:20 };
-          const hw2 = (def2.w * sc2) / 2;
-          const rot2 = el.rot || 0;
-          const lox = el.labelOffX || 0;
-          const loy = el.labelOffY || (def2.h * sc2 / 2 + 15 * sc2);
-          const ang = rot2 * Math.PI / 180;
-          const lx2 = el.x + (lox * Math.cos(ang) - loy * Math.sin(ang));
-          const ly2 = el.y + (lox * Math.sin(ang) + loy * Math.cos(ang));
-          const fsPt2 = (el.labelFs || 11) * sc2 * s * 2.835;
-          pdfVecText(lx2, ly2, el.label, elColor, fsPt2);
-        }
-
-        // 寸法テキスト
-        if (el.type === 'dim' && el.dimText) {
-          const dx2=el.x2-el.x1, dy2=el.y2-el.y1, len2=Math.hypot(dx2,dy2);
-          if (len2 > 0.1) {
-            const sign2=el.offsetSign||1, off2=(el.offset||30)*sign2;
-            const ux2=dx2/len2, uy2=dy2/len2;
-            const mx2=(el.x1+el.x2)/2 - uy2*off2 + (el.dimTx||0);
-            const my2=(el.y1+el.y2)/2 + ux2*off2 + (el.dimTy||0);
-            const fsPt3 = (el.dimFs||11) * s * 2.835;
-            pdfVecText(mx2, my2, el.dimText, el.color||'#744da9', fsPt3);
-          }
-        }
-
-        // 引き出し線テキスト
-        if (el.type === 'leader' && el.leaderText) {
-          const ltx2 = el.x2 + (el.leaderTx||0);
-          const lty2 = el.y2 + (el.leaderTy||0);
-          const fsPt4 = (el.leaderFs||11) * s * 2.835;
-          pdfVecText(ltx2, lty2, el.leaderText, el.color||'#744da9', fsPt4, 'left');
-        }
-
-        // 角度寸法テキスト
-        if (el.type === 'angle_dim' && el.dimText) {
-          const a1_2 = Math.atan2(el.y1-el.cy, el.x1-el.cx);
-          const a2_2 = Math.atan2(el.y2-el.cy, el.x2-el.cx);
-          let da2 = a2_2 - a1_2;
-          if (da2 < 0) da2 += Math.PI*2;
-          const aMid2 = a1_2 + (da2 > Math.PI ? -(Math.PI*2-da2)/2 : da2/2);
-          const r2 = (el.r||30) + 14;
-          const dtx2 = el.cx + Math.cos(aMid2)*r2 + (el.dimTx||0);
-          const dty2 = el.cy + Math.sin(aMid2)*r2 + (el.dimTy||0);
-          const fsPt5 = (el.dimFs||11) * s * 2.835;
-          pdfVecText(dtx2, dty2, el.dimText, el.color||'#744da9', fsPt5);
-        }
-      });
-
-
+      // テキストはCanvasで描画済み（文字化け防止のためjsPDFテキストレイヤーは使わない）
 
           }  // end for loop
 
@@ -548,8 +454,8 @@ function exportSVG() {
   const pdfW = fr ? (fr.wMM || 420) : 297;
   const pdfH = fr ? (fr.hMM || 297) : 210;
 
-  // Canvas画像生成（PDF出力と同じ方式）
-  const dpi = 300;
+  // Canvas画像生成（高解像度600dpi）
+  const dpi = 600;
   const pxPerMM = dpi / 25.4;
   const fr2 = maskedFrame(pg.frameObj);
   let pageW2, pageH2;
@@ -580,12 +486,11 @@ function exportSVG() {
   state.pdfMode = true;
   state.frameObj = fr2 || state.frameObj;
   state.pan = fr2 ? { x: 0, y: 0 } : { x: -calcPageBounds(pg).minX * sc2, y: -calcPageBounds(pg).minY * sc2 };
-  state.pdfSkipText = true;
+  // テキストもCanvasで描画する（文字化け防止）
   state.sel.els.clear(); state.sel.wires.clear();
 
   draw();
 
-  state.pdfSkipText = false;
   state.pdfMode = false;
   state.frameObj = origFrameObj;
   cv = origCv; ctx = origCtx;
@@ -595,59 +500,12 @@ function exportSVG() {
 
   const dataURL = oc.toDataURL('image/png');
 
-  // SVG生成
-  const b = calcPageBounds(pg);
-  const s = Math.min(pdfW / pageW2, pdfH / pageH2);
-  const ox = (pdfW - s * pageW2) / 2;
-  const oy = (pdfH - s * pageH2) / 2;
-  const tx = wx => ox + (wx - b.minX) * s;
-  const ty = wy => oy + (wy - b.minY) * s;
-
-  let svgTexts = '';
-
-  // テキスト要素
-  (pg.elements || []).forEach(el => {
-    const lay2 = LAYERS.find(l => l.name === el.layer);
-    if (lay2 && !lay2.visible) return;
-    const elColor = el.color || (lay2 ? lay2.color : '#000000');
-    const sc3 = el.scale || 1;
-
-    if (el.type === 'text') {
-      const fsPt = (el.fs || 12) * s; // world→mm変換
-      const lines2 = (el.text || '').split('\n');
-      lines2.forEach((line, li) => {
-        svgTexts += `<text x="${tx(el.x).toFixed(2)}" y="${ty(el.y + li * (el.fs||12) * s).toFixed(2)}" font-family="sans-serif" font-size="${fsPt.toFixed(1)}" fill="${elColor}" text-anchor="middle">${escSVG(line)}</text>\n`;
-      });
-    } else if (el.label) {
-      const def2 = getDef(el.type) || { w:40, h:20 };
-      const lox = el.labelOffX || 0;
-      const loy = el.labelOffY || (def2.h * sc3 / 2 + 15 * sc3);
-      const ang = (el.rot || 0) * Math.PI / 180;
-      const lx2 = el.x + (lox * Math.cos(ang) - loy * Math.sin(ang));
-      const ly2 = el.y + (lox * Math.sin(ang) + loy * Math.cos(ang));
-      const fsPt2 = (el.labelFs || 11) * sc3 * s;
-      svgTexts += `<text x="${tx(lx2).toFixed(2)}" y="${ty(ly2).toFixed(2)}" font-family="sans-serif" font-size="${fsPt2.toFixed(1)}" fill="${elColor}" text-anchor="middle">${escSVG(el.label)}</text>\n`;
-    }
-  });
-
-  // 線番
-  (pg.wires || []).forEach(w => {
-    if (!w.wireNo) return;
-    const pts2 = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
-    if (pts2.length < 2) return;
-    const n2 = pts2.length;
-    const i2 = Math.floor((n2-1)/2), j2 = Math.ceil((n2-1)/2);
-    const mp = { x:(pts2[i2].x+pts2[j2].x)/2, y:(pts2[i2].y+pts2[j2].y)/2 };
-    const wireOff = (10 + 6) * s;
-    const fsPt3 = 10 * s;
-    svgTexts += `<text x="${tx(mp.x).toFixed(2)}" y="${(ty(mp.y) - wireOff).toFixed(2)}" font-family="sans-serif" font-size="${fsPt3.toFixed(1)}" fill="#1e40af" text-anchor="middle">${escSVG(w.wireNo)}</text>\n`;
-  });
-
+  // SVG生成（画像埋め込みのみ：テキストはCanvas描画済み）
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
      width="${pdfW}mm" height="${pdfH}mm" viewBox="0 0 ${pdfW} ${pdfH}">
   <image x="0" y="0" width="${pdfW}" height="${pdfH}" xlink:href="${dataURL}"/>
-${svgTexts}</svg>`;
+</svg>`;
 
   dl(svg, (state.saveFileName || '図面') + '.svg', 'image/svg+xml');
 }
