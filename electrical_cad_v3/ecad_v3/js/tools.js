@@ -512,10 +512,11 @@ const TOOLS = {
 const dimTool = {
   onDown(wx, wy, e) {
     const pt = getAllSnapPoints(wx, wy);
-    const sx = pt.x, sy = pt.y;
+    let sx = pt.x, sy = pt.y;
     if (!state.dimState) {
       state.dimState = { step:1, x1:sx, y1:sy };
     } else if (state.dimState.step === 1) {
+      if (state.ortho) { const o = applyOrtho(state.dimState.x1, state.dimState.y1, sx, sy); sx=o.x; sy=o.y; }
       state.dimState.x2 = sx; state.dimState.y2 = sy; state.dimState.step = 2;
     } else if (state.dimState.step === 2) {
       const ds = state.dimState;
@@ -543,10 +544,11 @@ const dimTool = {
   },
   onMove(wx, wy) {
     const pt = getAllSnapPoints(wx, wy);
-    const sx = pt.x, sy = pt.y;
+    let sx = pt.x, sy = pt.y;
     const ds = state.dimState;
     if (!ds) return;
     if (ds.step === 1) {
+      if (state.ortho) { const o = applyOrtho(ds.x1, ds.y1, sx, sy); sx=o.x; sy=o.y; }
       state.preview = { type:'dim_prev1', x1:ds.x1, y1:ds.y1, x2:sx, y2:sy };
     } else if (ds.step === 2) {
       const dx=ds.x2-ds.x1, dy=ds.y2-ds.y1, len=Math.hypot(dx,dy);
