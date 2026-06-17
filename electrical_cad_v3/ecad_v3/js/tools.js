@@ -524,7 +524,7 @@ const dimTool = {
       const dot=(sx-mx)*px+(sy-my)*py;
       const sign = dot >= 0 ? 1 : -1;
       const offset = Math.max(15, Math.abs(dot));
-      const dist = Math.round(len * (state.drawScale||1));
+      const dist = Math.round(len * (state.drawScale||1) * 10) / 10;
       const txt = prompt('寸法テキスト（空欄で自動）:', '') ?? '';
       state.mouse.down = false; state.mouse.dragging = false;
       state.mouse.down = false;
@@ -553,7 +553,7 @@ const dimTool = {
       const mx=(ds.x1+ds.x2)/2, my=(ds.y1+ds.y2)/2;
       const dot=(sx-mx)*px+(sy-my)*py;
       state.preview = { type:'dim_prev2', x1:ds.x1, y1:ds.y1, x2:ds.x2, y2:ds.y2,
-        dimText:String(Math.round(len)), offset:Math.max(15,Math.abs(dot)), offsetSign:dot>=0?1:-1, arrowSz:8 };
+        dimText:String(Math.round(len * 10) / 10), offset:Math.max(15,Math.abs(dot)), offsetSign:dot>=0?1:-1, arrowSz:8 };
     }
   },
   onUp() {}, onHover(wx, wy) { this.onMove(wx, wy); }
