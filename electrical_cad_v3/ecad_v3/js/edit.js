@@ -180,6 +180,47 @@ function dl(text, fname, mime) {
 // ----------------------------------------------------------------
 // 共通移動関数
 // ----------------------------------------------------------------
+// 全要素座標をグリッドに整列（DXFインポート後のズレ修正用）
+function snapAllToGrid() {
+  const sn = v => Math.round(v / state.G) * state.G;
+  const snP = (o, k) => { if (o[k] != null) o[k] = sn(o[k]); };
+
+  pushH();
+  const targets = (state.sel.els.size > 0)
+    ? state.elements.filter(e => state.sel.els.has(e.id))
+    : state.elements;
+  const wTargets = (state.sel.wires.size > 0)
+    ? state.wires.filter(w => state.sel.wires.has(w.id))
+    : state.wires;
+
+  targets.forEach(el => {
+    snP(el,'x'); snP(el,'y');
+    snP(el,'x1'); snP(el,'y1');
+    snP(el,'x2'); snP(el,'y2');
+    snP(el,'x3'); snP(el,'y3');
+    snP(el,'cx'); snP(el,'cy');
+    snP(el,'bx'); snP(el,'by');
+    if (el.w != null) el.w = sn(el.w);
+    if (el.h != null) el.h = sn(el.h);
+    if (el.r != null) el.r = sn(el.r);
+    if (el.pts) {
+      el.pts = el.pts.map(p => ({ x: sn(p.x), y: sn(p.y) }));
+      el.x1 = el.pts[0]?.x; el.y1 = el.pts[0]?.y;
+      el.x2 = el.pts[el.pts.length-1]?.x; el.y2 = el.pts[el.pts.length-1]?.y;
+    }
+  });
+  wTargets.forEach(w => {
+    if (w.pts) {
+      w.pts = w.pts.map(p => ({ x: sn(p.x), y: sn(p.y) }));
+      w.x1 = w.pts[0]?.x; w.y1 = w.pts[0]?.y;
+      w.x2 = w.pts[w.pts.length-1]?.x; w.y2 = w.pts[w.pts.length-1]?.y;
+    }
+  });
+  draw(); updateRightPanel();
+  const scope = (state.sel.els.size + state.sel.wires.size > 0) ? '選択要素' : '全要素';
+  alert(scope + 'をグリッドG:' + state.G + 'に整列しました');
+}
+
 function moveEntity(el, dx, dy) {
   if (el.cx != null) el.cx += dx;
   if (el.cy != null) el.cy += dy;
