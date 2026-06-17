@@ -568,7 +568,7 @@ const dimTool = {
 // ----------------------------------------------------------------
 function showLeaderTextInput(wx, wy, onConfirm) {
   // キャンバス座標→画面座標に変換
-  const cv = document.getElementById('canvas');
+  const cv = document.getElementById('cv');
   const r  = cv.getBoundingClientRect();
   const sx = wx * state.zoom + state.pan.x + r.left;
   const sy = wy * state.zoom + state.pan.y + r.top;
