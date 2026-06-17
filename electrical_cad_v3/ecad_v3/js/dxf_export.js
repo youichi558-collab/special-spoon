@@ -12,7 +12,7 @@ function buildSymBlocksDXF(){
   function LN(x1,y1,x2,y2){ls.push('0','LINE','8','0','10',x1.toFixed(3),'20',(-y1).toFixed(3),'30','0','11',x2.toFixed(3),'21',(-y2).toFixed(3),'31','0');}
   function CIR(cx,cy,r){ls.push('0','CIRCLE','8','0','10',cx.toFixed(3),'20',(-cy).toFixed(3),'30','0','40',r.toFixed(3));}
   function ARC(cx,cy,r,sa,ea){ls.push('0','ARC','8','0','10',cx.toFixed(3),'20',(-cy).toFixed(3),'30','0','40',r.toFixed(3),'50',sa.toFixed(3),'51',ea.toFixed(3));}
-  function RCT(x1,y1,x2,y2){ls.push('0','LWPOLYLINE','8','0','90','4','70','1','43','0','10',x1.toFixed(3),'20',(-y1).toFixed(3),'10',x2.toFixed(3),'20',(-y1).toFixed(3),'10',x2.toFixed(3),'20',(-y2).toFixed(3),'10',x1.toFixed(3),'20',(-y2).toFixed(3));}
+  function RCT(x1,y1,x2,y2){LN(x1,y1,x2,y1);LN(x2,y1,x2,y2);LN(x2,y2,x1,y2);LN(x1,y2,x1,y1);}
   function TXT(x,y,h,s){ls.push('0','TEXT','8','0','10',x.toFixed(3),'20',(-y).toFixed(3),'30','0','40',h.toFixed(3),'1',s,'72','1','11',x.toFixed(3),'21',(-y).toFixed(3));}
   bk('resistor',()=>{ LN(-32,0,-18,0); RCT(-18,-8,18,8); LN(18,0,32,0); });
   bk('capacitor',()=>{ LN(-27,0,-6,0); LN(-6,-12,-6,12); LN(6,-12,6,12); LN(6,0,27,0); });
@@ -188,10 +188,9 @@ function exportDXF(){
     } else if (el.type === 'fline') {
       addLine(layer, el.x1, el.y1, el.x2, el.y2);
     } else if (el.type === 'triangle') {
-      ls.push('0','LWPOLYLINE','8',layer,'90','3','70','1','43','0',
-        '10',el.x1.toFixed(2),'20',(-el.y1).toFixed(2),
-        '10',el.x2.toFixed(2),'20',(-el.y2).toFixed(2),
-        '10',el.x3.toFixed(2),'20',(-el.y3).toFixed(2));
+      addLine(layer,el.x1,el.y1,el.x2,el.y2);
+      addLine(layer,el.x2,el.y2,el.x3,el.y3);
+      addLine(layer,el.x3,el.y3,el.x1,el.y1);
     } else if (el.type === 'arc') {
       let sa = dxfAng(el.startA || 0), ea = dxfAng(el.endA || 0);
       if (el.ccw) { const t = sa; sa = ea; ea = t; }
@@ -235,4 +234,4 @@ function exportDXF(){
 }
 
 
-function addRect(ls,layer,x1,y1,x2,y2){ls.push('0','LWPOLYLINE','8',layer,'90','4','70','1','43','0','10',x1.toFixed(2),'20',(-y1).toFixed(2),'10',x2.toFixed(2),'20',(-y1).toFixed(2),'10',x2.toFixed(2),'20',(-y2).toFixed(2),'10',x1.toFixed(2),'20',(-y2).toFixed(2));}
+function addRect(ls,layer,x1,y1,x2,y2){const L=(ax1,ay1,ax2,ay2)=>ls.push('0','LINE','8',layer,'10',ax1.toFixed(2),'20',(-ay1).toFixed(2),'30','0','11',ax2.toFixed(2),'21',(-ay2).toFixed(2),'31','0');L(x1,y1,x2,y1);L(x2,y1,x2,y2);L(x2,y2,x1,y2);L(x1,y2,x1,y1);}
