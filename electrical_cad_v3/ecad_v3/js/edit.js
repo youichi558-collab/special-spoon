@@ -271,11 +271,104 @@ function clearAll() {
 // 変形
 // ----------------------------------------------------------------
 function rotateSel(deg) {
-  const skipTypes = ['text','rect','circle','fline'];
-  const targets = state.elements.filter(el => state.sel.els.has(el.id) && !skipTypes.includes(el.type));
-  if (!targets.length) return;
+  const targets   = state.elements.filter(el => state.sel.els.has(el.id));
+  const wireTargets = state.wires.filter(w => state.sel.wires.has(w.id));
+  if (!targets.length && !wireTargets.length) return;
   pushH();
-  targets.forEach(el => { el.rot = ((el.rot||0) + deg) % 360; });
+
+  // 単体シンボル選択（ワイヤーなし）→ 従来通り位置移動なし
+  if (targets.length === 1 && !wireTargets.length) {
+    const el = targets[0];
+    const noRotTypes = ['text','rect','circle','fline'];
+    if (!noRotTypes.includes(el.type)) el.rot = ((el.rot||0) + deg) % 360;
+    draw(); updateRightPanel();
+    return;
+  }
+
+  // グループ回転 ─ 選択全体のバウンディングボックス中心を軸に回転
+  const rad = deg * Math.PI / 180;
+  const cos = Math.cos(rad), sin = Math.sin(rad);
+
+  // 全座標点を収集してバウンディングボックス中心を求める
+  const allPts = [];
+  function addPt(x, y) { if (x != null && y != null) allPts.push({x, y}); }
+  targets.forEach(el => {
+    addPt(el.x,  el.y);
+    addPt(el.x1, el.y1);
+    addPt(el.x2, el.y2);
+    addPt(el.x3, el.y3);
+    addPt(el.cx, el.cy);
+    addPt(el.bx, el.by);
+    if (el.w != null) addPt(el.x + el.w, el.y + (el.h||0));
+    if (el.r  != null) {
+      addPt(el.x + el.r, el.y); addPt(el.x - el.r, el.y);
+      addPt(el.x, el.y + el.r); addPt(el.x, el.y - el.r);
+    }
+    if (el.pts) el.pts.forEach(p => addPt(p.x, p.y));
+  });
+  wireTargets.forEach(w => { if (w.pts) w.pts.forEach(p => addPt(p.x, p.y)); });
+
+  if (!allPts.length) return;
+  const minX = Math.min(...allPts.map(p => p.x));
+  const maxX = Math.max(...allPts.map(p => p.x));
+  const minY = Math.min(...allPts.map(p => p.y));
+  const maxY = Math.max(...allPts.map(p => p.y));
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+
+  // 点を中心回りに回転
+  function rotPt(x, y) {
+    const dx = x - cx, dy = y - cy;
+    return { x: cx + dx*cos - dy*sin, y: cy + dx*sin + dy*cos };
+  }
+
+  // 各要素を回転
+  targets.forEach(el => {
+    if (el.type === 'rect') {
+      // 4コーナーを回転してAABBを再計算
+      const corners = [
+        rotPt(el.x,       el.y),
+        rotPt(el.x+el.w,  el.y),
+        rotPt(el.x,       el.y+el.h),
+        rotPt(el.x+el.w,  el.y+el.h)
+      ];
+      el.x = Math.min(...corners.map(c=>c.x));
+      el.y = Math.min(...corners.map(c=>c.y));
+      el.w = Math.max(...corners.map(c=>c.x)) - el.x;
+      el.h = Math.max(...corners.map(c=>c.y)) - el.y;
+    } else if (el.type === 'arc') {
+      const p = rotPt(el.x, el.y);
+      el.x = p.x; el.y = p.y;
+      el.startA = (el.startA||0) + rad;
+      el.endA   = (el.endA  ||0) + rad;
+    } else {
+      // 全座標を個別に回転
+      if (el.x  != null) { const p=rotPt(el.x,  el.y);  el.x=p.x;  el.y=p.y;  }
+      if (el.x1 != null) { const p=rotPt(el.x1, el.y1); el.x1=p.x; el.y1=p.y; }
+      if (el.x2 != null) { const p=rotPt(el.x2, el.y2); el.x2=p.x; el.y2=p.y; }
+      if (el.x3 != null) { const p=rotPt(el.x3, el.y3); el.x3=p.x; el.y3=p.y; }
+      if (el.cx != null) { const p=rotPt(el.cx, el.cy); el.cx=p.x; el.cy=p.y; }
+      if (el.bx != null) { const p=rotPt(el.bx, el.by); el.bx=p.x; el.by=p.y; }
+      if (el.pts) {
+        el.pts = el.pts.map(p => rotPt(p.x, p.y));
+        el.x1 = el.pts[0]?.x; el.y1 = el.pts[0]?.y;
+        el.x2 = el.pts[el.pts.length-1]?.x; el.y2 = el.pts[el.pts.length-1]?.y;
+      }
+      // シンボル系はrot（個別向き）も更新
+      const noRotTypes = ['text','rect','circle','fline','triangle','dim','angle_dim','leader','bezier','junction'];
+      if (!noRotTypes.includes(el.type)) el.rot = ((el.rot||0) + deg) % 360;
+    }
+  });
+
+  // ワイヤーを回転
+  wireTargets.forEach(w => {
+    if (w.pts) {
+      w.pts = w.pts.map(p => rotPt(p.x, p.y));
+      w.x1 = w.pts[0]?.x; w.y1 = w.pts[0]?.y;
+      w.x2 = w.pts[w.pts.length-1]?.x; w.y2 = w.pts[w.pts.length-1]?.y;
+    }
+  });
+
   draw(); updateRightPanel();
 }
 
