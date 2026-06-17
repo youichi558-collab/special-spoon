@@ -191,11 +191,53 @@ const symTool = {
 // ----------------------------------------------------------------
 const textTool = {
   onDown(wx, wy, e) {
-    const text = prompt('テキスト:',''); if (!text) return;
+    const sx = snap(wx), sy = snap(wy);
     state.mouse.down = false; state.mouse.dragging = false;
-    pushH();
-    state.elements.push({ id: genId('el'), type:'text', x:snap(wx), y:snap(wy), text, fs:(LAYERS.find(l=>l.active)?.fontSize||14), layer:activeLayer() });
-    state.preview = null;
+
+    // キャンバス上にインライン入力を表示
+    const cv2 = document.getElementById('cv');
+    const r   = cv2.getBoundingClientRect();
+    const px  = sx * state.zoom + state.pan.x + r.left;
+    const py  = sy * state.zoom + state.pan.y + r.top;
+    const fs  = LAYERS.find(l=>l.active)?.fontSize || 14;
+
+    // プレビュー用に仮要素を追加
+    const previewEl = { id:'__text_preview', type:'text', x:sx, y:sy, text:'', fs, layer:activeLayer() };
+    state.elements.push(previewEl);
+
+    const wrap = document.createElement('div');
+    wrap.style.cssText = `position:fixed;left:${px}px;top:${py-fs*state.zoom}px;z-index:9999;display:flex;gap:4px;align-items:center;background:var(--bg2,#2a2a2a);border:1px solid var(--border,#555);border-radius:4px;padding:3px 6px;box-shadow:0 2px 8px rgba(0,0,0,.5)`;
+    const inp = document.createElement('input');
+    inp.type = 'text'; inp.placeholder = 'テキスト入力';
+    inp.style.cssText = 'width:160px;background:transparent;border:none;outline:none;color:inherit;font-size:13px;';
+    wrap.appendChild(inp);
+    document.body.appendChild(wrap);
+    inp.focus();
+
+    // 入力中リアルタイムプレビュー
+    inp.addEventListener('input', () => {
+      previewEl.text = inp.value;
+      draw();
+    });
+
+    const finish = (confirm) => {
+      // プレビュー要素を削除
+      const idx = state.elements.indexOf(previewEl);
+      if (idx !== -1) state.elements.splice(idx, 1);
+      wrap.remove();
+      if (confirm && inp.value.trim()) {
+        pushH();
+        state.elements.push({ id: genId('el'), type:'text', x:sx, y:sy,
+          text:inp.value.trim(), fs, layer:activeLayer() });
+      }
+      draw();
+    };
+
+    inp.addEventListener('keydown', e2 => {
+      if (e2.key === 'Enter')  { e2.preventDefault(); finish(true); }
+      if (e2.key === 'Escape') { finish(false); }
+    });
+    wrap.addEventListener('mouseleave', () => {}); // keep open
   },
   onMove() {}, onUp() {}, onHover() {}
 };
