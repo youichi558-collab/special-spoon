@@ -70,7 +70,6 @@ function exportDXF(){
   const H_DIMST_TBL    = nh(), H_DIMST_STD  = nh();
   const H_BLKREC_TBL   = nh(), H_BLKREC_MDL = nh(), H_BLKREC_PPR = nh();
   const symBlkRecH     = SYM_NAMES.map(()=>nh());
-  const H_ROOT_DICT    = nh(), H_GRP_DICT   = nh();
   const H_MDL_BLK      = nh(), H_MDL_EBLK  = nh();
   const H_PPR_BLK      = nh(), H_PPR_EBLK  = nh();
   const symBlkH        = SYM_NAMES.map(()=>({b:nh(),e:nh()}));
@@ -81,7 +80,7 @@ function exportDXF(){
   p(0,'SECTION', 2,'HEADER');
   p(9,'$ACADVER',     1,'AC1015');
   p(9,'$DWGCODEPAGE',  3,'ANSI_1252');
-  p(9,'$HANDSEED',    5,'FFFF');
+  p(9,'$HANDSEED',    5,'__HANDSEED__');
   p(9,'$INSUNITS',   70, 4);  // mm
   p(9,'$MEASUREMENT',70, 1);  // メートル法
   p(9,'$EXTMIN',     10,minX.toFixed(3), 20,minY.toFixed(3), 30,'0.0');
@@ -451,11 +450,20 @@ function exportDXF(){
   // OBJECTS
   // ================================================================
   p(0,'SECTION', 2,'OBJECTS');
+  const H_ROOT_DICT = nh(), H_GRP_DICT = nh();
   p(0,'DICTIONARY',5,H_ROOT_DICT,330,'0',100,'AcDbDictionary',281,1,3,'ACAD_GROUP',350,H_GRP_DICT);
   p(0,'DICTIONARY',5,H_GRP_DICT,330,H_ROOT_DICT,100,'AcDbDictionary',281,1);
   p(0,'ENDSEC');
 
   p(0,'EOF');
+
+  // $HANDSEEDを十分大きい固定値に置換
+  // HANDSEEDが使用済みハンドルより小さいとAutoCAD/DWG TrueViewが読込を中断する。
+  // 実ハンドルは0x200から連番なので、FFFFFF(約1670万)あれば全エンティティを確実に上回る。
+  // （HANDSEEDは実最大より大きければよく、大きすぎる分には無害）
+  for (let i = 0; i < out.length; i++) {
+    if (out[i] === '__HANDSEED__') { out[i] = 'FFFFFF'; break; }
+  }
 
   // ファイル出力
   const base=(state.saveFileName||'図面').replace(/[\\/:*?"<>|]/g,'_');
