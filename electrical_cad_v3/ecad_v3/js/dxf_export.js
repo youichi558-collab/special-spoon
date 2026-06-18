@@ -9,9 +9,9 @@ const DXF_LAYER_MAP = {
   "外形":"OUTLINE","図面枠":"FRAME","寸法":"DIM","寸法_vis":"DIM_VIS"
 };
 function dxfLayer(name){ return DXF_LAYER_MAP[name] || name || '0'; }
-function toUnicodeDXF(str){
-  return [...String(str||'')].map(c=>{const code=c.charCodeAt(0);return code>127?`\\U+${code.toString(16).toUpperCase().padStart(4,'0')}`:c;}).join('');
-}
+// AC1015はUTF-8テキストをそのまま埋め込む（\U+エスケープはR12時代の手法で
+// AC1015レンダラーはリテラル文字列として表示してしまうため使わない）
+function toUnicodeDXF(str){ return String(str||''); }
 function addRect(ls,layer,x1,y1,x2,y2){
   const L=(ax1,ay1,ax2,ay2)=>ls.push('0','LINE','8',layer,'10',ax1.toFixed(2),'20',(-ay1).toFixed(2),'30','0','11',ax2.toFixed(2),'21',(-ay2).toFixed(2),'31','0');
   L(x1,y1,x2,y1);L(x2,y1,x2,y2);L(x2,y2,x1,y2);L(x1,y2,x1,y1);
@@ -80,6 +80,7 @@ function exportDXF(){
   // ================================================================
   p(0,'SECTION', 2,'HEADER');
   p(9,'$ACADVER',     1,'AC1015');
+  p(9,'$DWGCODEPAGE',  3,'ANSI_1252');
   p(9,'$HANDSEED',    5,'FFFF');
   p(9,'$INSUNITS',   70, 4);  // mm
   p(9,'$MEASUREMENT',70, 1);  // メートル法
@@ -438,7 +439,7 @@ function exportDXF(){
         p(0,'ATTRIB',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbText',
           10,lx.toFixed(3),20,(-ly).toFixed(3),30,'0.0',40,'10',1,u,
           7,'STANDARD',72,0,11,lx.toFixed(3),21,(-ly).toFixed(3),31,'0.0',
-          100,'AcDbText',73,0,100,'AcDbAttribute',280,0,2,'LABEL',70,0,73,0,74,0);
+          100,'AcDbAttribute',280,0,2,'LABEL',70,0);
         p(0,'SEQEND',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbSeqend');
       }
     }
@@ -450,8 +451,8 @@ function exportDXF(){
   // OBJECTS
   // ================================================================
   p(0,'SECTION', 2,'OBJECTS');
-  p(0,'DICTIONARY',5,H_ROOT_DICT,100,'AcDbDictionary',281,1,3,'ACAD_GROUP',350,H_GRP_DICT);
-  p(0,'DICTIONARY',5,H_GRP_DICT, 100,'AcDbDictionary',281,1);
+  p(0,'DICTIONARY',5,H_ROOT_DICT,330,'0',100,'AcDbDictionary',281,1,3,'ACAD_GROUP',350,H_GRP_DICT);
+  p(0,'DICTIONARY',5,H_GRP_DICT,330,H_ROOT_DICT,100,'AcDbDictionary',281,1);
   p(0,'ENDSEC');
 
   p(0,'EOF');
