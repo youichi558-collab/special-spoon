@@ -1,279 +1,463 @@
 // ================================================================
-// dxf_export.js — DXF出力
-// 依存: state, LAYERS, getDef, dl
+// dxf_export.js — DXF AC1015 (AutoCAD 2000) 出力
+// DWG TrueView 2026+ 対応
+// AcDbEntity + サブクラスマーカー完全対応
 // ================================================================
-function buildSymBlocksDXF(){
-  const ls=[];
-  function bk(name,fn){
-    ls.push('0','BLOCK','8','0','2',name,'70','0','10','0','20','0','30','0','3',name,'1','');
-    fn();
-    ls.push('0','ENDBLK','8','0');
-  }
-  function LN(x1,y1,x2,y2){ls.push('0','LINE','8','0','10',x1.toFixed(3),'20',(-y1).toFixed(3),'30','0','11',x2.toFixed(3),'21',(-y2).toFixed(3),'31','0');}
-  function CIR(cx,cy,r){ls.push('0','CIRCLE','8','0','10',cx.toFixed(3),'20',(-cy).toFixed(3),'30','0','40',r.toFixed(3));}
-  function ARC(cx,cy,r,sa,ea){ls.push('0','ARC','8','0','10',cx.toFixed(3),'20',(-cy).toFixed(3),'30','0','40',r.toFixed(3),'50',sa.toFixed(3),'51',ea.toFixed(3));}
-  function RCT(x1,y1,x2,y2){LN(x1,y1,x2,y1);LN(x2,y1,x2,y2);LN(x2,y2,x1,y2);LN(x1,y2,x1,y1);}
-  function TXT(x,y,h,s){ls.push('0','TEXT','8','0','10',x.toFixed(3),'20',(-y).toFixed(3),'30','0','40',h.toFixed(3),'1',s,'72','1','11',x.toFixed(3),'21',(-y).toFixed(3));}
-  bk('resistor',()=>{ LN(-32,0,-18,0); RCT(-18,-8,18,8); LN(18,0,32,0); });
-  bk('capacitor',()=>{ LN(-27,0,-6,0); LN(-6,-12,-6,12); LN(6,-12,6,12); LN(6,0,27,0); });
-  bk('inductor',()=>{ LN(-32,0,-22,0); for(let i=0;i<4;i++) ARC(-16+i*10,0,8,0,180); LN(22,0,32,0); });
-  bk('diode',()=>{ LN(-32,0,-12,0); LN(-12,-10,-12,10); LN(-12,10,12,0); LN(12,0,-12,-10); LN(12,-10,12,10); LN(12,0,32,0); });
-  bk('sw_no',()=>{ LN(-32,0,-14,0); CIR(-14,0,3); LN(-14,0,14,-9); CIR(14,0,3); LN(14,0,32,0); });
-  bk('timer_no',()=>{ LN(-32,0,-14,0); CIR(-14,0,3); LN(-11,0,11,-12); CIR(14,0,3); LN(14,0,32,0); ARC(0,6,8,0,180); });
-  bk('timer_nc',()=>{ LN(-32,0,-14,0); CIR(-14,0,3); LN(-11,0,11,0); CIR(14,0,3); LN(14,0,32,0); LN(0,0,-6,-12); ARC(0,6,8,0,180); });
-  bk('push_no',()=>{ LN(-32,0,-14,0); CIR(-14,0,3); LN(-14,0,14,-9); CIR(14,0,3); LN(14,0,32,0); LN(0,-14,0,-9); LN(-6,-14,6,-14); });
-  bk('sw_nc',()=>{ LN(-32,0,-14,0); CIR(-14,0,3); LN(-14,0,14,5); CIR(14,0,3); LN(14,0,32,0); LN(0,-10,0,-2); });
-  bk('coil',()=>{ LN(-32,0,-20,0); RCT(-20,-14,20,14); LN(20,0,32,0); TXT(0,4,9,'CR'); });
-  bk('timer_coil',()=>{ LN(-32,0,-20,0); RCT(-20,-14,20,14); LN(20,0,32,0); TXT(0,0,9,'TIM'); CIR(0,10,4); });
-  bk('breaker',()=>{ LN(-32,0,-20,0); RCT(-20,-14,20,14); LN(20,0,32,0); TXT(0,4,9,'CB'); });
-  bk('motor',()=>{ CIR(0,0,20); LN(-32,0,-20,0); LN(20,0,32,0); TXT(0,5,14,'M'); });
-  bk('lamp',()=>{ CIR(0,0,18); LN(-11,-9,11,9); LN(11,-9,-11,9); LN(-32,0,-18,0); LN(18,0,32,0); });
-  bk('ground',()=>{ LN(0,-18,0,0); LN(-18,0,18,0); LN(-13,5,13,5); LN(-8,10,8,10); });
-  bk('battery',()=>{ LN(-36,0,-14,0); LN(-14,-9,-14,9); LN(-7,-6,-7,6); LN(0,-9,0,9); LN(7,-6,7,6); LN(14,-9,14,9); LN(14,0,36,0); });
-  bk('fuse',()=>{ LN(-32,0,-18,0); RCT(-18,-7,18,7); LN(-18,0,18,0); LN(18,0,32,0); });
-  bk('ac',()=>{ LN(-32,0,-20,0); CIR(0,0,19); LN(-14,0,-7,-13); LN(-7,-13,0,0); LN(0,0,7,13); LN(7,13,14,0); LN(19,0,32,0); });
-  bk('transformer',()=>{ LN(-32,0,-22,0); ARC(-16,0,7,0,180); ARC(-8,0,7,0,180); ARC(0,0,7,0,180); LN(0,-16,0,16); ARC(2,0,7,180,0); ARC(10,0,7,180,0); ARC(18,0,7,180,0); LN(26,0,32,0); });
-  bk('terminal',()=>{ LN(-20,0,20,0); RCT(-10,-8,10,8); LN(-4,-4,4,4); LN(4,-4,-4,4); });
-  return ls;
+
+const DXF_LAYER_MAP = {
+  "回路":"CIRCUIT","配線":"WIRE","注記":"NOTE",
+  "外形":"OUTLINE","図面枠":"FRAME","寸法":"DIM","寸法_vis":"DIM_VIS"
+};
+function dxfLayer(name){ return DXF_LAYER_MAP[name] || name || '0'; }
+function toUnicodeDXF(str){
+  return [...String(str||'')].map(c=>{const code=c.charCodeAt(0);return code>127?`\\U+${code.toString(16).toUpperCase().padStart(4,'0')}`:c;}).join('');
+}
+function addRect(ls,layer,x1,y1,x2,y2){
+  const L=(ax1,ay1,ax2,ay2)=>ls.push('0','LINE','8',layer,'10',ax1.toFixed(2),'20',(-ay1).toFixed(2),'30','0','11',ax2.toFixed(2),'21',(-ay2).toFixed(2),'31','0');
+  L(x1,y1,x2,y1);L(x2,y1,x2,y2);L(x2,y2,x1,y2);L(x1,y2,x1,y1);
 }
 
-function toUnicodeDXF(str){return[...str].map(c=>{const code=c.charCodeAt(0);return code>127?`\\U+${code.toString(16).toUpperCase().padStart(4,'0')}`:c;}).join('');}
-const DXF_LAYER_MAP={"回路":"CIRCUIT","配線":"WIRE","注記":"NOTE","外形":"OUTLINE","図面枠":"FRAME","寸法":"DIM","寸法_vis":"DIM_VIS"};
-function dxfLayer(name){return DXF_LAYER_MAP[name]||name||"0";}
 function exportDXF(){
-  const ls=[];
-  // 実座標のバウンディングボックスを計算（$EXTMIN/$EXTMAX用、DXFはY反転）
-  let _minX=1e20,_minY=1e20,_maxX=-1e20,_maxY=-1e20;
-  const _ext=(x,y)=>{ if(x<_minX)_minX=x; if(x>_maxX)_maxX=x; if(y<_minY)_minY=y; if(y>_maxY)_maxY=y; };
-  state.wires.forEach(w=>{const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];pts.forEach(p=>_ext(p.x,-p.y));});
-  state.elements.forEach(el=>{['x','x1','x2','cx'].forEach(k=>{if(el[k]!=null)['y','y1','y2','cy'].forEach(yk=>{if(el[yk]!=null)_ext(el[k],-el[yk]);});});});
-  if(_minX>_maxX){_minX=0;_minY=0;_maxX=420;_maxY=297;}
-  ls.push('0','SECTION','2','HEADER');
-  ls.push('9','$ACADVER','1','AC1009');
-  ls.push('9','$DWGCODEPAGE','3','ANSI_1252');
-  ls.push('9','$EXTMIN','10',_minX.toFixed(2),'20',_minY.toFixed(2),'30','0');
-  ls.push('9','$EXTMAX','10',_maxX.toFixed(2),'20',_maxY.toFixed(2),'30','0');
-  ls.push('9','$LIMMIN','10',_minX.toFixed(2),'20',_minY.toFixed(2));
-  ls.push('9','$LIMMAX','10',_maxX.toFixed(2),'20',_maxY.toFixed(2));
-  ls.push('0','ENDSEC');
-  // ECAD独自データをコメントとして保存（セクション間）
-  ls.push('999','ECAD_DXF_V1');
-  if(state.frameObj){
-    ls.push('999','ECAD_FRAME:'+JSON.stringify(state.frameObj));
+  let _h = 0x200;
+  const nh = () => (_h++).toString(16).toUpperCase();
+
+  const out = [];
+  // p(code, value, code, value, ...) — フォーマット済みDXF行を追加
+  function p(...args){
+    for(let i=0;i<args.length;i+=2){
+      out.push(String(args[i]).padStart(3));
+      out.push(String(args[i+1]));
+    }
   }
-  const _juncList=state.elements.filter(e=>e.type==='junction').map(e=>({x:e.x,y:e.y,r:e.r||2,color:e.color,layer:e.layer}));
-  if(_juncList.length>0){
-    ls.push('999','ECAD_JUNCTIONS:'+JSON.stringify(_juncList));
+
+  // ページデータ取得
+  const pg = state.pages[state.currentPage];
+  const elements = (pg && pg.elements) ? pg.elements : (state.elements||[]);
+  const wires    = (pg && pg.wires)    ? pg.wires    : (state.wires||[]);
+
+  // バウンディングボックス（DXF Y反転後）
+  let minX=1e20,minY=1e20,maxX=-1e20,maxY=-1e20;
+  function ext(x,y){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}
+  wires.forEach(w=>{(w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}]).forEach(pt=>ext(pt.x,-pt.y));});
+  elements.forEach(el=>{
+    if(el.x1!=null){ext(el.x1,-el.y1);ext(el.x2,-el.y2);}
+    else if(el.x!=null) ext(el.x,-el.y);
+  });
+  if(minX>maxX){minX=0;minY=-297;maxX=420;maxY=0;}
+  const cx=((minX+maxX)/2).toFixed(2), cy=((minY+maxY)/2).toFixed(2);
+  const vh=Math.max(maxY-minY,maxX-minX,100).toFixed(2);
+
+  // レイヤー定義
+  const LAYER_DEFS = [
+    {n:'0',       c:7}, {n:'CIRCUIT',c:2}, {n:'WIRE',   c:5},
+    {n:'NOTE',    c:3}, {n:'OUTLINE',c:6}, {n:'FRAME',  c:4},
+    {n:'DIM',     c:1}, {n:'DIM_VIS',c:1},
+  ];
+
+  // シンボル名リスト
+  const SYM_NAMES = ['resistor','capacitor','inductor','diode','sw_no','timer_no','timer_nc',
+    'push_no','sw_nc','coil','timer_coil','breaker','motor','lamp','ground',
+    'battery','fuse','ac','transformer','terminal'];
+
+  // ハンドル事前割当
+  const H_VPORT_TBL    = nh(), H_VPORT_ACT   = nh();
+  const H_LTYPE_TBL    = nh(), H_CONT=nh(), H_DASHED=nh(), H_DOT=nh(), H_DDOT=nh();
+  const H_LAYER_TBL    = nh(); const layerH = LAYER_DEFS.map(()=>nh());
+  const H_STYLE_TBL    = nh(), H_STYLE_STD  = nh();
+  const H_VIEW_TBL     = nh();
+  const H_UCS_TBL      = nh();
+  const H_APPID_TBL    = nh(), H_APPID_ACAD = nh();
+  const H_DIMST_TBL    = nh(), H_DIMST_STD  = nh();
+  const H_BLKREC_TBL   = nh(), H_BLKREC_MDL = nh(), H_BLKREC_PPR = nh();
+  const symBlkRecH     = SYM_NAMES.map(()=>nh());
+  const H_ROOT_DICT    = nh(), H_GRP_DICT   = nh();
+  const H_MDL_BLK      = nh(), H_MDL_EBLK  = nh();
+  const H_PPR_BLK      = nh(), H_PPR_EBLK  = nh();
+  const symBlkH        = SYM_NAMES.map(()=>({b:nh(),e:nh()}));
+
+  // ================================================================
+  // HEADER
+  // ================================================================
+  p(0,'SECTION', 2,'HEADER');
+  p(9,'$ACADVER',     1,'AC1015');
+  p(9,'$HANDSEED',    5,'FFFF');
+  p(9,'$INSUNITS',   70, 4);  // mm
+  p(9,'$MEASUREMENT',70, 1);  // メートル法
+  p(9,'$EXTMIN',     10,minX.toFixed(3), 20,minY.toFixed(3), 30,'0.0');
+  p(9,'$EXTMAX',     10,maxX.toFixed(3), 20,maxY.toFixed(3), 30,'0.0');
+  p(9,'$LIMMIN',     10,'0.0', 20,'0.0');
+  p(9,'$LIMMAX',     10,'420.0', 20,'297.0');
+  p(9,'$CLAYER',      8,'0');
+  p(9,'$CELTYPE',     6,'BYLAYER');
+  p(9,'$CCOLOR',     62, 256);
+  p(9,'$CELWEIGHT', 370,-1);
+  p(9,'$LWDISPLAY', 290, 0);
+  p(9,'$LTSCALE',    40,'1.0');
+  p(9,'$LUNITS',     70, 2);
+  p(9,'$LUPREC',     70, 4);
+  p(9,'$AUNITS',     70, 0);
+  p(9,'$AUPREC',     70, 0);
+  p(9,'$TEXTSTYLE',   7,'STANDARD');
+  p(9,'$DIMSTYLE',    2,'STANDARD');
+  p(9,'$PSTYLEMODE',290, 1);
+  p(9,'$EXTNAMES',  290, 1);
+  p(9,'$TREEDEPTH',  70, 3020);
+  p(9,'$ANGBASE',    50,'0.0');
+  p(9,'$ANGDIR',     70, 0);
+  p(9,'$PDMODE',     70, 0);
+  p(9,'$PDSIZE',     40,'0.0');
+  p(9,'$LIMCHECK',   70, 0);
+  p(9,'$UNITMODE',   70, 0);
+  p(9,'$ORTHOMODE',  70, 0);
+  p(9,'$REGENMODE',  70, 1);
+  p(9,'$FILLMODE',   70, 1);
+  p(9,'$QTEXTMODE',  70, 0);
+  p(9,'$MIRRTEXT',   70, 0);
+  p(9,'$WORLDVIEW',  70, 1);
+  p(9,'$TILEMODE',   70, 1);
+  p(9,'$PLIMCHECK',  70, 0);
+  p(9,'$VISRETAIN',  70, 1);
+  p(9,'$MAXACTVP',   70,64);
+  p(9,'$PROXYGRAPHICS',70,1);
+  p(0,'ENDSEC');
+
+  // ================================================================
+  // CLASSES（最小限）
+  // ================================================================
+  p(0,'SECTION', 2,'CLASSES');
+  p(0,'ENDSEC');
+
+  // ================================================================
+  // TABLES
+  // ================================================================
+  p(0,'SECTION', 2,'TABLES');
+
+  // VPORT
+  p(0,'TABLE', 2,'VPORT', 5,H_VPORT_TBL, 100,'AcDbSymbolTable', 70,1);
+  p(0,'VPORT', 5,H_VPORT_ACT, 100,'AcDbSymbolTableRecord', 100,'AcDbViewportTableRecord');
+  p(2,'*ACTIVE', 70,0,
+    10,'0.0', 20,'0.0', 11,'1.0', 21,'1.0',
+    12,cx, 22,cy, 13,'0.0', 23,'0.0',
+    14,'10.0', 24,'10.0', 15,'10.0', 25,'10.0',
+    16,'0.0', 26,'0.0', 36,'1.0', 17,'0.0', 27,'0.0', 37,'0.0',
+    40,vh, 41,'1.5', 42,'50.0', 43,'0.0', 44,'0.0',
+    50,'0.0', 51,'0.0',
+    71,0, 72,100, 73,1, 74,3, 75,0, 76,0, 77,0, 78,0);
+  p(0,'ENDTAB');
+
+  // LTYPE
+  p(0,'TABLE', 2,'LTYPE', 5,H_LTYPE_TBL, 100,'AcDbSymbolTable', 70,4);
+  function ltype(h,name,desc,pat,elem){
+    p(0,'LTYPE', 5,h, 100,'AcDbSymbolTableRecord', 100,'AcDbLinetypeTableRecord');
+    p(2,name, 70,0, 3,desc, 72,65, 73,elem||0, 40,pat||'0.0');
   }
-  // 線種テーブル
-  const ltypeMap = { solid:'CONTINUOUS', dashed:'DASHED', dotted:'DOT', dashdot:'DASHDOT' };
-  ls.push('0','SECTION','2','TABLES');
-  // VPORT（ビューポート、DWG TrueView表示に必須）図面中心・全体が映るよう設定
-  const _cx=((_minX+_maxX)/2).toFixed(2), _cy=((_minY+_maxY)/2).toFixed(2);
-  const _vh=Math.max((_maxY-_minY)*1.1,(_maxX-_minX)*1.1*0.6,100).toFixed(2);
-  ls.push('0','TABLE','2','VPORT','70','1');
-  ls.push('0','VPORT','2','*ACTIVE','70','0','10','0','20','0','11','1','21','1',
-    '12',_cx,'22',_cy,'13','0','23','0','14','10','24','10','15','10','25','10',
-    '16','0','26','0','36','1','17','0','27','0','37','0','40',_vh,'41','1.5',
-    '42','50','43','0','44','0','50','0','51','0','71','0','72','100','73','1','74','3','75','0','76','0','77','0','78','0');
-  ls.push('0','ENDTAB');
-  ls.push('0','TABLE','2','LTYPE','70','4');
-  ls.push('0','LTYPE','2','CONTINUOUS','70','0','3','Solid line','72','65','73','0','40','0.0');
-  ls.push('0','LTYPE','2','DASHED','70','0','3','Dashed','72','65','73','2','40','9.5','49','6.35','49','-3.175');
-  ls.push('0','LTYPE','2','DOT','70','0','3','Dot','72','65','73','2','40','3.175','49','0.0','49','-3.175');
-  ls.push('0','LTYPE','2','DASHDOT','70','0','3','Dash dot','72','65','73','4','40','12.7','49','6.35','49','-3.175','49','0.0','49','-3.175');
-  ls.push('0','ENDTAB');
-  // 追加レイヤー（ENTITIESで使用するがLAYERSに含まれないもの）
-  const extraLayers = ['FRAME','DIM_VIS','CIRCUIT','WIRE','NOTE','OUTLINE','DIM'];
-  const allLayerCount = LAYERS.length + extraLayers.length;
-  ls.push('0','TABLE','2','LAYER','70',String(allLayerCount));
-  LAYERS.forEach((l,i)=>ls.push('0','LAYER','2',dxfLayer(l.name),'70',String(l.locked?4:0),'62',String(i+1),'6',ltypeMap[l.lineDash||'solid']||'CONTINUOUS'));
-  extraLayers.forEach((name,i)=>ls.push('0','LAYER','2',name,'70','0','62',String(LAYERS.length+i+1),'6','CONTINUOUS'));
-  ls.push('0','ENDTAB');
-  // STYLEテーブル（テキスト用、AC1015必須）
-  ls.push('0','TABLE','2','STYLE','70','1');
-  ls.push('0','STYLE','2','STANDARD','70','0','40','0','41','1.0','42','0.2','50','0','71','0','3','txt','4','');
-  ls.push('0','ENDTAB');
-  // APPIDテーブル（DWG TrueView必須）
-  ls.push('0','TABLE','2','APPID','70','1');
-  ls.push('0','APPID','2','ACAD','70','0');
-  ls.push('0','ENDTAB');
-  // DIMSTYLEテーブル
-  ls.push('0','TABLE','2','DIMSTYLE','70','1');
-  ls.push('0','DIMSTYLE','2','STANDARD','70','0');
-  ls.push('0','ENDTAB');
-  ls.push('0','ENDSEC');
-  ls.push('0','SECTION','2','BLOCKS');
-  // *Model_Space/*Paper_SpaceはAC1015で必須
-  ls.push('0','BLOCK','8','0','2','*Model_Space','70','0','10','0','20','0','30','0','3','*Model_Space','1','');
-  ls.push('0','ENDBLK','8','0');
-  ls.push('0','BLOCK','8','0','2','*Paper_Space','70','0','10','0','20','0','30','0','3','*Paper_Space','1','');
-  ls.push('0','ENDBLK','8','0');
-  ls.push(...buildSymBlocksDXF());
-  ls.push('0','ENDSEC');
-  ls.push('0','SECTION','2','ENTITIES');
-  state.elements.filter(e=>e.type==='dim').forEach(el=>{
+  ltype(H_CONT,  'CONTINUOUS','Solid line');
+  ltype(H_DASHED,'DASHED',    'Dashed',     '9.5', 2);
+  out.push('  49','6.35','  49','-3.175');
+  ltype(H_DOT,   'DOT',       'Dot',        '3.175',2);
+  out.push('  49','0.0','  49','-3.175');
+  ltype(H_DDOT,  'DASHDOT',   'Dash dot',   '12.7', 4);
+  out.push('  49','6.35','  49','-3.175','  49','0.0','  49','-3.175');
+  p(0,'ENDTAB');
+
+  // LAYER
+  const ltypeMap = {solid:'CONTINUOUS',dashed:'DASHED',dotted:'DOT',dashdot:'DASHDOT'};
+  const allLayers = [
+    ...LAYER_DEFS,
+    // LAYERS変数（状態由来）もマージ（重複はスキップ）
+    ...(typeof LAYERS !== 'undefined' ? LAYERS : []).map(l=>({n:dxfLayer(l.name),c:l.locked?4:2}))
+      .filter(l=>!LAYER_DEFS.some(d=>d.n===l.n))
+  ];
+  p(0,'TABLE', 2,'LAYER', 5,H_LAYER_TBL, 100,'AcDbSymbolTable', 70,allLayers.length);
+  allLayers.forEach((ld,i)=>{
+    const h = i < layerH.length ? layerH[i] : nh();
+    p(0,'LAYER', 5,h, 100,'AcDbSymbolTableRecord', 100,'AcDbLayerTableRecord');
+    const ltype = (typeof LAYERS!=='undefined' && LAYERS[i]) ? (ltypeMap[LAYERS[i].lineDash||'solid']||'CONTINUOUS') : 'CONTINUOUS';
+    p(2,ld.n, 70,0, 62,ld.c, 6,ltype, 370,-3);
+  });
+  p(0,'ENDTAB');
+
+  // STYLE
+  p(0,'TABLE', 2,'STYLE', 5,H_STYLE_TBL, 100,'AcDbSymbolTable', 70,1);
+  p(0,'STYLE', 5,H_STYLE_STD, 100,'AcDbSymbolTableRecord', 100,'AcDbTextStyleTableRecord');
+  p(2,'STANDARD', 70,0, 40,'0.0', 41,'1.0', 50,'0.0', 71,0, 42,'2.5', 3,'', 4,'');
+  p(0,'ENDTAB');
+
+  // VIEW
+  p(0,'TABLE', 2,'VIEW', 5,H_VIEW_TBL, 100,'AcDbSymbolTable', 70,0);
+  p(0,'ENDTAB');
+
+  // UCS
+  p(0,'TABLE', 2,'UCS', 5,H_UCS_TBL, 100,'AcDbSymbolTable', 70,0);
+  p(0,'ENDTAB');
+
+  // APPID
+  p(0,'TABLE', 2,'APPID', 5,H_APPID_TBL, 100,'AcDbSymbolTable', 70,1);
+  p(0,'APPID', 5,H_APPID_ACAD, 100,'AcDbSymbolTableRecord', 100,'AcDbRegAppTableRecord');
+  p(2,'ACAD', 70,0);
+  p(0,'ENDTAB');
+
+  // DIMSTYLE
+  p(0,'TABLE', 2,'DIMSTYLE', 5,H_DIMST_TBL, 100,'AcDbSymbolTable', 70,1);
+  p(0,'DIMSTYLE', 5,H_DIMST_STD, 100,'AcDbSymbolTableRecord', 100,'AcDbDimStyleTableRecord');
+  p(2,'STANDARD', 70,0);
+  p(40,'1.0', 41,'2.5', 42,'0.625', 43,'3.75', 44,'1.25', 45,'0.0', 46,'0.0', 47,'0.0', 48,'0.0');
+  p(140,'2.5', 141,'2.5', 142,'0.0', 143,'25.4', 144,'1.0', 145,'0.0', 146,'1.0', 147,'0.625');
+  p(71,0, 72,0, 73,0, 74,0, 75,0, 76,0, 77,0, 78,8, 79,0);
+  p(170,0, 171,2, 172,0, 173,0, 174,0, 175,0, 176,0, 177,0, 178,0);
+  p(270,2, 271,2, 272,2, 273,2, 274,2, 340,H_STYLE_STD);
+  p(275,0, 276,0, 277,0, 278,0, 279,0);
+  p(280,0, 281,0, 282,0, 283,1, 284,0, 285,0, 286,0, 287,3, 288,0);
+  p(0,'ENDTAB');
+
+  // BLOCK_RECORD
+  p(0,'TABLE', 2,'BLOCK_RECORD', 5,H_BLKREC_TBL, 100,'AcDbSymbolTable', 70, 2+SYM_NAMES.length);
+  p(0,'BLOCK_RECORD', 5,H_BLKREC_MDL, 100,'AcDbSymbolTableRecord', 100,'AcDbBlockTableRecord', 2,'*MODEL_SPACE',  70,0);
+  p(0,'BLOCK_RECORD', 5,H_BLKREC_PPR, 100,'AcDbSymbolTableRecord', 100,'AcDbBlockTableRecord', 2,'*PAPER_SPACE', 70,0);
+  SYM_NAMES.forEach((name,i)=>{
+    p(0,'BLOCK_RECORD', 5,symBlkRecH[i], 100,'AcDbSymbolTableRecord', 100,'AcDbBlockTableRecord', 2,name, 70,0);
+  });
+  p(0,'ENDTAB');
+
+  p(0,'ENDSEC'); // TABLES end
+
+  // ================================================================
+  // BLOCKS
+  // ================================================================
+  p(0,'SECTION', 2,'BLOCKS');
+
+  // *MODEL_SPACE
+  p(0,'BLOCK',  5,H_MDL_BLK,  100,'AcDbEntity', 8,'0', 100,'AcDbBlockBegin', 2,'*MODEL_SPACE', 70,0, 10,'0.0', 20,'0.0', 30,'0.0', 3,'*MODEL_SPACE', 1,'');
+  p(0,'ENDBLK', 5,H_MDL_EBLK, 100,'AcDbEntity', 8,'0', 100,'AcDbBlockEnd');
+  // *PAPER_SPACE
+  p(0,'BLOCK',  5,H_PPR_BLK,  100,'AcDbEntity', 8,'0', 100,'AcDbBlockBegin', 2,'*PAPER_SPACE', 70,0, 10,'0.0', 20,'0.0', 30,'0.0', 3,'*PAPER_SPACE', 1,'');
+  p(0,'ENDBLK', 5,H_PPR_EBLK, 100,'AcDbEntity', 8,'0', 100,'AcDbBlockEnd');
+
+  // シンボルブロック（AC1015サブクラスマーカー付き）
+  function bL(x1,y1,x2,y2){p(0,'LINE',5,nh(),100,'AcDbEntity',8,'0',100,'AcDbLine',10,x1.toFixed(3),20,(-y1).toFixed(3),30,'0.0',11,x2.toFixed(3),21,(-y2).toFixed(3),31,'0.0');}
+  function bC(cx,cy,r){p(0,'CIRCLE',5,nh(),100,'AcDbEntity',8,'0',100,'AcDbCircle',10,cx.toFixed(3),20,(-cy).toFixed(3),30,'0.0',40,r.toFixed(3));}
+  function bA(cx,cy,r,sa,ea){p(0,'ARC',5,nh(),100,'AcDbEntity',8,'0',100,'AcDbCircle',10,cx.toFixed(3),20,(-cy).toFixed(3),30,'0.0',40,r.toFixed(3),100,'AcDbArc',50,sa.toFixed(3),51,ea.toFixed(3));}
+  function bR(x1,y1,x2,y2){bL(x1,y1,x2,y1);bL(x2,y1,x2,y2);bL(x2,y2,x1,y2);bL(x1,y2,x1,y1);}
+  function bT(x,y,h,s){p(0,'TEXT',5,nh(),100,'AcDbEntity',8,'0',100,'AcDbText',10,x.toFixed(3),20,(-y).toFixed(3),30,'0.0',40,String(h),1,s,7,'STANDARD',72,1,11,x.toFixed(3),21,(-y).toFixed(3),31,'0.0',100,'AcDbText',73,0);}
+
+  const symDefs = [
+    ['resistor',   ()=>{bL(-32,0,-18,0);bR(-18,-8,18,8);bL(18,0,32,0);}],
+    ['capacitor',  ()=>{bL(-27,0,-6,0);bL(-6,-12,-6,12);bL(6,-12,6,12);bL(6,0,27,0);}],
+    ['inductor',   ()=>{bL(-32,0,-22,0);for(let i=0;i<4;i++)bA(-16+i*10,0,8,0,180);bL(22,0,32,0);}],
+    ['diode',      ()=>{bL(-32,0,-12,0);bL(-12,-10,-12,10);bL(-12,10,12,0);bL(12,0,-12,-10);bL(12,-10,12,10);bL(12,0,32,0);}],
+    ['sw_no',      ()=>{bL(-32,0,-14,0);bC(-14,0,3);bL(-14,0,14,-9);bC(14,0,3);bL(14,0,32,0);}],
+    ['timer_no',   ()=>{bL(-32,0,-14,0);bC(-14,0,3);bL(-11,0,11,-12);bC(14,0,3);bL(14,0,32,0);bA(0,6,8,0,180);}],
+    ['timer_nc',   ()=>{bL(-32,0,-14,0);bC(-14,0,3);bL(-11,0,11,0);bC(14,0,3);bL(14,0,32,0);bL(0,0,-6,-12);bA(0,6,8,0,180);}],
+    ['push_no',    ()=>{bL(-32,0,-14,0);bC(-14,0,3);bL(-14,0,14,-9);bC(14,0,3);bL(14,0,32,0);bL(0,-14,0,-9);bL(-6,-14,6,-14);}],
+    ['sw_nc',      ()=>{bL(-32,0,-14,0);bC(-14,0,3);bL(-14,0,14,5);bC(14,0,3);bL(14,0,32,0);bL(0,-10,0,-2);}],
+    ['coil',       ()=>{bL(-32,0,-20,0);bR(-20,-14,20,14);bL(20,0,32,0);bT(0,4,9,'CR');}],
+    ['timer_coil', ()=>{bL(-32,0,-20,0);bR(-20,-14,20,14);bL(20,0,32,0);bT(0,0,9,'TIM');bC(0,10,4);}],
+    ['breaker',    ()=>{bL(-32,0,-20,0);bR(-20,-14,20,14);bL(20,0,32,0);bT(0,4,9,'CB');}],
+    ['motor',      ()=>{bC(0,0,20);bL(-32,0,-20,0);bL(20,0,32,0);bT(0,5,14,'M');}],
+    ['lamp',       ()=>{bC(0,0,18);bL(-11,-9,11,9);bL(11,-9,-11,9);bL(-32,0,-18,0);bL(18,0,32,0);}],
+    ['ground',     ()=>{bL(0,-18,0,0);bL(-18,0,18,0);bL(-13,5,13,5);bL(-8,10,8,10);}],
+    ['battery',    ()=>{bL(-36,0,-14,0);bL(-14,-9,-14,9);bL(-7,-6,-7,6);bL(0,-9,0,9);bL(7,-6,7,6);bL(14,-9,14,9);bL(14,0,36,0);}],
+    ['fuse',       ()=>{bL(-32,0,-18,0);bR(-18,-7,18,7);bL(-18,0,18,0);bL(18,0,32,0);}],
+    ['ac',         ()=>{bL(-32,0,-20,0);bC(0,0,19);bL(-14,0,-7,-13);bL(-7,-13,0,0);bL(0,0,7,13);bL(7,13,14,0);bL(19,0,32,0);}],
+    ['transformer',()=>{bL(-32,0,-22,0);bA(-16,0,7,0,180);bA(-8,0,7,0,180);bA(0,0,7,0,180);bL(0,-16,0,16);bA(2,0,7,180,0);bA(10,0,7,180,0);bA(18,0,7,180,0);bL(26,0,32,0);}],
+    ['terminal',   ()=>{bL(-20,0,20,0);bR(-10,-8,10,8);bL(-4,-4,4,4);bL(4,-4,-4,4);}],
+  ];
+  symDefs.forEach(([name,fn],i)=>{
+    p(0,'BLOCK', 5,symBlkH[i].b, 100,'AcDbEntity', 8,'0', 100,'AcDbBlockBegin', 2,name, 70,0, 10,'0.0', 20,'0.0', 30,'0.0', 3,name, 1,'');
+    fn();
+    p(0,'ENDBLK', 5,symBlkH[i].e, 100,'AcDbEntity', 8,'0', 100,'AcDbBlockEnd');
+  });
+
+  p(0,'ENDSEC'); // BLOCKS end
+
+  // ================================================================
+  // ENTITIES
+  // ================================================================
+  p(0,'SECTION', 2,'ENTITIES');
+
+  // エンティティ出力ヘルパー（全てサブクラスマーカー付き）
+  function eLine(layer,x1,y1,x2,y2){
+    p(0,'LINE',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbLine',
+      10,x1.toFixed(3),20,(-y1).toFixed(3),30,'0.0',
+      11,x2.toFixed(3),21,(-y2).toFixed(3),31,'0.0');
+  }
+  function eCircle(layer,cx,cy,r){
+    p(0,'CIRCLE',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbCircle',
+      10,cx.toFixed(3),20,(-cy).toFixed(3),30,'0.0',40,r.toFixed(3));
+  }
+  function eArc(layer,cx,cy,r,sa,ea){
+    p(0,'ARC',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbCircle',
+      10,cx.toFixed(3),20,(-cy).toFixed(3),30,'0.0',40,r.toFixed(3),
+      100,'AcDbArc',50,sa.toFixed(3),51,ea.toFixed(3));
+  }
+  function eText(layer,x,y,h,str,rot){
+    if(!str) return;
+    const u=toUnicodeDXF(str);
+    p(0,'TEXT',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbText',
+      10,x.toFixed(3),20,(-y).toFixed(3),30,'0.0',40,String(h),1,u);
+    if(rot) p(50,String(rot));
+    p(7,'STANDARD',72,1,11,x.toFixed(3),21,(-y).toFixed(3),31,'0.0',100,'AcDbText',73,0);
+  }
+  function eSolid(layer,x,y,ux,uy,a){
+    // 寸法矢印（SOLID→AcDbTrace）
+    const h=Math.hypot(ux,uy);if(h<1e-9)return;
+    const ax=ux/h,ay=uy/h,nx=-ay*a*0.3,ny=ax*a*0.3;
+    p(0,'SOLID',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbTrace',
+      10,(x         ).toFixed(3),20,(-y         ).toFixed(3),30,'0.0',
+      11,(x+ax*a+nx ).toFixed(3),21,(-(y+ay*a+ny)).toFixed(3),31,'0.0',
+      12,(x+ax*a-nx ).toFixed(3),22,(-(y+ay*a-ny)).toFixed(3),32,'0.0',
+      13,(x+ax*a    ).toFixed(3),23,(-(y+ay*a    )).toFixed(3),33,'0.0');
+  }
+  function eRect(layer,x,y,w,h){
+    eLine(layer,x,y,x+w,y);eLine(layer,x+w,y,x+w,y+h);
+    eLine(layer,x+w,y+h,x,y+h);eLine(layer,x,y+h,x,y);
+  }
+
+  const dxfAng = a => ((-a*180/Math.PI)%360+360)%360;
+
+  // 寸法線
+  elements.filter(e=>e.type==='dim').forEach(el=>{
     const dx=el.x2-el.x1,dy=el.y2-el.y1,len=Math.hypot(dx,dy);
-    if(len<0.1)return;
+    if(len<0.1) return;
     const sign=el.offsetSign||1, off=Math.abs(el.offset||30);
     const ux=dx/len,uy=dy/len,px=-uy*sign,py=ux*sign;
     const ax1=el.x1+px*off,ay1=el.y1+py*off,ax2=el.x2+px*off,ay2=el.y2+py*off;
     const mx=(ax1+ax2)/2,my=(ay1+ay2)/2;
-    const dimLyr = dxfLayer(el.layer||'寸法');
-    const gap=el.gap!=null?el.gap:10, ext=el.ext!=null?el.ext:5;
-    const isOwnLyr = (el.layer||'寸法')==='寸法';
-    // DIMENSIONエンティティはブロック参照必須でAutoCAD系が描画停止するため出力しない
-    // （寸法線は下のLINE+TEXT+矢印で完全再現される）
-    // LINE+TEXT+矢印（他CAD表示用・寸法レイヤー以外も出力）
-    const drawLyr = isOwnLyr ? 'DIM_VIS' : dimLyr;
-    // 引出し線（gap空け）
-    ls.push('0','LINE','8',drawLyr,'10',(el.x1+px*gap).toFixed(3),'20',(-(el.y1+py*gap)).toFixed(3),'30','0','11',(el.x1+px*(off+ext)).toFixed(3),'21',(-(el.y1+py*(off+ext))).toFixed(3),'31','0');
-    ls.push('0','LINE','8',drawLyr,'10',(el.x2+px*gap).toFixed(3),'20',(-(el.y2+py*gap)).toFixed(3),'30','0','11',(el.x2+px*(off+ext)).toFixed(3),'21',(-(el.y2+py*(off+ext))).toFixed(3),'31','0');
-    // 寸法線
-    ls.push('0','LINE','8',drawLyr,'10',ax1.toFixed(3),'20',(-ay1).toFixed(3),'30','0','11',ax2.toFixed(3),'21',(-ay2).toFixed(3),'31','0');
-    // 矢印（SOLID）
-    const a=(el.arrowSz||8)*0.8, nx=-uy*sign, ny=ux*sign;
-    function solidArrow(x,y,dux,duy){
-      ls.push('0','SOLID','8',drawLyr,
-        '10',(x).toFixed(3),'20',(-y).toFixed(3),'30','0',
-        '11',(x+dux*a+nx*a*0.3).toFixed(3),'21',(-(y+duy*a+ny*a*0.3)).toFixed(3),'31','0',
-        '12',(x+dux*a-nx*a*0.3).toFixed(3),'22',(-(y+duy*a-ny*a*0.3)).toFixed(3),'32','0',
-        '13',(x+dux*a).toFixed(3),'23',(-(y+duy*a)).toFixed(3),'33','0');
-    }
-    solidArrow(ax1,ay1,ux,uy); solidArrow(ax2,ay2,-ux,-uy);
-    // テキスト
+    const drawLyr=(el.layer||'寸法')==='寸法'?'DIM_VIS':dxfLayer(el.layer||'寸法');
+    const gap=el.gap??10, ext=el.ext??5, a=(el.arrowSz||8)*0.8;
+    eLine(drawLyr,el.x1+px*gap,el.y1+py*gap,el.x1+px*(off+ext),el.y1+py*(off+ext));
+    eLine(drawLyr,el.x2+px*gap,el.y2+py*gap,el.x2+px*(off+ext),el.y2+py*(off+ext));
+    eLine(drawLyr,ax1,ay1,ax2,ay2);
+    eSolid(drawLyr,ax1,ay1, ux,uy,a);
+    eSolid(drawLyr,ax2,ay2,-ux,-uy,a);
     const txt=el.dimText||String(Math.round(len*(state.drawScale||1)));
-    ls.push('0','TEXT','8',drawLyr,'10',mx.toFixed(3),'20',(-my-5).toFixed(3),'30','0','40','10','1',txt,'72','1','11',mx.toFixed(3),'21',(-my-5).toFixed(3));
+    eText(drawLyr,mx,my+5,10,txt);
   });
-  // 図面枠（LINE/TEXT）を出力 - 自ツール読込時はisFrameLayerでスキップ
+
+  // 図面枠
   if(state.frameObj){
     const fr=state.frameObj;
     const {sc,wMM,hMM,mg,thMM,cols,rows}=fr;
     const W=wMM*sc,H=hMM*sc,MGpx=mg*sc,TH=thMM*sc;
     const iW=W-MGpx*2,iH=H-MGpx*2,dH=iH-TH;
-    
-    const L=(x1,y1,x2,y2)=>ls.push('0','LINE','8','FRAME','10',x1.toFixed(2),'20',(-y1).toFixed(2),'30','0','11',x2.toFixed(2),'21',(-y2).toFixed(2),'31','0');
-    const T=(x,y,h,s)=>{if(s)ls.push('0','TEXT','8','FRAME','10',x.toFixed(2),'20',(-y).toFixed(2),'30','0','40',String(h),'1',String(s));};
-    // 外枠
+    const L=(x1,y1,x2,y2)=>eLine('FRAME',x1,y1,x2,y2);
+    const T=(x,y,h,s)=>eText('FRAME',x,y,h,s);
     L(0,0,W,0);L(W,0,W,H);L(W,H,0,H);L(0,H,0,0);
-    // 内枠
-    L(MGpx,MGpx,MGpx+iW,MGpx);
-    L(MGpx+iW,MGpx,MGpx+iW,MGpx+iH);
-    L(MGpx+iW,MGpx+iH,MGpx,MGpx+iH);
-    L(MGpx,MGpx+iH,MGpx,MGpx);
-    // 表題欄の横線
+    L(MGpx,MGpx,MGpx+iW,MGpx);L(MGpx+iW,MGpx,MGpx+iW,MGpx+iH);
+    L(MGpx+iW,MGpx+iH,MGpx,MGpx+iH);L(MGpx,MGpx+iH,MGpx,MGpx);
     L(MGpx,MGpx+dH,MGpx+iW,MGpx+dH);
-    // 表題欄の縦区切り
     const tw=iW/4;
     L(MGpx+tw,MGpx+dH,MGpx+tw,MGpx+iH);
     L(MGpx+tw*2,MGpx+dH,MGpx+tw*2,MGpx+iH);
     L(MGpx+tw*3,MGpx+dH,MGpx+tw*3,MGpx+iH);
-    // 表題欄テキスト
     const ty=MGpx+dH+TH*0.6,fs=Math.max(4,TH*0.3);
     T(MGpx+tw*0.1,ty,fs,fr.drawno);
     T(MGpx+tw*0.1,ty-TH*0.35,fs,fr.title||'');
     T(MGpx+tw*1.1,ty,fs,fr.author);
     T(MGpx+tw*2.1,ty,fs,fr.company);
     T(MGpx+tw*3.1,ty,fs,fr.scale2||'');
-    // 列ラベル・分割線（上余白のみ、下は表題欄なので不要）
     if(cols>0){const cw=iW/cols;for(let c=1;c<cols;c++){L(MGpx+c*cw,0,MGpx+c*cw,MGpx);L(MGpx+c*cw,MGpx+dH,MGpx+c*cw,H);}
-      for(let c=0;c<cols;c++){T(MGpx+c*cw+cw/2,MGpx*0.6,6,String.fromCharCode(65+c));}}
-    // 行ラベル・分割線（余白部分のみ、表題欄を除く図面エリアのみ）
+      for(let c=0;c<cols;c++)T(MGpx+c*(iW/cols)+(iW/cols)/2,MGpx*0.6,6,String.fromCharCode(65+c));}
     if(rows>0){const rh=dH/rows;for(let r=1;r<rows;r++){L(0,MGpx+r*rh,MGpx,MGpx+r*rh);L(MGpx+iW,MGpx+r*rh,W,MGpx+r*rh);}
-      for(let r=0;r<rows;r++){T(MGpx/2,MGpx+r*rh+rh/2,6,String(r+1));T(MGpx+iW+MGpx/2,MGpx+r*rh+rh/2,6,String(r+1));}}
+      for(let r=0;r<rows;r++){T(MGpx/2,MGpx+r*(dH/rows)+(dH/rows)/2,6,String(r+1));T(MGpx+iW+MGpx/2,MGpx+r*(dH/rows)+(dH/rows)/2,6,String(r+1));}}
   }
-  state.wires.forEach(w=>{const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];const layer=dxfLayer(w.layer||'配線');for(let i=0;i<pts.length-1;i++)ls.push('0','LINE','8',layer,'10',pts[i].x.toFixed(2),'20',(-pts[i].y).toFixed(2),'30','0','11',pts[i+1].x.toFixed(2),'21',(-pts[i+1].y).toFixed(2),'31','0');if(w.wireNo){const mp=pts[Math.floor(pts.length/2)];ls.push('0','TEXT','8',layer,'10',mp.x.toFixed(2),'20',(-mp.y+8).toFixed(2),'30','0','40','8','1',w.wireNo,'72','1');}});
 
-  const dxfAng = a => ((-a * 180 / Math.PI) % 360 + 360) % 360;
-  const addLine = (layer,x1,y1,x2,y2) => ls.push('0','LINE','8',layer,'10',x1.toFixed(2),'20',(-y1).toFixed(2),'30','0','11',x2.toFixed(2),'21',(-y2).toFixed(2),'31','0');
-  const addText = (layer,x,y,h,text) => { if(text) ls.push('0','TEXT','8',layer,'10',x.toFixed(2),'20',(-y).toFixed(2),'30','0','40',String(h),'1',String(text)); };
+  // 配線
+  wires.forEach(w=>{
+    const layer=dxfLayer(w.layer||'配線');
+    const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
+    for(let i=0;i<pts.length-1;i++) eLine(layer,pts[i].x,pts[i].y,pts[i+1].x,pts[i+1].y);
+    if(w.wireNo){const mp=pts[Math.floor(pts.length/2)];eText(layer,mp.x,mp.y-8,8,w.wireNo);}
+  });
 
-  state.elements.forEach(el=>{const layer=dxfLayer(el.layer||'回路');
-    if(el.type==='dim') return; // dimは上で既に出力済み
-    if(el.type==='leader'){
-      // leaderをLINE+TEXTとして出力
-      ls.push('0','LINE','8',layer,'10',el.x1.toFixed(2),'20',(-el.y1).toFixed(2),'30','0','11',el.bx.toFixed(2),'21',(-el.by).toFixed(2),'31','0');
-      ls.push('0','LINE','8',layer,'10',el.bx.toFixed(2),'20',(-el.by).toFixed(2),'30','0','11',el.x2.toFixed(2),'21',(-el.y2).toFixed(2),'31','0');
-      if(el.leaderText)ls.push('0','TEXT','8',layer,'10',el.x2.toFixed(2),'20',(-el.y2).toFixed(2),'30','0','40','10','1',el.leaderText);
-      return;
-    }
-    if (el.type === 'text') {
-      addText(layer, el.x, el.y, el.fs || 14, el.text);
-    } else if (el.type === 'rect') {
-      addRect(ls, layer, el.x, el.y, el.x + el.w, el.y + el.h);
-    } else if (el.type === 'circle') {
-      ls.push('0','CIRCLE','8',layer,'10',el.x.toFixed(2),'20',(-el.y).toFixed(2),'30','0','40',el.r.toFixed(2));
-    } else if (el.type === 'fline') {
-      addLine(layer, el.x1, el.y1, el.x2, el.y2);
-    } else if (el.type === 'triangle') {
-      addLine(layer,el.x1,el.y1,el.x2,el.y2);
-      addLine(layer,el.x2,el.y2,el.x3,el.y3);
-      addLine(layer,el.x3,el.y3,el.x1,el.y1);
-    } else if (el.type === 'arc') {
-      let sa = dxfAng(el.startA || 0), ea = dxfAng(el.endA || 0);
-      if (el.ccw) { const t = sa; sa = ea; ea = t; }
-      ls.push('0','ARC','8',layer,'10',el.x.toFixed(2),'20',(-el.y).toFixed(2),'30','0','40',(el.r||0).toFixed(2),'50',sa.toFixed(2),'51',ea.toFixed(2));
-    } else if (el.type === 'junction') {
-      const r = el.r || 5;
-      ls.push('0','CIRCLE','8',layer,'10',el.x.toFixed(2),'20',(-el.y).toFixed(2),'30','0','40',r.toFixed(2));
-    } else if (el.type === 'angle_dim') {
-      addLine(layer, el.cx, el.cy, el.x1, el.y1);
-      addLine(layer, el.cx, el.cy, el.x2, el.y2);
-      const a1 = Math.atan2(el.y1-el.cy, el.x1-el.cx);
-      const a2 = Math.atan2(el.y2-el.cy, el.x2-el.cx);
-      ls.push('0','ARC','8',layer,'10',el.cx.toFixed(2),'20',(-el.cy).toFixed(2),'30','0','40',(el.r||30).toFixed(2),'50',dxfAng(a2).toFixed(2),'51',dxfAng(a1).toFixed(2));
-      addText(layer, el.x || el.cx, (el.y || el.cy) - (el.r || 30) - 8, el.dimFs || 11, el.dimText || '');
+  // 要素
+  elements.forEach(el=>{
+    const layer=dxfLayer(el.layer||'回路');
+    if(el.type==='dim') return;
+    if(el.type==='fline'){
+      eLine(layer,el.x1,el.y1,el.x2,el.y2);
+    } else if(el.type==='rect'){
+      eRect(layer,el.x,el.y,el.w||0,el.h||0);
+    } else if(el.type==='circle'){
+      eCircle(layer,el.x,el.y,el.r||0);
+    } else if(el.type==='arc'){
+      let sa=dxfAng(el.startA||0),ea=dxfAng(el.endA||0);
+      if(el.ccw){const t=sa;sa=ea;ea=t;}
+      eArc(layer,el.x,el.y,el.r||0,sa,ea);
+    } else if(el.type==='junction'){
+      eCircle(layer,el.x,el.y,el.r||5);
+    } else if(el.type==='triangle'){
+      eLine(layer,el.x1,el.y1,el.x2,el.y2);
+      eLine(layer,el.x2,el.y2,el.x3,el.y3);
+      eLine(layer,el.x3,el.y3,el.x1,el.y1);
+    } else if(el.type==='text'){
+      eText(layer,el.x,el.y,el.fs||14,el.text);
+    } else if(el.type==='leader'){
+      const bx=el.bx??el.x2,by=el.by??el.y2;
+      eLine(layer,el.x1,el.y1,bx,by);
+      eLine(layer,bx,by,el.x2,el.y2);
+      if(el.leaderText) eText(layer,el.x2,el.y2,10,el.leaderText);
+    } else if(el.type==='angle_dim'){
+      eLine(layer,el.cx,el.cy,el.x1,el.y1);
+      eLine(layer,el.cx,el.cy,el.x2,el.y2);
+      const a1=Math.atan2(el.y1-el.cy,el.x1-el.cx);
+      const a2=Math.atan2(el.y2-el.cy,el.x2-el.cx);
+      eArc(layer,el.cx,el.cy,el.r||30,dxfAng(a2),dxfAng(a1));
+      eText(layer,el.x||el.cx,(el.y||el.cy)-(el.r||30)-8,el.dimFs||11,el.dimText||'');
+    } else if(el.type==='bezier'&&el.pts?.length){
+      // Catmull-Romスプライン→折れ線近似
+      const pts=el.pts;
+      const steps=8;
+      for(let i=0;i<pts.length-1;i++){
+        const p0=pts[Math.max(0,i-1)],p1=pts[i],p2=pts[i+1],p3=pts[Math.min(pts.length-1,i+2)];
+        for(let t=0;t<steps;t++){
+          const u=t/steps,u2=u*u,u3=u2*u,v=(t+1)/steps,v2=v*v,v3=v2*v;
+          const x1=0.5*((2*p1.x)+(-p0.x+p2.x)*u+(2*p0.x-5*p1.x+4*p2.x-p3.x)*u2+(-p0.x+3*p1.x-3*p2.x+p3.x)*u3);
+          const y1=0.5*((2*p1.y)+(-p0.y+p2.y)*u+(2*p0.y-5*p1.y+4*p2.y-p3.y)*u2+(-p0.y+3*p1.y-3*p2.y+p3.y)*u3);
+          const x2=0.5*((2*p1.x)+(-p0.x+p2.x)*v+(2*p0.x-5*p1.x+4*p2.x-p3.x)*v2+(-p0.x+3*p1.x-3*p2.x+p3.x)*v3);
+          const y2=0.5*((2*p1.y)+(-p0.y+p2.y)*v+(2*p0.y-5*p1.y+4*p2.y-p3.y)*v2+(-p0.y+3*p1.y-3*p2.y+p3.y)*v3);
+          eLine(layer,x1,y1,x2,y2);
+        }
+      }
     } else {
-      const d = getDef(el.type);
-      if (!d || el.x == null || el.y == null) return;
-      const sc = el.scale || 1;
-      ls.push('0','INSERT','8',layer,'2',el.type,'10',el.x.toFixed(3),'20',(-el.y).toFixed(3),'30','0','50',String(el.rot||0),'41',String(sc),'42',String(sc),'66','1');
-      if (el.label) {
-        const lox=el.labelOffX||0, loy=el.labelOffY||(d.h/2+15);
+      // シンボル INSERT
+      const d=getDef(el.type);
+      if(!d||el.x==null) return;
+      const sc=el.scale||1;
+      const hasAttrib=!!el.label;
+      p(0,'INSERT',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbBlockReference');
+      p(2,el.type,10,el.x.toFixed(3),20,(-el.y).toFixed(3),30,'0.0');
+      p(50,String(el.rot||0),41,String(sc),42,String(sc),43,'1.0');
+      if(hasAttrib){
+        p(66,1);
+        const lox=el.labelOffX||0,loy=el.labelOffY||(d.h/2+15);
         const rot=(el.rot||0)*Math.PI/180;
         const lx=el.x+lox*Math.cos(rot)-loy*Math.sin(rot);
         const ly=el.y+lox*Math.sin(rot)+loy*Math.cos(rot);
-        ls.push('0','ATTRIB','8',layer,'10',lx.toFixed(3),'20',(-ly).toFixed(3),'30','0','40','10','1',el.label,'2','LABEL','70','0','72','1');
+        const u=toUnicodeDXF(el.label);
+        p(0,'ATTRIB',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbText',
+          10,lx.toFixed(3),20,(-ly).toFixed(3),30,'0.0',40,'10',1,u,
+          7,'STANDARD',72,0,11,lx.toFixed(3),21,(-ly).toFixed(3),31,'0.0',
+          100,'AcDbText',73,0,100,'AcDbAttribute',280,0,2,'LABEL',70,0,73,0,74,0);
+        p(0,'SEQEND',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbSeqend');
       }
-      ls.push('0','SEQEND','8',layer);
     }
   });
-  ls.push('0','ENDSEC','0','EOF');
-  const pg = state.pages[state.currentPage];
-  const base = (state.saveFileName || '図面').replace(/[\\/:*?"<>|]/g, '_');
-  const name = (pg.name || ('Sheet'+(state.currentPage+1))).replace(/[\\/:*?"<>|]/g, '_');
-  // 後処理: ハンドル自動付与 + 日本語Unicodeエスケープ
-  // R12形式でも各エンティティ/テーブル/テーブルエントリに一意ハンドル(5コード)が必要
-  // ただしHEADERセクション内とSECTION/ENDSEC/ENDTAB/EOF/ENDBLKには付けない
-  let handle = 0x100;
-  const noHandle = new Set(['SECTION','ENDSEC','TABLE','ENDTAB','EOF','ENDBLK']);
-  const out = [];
-  let inHeader = false;
-  for (let i = 0; i < ls.length; i += 2) {
-    const code = String(ls[i]);
-    let val = String(ls[i+1]);
-    if (code === '1' || code === '3') val = toUnicodeDXF(val);
-    // HEADERセクションの開始/終了を追跡
-    if (code === '2' && val === 'HEADER') inHeader = true;
-    out.push(code, val);
-    if (code === '0') {
-      if (val === 'ENDSEC') inHeader = false;
-      // HEADER外で、実体(エンティティ/TABLE/テーブルエントリ)にハンドル付与
-      if (!inHeader && !noHandle.has(val)) {
-        out.push('5', handle.toString(16).toUpperCase());
-        handle++;
-      }
-    }
-  }
 
-  // グループコードを右揃え3桁にフォーマット（DXF仕様準拠）
-  const dxfLines = [];
-  for (let i = 0; i < out.length; i += 2) {
-    dxfLines.push(String(out[i]).padStart(3));
-    dxfLines.push(String(out[i+1]));
-  }
-  dl(dxfLines.join('\r\n'), `${base}_${name}.dxf`, 'application/dxf');
+  p(0,'ENDSEC'); // ENTITIES end
+
+  // ================================================================
+  // OBJECTS
+  // ================================================================
+  p(0,'SECTION', 2,'OBJECTS');
+  p(0,'DICTIONARY',5,H_ROOT_DICT,100,'AcDbDictionary',281,1,3,'ACAD_GROUP',350,H_GRP_DICT);
+  p(0,'DICTIONARY',5,H_GRP_DICT, 100,'AcDbDictionary',281,1);
+  p(0,'ENDSEC');
+
+  p(0,'EOF');
+
+  // ファイル出力
+  const base=(state.saveFileName||'図面').replace(/[\\/:*?"<>|]/g,'_');
+  const name=(pg.name||('Sheet'+(state.currentPage+1))).replace(/[\\/:*?"<>|]/g,'_');
+  dl(out.join('\r\n'), `${base}_${name}.dxf`, 'application/dxf');
 }
-
-
-function addRect(ls,layer,x1,y1,x2,y2){const L=(ax1,ay1,ax2,ay2)=>ls.push('0','LINE','8',layer,'10',ax1.toFixed(2),'20',(-ay1).toFixed(2),'30','0','11',ax2.toFixed(2),'21',(-ay2).toFixed(2),'31','0');L(x1,y1,x2,y1);L(x2,y1,x2,y2);L(x2,y2,x1,y2);L(x1,y2,x1,y1);}
