@@ -29,9 +29,9 @@ const symLib = (() => {
 </div>
 <div id="symListPane" style="display:flex;flex-direction:column;flex:1;min-height:0;">
   <div style="padding:6px 8px;border-bottom:1px solid #333;flex-shrink:0;">
-    <div style="margin-bottom:4px;">
-      <label style="font-size:10px;color:#aaa;">ZIP:</label>
-      <input type="file" id="symLibZip" accept=".zip" style="font-size:10px;color:#ccc;width:100%;">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+      <button id="symLibZipBtn" style="background:#0067c0;border:none;color:#fff;padding:3px 10px;border-radius:3px;cursor:pointer;font-size:11px;flex-shrink:0;">📂 ZIPを選択</button>
+      <input type="file" id="symLibZip" accept=".zip" style="display:none;">
     </div>
     <div id="symLibStatus" style="font-size:10px;color:#888;">ZIPを選択してください</div>
   </div>
@@ -73,6 +73,7 @@ const symLib = (() => {
     document.body.appendChild(panel);
 
     document.getElementById('symLibClose').onclick = () => { panel.style.display = 'none'; };
+    document.getElementById('symLibZipBtn').onclick = onZipPickerClick;
     document.getElementById('symLibZip').onchange = onZipSelected;
     document.getElementById('symLibStd').onchange = applyFilter;
     document.getElementById('symLibCat').onchange = applyFilter;
@@ -106,22 +107,24 @@ const symLib = (() => {
   // ── ZIP ──────────────────────────────────────────────────────
   async function onZipSelected(e) {
     const file = e.target.files[0]; if (!file) return;
-    setStatus('読み込み中...');
     try {
-      const buf = await file.arrayBuffer();
-      if (typeof JSZip === 'undefined') { setStatus('JSZipが読み込まれていません'); return; }
-      zipData = await JSZip.loadAsync(buf);
-      // 大文字小文字非依存の検索インデックスを構築
-      zipIndex = {};
-      Object.keys(zipData.files).forEach(k => {
-        if (zipData.files[k].dir) return;
-        const lower = k.toLowerCase().replace(/\.dxf$/, '');
-        zipIndex[lower] = k;
-      });
-      const cnt = Object.keys(zipIndex).length;
-      setStatus(`ZIP読込完了 (DXF: ${cnt}件)`);
-      await loadIndex();
+      await loadZipFromFile(file);
+      // input[type=file] 経由ではFileSystemFileHandleが取れないので保存不可
+      // File System Access API が使える場合はボタン経由で保存済み
     } catch (err) { setStatus('エラー: ' + err.message); }
+  }
+
+  async function onZipPickerClick() {
+    if (!window.showOpenFilePicker) {
+      document.getElementById('symLibZip')?.click();
+      return;
+    }
+    try {
+      const [handle] = await window.showOpenFilePicker({ types: [{ description: 'ZIP', accept: { 'application/zip': ['.zip'] } }] });
+      await saveFileHandle(handle);
+      const file = await handle.getFile();
+      await loadZipFromFile(file);
+    } catch(e) { if (e.name !== 'AbortError') setStatus('エラー: ' + e.message); }
   }
 
   async function loadIndex() {
@@ -552,18 +555,70 @@ const symLib = (() => {
     alert(`「${previewEntry.label}」を追加しました`);
   }
 
+  // ── FileSystemFileHandle をIndexedDBに保存・復元 ──────────────
+  function openHandleDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open('symLibHandleDB', 1);
+      req.onupgradeneeded = e => e.target.result.createObjectStore('handles');
+      req.onsuccess = e => resolve(e.target.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function saveFileHandle(handle) {
+    try { const db=await openHandleDB(); const tx=db.transaction('handles','readwrite'); tx.objectStore('handles').put(handle,'zipHandle'); } catch(e){}
+  }
+  async function loadSavedHandle() {
+    try { const db=await openHandleDB(); return await new Promise(r=>{ const tx=db.transaction('handles','readonly'); const req=tx.objectStore('handles').get('zipHandle'); req.onsuccess=()=>r(req.result); req.onerror=()=>r(null); }); } catch(e){ return null; }
+  }
+
+  // ── ZIP読み込み共通処理 ────────────────────────────────────────
+  async function loadZipFromFile(file) {
+    setStatus('読み込み中...');
+    const buf = await file.arrayBuffer();
+    if (typeof JSZip === 'undefined') { setStatus('JSZipが読み込まれていません'); return; }
+    zipData = await JSZip.loadAsync(buf);
+    zipIndex = {};
+    Object.keys(zipData.files).forEach(k => {
+      if (zipData.files[k].dir) return;
+      const lower = k.toLowerCase().replace(/\.dxf$/, '');
+      zipIndex[lower] = k;
+    });
+    const cnt = Object.keys(zipIndex).length;
+    setStatus(`ZIP読込完了 (DXF: ${cnt}件)  ${file.name}`);
+    await loadIndex();
+  }
+
   // ── パブリック ────────────────────────────────────────────────
   let panel=null;
   async function toggle() {
     if(!panel) panel=createPanel();
     const vis=panel.style.display!=='none'&&panel.style.display!=='';
     panel.style.display=vis?'none':'flex';
-    if(!vis&&!indexData) {
-      setStatus('インデックス読み込み中...');
-      const res=await fetch('./js/symbol_index.json');
-      indexData=await res.json();
-      buildType3Select(); applyFilter();
-      setStatus('ZIPを選択してください');
+    if(!vis) {
+      if(!indexData) {
+        setStatus('インデックス読み込み中...');
+        const res=await fetch('./js/symbol_index.json');
+        indexData=await res.json();
+        buildType3Select(); applyFilter();
+      }
+      // 前回のZIPを自動復元
+      if(!zipData) {
+        const handle = await loadSavedHandle();
+        if (handle) {
+          try {
+            let perm = await handle.queryPermission({mode:'read'});
+            if (perm !== 'granted') perm = await handle.requestPermission({mode:'read'});
+            if (perm === 'granted') {
+              const file = await handle.getFile();
+              await loadZipFromFile(file);
+            } else {
+              setStatus('ZIPを選択してください（前回のファイルへのアクセスが拒否されました）');
+            }
+          } catch(e) { setStatus('ZIPを選択してください'); }
+        } else {
+          setStatus('ZIPを選択してください');
+        }
+      }
     }
     // お気に入りタブのバッジ更新
     const tabBtn=document.getElementById('symTabFav');
