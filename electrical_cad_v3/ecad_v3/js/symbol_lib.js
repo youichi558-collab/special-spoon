@@ -361,7 +361,11 @@ const symLib = (() => {
 
     if (!zipData) { drawOnCanvas(document.getElementById('symLibCanvas'), [], '#9ec6f7', 1.5); return; }
     const zFile = zipData.file(`${entry.path}.dxf`);
-    if (!zFile) { return; }
+    if (!zFile) {
+      const allFiles = Object.keys(zipData.files).filter(f => f.toLowerCase().endsWith('.dxf'));
+      setStatus(`ファイル不一致: ${entry.path}.dxf | ZIP例: ${allFiles[0]||'(なし)'}`);
+      return;
+    }
     try {
       const buf = await zFile.async('arraybuffer');
       const text = new TextDecoder('shift-jis').decode(buf);
