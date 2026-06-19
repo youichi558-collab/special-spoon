@@ -932,7 +932,13 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>メモ</label><textarea rows="2" id="pp-note">${el.note||''}</textarea></div>`;
   }
 
-  rp.innerHTML = html; rp._el = el; rp._wire = wire;
+  // rp.innerHTML を設定する前に _el/_wire をクリアする。
+  // innerHTML 代入時に旧フォーカス要素の focusout が同期発火し、
+  // 古い _el を参照したまま applyRightPanel() が呼ばれると
+  // 存在しない pp-layer を '' で読んでコピー元のレイヤーを破壊するバグがあるため。
+  rp._el = null; rp._wire = null;
+  rp.innerHTML = html;
+  rp._el = el; rp._wire = wire;
   const applyBtn = document.getElementById('rp-apply-btn');
   if (applyBtn) applyBtn.style.display = 'none'; // 即適用モードでは非表示
 
@@ -946,11 +952,14 @@ function updateRightPanel() {
     _autoApplyTimer = setTimeout(() => applyRightPanel(), delay);
   };
   // パネル外にフォーカスが移った時（選択解除前）に即時保存
-  rp.addEventListener('focusout', (e) => {
+  // addEventListener は呼び出しごとに蓄積するため、_focusoutHandler で管理して重複登録を防ぐ
+  if (rp._focusoutHandler) rp.removeEventListener('focusout', rp._focusoutHandler);
+  rp._focusoutHandler = (e) => {
     if (rp.contains(e.relatedTarget)) return; // パネル内の移動はスキップ
     clearTimeout(_autoApplyTimer);
     applyRightPanel();
-  });
+  };
+  rp.addEventListener('focusout', rp._focusoutHandler);
 }
 
 function colorRow(label, pickerId, codeId, defaultColor, onInput) {
