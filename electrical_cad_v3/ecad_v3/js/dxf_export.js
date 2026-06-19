@@ -11,7 +11,11 @@ const DXF_LAYER_MAP = {
 function dxfLayer(name){ return DXF_LAYER_MAP[name] || name || '0'; }
 // AC1015はUTF-8テキストをそのまま埋め込む（\U+エスケープはR12時代の手法で
 // AC1015レンダラーはリテラル文字列として表示してしまうため使わない）
-function toUnicodeDXF(str){ return String(str||''); }
+function toUnicodeDXF(str){
+  return String(str||'').replace(/[^\x00-\x7F]/g, c =>
+    '\\U+' + c.codePointAt(0).toString(16).toUpperCase().padStart(4,'0')
+  );
+}
 function addRect(ls,layer,x1,y1,x2,y2){
   const L=(ax1,ay1,ax2,ay2)=>ls.push('0','LINE','8',layer,'10',ax1.toFixed(2),'20',(-ay1).toFixed(2),'30','0','11',ax2.toFixed(2),'21',(-ay2).toFixed(2),'31','0');
   L(x1,y1,x2,y1);L(x2,y1,x2,y2);L(x2,y2,x1,y2);L(x1,y2,x1,y1);
