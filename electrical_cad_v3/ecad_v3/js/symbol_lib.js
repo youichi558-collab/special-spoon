@@ -4,6 +4,7 @@
 
 const symLib = (() => {
   let zipData = null;
+  let zipIndex = {}; // lowercase path (拡張子なし) → 実際のZIPキー（大文字小文字対応）
   let indexData = null;
   let filtered = [];
   let previewEntry = null;
@@ -110,7 +111,14 @@ const symLib = (() => {
       const buf = await file.arrayBuffer();
       if (typeof JSZip === 'undefined') { setStatus('JSZipが読み込まれていません'); return; }
       zipData = await JSZip.loadAsync(buf);
-      const cnt = Object.keys(zipData.files).filter(f => f.endsWith('.dxf')).length;
+      // 大文字小文字非依存の検索インデックスを構築
+      zipIndex = {};
+      Object.keys(zipData.files).forEach(k => {
+        if (zipData.files[k].dir) return;
+        const lower = k.toLowerCase().replace(/\.dxf$/, '');
+        zipIndex[lower] = k;
+      });
+      const cnt = Object.keys(zipIndex).length;
       setStatus(`ZIP読込完了 (DXF: ${cnt}件)`);
       await loadIndex();
     } catch (err) { setStatus('エラー: ' + err.message); }
@@ -126,6 +134,26 @@ const symLib = (() => {
   }
 
   function setStatus(msg) { const el = document.getElementById('symLibStatus'); if (el) el.textContent = msg; }
+
+  // 大文字小文字・パス構造を吸収したZIPファイル検索
+  function findZipFile(path) {
+    if (!zipData) return null;
+    // 完全一致（小文字.dxf）
+    let f = zipData.file(path + '.dxf');
+    if (f) return f;
+    // 大文字.DXF
+    f = zipData.file(path + '.DXF');
+    if (f) return f;
+    // zipIndexで大文字小文字非依存検索
+    const lower = path.toLowerCase();
+    const actualKey = zipIndex[lower];
+    if (actualKey) return zipData.file(actualKey);
+    // ファイル名だけで検索（ディレクトリ構造が違う場合）
+    const fname = path.split('/').pop().toLowerCase();
+    const fallbackKey = Object.keys(zipIndex).find(k => k.split('/').pop() === fname);
+    if (fallbackKey) return zipData.file(zipIndex[fallbackKey]);
+    return null;
+  }
 
   function buildType3Select() {
     if (!indexData) return;
@@ -249,7 +277,7 @@ const symLib = (() => {
   // ── サムネイル生成 ────────────────────────────────────────────
   async function generateThumb(canvas, entry) {
     if (!zipData || !entry) return;
-    const zFile = zipData.file(`${entry.path}.dxf`); if (!zFile) return;
+    const zFile = findZipFile(entry.path); if (!zFile) return;
     try {
       const buf = await zFile.async('arraybuffer');
       const text = new TextDecoder('shift-jis').decode(buf);
@@ -360,10 +388,10 @@ const symLib = (() => {
     updateFavBtn();
 
     if (!zipData) { drawOnCanvas(document.getElementById('symLibCanvas'), [], '#9ec6f7', 1.5); return; }
-    const zFile = zipData.file(`${entry.path}.dxf`);
+    const zFile = findZipFile(entry.path);
     if (!zFile) {
-      const allFiles = Object.keys(zipData.files).filter(f => f.toLowerCase().endsWith('.dxf'));
-      setStatus(`ファイル不一致: ${entry.path}.dxf | ZIP例: ${allFiles[0]||'(なし)'}`);
+      const allFiles = Object.keys(zipIndex).slice(0, 3).join(', ');
+      setStatus(`ファイル不一致: ${entry.path} | ZIP例: ${allFiles||'(なし)'}`);
       return;
     }
     try {
@@ -452,7 +480,7 @@ const symLib = (() => {
     if (!previewEntry) return;
     let shapes = previewShapes;
     if (!shapes.length && zipData) {
-      const zFile = zipData.file(`${previewEntry.path}.dxf`);
+      const zFile = findZipFile(previewEntry.path);
       if (zFile) { const buf=await zFile.async('arraybuffer'); shapes=parseDxfShapes(new TextDecoder('shift-jis').decode(buf)); }
     }
     if (!shapes.length) { alert('シンボルデータが空です'); return; }
