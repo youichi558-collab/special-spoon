@@ -270,27 +270,35 @@ function copySelected() {
 
 function cutSelected() { copySelected(); delSel(); }
 
-function pasteSelected() {
-  if (!state.clipboard?.els) return;
-  pushH();
-
-  // クリップボード内要素のBBox左上を計算
+// クリップボード要素のBBox左上座標を返す
+function clipboardOrigin() {
   const allPts = [];
-  state.clipboard.els.forEach(el => {
+  (state.clipboard?.els || []).forEach(el => {
     if (el.x  != null) allPts.push({x: el.x,  y: el.y});
     if (el.x1 != null) allPts.push({x: el.x1, y: el.y1}, {x: el.x2, y: el.y2});
   });
-  state.clipboard.wires.forEach(w => (w.pts||[]).forEach(p => allPts.push(p)));
-  const bx = allPts.length ? Math.min(...allPts.map(p=>p.x)) : 0;
-  const by = allPts.length ? Math.min(...allPts.map(p=>p.y)) : 0;
+  (state.clipboard?.wires || []).forEach(w => (w.pts||[]).forEach(p => allPts.push(p)));
+  return {
+    x: allPts.length ? Math.min(...allPts.map(p=>p.x)) : 0,
+    y: allPts.length ? Math.min(...allPts.map(p=>p.y)) : 0,
+  };
+}
 
-  // マウスのワールド座標を基準にオフセット計算（マウス位置がBBox左上になるように）
-  const mx = state.mouse?.wx ?? bx;
-  const my = state.mouse?.wy ?? by;
-  const dx = mx - bx;
-  const dy = my - by;
+// Ctrl+V → 基準点指定モードへ移行
+function pasteSelected() {
+  if (!state.clipboard?.els) return;
+  // pasteモードに入る：1クリック目=基準点、2クリック目=貼付け先
+  state.mode = 'paste';
+  state.pasteStep = 'base';   // 'base' → 'dest'
+  state.pasteBaseWorld = null; // 基準点（ワールド座標）
+  document.getElementById('s-hint').textContent = '基準点をクリック  [ESC] キャンセル';
+  draw();
+}
 
-  const idMap = {}; // 旧ID → 新ID のマッピング
+// 実際に貼り付けを確定する（dx/dy = クリップボード原点からのオフセット）
+function commitPaste(dx, dy) {
+  pushH();
+  const idMap = {};
   function offsetEl(el) {
     const ne = JSON.parse(JSON.stringify(el));
     const newId = genId('el');
@@ -312,7 +320,6 @@ function pasteSelected() {
   });
   state.elements.push(...newEls);
   state.wires.push(...newWires);
-  // グループ構造を新IDで再作成
   state.page.groups = state.page.groups || [];
   (state.clipboard.groups || []).forEach(g => {
     const elIds   = g.elIds.map(id => idMap[id]).filter(Boolean);
@@ -324,6 +331,12 @@ function pasteSelected() {
   state.sel.els.clear(); state.sel.wires.clear();
   newEls.forEach(el => state.sel.els.add(el.id));
   newWires.forEach(w  => state.sel.wires.add(w.id));
+  // pasteモード終了
+  state.mode = 'select';
+  state.pasteStep = null;
+  state.pasteBaseWorld = null;
+  state.preview = null;
+  document.getElementById('s-hint').textContent = '';
   draw(); updateRightPanel();
 }
 
@@ -638,6 +651,11 @@ document.addEventListener('keydown', e => {
       }
       break;
     case 'Escape':
+      if (state.mode === 'paste') {
+        state.mode = 'select'; state.pasteStep = null; state.pasteBaseWorld = null; state.preview = null;
+        document.getElementById('s-hint').textContent = '';
+        draw(); break;
+      }
       if (state.mode === 'bezier') {
         state.mouse.bezierPts = null; state.preview = null;
         setMode('select'); draw(); break;

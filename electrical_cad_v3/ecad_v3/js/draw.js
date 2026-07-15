@@ -457,6 +457,44 @@ function drawPreview() {
              prev.type === 'chain_prev') {
     ctx.setLineDash([]);
     drawDimPreview(prev);
+  } else if (prev.type === 'paste_preview') {
+    ctx.setLineDash([4/state.zoom, 3/state.zoom]);
+    ctx.globalAlpha = 0.5;
+    const { dx, dy } = prev;
+    // クリップボードの要素を仮描画
+    (state.clipboard?.els || []).forEach(el => {
+      const ne = JSON.parse(JSON.stringify(el));
+      if (typeof moveEntity === 'function') moveEntity(ne, dx, dy);
+      const lay = LAYERS.find(l => l.name === ne.layer);
+      const lc = lay ? lay.color : fgC();
+      if (ne.type === 'text')     drawTextEl(ne, false, lc, lay);
+      else if (ne.type === 'rect')     drawRectEl(ne, false, lc, lay);
+      else if (ne.type === 'circle')   drawCircleEl(ne, false, lc, lay);
+      else if (ne.type === 'fline')    drawFlineEl(ne, false, lc, lay);
+      else if (ne.type === 'triangle') drawTriEl(ne, false, lc, lay);
+      else if (ne.type === 'arc')      drawArcEl(ne, false, lc, lay);
+      else if (ne.type === 'dim')      drawDimEl(ne, false);
+      else if (ne.type === 'leader')   drawLeaderEl(ne, false);
+      else if (ne.type === 'junction') drawJunctionEl(ne, false, lc);
+      else if (ne.type === 'bezier')   drawBezierEl(ne, false, lc, lay);
+      else drawSymEl(ne, false, lc);
+    });
+    (state.clipboard?.wires || []).forEach(w => {
+      const nw = JSON.parse(JSON.stringify(w));
+      nw.pts = (nw.pts||[]).map(p => ({ x: p.x+dx, y: p.y+dy }));
+      nw.x1 = nw.pts[0]?.x; nw.y1 = nw.pts[0]?.y;
+      nw.x2 = nw.pts[nw.pts.length-1]?.x; nw.y2 = nw.pts[nw.pts.length-1]?.y;
+      // ワイヤー描画（簡易）
+      const lay = LAYERS.find(l => l.name === nw.layer);
+      const lc = lay ? lay.color : fgC();
+      ctx.setLineDash([]);
+      ctx.strokeStyle = lc;
+      ctx.lineWidth = (lay?.lineWidth || 1.0);
+      ctx.beginPath();
+      (nw.pts||[]).forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+      ctx.stroke();
+    });
+    ctx.globalAlpha = 1;
   }
 
   ctx.setLineDash([]); ctx.restore();

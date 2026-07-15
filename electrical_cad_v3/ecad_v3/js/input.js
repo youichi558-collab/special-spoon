@@ -108,6 +108,25 @@ cv.addEventListener('mousedown', e => {
     return;
   }
 
+  // pasteモード：1クリック目=基準点、2クリック目=貼付け先
+  if (state.mode === 'paste') {
+    const sp = snapPt(wx, wy);
+    if (state.pasteStep === 'base') {
+      state.pasteBaseWorld = { x: sp.x, y: sp.y };
+      state.pasteStep = 'dest';
+      document.getElementById('s-hint').textContent = '貼付け先をクリック  [ESC] キャンセル';
+    } else if (state.pasteStep === 'dest') {
+      const base = state.pasteBaseWorld;
+      const orig = clipboardOrigin();
+      // クリップボード原点→基準点のオフセット + 基準点→貼付け先のオフセット
+      const dx = (sp.x - base.x) + (base.x - orig.x);
+      const dy = (sp.y - base.y) + (base.y - orig.y);
+      commitPaste(dx, dy);
+    }
+    draw();
+    return;
+  }
+
   // 左ボタン → リサイズハンドル優先チェック（selectモード時）
   if (state.mode === 'select') {
     const h = hitResizeHandle(wx, wy);
@@ -139,6 +158,26 @@ cv.addEventListener('mousemove', e => {
     if (Math.hypot(dx, dy) > 4) state.mouse.dragMoved = true;
     state.pan.x = state.mouse.panOrigin.x + dx;
     state.pan.y = state.mouse.panOrigin.y + dy;
+    draw();
+    return;
+  }
+
+  // pasteモード：マウス追従プレビュー
+  if (state.mode === 'paste') {
+    const sp = snapPt(wx, wy);
+    const orig = clipboardOrigin();
+    let dx, dy;
+    if (state.pasteStep === 'base') {
+      // 基準点未確定：BBox左上がカーソルに追従
+      dx = sp.x - orig.x; dy = sp.y - orig.y;
+    } else {
+      // 基準点確定済み：基準点がカーソルに追従
+      const base = state.pasteBaseWorld;
+      dx = (sp.x - base.x) + (base.x - orig.x);
+      dy = (sp.y - base.y) + (base.y - orig.y);
+    }
+    state.preview = { type: 'paste_preview', dx, dy };
+    state.snapPreview = getAllSnapPoints(wx, wy);
     draw();
     return;
   }
