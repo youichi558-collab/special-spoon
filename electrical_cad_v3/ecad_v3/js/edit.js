@@ -584,14 +584,14 @@ function explodeSelected() {
 // キーボードショートカット
 // ----------------------------------------------------------------
 document.addEventListener('keydown', e => {
-  if (['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
-  // Shiftキーで一時的に直交ON（F8トグルと独立して管理）
+  // Shiftキーで一時的に直交ON（INPUT等フォーカス中でも動作させる）
   if (e.key === 'Shift' && !e.repeat && !state.ortho) {
     state._shiftOrtho = true;
     state.ortho = true;
     document.getElementById('rb-ortho')?.classList.add('on');
     return;
   }
+  if (['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
 
   if (e.ctrlKey) {
     switch (e.key) {
