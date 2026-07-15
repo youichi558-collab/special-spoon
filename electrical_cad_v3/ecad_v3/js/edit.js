@@ -273,14 +273,30 @@ function cutSelected() { copySelected(); delSel(); }
 function pasteSelected() {
   if (!state.clipboard?.els) return;
   pushH();
-  const off = state.G * 2;
+
+  // クリップボード内要素のBBox左上を計算
+  const allPts = [];
+  state.clipboard.els.forEach(el => {
+    if (el.x  != null) allPts.push({x: el.x,  y: el.y});
+    if (el.x1 != null) allPts.push({x: el.x1, y: el.y1}, {x: el.x2, y: el.y2});
+  });
+  state.clipboard.wires.forEach(w => (w.pts||[]).forEach(p => allPts.push(p)));
+  const bx = allPts.length ? Math.min(...allPts.map(p=>p.x)) : 0;
+  const by = allPts.length ? Math.min(...allPts.map(p=>p.y)) : 0;
+
+  // マウスのワールド座標を基準にオフセット計算（マウス位置がBBox左上になるように）
+  const mx = state.mouse?.wx ?? bx;
+  const my = state.mouse?.wy ?? by;
+  const dx = mx - bx;
+  const dy = my - by;
+
   const idMap = {}; // 旧ID → 新ID のマッピング
   function offsetEl(el) {
     const ne = JSON.parse(JSON.stringify(el));
     const newId = genId('el');
     idMap[el.id] = newId;
     ne.id = newId;
-    moveEntity(ne, off, off);
+    moveEntity(ne, dx, dy);
     return ne;
   }
   const newEls = state.clipboard.els.map(offsetEl);
@@ -289,7 +305,7 @@ function pasteSelected() {
     const newId = genId('w');
     idMap[w.id] = newId;
     nw.id  = newId;
-    nw.pts = (nw.pts||[]).map(p => ({ x: p.x+off, y: p.y+off }));
+    nw.pts = (nw.pts||[]).map(p => ({ x: p.x+dx, y: p.y+dy }));
     nw.x1  = nw.pts[0]?.x; nw.y1 = nw.pts[0]?.y;
     nw.x2  = nw.pts[nw.pts.length-1]?.x; nw.y2 = nw.pts[nw.pts.length-1]?.y;
     return nw;
