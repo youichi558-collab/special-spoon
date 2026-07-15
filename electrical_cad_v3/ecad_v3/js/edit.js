@@ -291,7 +291,7 @@ function pasteSelected() {
   state.mode = 'paste';
   state.pasteStep = 'base';   // 'base' → 'dest'
   state.pasteBaseWorld = null; // 基準点（ワールド座標）
-  document.getElementById('s-hint').textContent = '基準点をクリック  [ESC] キャンセル';
+  document.getElementById('s-hint').textContent = '基準点をクリック（コピー元図形上の点を選択）  [ESC] キャンセル';
   draw();
 }
 

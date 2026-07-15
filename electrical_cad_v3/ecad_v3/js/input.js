@@ -108,20 +108,18 @@ cv.addEventListener('mousedown', e => {
     return;
   }
 
-  // pasteモード：1クリック目=基準点、2クリック目=貼付け先
+  // pasteモード：1クリック目=基準点（コピー元図形上の点）、2クリック目=貼付け先
   if (state.mode === 'paste') {
-    const sp = snapPt(wx, wy);
+    const pt = getAllSnapPoints(wx, wy);
+    const sp = { x: pt.x, y: pt.y };
     if (state.pasteStep === 'base') {
       state.pasteBaseWorld = { x: sp.x, y: sp.y };
       state.pasteStep = 'dest';
-      document.getElementById('s-hint').textContent = '貼付け先をクリック  [ESC] キャンセル';
+      document.getElementById('s-hint').textContent = '貼付け先をクリック（基準点がカーソルに追従）  [ESC] キャンセル';
     } else if (state.pasteStep === 'dest') {
       const base = state.pasteBaseWorld;
-      const orig = clipboardOrigin();
-      // クリップボード原点→基準点のオフセット + 基準点→貼付け先のオフセット
-      const dx = (sp.x - base.x) + (base.x - orig.x);
-      const dy = (sp.y - base.y) + (base.y - orig.y);
-      commitPaste(dx, dy);
+      // 基準点→貼付け先のオフセットで移動
+      commitPaste(sp.x - base.x, sp.y - base.y);
     }
     draw();
     return;
@@ -177,19 +175,19 @@ cv.addEventListener('mousemove', e => {
     return;
   }
 
-  // pasteモード：マウス追従プレビュー
+  // pasteモード：プレビュー表示
   if (state.mode === 'paste') {
-    const sp = snapPt(wx, wy);
-    const orig = clipboardOrigin();
+    const pt = getAllSnapPoints(wx, wy);
+    const sp = { x: pt.x, y: pt.y };
     let dx, dy;
     if (state.pasteStep === 'base') {
-      // 基準点未確定：BBox左上がカーソルに追従
-      dx = sp.x - orig.x; dy = sp.y - orig.y;
+      // 基準点未確定：コピー元の位置に半透明表示し、図形上の点を基準点として選ばせる
+      dx = 0; dy = 0;
     } else {
       // 基準点確定済み：基準点がカーソルに追従
       const base = state.pasteBaseWorld;
-      dx = (sp.x - base.x) + (base.x - orig.x);
-      dy = (sp.y - base.y) + (base.y - orig.y);
+      dx = sp.x - base.x;
+      dy = sp.y - base.y;
     }
     state.preview = { type: 'paste_preview', dx, dy };
     state.snapPreview = getAllSnapPoints(wx, wy);
