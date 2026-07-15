@@ -612,6 +612,95 @@ function explodeSelected() {
 // ----------------------------------------------------------------
 // キーボードショートカット
 // ----------------------------------------------------------------
+// ================================================================
+// partRef入力UI（部品番号の一括入力）
+// ================================================================
+// 末尾の数字をインクリメント（ゼロ埋め維持: MC01→MC02）。数字なしはそのまま返す
+function incRef(s) {
+  const m = String(s || '').match(/^(.*?)(\d+)$/);
+  if (!m) return s || '';
+  const n = String(parseInt(m[2], 10) + 1).padStart(m[2].length, '0');
+  return m[1] + n;
+}
+
+// シンボル位置にインライン入力を表示（Enter確定 / ESCキャンセル / 外側クリック確定）
+function showPartRefInput(wx, wy, prefill, onConfirm, onCancel) {
+  const cv = document.getElementById('cv');
+  const r  = cv.getBoundingClientRect();
+  const sx = wx * state.zoom + state.pan.x + r.left;
+  const sy = wy * state.zoom + state.pan.y + r.top;
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = `position:fixed;left:${sx - 70}px;top:${sy - 34}px;z-index:9999;display:flex;gap:4px;align-items:center;background:var(--bg2,#2a2a2a);border:1px solid var(--acc,#1d6fb5);border-radius:4px;padding:3px 5px;box-shadow:0 2px 8px rgba(0,0,0,.5)`;
+  const inp = document.createElement('input');
+  inp.type = 'text'; inp.placeholder = '部品番号'; inp.value = prefill || '';
+  inp.style.cssText = 'width:110px;background:transparent;border:none;outline:none;color:inherit;font-size:12px;';
+  wrap.appendChild(inp);
+  document.body.appendChild(wrap);
+  inp.focus(); inp.select();
+
+  let done = false;
+  const safeDone = (ok) => {
+    if (done) return; done = true;
+    document.removeEventListener('mousedown', onOut, true);
+    const v = inp.value.trim();
+    wrap.remove();
+    if (ok) onConfirm(v); else if (onCancel) onCancel();
+  };
+  inp.addEventListener('keydown', e => {
+    e.stopPropagation();
+    if (e.key === 'Enter')  { e.preventDefault(); safeDone(true); }
+    if (e.key === 'Escape') { e.preventDefault(); safeDone(false); }
+  });
+  const onOut = (e) => {
+    if (!wrap.contains(e.target)) { e.stopPropagation(); safeDone(true); }
+  };
+  document.addEventListener('mousedown', onOut, true);
+}
+
+// P: 選択中のシンボルへ順番にインライン入力（前回入力値+1を自動プリセット）
+function quickPartRefEdit() {
+  const els = state.elements.filter(el => state.sel.els.has(el.id) && getDef(el.type));
+  if (!els.length) return false;
+  state.showPartRef = true;
+  if (typeof syncPartRefBtn === 'function') syncPartRefBtn();
+  let i = 0, lastVal = '';
+  const next = () => {
+    if (i >= els.length) { draw(); updateRightPanel(); return; }
+    const el = els[i++];
+    const d  = getDef(el.type) || { h: 34 };
+    const sc = el.scale || 1;
+    const prefill = el.partRef || (lastVal ? incRef(lastVal) : '');
+    showPartRefInput(el.x, el.y - (d.h * sc / 2 + 10), prefill, (v) => {
+      if (v !== (el.partRef || '')) { pushH(); el.partRef = v; }
+      if (v) lastVal = v;
+      draw(); next();
+    }, () => { draw(); updateRightPanel(); });
+  };
+  next();
+  return true;
+}
+
+// 連続採番モード：開始番号を指定→シンボルをクリックするたびに自動採番
+function startPartRefSeq() {
+  const start = prompt('開始部品番号を入力（例: MC1）\nクリックしたシンボルに順番に割り当てます', state.partRefNext || 'MC1');
+  if (!start || !start.trim()) return;
+  state.partRefNext = start.trim();
+  state.mode = 'partref'; state.symType = null;
+  state.showPartRef = true;
+  if (typeof syncPartRefBtn === 'function') syncPartRefBtn();
+  document.querySelectorAll('.sym-item').forEach(el => el.classList.remove('on'));
+  document.getElementById('rb-sel')?.classList.remove('on');
+  document.getElementById('s-hint').textContent = `「${state.partRefNext}」を割り当て → シンボルをクリック  [ESC] 終了`;
+  draw();
+}
+function exitPartRefSeq() {
+  state.mode = 'select';
+  document.getElementById('s-hint').textContent = '';
+  document.getElementById('rb-sel')?.classList.add('on');
+  updateHint(); draw();
+}
+
 document.addEventListener('keydown', e => {
   // Shiftキーで一時的に直交ON（INPUT等フォーカス中でも動作させる）
   if (e.key === 'Shift' && !e.repeat && !state.ortho) {
@@ -651,6 +740,9 @@ document.addEventListener('keydown', e => {
       }
       break;
     case 'Escape':
+      if (state.mode === 'partref') {
+        exitPartRefSeq(); break;
+      }
       if (state.mode === 'paste') {
         state.mode = 'select'; state.pasteStep = null; state.pasteBaseWorld = null; state.preview = null;
         document.getElementById('s-hint').textContent = '';
@@ -675,6 +767,7 @@ document.addEventListener('keydown', e => {
     case 'r': rotateSel(90); break;
     case 'h': flipSel('h'); break;
     case 'v': flipSel('v'); break;
+    case 'p': e.preventDefault(); if (!quickPartRefEdit()) startPartRefSeq(); break;
     case '+': case '=': doZoom(1.25); break;
     case '-': doZoom(0.8); break;
     case '0': resetView(); break;

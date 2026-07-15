@@ -1315,9 +1315,25 @@ function updateHint() {
     circle: '中心クリック → 半径クリック',
     fline:  '1点目クリック → 2点目クリック',
     sym:    'クリックで配置 | Escでキャンセル',
+    partref:'シンボルをクリックで部品番号を割り当て（自動採番） | ESC終了',
   };
   const el = document.getElementById('s-hint');
   if (el) el.textContent = hints[state.mode] || '';
+}
+
+// ----------------------------------------------------------------
+// 部品番号（partRef）表示トグル
+// ----------------------------------------------------------------
+function togglePartRefDisp() {
+  state.showPartRef = !state.showPartRef;
+  syncPartRefBtn(); draw();
+}
+function syncPartRefBtn() {
+  const b = document.getElementById('qb-pref');
+  if (!b) return;
+  b.style.background = state.showPartRef ? 'var(--acc)' : 'var(--bg)';
+  b.style.color      = state.showPartRef ? '#fff' : 'var(--fg)';
+  b.style.fontWeight = state.showPartRef ? '600' : '400';
 }
 
 function toggleDark() {

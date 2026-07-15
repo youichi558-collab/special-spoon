@@ -127,6 +127,21 @@ cv.addEventListener('mousedown', e => {
     return;
   }
 
+  // partRef連続採番モード：シンボルクリックで割り当て→自動インクリメント
+  if (state.mode === 'partref') {
+    state.mouse.down = false; state.mouse.dragging = false;
+    const el = hitTest(wx, wy);
+    if (el && getDef(el.type)) {
+      pushH();
+      const assigned = state.partRefNext || '';
+      el.partRef = assigned;
+      state.partRefNext = incRef(assigned);
+      document.getElementById('s-hint').textContent = `「${assigned}」を割当 → 次:「${state.partRefNext}」をクリック  [ESC] 終了`;
+      draw();
+    }
+    return;
+  }
+
   // 左ボタン → リサイズハンドル優先チェック（selectモード時）
   if (state.mode === 'select') {
     const h = hitResizeHandle(wx, wy);

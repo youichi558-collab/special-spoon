@@ -388,6 +388,18 @@ function drawSymEl(el, sel, lc) {
     ctx.fillText(el.label, lx, ly);
     ctx.restore();
   }
+  // 部品番号表示（表示ON時。未入力シンボルはオレンジ「?」で明示）
+  if (state.showPartRef && !state.pdfSkipText) {
+    const d  = getDef(el.type) || { w:64, h:34 };
+    const sc = el.scale || 1;
+    const py = el.y - (d.h*sc/2 + 6);
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 11px sans-serif';
+    if (el.partRef) { ctx.fillStyle = state.darkMode ? '#4da3ff' : '#1d6fb5'; ctx.fillText(el.partRef, el.x, py); }
+    else            { ctx.fillStyle = '#e8a33d'; ctx.fillText('?', el.x, py); }
+    ctx.restore();
+  }
   if (el.refLabel) {
     const d  = getDef(el.type) || { h:34 };
     const sc = el.scale || 1;
