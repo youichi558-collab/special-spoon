@@ -349,9 +349,73 @@ function exportSearchResultCSV() {
 }
 
 // 検索結果を元に、CSV一括登録欄へ型式だけ入れた行を追記（値は目視で埋めてもらう運用）
+const _VOLT_RE = /\d{2,4}\s*[~～\-]\s*\d{2,4}\s*V|\d{2,4}\s*V/;
+
+// _lastSearchRows（項目・値の一覧）から、電流・電圧らしき行をキーワードで
+// それらしく拾う。三菱・富士系のカタログでは「電圧はラベル側に書かれ、
+// 値はkW/A形式（例: 3.7/18）」というパターンが多いため、まずそれを試す。
+// 該当しなければ、値そのものが電流・電圧の候補として使えるかを見る。
+function _guessVoltAmp(rows) {
+  const excludeKeywords = ['絶縁', 'インパルス', '開放熱電流', 'インチング'];
+  for (const r of rows) {
+    const label = r.label || '';
+    const value = String(r.value ?? '');
+    if (excludeKeywords.some(k => label.includes(k))) continue;
+    if (!label.includes('電流') && !label.includes('電圧')) continue;
+    const voltMatch = label.match(_VOLT_RE);
+    if (voltMatch && value.includes('/')) {
+      // ラベルに電圧範囲、値が"kW/A"形式 → 電圧はラベルから、電流は"/"の後ろ
+      return { label, volt: voltMatch[0].replace(/\s/g, ''), amp: value.split('/').pop().trim() };
+    }
+    if (voltMatch && !value.includes('/') && label.includes('電流')) {
+      // ラベルに電圧、値がそのまま電流の数値
+      return { label, volt: voltMatch[0].replace(/\s/g, ''), amp: value };
+    }
+  }
+  return null;
+}
+
+function _guessField(rows, keywords, excludeKeywords) {
+  for (const r of rows) {
+    const label = r.label || '';
+    if (excludeKeywords && excludeKeywords.some(k => label.includes(k))) continue;
+    if (keywords.some(k => label.includes(k))) return { label, value: r.value };
+  }
+  return null;
+}
+
+// CSVフィールド区切りのカンマ・改行・ダブルクォートをエスケープ
+function _csvField(s) {
+  s = String(s ?? '');
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
 function appendSearchToCsv(model) {
   const ta = document.getElementById('pr-csv');
-  const line = `,${model},coil,,,,,`;
+  const rows = _lastSearchRows || [];
+
+  const voltAmp = _guessVoltAmp(rows);
+  const contacts = _guessField(rows, ['接点構成', '補助接点'], ['可逆(']);
+
+  // 拾えなかった残りの項目は備考にまとめて残す（安全のため自動転記しない）
+  const usedLabels = new Set([voltAmp, contacts].filter(Boolean).map(x => x.label));
+  const detailNote = rows
+    .filter(r => !usedLabels.has(r.label))
+    .map(r => `${r.label}:${r.value}`)
+    .join(' / ');
+  const note = `[要確認] カタログ検索結果${detailNote ? ' - ' + detailNote : ''}`;
+
+  const fields = [
+    '',                                    // メーカー（不明なため空欄。わかれば入力してください）
+    model,
+    'coil',                                // 種別（推定できないためデフォルト。必要に応じて変更してください）
+    voltAmp ? voltAmp.volt : '',
+    voltAmp ? voltAmp.amp : '',
+    '',                                    // 端子番号
+    contacts ? contacts.value : '',
+    note,
+  ];
+  const line = fields.map(_csvField).join(',');
   ta.value = ta.value ? (ta.value.replace(/\n+$/, '') + '\n' + line) : line;
   ta.scrollTop = ta.scrollHeight;
 }
