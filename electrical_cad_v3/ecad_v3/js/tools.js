@@ -544,23 +544,6 @@ const guideTool = {
   onMove() {},
   onUp() {},
 };
-const TOOLS = {
-  select: selectTool,
-  wire:   wireTool,
-  sym:    symTool,
-  text:   textTool,
-  rect:   shapeTool,
-  circle: shapeTool,
-  fline:  shapeTool,
-  arc:    arcTool,
-  arc3:   arc3Tool,
-  triangle: triTool,
-  junction: junctionTool,
-  bezier: bezierTool,
-  guide_h:  guideTool,
-  guide_v:  guideTool,
-  outline: outlineTool,
-};
 
 // ----------------------------------------------------------------
 // 部品外形図 配置ツール（部品DBに紐付けたDXF外形図をキャンバスに配置）
@@ -591,6 +574,24 @@ const outlineTool = {
     state.preview = { type: 'outline_preview', x: sx, y: sy, w: state.pendingOutline.width, h: state.pendingOutline.height };
   },
   onUp() {},
+};
+
+const TOOLS = {
+  select: selectTool,
+  wire:   wireTool,
+  sym:    symTool,
+  text:   textTool,
+  rect:   shapeTool,
+  circle: shapeTool,
+  fline:  shapeTool,
+  arc:    arcTool,
+  arc3:   arc3Tool,
+  triangle: triTool,
+  junction: junctionTool,
+  bezier: bezierTool,
+  guide_h:  guideTool,
+  guide_v:  guideTool,
+  outline: outlineTool,
 };
 
 // ----------------------------------------------------------------
