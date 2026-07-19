@@ -9,14 +9,34 @@ function autoWireNumber(){
   html+='</table>';document.getElementById('wire-body').innerHTML=html;openFP('wire-p');draw();
 }
 function exportWireCSV(){const rows=['線番,始点X,始点Y,終点X,終点Y,レイヤー',...state.wires.map(w=>{const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];const p0=pts[0],p1=pts[pts.length-1];return`${w.wireNo||''},${Math.round(p0.x)},${Math.round(p0.y)},${Math.round(p1.x)},${Math.round(p1.y)},${w.layer||''}`;})];dl(rows.join('\n'),'wire_numbers.csv','text/csv');}
+// 全ページの要素を集計し、種別×型番でグルーピング。項目記号(partRef)は各行に一覧表示する。
+function collectBOMRows(){
+  const skip=['text','rect','circle','fline','dim','leader'];
+  const counts={};
+  state.pages.forEach(pg=>{
+    (pg.elements||[]).forEach(el=>{
+      if(skip.includes(el.type))return;
+      const model=el.partModel||'';
+      const name=model||el.label||el.type;
+      const k=`${el.type}|${name}`;
+      if(!counts[k])counts[k]={type:el.type,label:name,model,refs:[],count:0,jis:getDef(el.type)?.jis||''};
+      counts[k].count++;
+      if(el.partRef)counts[k].refs.push(el.partRef);
+    });
+  });
+  return Object.values(counts);
+}
 function showBOM(){
   const skip=['text','rect','circle','fline','dim','leader'];
-  const counts={};state.elements.forEach(el=>{if(skip.includes(el.type))return;const name=el.partRef||el.label||el.type;const k=`${el.type}|${name}`;if(!counts[k])counts[k]={type:el.type,label:name,count:0,jis:getDef(el.type)?.jis||''};counts[k].count++;});
-  const rows=Object.values(counts);
-  let html=rows.length?`<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">合計 ${state.elements.filter(e=>!skip.includes(e.type)).length} 個</p><table class="tbl"><tr><th>記号</th><th>種別</th><th>JIS</th><th>数量</th></tr>${rows.map(r=>`<tr><td>${r.label}</td><td>${r.type}</td><td style="color:var(--acc)">${r.jis}</td><td style="font-weight:600">${r.count}</td></tr>`).join('')}</table>`:'<p style="font-size:11px;color:var(--fg3)">配置されたシンボルがありません</p>';
+  const rows=collectBOMRows();
+  const total=state.pages.reduce((s,pg)=>s+(pg.elements||[]).filter(e=>!skip.includes(e.type)).length,0);
+  let html=rows.length?`<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">全${state.pages.length}ページ集計・合計 ${total} 個</p><table class="tbl"><tr><th>型番/名称</th><th>種別</th><th>JIS</th><th>項目記号</th><th>数量</th></tr>${rows.map(r=>`<tr><td>${r.label}</td><td>${r.type}</td><td style="color:var(--acc)">${r.jis}</td><td style="font-size:10px;color:var(--fg3)">${r.refs.join(', ')||'-'}</td><td style="font-weight:600">${r.count}</td></tr>`).join('')}</table>`:'<p style="font-size:11px;color:var(--fg3)">配置されたシンボルがありません</p>';
   document.getElementById('bom-body').innerHTML=html;openFP('bom-p');
 }
-function exportBOMCSV(){const skip=['text','rect','circle','fline','dim','leader'];const counts={};state.elements.forEach(el=>{if(skip.includes(el.type))return;const name=el.partRef||el.label||el.type;const k=`${el.type}|${name}`;if(!counts[k])counts[k]={type:el.type,label:name,count:0,jis:getDef(el.type)?.jis||''};counts[k].count++;});dl(['記号,種別,JIS規格,数量',...Object.values(counts).map(r=>`${r.label},${r.type},${r.jis},${r.count}`)].join('\n'),'bom.csv','text/csv');}
+function exportBOMCSV(){
+  const rows=collectBOMRows();
+  dl(['型番/名称,種別,JIS規格,項目記号,数量',...rows.map(r=>`${r.label},${r.type},${r.jis},"${r.refs.join('/')}",${r.count}`)].join('\n'),'bom.csv','text/csv');
+}
 function showRefPanel(){
   const coils=state.elements.filter(el=>getDef(el.type)?.isCoil);
   const contacts=state.elements.filter(el=>getDef(el.type)?.isContact||el.refCoil);
