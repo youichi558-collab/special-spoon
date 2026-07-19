@@ -102,7 +102,7 @@ def build_header_labels(grid, header_rows):
     return labels
 
 
-def search_pdf(pdf_path, model_query, header_rows, out_rows):
+def search_pdf(pdf_path, model_query, header_rows, out_rows, stop_at_first=False):
     with pdfplumber.open(pdf_path) as pdf:
         for page_idx, page in enumerate(pdf.pages, start=1):
             text = page.extract_text() or ''
@@ -122,11 +122,16 @@ def search_pdf(pdf_path, model_query, header_rows, out_rows):
                             label = labels[ci] if ci < len(labels) else f'列{ci}'
                             out_rows.append([os.path.basename(pdf_path), page_idx, label, val])
                         out_rows.append([os.path.basename(pdf_path), page_idx, '---', '---'])
+                        if stop_at_first:
+                            return True
+    return False
 
 
-def search_model(target, model_query, header_rows=3):
+def search_model(target, model_query, header_rows=3, stop_at_first=False):
     """target(PDFファイル or フォルダ)からmodel_queryを検索し、
-    [(source_file, page_no, label, value), ...] を返す。サーバーからも呼べるように分離。"""
+    [(source_file, page_no, label, value), ...] を返す。サーバーからも呼べるように分離。
+    stop_at_first=True の場合、最初に見つかった時点で残りの検索を打ち切る（高速だが、
+    同じ型式が複数箇所にある場合は最初の1件しか拾えない）。"""
     if os.path.isdir(target):
         pdf_files = [os.path.join(target, f) for f in sorted(os.listdir(target)) if f.lower().endswith('.pdf')]
     else:
@@ -135,7 +140,9 @@ def search_model(target, model_query, header_rows=3):
     out_rows = []
     for pdf_path in pdf_files:
         try:
-            search_pdf(pdf_path, model_query, header_rows, out_rows)
+            found = search_pdf(pdf_path, model_query, header_rows, out_rows, stop_at_first)
+            if stop_at_first and found:
+                break
         except Exception as e:
             print(f"警告: {pdf_path} の処理中にエラー: {e}")
     return out_rows

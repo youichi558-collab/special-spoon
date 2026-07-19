@@ -496,6 +496,9 @@
         <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="openFolderBrowser()">📁 フォルダを選択して追加</button>
       </div>
       <div class="fr"><label>型式</label><input type="text" id="cs-model" placeholder="例: S-T20 または SC20XA-□10"></div>
+      <label style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--fg3);margin:2px 0 6px">
+        <input type="checkbox" id="cs-stop-first">最初に見つかった時点で中断する（高速。同じ型式が複数ファイルにある場合は最初の1件しか出ません）
+      </label>
       <div style="display:flex;gap:6px;margin:6px 0">
         <button class="fp-btn primary" onclick="catalogSearch()">検索</button>
       </div>

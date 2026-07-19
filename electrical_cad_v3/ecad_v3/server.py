@@ -148,6 +148,7 @@ class Handler(SimpleHTTPRequestHandler):
         model = (qs.get('model') or [''])[0]
         mode = (qs.get('mode') or ['pivot'])[0]
         header_rows = int((qs.get('header_rows') or ['3'])[0])
+        stop_first = (qs.get('stop_first') or ['0'])[0] == '1'
 
         if not model:
             self._send_json({"error": "modelパラメータが必要です"}, status=400)
@@ -175,16 +176,16 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             if mode == 'list':
                 import find_spec_list
-                rows = find_spec_list.search_model(path, model, header_rows)
+                rows = find_spec_list.search_model(path, model, header_rows, stop_at_first=stop_first)
             else:
                 import find_spec
-                rows = find_spec.search_model(path, model)
+                rows = find_spec.search_model(path, model, stop_at_first=stop_first)
         except Exception as e:
             self._send_json({"error": f"検索中にエラーが発生しました: {e}"}, status=500)
             return
 
         result = [{"source": r[0], "page": r[1], "label": r[2], "value": r[3]} for r in rows]
-        self._send_json({"rows": result})
+        self._send_json({"rows": result, "stop_first": stop_first})
 
     def _send_json(self, obj, status=200):
         body = json.dumps(obj, ensure_ascii=False).encode('utf-8')

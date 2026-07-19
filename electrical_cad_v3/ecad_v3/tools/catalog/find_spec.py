@@ -65,7 +65,7 @@ def row_label(cells, ncols_label=4):
     return ' / '.join(parts)
 
 
-def search_pdf(pdf_path, model_query, out_rows, ncols_label=4):
+def search_pdf(pdf_path, model_query, out_rows, ncols_label=4, stop_at_first=False):
     with pdfplumber.open(pdf_path) as pdf:
         for page_idx, page in enumerate(pdf.pages, start=1):
             text = page.extract_text() or ''
@@ -100,11 +100,16 @@ def search_pdf(pdf_path, model_query, out_rows, ncols_label=4):
                     if not label and not value:
                         continue
                     out_rows.append([os.path.basename(pdf_path), page_idx, label, value])
+                if stop_at_first:
+                    return True
+    return False
 
 
-def search_model(target, model_query, ncols_label=4):
+def search_model(target, model_query, ncols_label=4, stop_at_first=False):
     """target(PDFファイル or フォルダ)からmodel_queryを検索し、
-    [(source_file, page_no, label, value), ...] を返す。サーバーからも呼べるように分離。"""
+    [(source_file, page_no, label, value), ...] を返す。サーバーからも呼べるように分離。
+    stop_at_first=True の場合、最初に見つかった時点で残りのファイル/ページの検索を打ち切る（高速だが、
+    同じ型式が複数ファイル/ページに存在する場合は最初の1件しか拾えない）。"""
     if os.path.isdir(target):
         pdf_files = [os.path.join(target, f) for f in sorted(os.listdir(target)) if f.lower().endswith('.pdf')]
     else:
@@ -113,7 +118,9 @@ def search_model(target, model_query, ncols_label=4):
     out_rows = []
     for pdf_path in pdf_files:
         try:
-            search_pdf(pdf_path, model_query, out_rows, ncols_label)
+            found = search_pdf(pdf_path, model_query, out_rows, ncols_label, stop_at_first)
+            if stop_at_first and found:
+                break
         except Exception as e:
             print(f"警告: {pdf_path} の処理中にエラー: {e}")
     return out_rows

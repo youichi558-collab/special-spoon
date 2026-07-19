@@ -347,12 +347,13 @@ async function catalogSearch() {
   const catalog = document.getElementById('cs-catalog').value;
   const mode = document.getElementById('cs-mode').value;
   const model = document.getElementById('cs-model').value.trim();
+  const stopFirst = document.getElementById('cs-stop-first').checked;
   const resultEl = document.getElementById('cs-result');
   if (!model) { alert('型式を入力してください'); return; }
   resultEl.style.display = 'block';
-  resultEl.innerHTML = '検索中...';
+  resultEl.innerHTML = '検索中...（フォルダが大きいと数分かかることがあります）';
   try {
-    const url = `/api/search?catalog=${encodeURIComponent(catalog)}&model=${encodeURIComponent(model)}&mode=${encodeURIComponent(mode)}`;
+    const url = `/api/search?catalog=${encodeURIComponent(catalog)}&model=${encodeURIComponent(model)}&mode=${encodeURIComponent(mode)}&stop_first=${stopFirst ? '1' : '0'}`;
     const res = await fetch(url);
     const data = await res.json();
     if (data.error) { resultEl.innerHTML = `<span style="color:var(--red)">${data.error}</span>`; return; }
