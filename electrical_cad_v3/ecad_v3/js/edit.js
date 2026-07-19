@@ -974,10 +974,7 @@ const MASK_FIELDS = ['company', 'equip', 'author', 'approve', 'date'];
 function toggleMask() {
   state.maskMode = !state.maskMode;
   const btn = document.getElementById('rb-mask');
-  if (btn) {
-    btn.style.background = state.maskMode ? 'var(--accent)' : '';
-    btn.style.color = state.maskMode ? '#fff' : '';
-  }
+  if (btn) btn.classList.toggle('on', state.maskMode);
   const status = state.maskMode ? 'ON（個人情報マスク中）' : 'OFF';
   console.log('[mask] マスクモード:', status);
 }

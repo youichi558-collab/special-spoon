@@ -20,7 +20,7 @@ body.dk{
   --grn:#2ecc71;--gbg:#1a3d2a;--gfg:#88f0a8;
   --red:#ff6b6b;--rbg:#3d1a1a;
   --pur:#b39ddb;--pbg:#2d1a3d;--pfg:#d8b8ff;
-  --ribbon:#2d2d2d;--ribbon-act:#1e1e1e;--canvas:#252525;
+  --ribbon:#2d2d2d;--ribbon-act:#1e1e1e;--ribbon-sel:#1a3a5c;--canvas:#252525;
   --sh:rgba(0,0,0,.5);
 }
 *{box-sizing:border-box;margin:0;padding:0;user-select:none;}
@@ -128,7 +128,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--acc);}
 .fp-btn.primary:hover{opacity:.9;}
 .fp-btn.danger{color:var(--red);border-color:var(--red);}
 .fp-btn.danger:hover{background:var(--rbg);}
-.se-tool.on{background:var(--acc);color:#fff;border-color:var(--acc);}
+.sr-tool.active{background:var(--acc);color:#fff;border-color:var(--acc);}
 
 /* ========= 選択ボックス ========= */
 #selbox{display:none;position:absolute;border:1.5px solid var(--acc);background:rgba(0,103,192,.08);pointer-events:none;}

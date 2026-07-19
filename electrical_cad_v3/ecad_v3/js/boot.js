@@ -42,7 +42,11 @@ function _safeInit(label, fn) {
 
   // ダークモード初期適用
   _safeInit('ダークモード適用', () => {
-    if (state.darkMode) document.body.classList.add('dk');
+    if (state.darkMode) {
+      document.body.classList.add('dk');
+      const dkLbl = document.getElementById('dk-label');
+      if (dkLbl) dkLbl.textContent = 'ライト';
+    }
   });
 
   // 初期描画（ここが最も重要。前段が多少失敗していても、必ず到達させる）

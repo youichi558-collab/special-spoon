@@ -328,6 +328,12 @@ function setMode(m, sym) {
   if (typeof updateResizeHandles === 'function') updateResizeHandles();
   document.querySelectorAll('.rb[id^=rb-]').forEach(b => b.classList.remove('on'));
   document.getElementById('rb-' + (m === 'sym' ? 'sym' : m))?.classList.add('on');
+  // トグル系ボタンはモードと独立なので表示状態を復元
+  document.getElementById('rb-ortho')?.classList.toggle('on', !!state.ortho);
+  document.getElementById('rb-snapend')?.classList.toggle('on', !!state.snapEnd);
+  document.getElementById('rb-snapmid')?.classList.toggle('on', !!state.snapMid);
+  document.getElementById('rb-mask')?.classList.toggle('on', !!state.maskMode);
+  document.getElementById('rb-textbox')?.classList.toggle('on', !!state.textBoxDefault);
   // クイックバーのモード表示更新
   const modeLabels = { select:'選択', wire:'配線', text:'テキスト', shape:'図形', dim:'寸法', sym:'シンボル', junction:'接続点' };
   const qbMode = document.getElementById('qb-mode');

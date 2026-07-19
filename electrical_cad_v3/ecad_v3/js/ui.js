@@ -1685,6 +1685,8 @@ function syncPartRefBtn() {
 function toggleDark() {
   state.darkMode = !state.darkMode;
   document.body.classList.toggle('dk', state.darkMode);
+  const lbl = document.getElementById('dk-label');
+  if (lbl) lbl.textContent = state.darkMode ? 'ライト' : 'ダーク';
   draw();
 }
 
