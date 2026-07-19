@@ -26,7 +26,8 @@ function doAutosave() {
       savedAt: Date.now(),
       saveFileName: state.saveFileName,
       customSymbols: state.customSymbols,
-      customParts:   state.customParts,
+      // 部品DBが外部ファイルで管理されている場合は埋め込まない（容量節約・二重管理防止）
+      customParts:   (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.customParts,
       wireNoRule:    state.wireNoRule,
       layers:        LAYERS,
       pages:         state.pages,

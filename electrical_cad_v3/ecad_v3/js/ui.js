@@ -272,6 +272,7 @@ function deletePart(ref) {
   if (!confirm(`「${ref}」を削除しますか？`)) return;
   state.customParts = state.customParts.filter(p => p.ref !== ref);
   renderPartsAll();
+  partsDb.scheduleSave();
 }
 function placePart(type, ref, terminals) {
   state.symType    = type;
@@ -325,6 +326,7 @@ function saveCusPart() {
   document.getElementById('pr-outline-status').textContent = '';
   document.getElementById('pr-outline-file').value = '';
   renderPartsAll(); closeFP('part-reg-p'); alert(`「${ref}」を登録しました`);
+  partsDb.scheduleSave();
 }
 
 // 既存カスタム部品に外形図DXFを後から添付
@@ -338,6 +340,7 @@ function attachOutlineToPart(ref) {
     _readDxfFileAsText(f, text => {
       part.outlineDxf = text; part.outlineDxfName = f.name;
       renderPartsAll();
+      partsDb.scheduleSave();
       alert(`「${ref}」に外形図「${f.name}」を添付しました`);
     });
   };
@@ -395,6 +398,7 @@ function bulkImportParts() {
     else { state.customParts.push(part); added++; }
   });
   renderPartsAll();
+  partsDb.scheduleSave();
   let msg = `登録完了: 新規${added}件`;
   if (updated) msg += `・更新${updated}件`;
   if (skipped) msg += `・スキップ${skipped}件`;
@@ -1652,6 +1656,9 @@ function renderPartsTable2(parts) {
       </div>
       <div style="font-size:10px;color:var(--fg3)">${p.maker} ${p.volt||''} ${p.amp||''}</div>
       ${p.contacts?`<div style="font-size:10px;color:var(--acc)">接点:${p.contacts}</div>`:''}
+      ${p.outlineDxf
+        ? `<div style="font-size:9px;color:var(--acc)">外形図: ${p.outlineDxfName||'あり'} <span onclick="event.stopPropagation();placePartOutline('${p.ref}')" style="cursor:pointer;text-decoration:underline">配置</span></div>`
+        : (p.custom ? `<div style="font-size:9px;color:var(--fg3)">外形図なし <span onclick="event.stopPropagation();attachOutlineToPart('${p.ref}')" style="cursor:pointer;text-decoration:underline;color:var(--acc)">添付</span></div>` : '')}
     </div>`).join('');
 }
 function filterParts(q) {

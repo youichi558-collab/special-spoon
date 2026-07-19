@@ -18,6 +18,9 @@
   // localStorageからシンボルライブラリを読み込む
   loadSymbolsFromStorage();
 
+  // 部品DB（外部ファイル）を自動復元
+  if (typeof partsDb !== 'undefined') partsDb.autoRestore();
+
   // ダークモード初期適用
   if (state.darkMode) document.body.classList.add('dk');
 

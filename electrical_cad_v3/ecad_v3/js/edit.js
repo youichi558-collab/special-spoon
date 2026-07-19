@@ -66,6 +66,18 @@ function _syncCurrentPage() {
   p.frameObj = state.frameObj;
 }
 
+// 図面ファイルに埋め込まれたcustomParts読込時の扱い。
+// 外部部品DBファイルが設定済みの場合、d.customPartsが空/未定義なら現状(外部DB由来)を維持し、
+// データがある場合はref重複を避けてマージする（読込のたびに外部DBを上書きしない）。
+function _mergeOrSetCustomParts(dParts) {
+  if (!dParts || !dParts.length) return; // 何もしない＝現状維持
+  if (typeof partsDb !== 'undefined' && partsDb.hasFile()) {
+    dParts.forEach(p => { if (!state.customParts.find(cp => cp.ref === p.ref)) state.customParts.push(p); });
+  } else {
+    state.customParts = dParts;
+  }
+}
+
 function _pageFileName(pg, idx) {
   const base = (state.saveFileName || '図面').replace(/[\\/:*?"<>|]/g, '_');
   const name = (pg.name || ('Sheet'+(idx+1))).replace(/[\\/:*?"<>|]/g, '_');
@@ -86,7 +98,8 @@ function saveProject() {
     version: 2,
     saveFileName: state.saveFileName,
     customSymbols: state.customSymbols,
-    customParts:   state.customParts,
+    // 部品DBが外部ファイルで管理されている場合は図面ファイルに埋め込まない（シンボルライブラリと同様、分離管理）
+    customParts:   (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.customParts,
     wireNoRule:    state.wireNoRule,
     layers:        LAYERS,
     pages: [pg],
@@ -108,7 +121,7 @@ function saveAllProject() {
     version: 2,
     saveFileName: state.saveFileName,
     customSymbols: state.customSymbols,
-    customParts:   state.customParts,
+    customParts:   (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.customParts,
     wireNoRule:    state.wireNoRule,
     layers:        LAYERS,
     pages: state.pages,
@@ -131,7 +144,7 @@ function loadProject(input) {
         state.pages        = d.pages || [{ name:'Sheet1', elements:[], wires:[], groups:[], guides:[], frameObj:null }];
         state.wireNoRule   = d.wireNoRule || state.wireNoRule;
         state.customSymbols= d.customSymbols || [];
-        state.customParts  = d.customParts   || [];
+        _mergeOrSetCustomParts(d.customParts);
         // 旧フォーマット互換：トップレベルのguides → page[0].guides に移行
         if (d.guides && d.guides.length) state.pages[0].guides = d.guides;
         // 各ページにguidesがなければ初期化
@@ -148,7 +161,7 @@ function loadProject(input) {
           wires:    (pg.wires||[]).map(w  => w.id  ? w  : { ...w,  id: genId('w'), wireNoAuto: true }),
         }));
         state.customSymbols = d.customSymbols || [];
-        state.customParts   = d.customParts   || [];
+        _mergeOrSetCustomParts(d.customParts);
       }
 
       state.currentPage = 0;
@@ -161,6 +174,7 @@ function loadProject(input) {
         (pg.wires||[]).forEach(w => { w.color = undefined; });
       });
       renderCustomSymbols(); renderPartsAll(); renderPageTabs(); draw(); updateRightPanel();
+      if (typeof partsDb !== 'undefined') partsDb.scheduleSave();
       alert('読込完了');
     } catch(err) {
       alert('読込失敗: ' + err.message);
