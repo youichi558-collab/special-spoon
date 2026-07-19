@@ -18,62 +18,62 @@ const symLib = (() => {
   function createPanel() {
     const panel = document.createElement('div');
     panel.id = 'symLibPanel';
-    panel.style.cssText = 'position:fixed;top:50px;right:10px;width:340px;height:calc(100vh - 60px);background:#1e1e1e;border:1px solid #444;border-radius:6px;display:flex;flex-direction:column;z-index:9000;color:#ddd;font-family:sans-serif;font-size:12px;box-shadow:0 4px 20px rgba(0,0,0,0.5);';
+    panel.style.cssText = 'position:fixed;top:50px;right:10px;width:340px;height:calc(100vh - 60px);background:var(--bg2,#1e1e1e);border:1px solid var(--bd2,#444);border-radius:6px;display:flex;flex-direction:column;z-index:9000;color:var(--fg,#ddd);font-family:sans-serif;font-size:12px;box-shadow:0 4px 20px rgba(0,0,0,0.5);';
     panel.innerHTML = `
-<div style="padding:8px 10px;background:#2a2a2a;border-radius:6px 6px 0 0;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #444;flex-shrink:0">
+<div style="padding:8px 10px;background:var(--bg3,#2a2a2a);border-radius:6px 6px 0 0;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--bd2,#444);flex-shrink:0">
   <b style="font-size:13px;">📚 シンボルライブラリ</b>
-  <button id="symLibClose" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:16px;">✕</button>
+  <button id="symLibClose" style="background:none;border:none;color:var(--fg3,#aaa);cursor:pointer;font-size:16px;">✕</button>
 </div>
-<div style="display:flex;border-bottom:1px solid #444;flex-shrink:0">
-  <button id="symTabList" style="flex:1;padding:6px;background:#252525;border:none;border-bottom:2px solid #0067c0;color:#ddd;cursor:pointer;font-size:12px;">一覧</button>
-  <button id="symTabFav"  style="flex:1;padding:6px;background:#1e1e1e;border:none;border-bottom:2px solid transparent;color:#888;cursor:pointer;font-size:12px;">⭐ お気に入り</button>
-  <button id="symTabRecent" style="flex:1;padding:6px;background:#1e1e1e;border:none;border-bottom:2px solid transparent;color:#888;cursor:pointer;font-size:12px;">🕒 最近</button>
+<div style="display:flex;border-bottom:1px solid var(--bd2,#444);flex-shrink:0">
+  <button id="symTabList" style="flex:1;padding:6px;background:var(--bg3,#252525);border:none;border-bottom:2px solid #0067c0;color:var(--fg,#ddd);cursor:pointer;font-size:12px;">一覧</button>
+  <button id="symTabFav"  style="flex:1;padding:6px;background:var(--bg2,#1e1e1e);border:none;border-bottom:2px solid transparent;color:var(--fg3,#888);cursor:pointer;font-size:12px;">⭐ お気に入り</button>
+  <button id="symTabRecent" style="flex:1;padding:6px;background:var(--bg2,#1e1e1e);border:none;border-bottom:2px solid transparent;color:var(--fg3,#888);cursor:pointer;font-size:12px;">🕒 最近</button>
 </div>
 <div id="symListPane" style="display:flex;flex-direction:column;flex:1;min-height:0;">
-  <div style="padding:6px 8px;border-bottom:1px solid #333;flex-shrink:0;">
+  <div style="padding:6px 8px;border-bottom:1px solid var(--bd,#333);flex-shrink:0;">
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
       <button id="symLibZipBtn" style="background:#0067c0;border:none;color:#fff;padding:3px 10px;border-radius:3px;cursor:pointer;font-size:11px;flex-shrink:0;">📂 ZIPを選択</button>
       <input type="file" id="symLibZip" accept=".zip" style="display:none;">
     </div>
-    <div id="symLibStatus" style="font-size:10px;color:#888;">ZIPを選択してください</div>
+    <div id="symLibStatus" style="font-size:10px;color:var(--fg3,#888);">ZIPを選択してください</div>
   </div>
-  <div style="padding:5px 6px;border-bottom:1px solid #333;display:flex;gap:3px;flex-wrap:wrap;flex-shrink:0;">
-    <select id="symLibStd" style="flex:1;background:#333;color:#ddd;border:1px solid #555;border-radius:3px;padding:2px;font-size:10px;">
+  <div style="padding:5px 6px;border-bottom:1px solid var(--bd,#333);display:flex;gap:3px;flex-wrap:wrap;flex-shrink:0;">
+    <select id="symLibStd" style="flex:1;background:var(--bg3,#333);color:var(--fg,#ddd);border:1px solid var(--bd2,#555);border-radius:3px;padding:2px;font-size:10px;">
       <option value="">規格（全て）</option>
       <option value="JIS_C_0617">JIS C 0617</option>
       <option value="JSIA_118">JSIA 118</option>
     </select>
-    <select id="symLibCat" style="flex:1;background:#333;color:#ddd;border:1px solid #555;border-radius:3px;padding:2px;font-size:10px;">
+    <select id="symLibCat" style="flex:1;background:var(--bg3,#333);color:var(--fg,#ddd);border:1px solid var(--bd2,#555);border-radius:3px;padding:2px;font-size:10px;">
       <option value="">図面種別（全て）</option>
       <option value="単線図用">単線図用</option>
       <option value="展開図用">展開図用</option>
       <option value="複線図用">複線図用</option>
     </select>
-    <select id="symLibType3" style="flex:1 1 100%;background:#333;color:#ddd;border:1px solid #555;border-radius:3px;padding:2px;font-size:10px;">
+    <select id="symLibType3" style="flex:1 1 100%;background:var(--bg3,#333);color:var(--fg,#ddd);border:1px solid var(--bd2,#555);border-radius:3px;padding:2px;font-size:10px;">
       <option value="">種類（全て）</option>
     </select>
     <input id="symLibSearch" type="text" placeholder="🔍 シンボル名検索..."
-      style="flex:1 1 100%;background:#2a2a2a;color:#ddd;border:1px solid #555;border-radius:3px;padding:3px 5px;font-size:10px;">
+      style="flex:1 1 100%;background:var(--bg3,#2a2a2a);color:var(--fg,#ddd);border:1px solid var(--bd2,#555);border-radius:3px;padding:3px 5px;font-size:10px;">
   </div>
-  <div id="symLibCount" style="padding:2px 8px;font-size:10px;color:#888;border-bottom:1px solid #333;flex-shrink:0;"></div>
+  <div id="symLibCount" style="padding:2px 8px;font-size:10px;color:var(--fg3,#888);border-bottom:1px solid var(--bd,#333);flex-shrink:0;"></div>
   <div id="symLibList" style="flex:1;overflow-y:auto;padding:4px;"></div>
 </div>
 <div id="symFavPane" style="display:none;flex-direction:column;flex:1;min-height:0;">
-  <div style="padding:5px 8px;font-size:11px;color:#888;border-bottom:1px solid #333;flex-shrink:0;">
-    ⭐ お気に入り <span id="symFavCount" style="color:#aaa;"></span>
+  <div style="padding:5px 8px;font-size:11px;color:var(--fg3,#888);border-bottom:1px solid var(--bd,#333);flex-shrink:0;">
+    ⭐ お気に入り <span id="symFavCount" style="color:var(--fg3,#aaa);"></span>
   </div>
   <div id="symFavList" style="flex:1;overflow-y:auto;padding:4px;"></div>
 </div>
 <div id="symRecentPane" style="display:none;flex-direction:column;flex:1;min-height:0;">
-  <div style="padding:5px 8px;font-size:11px;color:#888;border-bottom:1px solid #333;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;">
-    <span>🕒 最近使った <span id="symRecentCount" style="color:#aaa;"></span></span>
-    <button id="symRecentClear" style="background:none;border:1px solid #555;color:#888;border-radius:3px;cursor:pointer;font-size:10px;padding:1px 6px;">全消去</button>
+  <div style="padding:5px 8px;font-size:11px;color:var(--fg3,#888);border-bottom:1px solid var(--bd,#333);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;">
+    <span>🕒 最近使った <span id="symRecentCount" style="color:var(--fg3,#aaa);"></span></span>
+    <button id="symRecentClear" style="background:none;border:1px solid var(--bd2,#555);color:var(--fg3,#888);border-radius:3px;cursor:pointer;font-size:10px;padding:1px 6px;">全消去</button>
   </div>
   <div id="symRecentList" style="flex:1;overflow-y:auto;padding:4px;"></div>
 </div>
-<div id="symLibPreview" style="border-top:1px solid #333;display:none;flex-direction:column;flex-shrink:0;">
-  <div style="padding:5px 8px;background:#252525;display:flex;align-items:center;gap:4px;">
-    <span id="symLibPreviewName" style="font-size:11px;color:#ccc;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+<div id="symLibPreview" style="border-top:1px solid var(--bd,#333);display:none;flex-direction:column;flex-shrink:0;">
+  <div style="padding:5px 8px;background:var(--bg3,#252525);display:flex;align-items:center;gap:4px;">
+    <span id="symLibPreviewName" style="font-size:11px;color:var(--fg2,#ccc);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
     <button id="symLibFavBtn" title="お気に入り" style="background:none;border:none;cursor:pointer;font-size:14px;flex-shrink:0;">☆</button>
     <button id="symLibAdd" style="background:#0067c0;border:none;color:#fff;padding:3px 8px;border-radius:3px;cursor:pointer;font-size:11px;flex-shrink:0;">追加</button>
   </div>
@@ -111,8 +111,8 @@ const symLib = (() => {
       if (pane) pane.style.display = on ? 'flex' : 'none';
       if (btn) {
         btn.style.borderBottomColor = on ? btns[k][1] : 'transparent';
-        btn.style.color = on ? '#ddd' : '#888';
-        btn.style.background = on ? '#252525' : '#1e1e1e';
+        btn.style.color = on ? 'var(--fg,#ddd)' : 'var(--fg3,#888)';
+        btn.style.background = on ? 'var(--bg3,#252525)' : 'var(--bg2,#1e1e1e)';
       }
     });
     if (tab === 'fav') renderFavList();
@@ -209,18 +209,18 @@ const symLib = (() => {
       list.innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:2px;">` +
         show.map((e, i) => {
           const isFav = favorites.some(f => f.path === e.path);
-          return `<div class="slItem" data-idx="${i}" style="border:1px solid #333;border-radius:4px;cursor:pointer;background:#252525;padding:4px;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;">
+          return `<div class="slItem" data-idx="${i}" style="border:1px solid var(--bd,#333);border-radius:4px;cursor:pointer;background:var(--bg3,#252525);padding:4px;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;">
             <span class="addBtn" data-idx="${i}" title="キャンバスへ追加" style="position:absolute;top:1px;left:3px;font-size:13px;cursor:pointer;color:#6fbf6f;font-weight:bold;">＋</span>
             <span class="favStar" data-idx="${i}" style="position:absolute;top:2px;right:3px;font-size:11px;cursor:pointer;color:${isFav?'#f5a623':'#555'};">${isFav?'★':'☆'}</span>
             <canvas class="thumbCanvas" data-idx="${i}" width="90" height="60" style="background:#111;border-radius:2px;display:block;"></canvas>
-            <div style="font-size:9px;color:#9ec6f7;text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${e.label}">${e.label}</div>
+            <div style="font-size:9px;color:var(--acc,#9ec6f7);text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${e.label}">${e.label}</div>
           </div>`;
         }).join('') + `</div>`;
 
       // クリックイベント
       list.querySelectorAll('.slItem').forEach(el => {
-        el.onmouseover = () => { el.style.background = '#2d3a4a'; };
-        el.onmouseout  = () => { el.style.background = '#252525'; };
+        el.onmouseover = () => { el.style.filter = 'brightness(1.2)'; };
+        el.onmouseout  = () => { el.style.filter = ''; };
         el.onclick = (ev) => {
           if (ev.target.classList.contains('favStar') || ev.target.classList.contains('addBtn')) return;
           selectEntry(filtered[parseInt(el.dataset.idx)]);
@@ -266,21 +266,21 @@ const symLib = (() => {
       const show = filtered.slice(0, 200);
       list.innerHTML = show.map((e, i) => {
         const isFav = favorites.some(f => f.path === e.path);
-        return `<div class="slItem" data-idx="${i}" style="padding:5px 6px;margin:2px 0;border-radius:3px;cursor:pointer;background:#252525;border:1px solid #333;display:flex;align-items:center;gap:4px;">
+        return `<div class="slItem" data-idx="${i}" style="padding:5px 6px;margin:2px 0;border-radius:3px;cursor:pointer;background:var(--bg3,#252525);border:1px solid var(--bd,#333);display:flex;align-items:center;gap:4px;">
           <div style="flex:1;">
-            <div style="font-weight:bold;color:#9ec6f7;font-size:11px;">${e.label}</div>
-            <div style="color:#777;font-size:10px;">${e.std.replace('_',' ')} / ${e.cat} / ${e.fname}</div>
+            <div style="font-weight:bold;color:var(--acc,#9ec6f7);font-size:11px;">${e.label}</div>
+            <div style="color:var(--fg3,#777);font-size:10px;">${e.std.replace('_',' ')} / ${e.cat} / ${e.fname}</div>
           </div>
           <span class="addBtn" data-idx="${i}" title="キャンバスへ追加" style="font-size:15px;cursor:pointer;color:#6fbf6f;font-weight:bold;flex-shrink:0;">＋</span>
           <span class="favStar" data-idx="${i}" style="font-size:13px;cursor:pointer;color:${isFav?'#f5a623':'#555'};flex-shrink:0;">${isFav?'★':'☆'}</span>
         </div>`;
       }).join('');
       if (filtered.length > 200) {
-        list.innerHTML += `<div style="padding:6px;color:#888;font-size:11px;text-align:center;">※ ${filtered.length-200}件省略。絞り込んでください。</div>`;
+        list.innerHTML += `<div style="padding:6px;color:var(--fg3,#888);font-size:11px;text-align:center;">※ ${filtered.length-200}件省略。絞り込んでください。</div>`;
       }
       list.querySelectorAll('.slItem').forEach(el => {
-        el.onmouseover = () => { el.style.background = '#2d3a4a'; };
-        el.onmouseout  = () => { el.style.background = '#252525'; };
+        el.onmouseover = () => { el.style.filter = 'brightness(1.2)'; };
+        el.onmouseout  = () => { el.style.filter = ''; };
         el.onclick = (ev) => {
           if (ev.target.classList.contains('favStar') || ev.target.classList.contains('addBtn')) return;
           selectEntry(filtered[parseInt(el.dataset.idx)]);
@@ -321,7 +321,7 @@ const symLib = (() => {
     if (countEl) countEl.textContent = `(${favorites.length}件)`;
 
     if (!favorites.length) {
-      list.innerHTML = '<div style="padding:16px;color:#666;font-size:11px;text-align:center;">⭐ をクリックして追加してください</div>';
+      list.innerHTML = '<div style="padding:16px;color:var(--fg3,#666);font-size:11px;text-align:center;">⭐ をクリックして追加してください</div>';
       return;
     }
 
@@ -329,17 +329,17 @@ const symLib = (() => {
 
     list.innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:2px;">` +
       favorites.map((e, i) =>
-        `<div class="favItem" data-idx="${i}" style="border:1px solid #554400;border-radius:4px;cursor:pointer;background:#2a2400;padding:4px;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;">
+        `<div class="favItem" data-idx="${i}" style="border:1px solid var(--ora,#554400);border-radius:4px;cursor:pointer;background:var(--obg,#2a2400);padding:4px;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;">
           <span class="favAdd" data-idx="${i}" title="キャンバスへ追加" style="position:absolute;top:1px;left:3px;font-size:13px;cursor:pointer;color:#6fbf6f;font-weight:bold;">＋</span>
           <span class="favRemove" data-idx="${i}" style="position:absolute;top:2px;right:3px;font-size:10px;cursor:pointer;color:#f5a623;">★</span>
           <canvas class="favThumb" data-idx="${i}" width="90" height="60" style="background:#111;border-radius:2px;display:block;"></canvas>
-          <div style="font-size:9px;color:#f5c842;text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${e.label}">${e.label}</div>
+          <div style="font-size:9px;color:var(--ofg,#f5c842);text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${e.label}">${e.label}</div>
         </div>`
       ).join('') + `</div>`;
 
     list.querySelectorAll('.favItem').forEach(el => {
-      el.onmouseover = () => { el.style.background = '#3a3200'; };
-      el.onmouseout  = () => { el.style.background = '#2a2400'; };
+      el.onmouseover = () => { el.style.filter = 'brightness(1.2)'; };
+      el.onmouseout  = () => { el.style.filter = ''; };
       el.onclick = (ev) => {
         if (ev.target.classList.contains('favRemove') || ev.target.classList.contains('favAdd')) return;
         selectEntry(favorites[parseInt(el.dataset.idx)]);
@@ -386,7 +386,7 @@ const symLib = (() => {
     if (countEl) countEl.textContent = `(${recent.length}件)`;
 
     if (!recent.length) {
-      list.innerHTML = '<div style="padding:16px;color:#666;font-size:11px;text-align:center;">シンボルを追加すると履歴が表示されます</div>';
+      list.innerHTML = '<div style="padding:16px;color:var(--fg3,#666);font-size:11px;text-align:center;">シンボルを追加すると履歴が表示されます</div>';
       return;
     }
 
@@ -394,17 +394,17 @@ const symLib = (() => {
 
     list.innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:2px;">` +
       recent.map((e, i) =>
-        `<div class="recItem" data-idx="${i}" style="border:1px solid #2e4a38;border-radius:4px;cursor:pointer;background:#1e2a22;padding:4px;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;">
+        `<div class="recItem" data-idx="${i}" style="border:1px solid var(--grn,#2e4a38);border-radius:4px;cursor:pointer;background:var(--gbg,#1e2a22);padding:4px;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;">
           <span class="recAdd" data-idx="${i}" title="キャンバスへ追加" style="position:absolute;top:1px;left:3px;font-size:13px;cursor:pointer;color:#6fbf6f;font-weight:bold;">＋</span>
-          <span class="recRemove" data-idx="${i}" title="履歴から削除" style="position:absolute;top:2px;right:3px;font-size:10px;cursor:pointer;color:#777;">✕</span>
+          <span class="recRemove" data-idx="${i}" title="履歴から削除" style="position:absolute;top:2px;right:3px;font-size:10px;cursor:pointer;color:var(--fg3,#777);">✕</span>
           <canvas class="recThumb" data-idx="${i}" width="90" height="60" style="background:#111;border-radius:2px;display:block;"></canvas>
-          <div style="font-size:9px;color:#9ed6b0;text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${e.label}">${e.label}</div>
+          <div style="font-size:9px;color:var(--gfg,#9ed6b0);text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${e.label}">${e.label}</div>
         </div>`
       ).join('') + `</div>`;
 
     list.querySelectorAll('.recItem').forEach(el => {
-      el.onmouseover = () => { el.style.background = '#263a2c'; };
-      el.onmouseout  = () => { el.style.background = '#1e2a22'; };
+      el.onmouseover = () => { el.style.filter = 'brightness(1.2)'; };
+      el.onmouseout  = () => { el.style.filter = ''; };
       el.onclick = (ev) => {
         if (ev.target.classList.contains('recRemove') || ev.target.classList.contains('recAdd')) return;
         selectEntry(recent[parseInt(el.dataset.idx)]);
@@ -597,7 +597,7 @@ const symLib = (() => {
     if (!t) {
       t = document.createElement('div');
       t.id = 'symLibToast';
-      t.style.cssText = 'position:fixed;bottom:34px;left:50%;transform:translateX(-50%);background:#2a2a2a;color:#9ec6f7;border:1px solid #0067c0;border-radius:4px;padding:6px 14px;font-size:12px;z-index:9999;pointer-events:none;opacity:0;transition:opacity .2s;';
+      t.style.cssText = 'position:fixed;bottom:34px;left:50%;transform:translateX(-50%);background:var(--bg3,#2a2a2a);color:var(--acc,#9ec6f7);border:1px solid var(--acc,#0067c0);border-radius:4px;padding:6px 14px;font-size:12px;z-index:9999;pointer-events:none;opacity:0;transition:opacity .2s;';
       document.body.appendChild(t);
     }
     t.textContent = msg;

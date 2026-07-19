@@ -312,12 +312,14 @@ const arcTool = {
     let p = getAllSnapPoints(wx, wy);
     if (!state.mouse.arcP1) {
       state.mouse.arcP1 = p;
+      setHint('半円 (2/3): 端点2をクリック');
     } else if (!state.mouse.arcP2) {
       // 直交モードなら端点1から水平/垂直に拘束
       if (state.ortho) { const o = applyOrtho(state.mouse.arcP1.x, state.mouse.arcP1.y, p.x, p.y); p = {x:o.x, y:o.y}; }
       const r = Math.hypot(p.x-state.mouse.arcP1.x, p.y-state.mouse.arcP1.y) / 2;
       if (r < 1) { state.mouse.arcP1 = null; state.preview = null; return; }
       state.mouse.arcP2 = p;
+      setHint('半円 (3/3): 膨らむ側をクリック');
     } else {
       const p1 = state.mouse.arcP1, p2 = state.mouse.arcP2;
       const cx=(p1.x+p2.x)/2, cy=(p1.y+p2.y)/2;
@@ -331,6 +333,7 @@ const arcTool = {
         x:cx, y:cy, r, startA:a1, endA:a2, ccw: side > 0,
         layer: activeLayer() });
       state.mouse.arcP1 = null; state.mouse.arcP2 = null; state.preview = null;
+      updateHint();
     }
   },
   onMove(wx, wy) {
@@ -365,9 +368,11 @@ const arc3Tool = {
     const p = getAllSnapPoints(wx, wy);
     if (!state.mouse.arc3P1) {
       state.mouse.arc3P1 = p;
+      setHint('弧 (2/3): 終点をクリック');
     } else if (!state.mouse.arc3P2) {
       if (state.ortho) { const o = applyOrtho(state.mouse.arc3P1.x, state.mouse.arc3P1.y, p.x, p.y); state.mouse.arc3P2 = {x:o.x,y:o.y}; }
       else state.mouse.arc3P2 = p;
+      setHint('弧 (3/3): 通過点をクリック');
     } else {
       // 3点から外接円を計算
       const p1=state.mouse.arc3P1, p2=state.mouse.arc3P2, p3=p;
@@ -386,6 +391,7 @@ const arc3Tool = {
       pushH();
       state.elements.push({ id:genId('el'), type:'arc', x:cx, y:cy, r, startA:a1, endA:a2, ccw, layer:activeLayer() });
       state.mouse.arc3P1=null; state.mouse.arc3P2=null; state.preview=null;
+      updateHint();
     }
   },
   onMove(wx, wy) {
@@ -433,10 +439,12 @@ const triTool = {
     const p = getAllSnapPoints(wx, wy);
     if (!state.mouse.triP1) {
       state.mouse.triP1 = p;
+      setHint('三角形 (2/3): 2点目をクリック');
     } else if (!state.mouse.triP2) {
       let p2 = p;
       if (state.ortho) { const o = applyOrtho(state.mouse.triP1.x, state.mouse.triP1.y, p.x, p.y); p2 = {x:o.x, y:o.y}; }
       state.mouse.triP2 = p2;
+      setHint('三角形 (3/3): 3点目をクリック（Shift＝正三角形）');
     } else {
       const p3 = e?.shiftKey ? this._equilateral(state.mouse.triP1, state.mouse.triP2, wx, wy) : p;
       pushH();
@@ -445,6 +453,7 @@ const triTool = {
         x2:state.mouse.triP2.x, y2:state.mouse.triP2.y,
         x3:p3.x, y3:p3.y, layer:activeLayer() });
       state.mouse.triP1 = null; state.mouse.triP2 = null; state.preview = null;
+      updateHint();
     }
   },
   onMove(wx, wy, e) {
@@ -490,6 +499,7 @@ const bezierTool = {
     if (!state.mouse.bezierPts) state.mouse.bezierPts = [];
     state.mouse.bezierPts.push({ x: p.x, y: p.y });
     state.preview = { type: 'bezier_preview', pts: [...state.mouse.bezierPts], mx: p.x, my: p.y };
+    setHint(`曲線: ${state.mouse.bezierPts.length}点指定中 | Enterまたはダブルクリックで確定`);
   },
   onMove(wx, wy) {
     if (!state.mouse.bezierPts || !state.mouse.bezierPts.length) return;
@@ -504,6 +514,7 @@ const bezierTool = {
     state.elements.push({ id: genId('el'), type: 'bezier', pts: [...pts], layer: activeLayer() });
     state.mouse.bezierPts = null;
     state.preview = null;
+    updateHint();
     draw();
   }
 };
@@ -603,9 +614,11 @@ const dimTool = {
     let sx = pt.x, sy = pt.y;
     if (!state.dimState) {
       state.dimState = { step:1, x1:sx, y1:sy };
+      setHint('寸法 (2/3): 測る2点目をクリック');
     } else if (state.dimState.step === 1) {
       if (state.ortho) { const o = applyOrtho(state.dimState.x1, state.dimState.y1, sx, sy); sx=o.x; sy=o.y; }
       state.dimState.x2 = sx; state.dimState.y2 = sy; state.dimState.step = 2;
+      setHint('寸法 (3/3): 引出位置をクリック');
     } else if (state.dimState.step === 2) {
       const ds = state.dimState;
       const dx = ds.x2-ds.x1, dy = ds.y2-ds.y1, len = Math.hypot(dx, dy);
@@ -628,6 +641,7 @@ const dimTool = {
         gap: def.gap, ext: def.ext, color: def.color,
         arrowStyle: def.arrowStyle||'filled', arrowSz: def.arrowSz||8 });
       state.dimState = null; state.preview = null;
+      updateHint();
     }
   },
   onMove(wx, wy) {
@@ -698,8 +712,10 @@ const leaderTool = {
     const sx = pt.x, sy = pt.y;
     if (!state.dimState) {
       state.dimState = { step:1, x1:sx, y1:sy };
+      setHint('指示線 (2/3): 折れ点をクリック');
     } else if (state.dimState.step === 1) {
       state.dimState.bx = sx; state.dimState.by = sy; state.dimState.step = 2;
+      setHint('指示線 (3/3): 文字位置をクリック');
     } else if (state.dimState.step === 2) {
       const ds = state.dimState;
       const ex = sx, ey = ds.by; // Y は折れ点に固定（水平シェルフ）
@@ -710,6 +726,7 @@ const leaderTool = {
           x1:ds.x1, y1:ds.y1, bx:ds.bx, by:ds.by, x2:ex, y2:ey,
           leaderText:txt, layer:activeLayer(), x:(ds.x1+ex)/2, y:(ds.y1+ey)/2 });
         state.dimState = null; state.preview = null;
+        updateHint();
         draw();
       });
     }
@@ -734,9 +751,11 @@ const angleDimTool = {
     const sx=snap(wx), sy=snap(wy);
     if (!state.angleDimState) {
       state.angleDimState = { step:1, cx:sx, cy:sy };
+      setHint('角度寸法 (2/3): 1辺上の点をクリック');
     } else if (state.angleDimState.step === 1) {
       state.angleDimState.x1 = sx; state.angleDimState.y1 = sy;
       state.angleDimState.step = 2;
+      setHint('角度寸法 (3/3): もう1辺上の点をクリック');
     } else {
       const ds = state.angleDimState;
       const a1 = Math.atan2(ds.y1-ds.cy, ds.x1-ds.cx);

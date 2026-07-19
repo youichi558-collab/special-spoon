@@ -243,7 +243,22 @@ function pickSym(el, type) {
   state.pendingRef  = null;
   state.pendingTerm = null;
   setMode('sym', type);
+  recordRecentSym(type);
   updateHint();
+}
+
+// 内蔵シンボルの使用履歴（最大6件・シンボルパネル最上部に表示）
+function recordRecentSym(type) {
+  if (typeof BUILTIN_SYMS === 'undefined' || !BUILTIN_SYMS.some(s => s.type === type)) return;
+  let rec = [];
+  try { rec = JSON.parse(localStorage.getItem('recentBuiltinSyms') || '[]'); } catch(e) {}
+  const i = rec.indexOf(type);
+  if (i >= 0) rec.splice(i, 1);
+  rec.unshift(type);
+  if (rec.length > 6) rec.length = 6;
+  try { localStorage.setItem('recentBuiltinSyms', JSON.stringify(rec)); } catch(e) {}
+  const float = document.getElementById('sym-float');
+  if (float && float.style.display === 'flex') renderSymFloat();
 }
 
 // ----------------------------------------------------------------
@@ -1689,9 +1704,25 @@ function updateHint() {
     fline:  '1点目クリック → 2点目クリック',
     sym:    'クリックで配置 | Escでキャンセル',
     partref:'シンボルをクリックで部品番号を割り当て（自動採番） | ESC終了',
+    arc:      '半円: 端点1 → 端点2 → 膨らむ側 の順にクリック',
+    arc3:     '弧: 始点 → 終点 → 通過点 の順にクリック',
+    triangle: '三角形: 3点を順にクリック（3点目でShift＝正三角形）',
+    bezier:   '曲線: クリックで点を追加 → Enterまたはダブルクリックで確定',
+    dim:      '寸法: 測る1点目 → 2点目 → 引出位置 の順にクリック',
+    angle_dim:'角度寸法: 頂点 → 1辺上の点 → もう1辺上の点 の順にクリック',
+    leader:   '指示線: 指示先 → 折れ点 → 文字位置 の順にクリック',
+    junction: 'クリックで接続点を配置',
+    guide_h:  'クリック位置に水平補助線を配置',
+    guide_v:  'クリック位置に垂直補助線を配置',
   };
   const el = document.getElementById('s-hint');
   if (el) el.textContent = hints[state.mode] || '';
+}
+
+// ツール進行中の段階表示（ステータスバー右）
+function setHint(msg) {
+  const el = document.getElementById('s-hint');
+  if (el) el.textContent = msg;
 }
 
 // ----------------------------------------------------------------
@@ -1726,7 +1757,8 @@ function toggleLeftPanel() {
   resize(); draw();
 }
 
-function toggleRightPanel() {
+let _rpAutoCollapsed = false; // 自動折りたたみ由来かどうか（手動操作を優先するため）
+function toggleRightPanel(auto) {
   const rp = document.getElementById('rp');
   const btn = document.getElementById('rp-toggle');
   const expBtn = document.getElementById('rp-expand-btn');
@@ -1734,17 +1766,18 @@ function toggleRightPanel() {
   const collapsed = rp.classList.toggle('collapsed');
   if (btn) btn.textContent = collapsed ? '▶' : '◀';
   if (expBtn) expBtn.style.display = collapsed ? 'flex' : 'none';
+  if (auto !== true) _rpAutoCollapsed = false; // 手動操作でフラグ解除
   resize(); draw();
 }
 
-// ウィンドウ幅に応じて自動折りたたみ
+// ウィンドウ幅に応じて自動折りたたみ（手動で閉じた場合は勝手に開かない）
 window.addEventListener('resize', () => {
   const rp = document.getElementById('rp');
   if (!rp) return;
   const narrow = window.innerWidth < 700;
   const collapsed = rp.classList.contains('collapsed');
-  if (narrow && !collapsed) toggleRightPanel();
-  else if (!narrow && collapsed) toggleRightPanel();
+  if (narrow && !collapsed) { toggleRightPanel(true); _rpAutoCollapsed = true; }
+  else if (!narrow && collapsed && _rpAutoCollapsed) { toggleRightPanel(true); _rpAutoCollapsed = false; }
 });
 
 function toggleExpand() {
@@ -1864,20 +1897,31 @@ function renderSymFloat() {
   const visibleSyms = BUILTIN_SYMS.filter(s => !_hiddenSyms.includes(s.type));
   const cats = {};
   visibleSyms.forEach(s => { if (!cats[s.cat]) cats[s.cat]=[]; cats[s.cat].push(s); });
+  const _symOn = t => (state.mode === 'sym' && state.symType === t) ? ' on' : '';
+  const _symItem = (s, showHide) =>
+    `<div class="sym-item${_symOn(s.type)}" onclick="pickSym(this,'${s.type}')" style="flex-direction:column;align-items:center;padding:5px 3px;gap:3px;position:relative">
+        ${showHide ? `<span onclick="event.stopPropagation();hideBuiltinSym('${s.type}')" style="position:absolute;top:2px;right:2px;font-size:9px;color:var(--fg3);cursor:pointer;line-height:1">×</span>` : ''}
+        ${s.svg}
+        <span style="font-size:9px;text-align:center;line-height:1.2">${s.label}</span>
+      </div>`;
   let html = '';
   if (_hiddenSyms.length > 0) {
     html += `<div style="text-align:right;margin-bottom:4px"><span onclick="restoreAllSyms()" style="font-size:9px;color:var(--acc);cursor:pointer">すべて復元</span></div>`;
   }
+  // 最近使ったシンボル
+  let _recTypes = [];
+  try { _recTypes = JSON.parse(localStorage.getItem('recentBuiltinSyms') || '[]'); } catch(e) {}
+  const _recSyms = _recTypes.map(t => visibleSyms.find(s => s.type === t)).filter(Boolean);
+  if (_recSyms.length) {
+    html += `<div style="font-size:9px;color:var(--fg3);font-weight:700;margin:2px 0 3px;text-transform:uppercase;letter-spacing:.06em">🕒 最近使った</div>`;
+    html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid var(--bd2)">`;
+    _recSyms.forEach(s => { html += _symItem(s, false); });
+    html += `</div>`;
+  }
   Object.entries(cats).forEach(([cat, syms]) => {
     html += `<div style="font-size:9px;color:var(--fg3);font-weight:700;margin:6px 0 3px;text-transform:uppercase;letter-spacing:.06em">${cat}</div>`;
     html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-bottom:4px">`;
-    syms.forEach(s => {
-      html += `<div class="sym-item" onclick="pickSym(this,'${s.type}')" style="flex-direction:column;align-items:center;padding:5px 3px;gap:3px;position:relative">
-        <span onclick="event.stopPropagation();hideBuiltinSym('${s.type}')" style="position:absolute;top:2px;right:2px;font-size:9px;color:var(--fg3);cursor:pointer;line-height:1">×</span>
-        ${s.svg}
-        <span style="font-size:9px;text-align:center;line-height:1.2">${s.label}</span>
-      </div>`;
-    });
+    syms.forEach(s => { html += _symItem(s, true); });
     html += `</div>`;
   });
   // カスタムシンボル
