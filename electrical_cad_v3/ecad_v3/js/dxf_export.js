@@ -9,6 +9,8 @@ const DXF_LAYER_MAP = {
   "外形":"OUTLINE","図面枠":"FRAME","寸法":"DIM","寸法_vis":"DIM_VIS"
 };
 function dxfLayer(name){ return DXF_LAYER_MAP[name] || name || '0'; }
+// 【警告】\U+XXXX変換は試済み・失敗済み（AC1015でリテラル表示される）。再実装禁止。
+// 日本語文字化けの唯一の現実解: Shift-JIS(cp932)変換 + $DWGCODEPAGE=ANSI_932 + Uint8Array Blob出力
 function toUnicodeDXF(str){ return String(str||''); }
 function addRect(ls,layer,x1,y1,x2,y2){
   const L=(ax1,ay1,ax2,ay2)=>ls.push('0','LINE','8',layer,'10',ax1.toFixed(2),'20',(-ay1).toFixed(2),'30','0','11',ax2.toFixed(2),'21',(-ay2).toFixed(2),'31','0');
