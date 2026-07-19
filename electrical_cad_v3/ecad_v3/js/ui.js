@@ -293,6 +293,54 @@ function saveCusPart() {
   renderPartsAll(); closeFP('part-reg-p'); alert(`「${ref}」を登録しました`);
 }
 
+// 簡易CSVパーサ（ダブルクォート内のカンマに対応）
+function parseCSVLine(line) {
+  const out = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inQ) {
+      if (c === '"' && line[i+1] === '"') { cur += '"'; i++; }
+      else if (c === '"') { inQ = false; }
+      else cur += c;
+    } else {
+      if (c === '"') inQ = true;
+      else if (c === ',') { out.push(cur); cur = ''; }
+      else cur += c;
+    }
+  }
+  out.push(cur);
+  return out.map(s => s.trim());
+}
+const PART_TYPE_CODES = ['coil','sw_no','sw_nc','breaker','motor','terminal','lamp','fuse','transformer'];
+function bulkImportParts() {
+  const raw = document.getElementById('pr-csv').value;
+  const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  let added = 0, skipped = 0, updated = 0;
+  const errors = [];
+  lines.forEach((line, i) => {
+    // ヘッダー行らしき行はスキップ（「型番」「maker」等の文字を含む、または種別列が既知コードでない）
+    if (/型番|メーカー|maker|ref/i.test(line)) return;
+    const cols = parseCSVLine(line);
+    const [maker, ref, type, volt, amp, terminals, contacts, note] = cols;
+    if (!ref) { errors.push(`${i+1}行目: 型番が空です`); skipped++; return; }
+    if (type && !PART_TYPE_CODES.includes(type)) {
+      errors.push(`${i+1}行目: 種別「${type}」が不正です（${PART_TYPE_CODES.join('/')}のいずれか）`);
+      skipped++; return;
+    }
+    const part = { maker: maker||'', ref, type: type||'coil', volt: volt||'', amp: amp||'', terminals: terminals||'', contacts: contacts||'', note: note||'', custom: true };
+    const existing = state.customParts.find(p => p.ref === ref);
+    if (existing) { Object.assign(existing, part); updated++; }
+    else { state.customParts.push(part); added++; }
+  });
+  renderPartsAll();
+  let msg = `登録完了: 新規${added}件`;
+  if (updated) msg += `・更新${updated}件`;
+  if (skipped) msg += `・スキップ${skipped}件`;
+  if (errors.length) msg += `\n\n【エラー詳細】\n${errors.join('\n')}`;
+  alert(msg);
+  if (added || updated) document.getElementById('pr-csv').value = '';
+}
+
 // ----------------------------------------------------------------
 // カスタムシンボルエディタ
 // ----------------------------------------------------------------
