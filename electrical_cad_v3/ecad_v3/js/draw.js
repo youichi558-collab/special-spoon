@@ -447,6 +447,8 @@ function drawPreview() {
     ctx.globalAlpha = 0.5;
     drawSym(prev.symType, prev.x, prev.y, false, 0, false, false, fgC());
     ctx.globalAlpha = 1;
+  } else if (prev.type === 'outline_preview') {
+    ctx.strokeRect(prev.x, prev.y, prev.w, prev.h);
   } else if (prev.type === 'junction_preview') {
     ctx.setLineDash([]);
     const r = (state.junctionR || 2);

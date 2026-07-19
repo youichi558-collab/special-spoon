@@ -382,3 +382,82 @@ function mapBlock(name){const n=name.toLowerCase();const m=[
   ['diode','diode'],
   ['ac','ac'],['ground','ground'],['gnd','ground'],
 ];for(const[k,v]of m)if(n.includes(k))return v;return null;}
+
+// ================================================================
+// 外形図DXFパーサ（部品DB紐付け用・軽量版）
+// フレーム/寸法線/ジャンクション/縮尺ダイアログなどは扱わず、
+// 純粋な図形（LINE/LWPOLYLINE/CIRCLE/ARC/TEXT）のみをローカル座標(原点=左下)で抽出する。
+// ================================================================
+function parseOutlineDXF(text){
+  const lines=text.split('\n').map(l=>l.replace(/\r/g,'').trim());
+  const pairs=[];
+  for(let i=0;i<lines.length-1;i+=2){
+    const code=parseInt(lines[i]);
+    if(!isNaN(code))pairs.push({code,val:lines[i+1]});
+  }
+  const raw=[]; // {type, ...}（正規化前の絶対座標）
+  let inEntities=false,i=0;
+  while(i<pairs.length){
+    const{code,val}=pairs[i];
+    if(code===0&&val==='SECTION'){i++;if(i<pairs.length&&pairs[i].code===2&&pairs[i].val==='ENTITIES'){inEntities=true;i++;continue;}inEntities=false;i++;continue;}
+    if(code===0&&val==='ENDSEC'){inEntities=false;i++;continue;}
+    if(!inEntities){i++;continue;}
+    if(code===0){
+      if(val==='LINE'){
+        const e=readEnt(pairs,i);
+        const x1=+e['10']||0,y1=-(+e['20']||0),x2=+e['11']||0,y2=-(+e['21']||0);
+        if(Math.hypot(x2-x1,y2-y1)>0.01)raw.push({type:'fline',x1,y1,x2,y2});
+        i=e._end;continue;
+      }
+      if(val==='LWPOLYLINE'){
+        const e=readPoly(pairs,i);
+        if(e.pts&&e.pts.length>=2){
+          for(let k=0;k<e.pts.length-1;k++)raw.push({type:'fline',x1:e.pts[k].x,y1:e.pts[k].y,x2:e.pts[k+1].x,y2:e.pts[k+1].y});
+          const closed=(parseInt(e['70'])||0)&1;
+          if(closed)raw.push({type:'fline',x1:e.pts[e.pts.length-1].x,y1:e.pts[e.pts.length-1].y,x2:e.pts[0].x,y2:e.pts[0].y});
+        }
+        i=e._end;continue;
+      }
+      if(val==='CIRCLE'){
+        const e=readEnt(pairs,i);
+        const r=+e['40']||0;
+        if(r>0)raw.push({type:'circle',x:+e['10']||0,y:-(+e['20']||0),r});
+        i=e._end;continue;
+      }
+      if(val==='ARC'){
+        const e=readEnt(pairs,i);
+        const r=+e['40']||0;
+        if(r>0){
+          const sa=+e['50']||0, ea=+e['51']||0;
+          raw.push({type:'arc',x:+e['10']||0,y:-(+e['20']||0),r,startA:-sa*Math.PI/180,endA:-ea*Math.PI/180,ccw:true});
+        }
+        i=e._end;continue;
+      }
+      if(val==='TEXT'||val==='MTEXT'){
+        const e=readEnt(pairs,i);
+        let t=(e['1']||e['3']||'').replace(/\\[A-Za-z][^;]*;/g,'').replace(/[{}]/g,'').replace(/\\P/g,' ').trim();
+        t=fromUnicodeDXF(t);
+        const h=+e['40']||12;
+        if(t&&t!=='<>')raw.push({type:'text',x:+e['10']||0,y:-(+e['20']||0),text:t,fs:Math.max(8,Math.min(72,h))});
+        i=e._end;continue;
+      }
+    }
+    i++;
+  }
+  if(!raw.length)return{elements:[],width:0,height:0};
+  // 原点正規化: 左下=(0,0)
+  const xs=[],ys=[];
+  raw.forEach(r=>{
+    if(r.x1!=null){xs.push(r.x1,r.x2);ys.push(r.y1,r.y2);}
+    else if(r.type==='circle'||r.type==='arc'){xs.push(r.x-r.r,r.x+r.r);ys.push(r.y-r.r,r.y+r.r);}
+    else{xs.push(r.x);ys.push(r.y);}
+  });
+  const minX=Math.min(...xs),minY=Math.min(...ys),maxX=Math.max(...xs),maxY=Math.max(...ys);
+  const elements=raw.map(r=>{
+    if(r.type==='fline')return{type:'fline',x1:r.x1-minX,y1:r.y1-minY,x2:r.x2-minX,y2:r.y2-minY,layer:'外形',lineWidth:1};
+    if(r.type==='circle')return{type:'circle',x:r.x-minX,y:r.y-minY,r:r.r,layer:'外形'};
+    if(r.type==='arc')return{type:'arc',x:r.x-minX,y:r.y-minY,r:r.r,startA:r.startA,endA:r.endA,ccw:true,layer:'外形'};
+    return{type:'text',x:r.x-minX,y:r.y-minY,text:r.text,fs:r.fs,layer:'外形'};
+  });
+  return{elements,width:maxX-minX,height:maxY-minY};
+}

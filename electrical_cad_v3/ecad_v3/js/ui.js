@@ -263,6 +263,9 @@ function renderPartsTable(parts) {
       </div>
       <div style="font-size:10px;color:var(--fg3)">${p.maker} ${p.volt||''} ${p.amp||''}</div>
       ${p.contacts?`<div style="font-size:10px;color:var(--acc)">接点:${p.contacts}</div>`:''}
+      ${p.outlineDxf
+        ? `<div style="font-size:9px;color:var(--acc)">外形図: ${p.outlineDxfName||'あり'} <span onclick="event.stopPropagation();placePartOutline('${p.ref}')" style="cursor:pointer;text-decoration:underline">配置</span></div>`
+        : (p.custom ? `<div style="font-size:9px;color:var(--fg3)">外形図なし <span onclick="event.stopPropagation();attachOutlineToPart('${p.ref}')" style="cursor:pointer;text-decoration:underline;color:var(--acc)">添付</span></div>` : '')}
     </div>`).join('');
 }
 function deletePart(ref) {
@@ -279,6 +282,32 @@ function placePart(type, ref, terminals) {
   document.getElementById('s-hint').textContent = `「${ref}」→ クリックで配置`;
 }
 function showPartReg() { openFP('part-reg-p'); }
+
+// 外形図DXFファイル読込（エンコーディング自動判定して文字列化）
+function _readDxfFileAsText(file, cb) {
+  const rd = new FileReader();
+  rd.onload = ev => {
+    const buf = ev.target.result;
+    const u8 = new Uint8Array(buf);
+    let enc = 'UTF-8';
+    if (!(u8[0]===0xEF && u8[1]===0xBB && u8[2]===0xBF)) enc = _detectSjis(u8);
+    let text;
+    try { text = new TextDecoder(enc).decode(buf); }
+    catch (err) { text = new TextDecoder('UTF-8').decode(buf); }
+    cb(text);
+  };
+  rd.readAsArrayBuffer(file);
+}
+
+let _pendingOutlineDxf = null; // { text, filename } 登録フォーム用の一時保持
+function handleOutlineFileSelect(e) {
+  const f = e.target.files[0]; if (!f) return;
+  _readDxfFileAsText(f, text => {
+    _pendingOutlineDxf = { text, filename: f.name };
+    document.getElementById('pr-outline-status').textContent = `添付予定: ${f.name}`;
+  });
+}
+
 function saveCusPart() {
   const ref = document.getElementById('pr-ref').value.trim();
   if (!ref) { alert('型番を入力してください'); return; }
@@ -288,9 +317,42 @@ function saveCusPart() {
     volt: document.getElementById('pr-volt').value, amp: document.getElementById('pr-amp').value,
     terminals: document.getElementById('pr-term').value, contacts: document.getElementById('pr-contacts').value,
     note: document.getElementById('pr-note').value, custom: true,
+    outlineDxf: _pendingOutlineDxf?.text || '', outlineDxfName: _pendingOutlineDxf?.filename || '',
   };
-  state.customParts.push(part);
+  const existing = state.customParts.find(p => p.ref === ref);
+  if (existing) Object.assign(existing, part); else state.customParts.push(part);
+  _pendingOutlineDxf = null;
+  document.getElementById('pr-outline-status').textContent = '';
+  document.getElementById('pr-outline-file').value = '';
   renderPartsAll(); closeFP('part-reg-p'); alert(`「${ref}」を登録しました`);
+}
+
+// 既存カスタム部品に外形図DXFを後から添付
+function attachOutlineToPart(ref) {
+  const part = state.customParts.find(p => p.ref === ref);
+  if (!part) { alert('カスタム部品のみ外形図を添付できます（標準部品はコピーしてカスタム登録してください）'); return; }
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.dxf';
+  input.onchange = e => {
+    const f = e.target.files[0]; if (!f) return;
+    _readDxfFileAsText(f, text => {
+      part.outlineDxf = text; part.outlineDxfName = f.name;
+      renderPartsAll();
+      alert(`「${ref}」に外形図「${f.name}」を添付しました`);
+    });
+  };
+  input.click();
+}
+
+// 部品DBに紐付いた外形図DXFをキャンバスに配置するモードへ
+function placePartOutline(ref) {
+  const part = allParts().find(p => p.ref === ref);
+  if (!part || !part.outlineDxf) { alert('この部品には外形図が登録されていません'); return; }
+  const parsed = parseOutlineDXF(part.outlineDxf);
+  if (!parsed.elements.length) { alert('外形図DXFから図形を読み取れませんでした'); return; }
+  state.pendingOutline = parsed;
+  setMode('outline');
+  document.getElementById('s-hint').textContent = `「${ref}」外形図 → クリックで配置  [ESC] 終了`;
 }
 
 // 簡易CSVパーサ（ダブルクォート内のカンマに対応）

@@ -559,6 +559,38 @@ const TOOLS = {
   bezier: bezierTool,
   guide_h:  guideTool,
   guide_v:  guideTool,
+  outline: outlineTool,
+};
+
+// ----------------------------------------------------------------
+// 部品外形図 配置ツール（部品DBに紐付けたDXF外形図をキャンバスに配置）
+// ----------------------------------------------------------------
+const outlineTool = {
+  onDown(wx, wy, e) {
+    if (!state.pendingOutline) return;
+    pushH();
+    const sx = snap(wx), sy = snap(wy);
+    const elIds = [];
+    state.pendingOutline.elements.forEach(src => {
+      const el = { id: genId('el'), ...src, rot: 0, flipH: false, flipV: false,
+                   label: '', partRef: '', terminals: '', wireNo: '', note: '' };
+      if (el.x1 != null) { el.x1 += sx; el.y1 += sy; el.x2 += sx; el.y2 += sy; }
+      else { el.x += sx; el.y += sy; }
+      state.elements.push(el);
+      elIds.push(el.id);
+    });
+    state.page.groups = state.page.groups || [];
+    state.page.groups.push({ id: genId('g'), elIds, wireIds: [] });
+    state.pendingOutline = null;
+    setMode('select');
+    draw();
+  },
+  onMove(wx, wy, e) {
+    if (!state.pendingOutline) return;
+    const sx = snap(wx), sy = snap(wy);
+    state.preview = { type: 'outline_preview', x: sx, y: sy, w: state.pendingOutline.width, h: state.pendingOutline.height };
+  },
+  onUp() {},
 };
 
 // ----------------------------------------------------------------
