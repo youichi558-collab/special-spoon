@@ -10,7 +10,8 @@ const symLib = (() => {
   let previewEntry = null;
   let previewShapes = [];
   let favorites = JSON.parse(localStorage.getItem('symLibFav') || '[]');
-  let activeTab = 'list'; // 'list' | 'fav'
+  let recent = JSON.parse(localStorage.getItem('symLibRecent') || '[]');
+  let activeTab = 'list'; // 'list' | 'fav' | 'recent'
   let thumbObserver = null;
 
   // ── パネル生成 ──────────────────────────────────────────────
@@ -26,6 +27,7 @@ const symLib = (() => {
 <div style="display:flex;border-bottom:1px solid #444;flex-shrink:0">
   <button id="symTabList" style="flex:1;padding:6px;background:#252525;border:none;border-bottom:2px solid #0067c0;color:#ddd;cursor:pointer;font-size:12px;">一覧</button>
   <button id="symTabFav"  style="flex:1;padding:6px;background:#1e1e1e;border:none;border-bottom:2px solid transparent;color:#888;cursor:pointer;font-size:12px;">⭐ お気に入り</button>
+  <button id="symTabRecent" style="flex:1;padding:6px;background:#1e1e1e;border:none;border-bottom:2px solid transparent;color:#888;cursor:pointer;font-size:12px;">🕒 最近</button>
 </div>
 <div id="symListPane" style="display:flex;flex-direction:column;flex:1;min-height:0;">
   <div style="padding:6px 8px;border-bottom:1px solid #333;flex-shrink:0;">
@@ -62,6 +64,13 @@ const symLib = (() => {
   </div>
   <div id="symFavList" style="flex:1;overflow-y:auto;padding:4px;"></div>
 </div>
+<div id="symRecentPane" style="display:none;flex-direction:column;flex:1;min-height:0;">
+  <div style="padding:5px 8px;font-size:11px;color:#888;border-bottom:1px solid #333;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;">
+    <span>🕒 最近使った <span id="symRecentCount" style="color:#aaa;"></span></span>
+    <button id="symRecentClear" style="background:none;border:1px solid #555;color:#888;border-radius:3px;cursor:pointer;font-size:10px;padding:1px 6px;">全消去</button>
+  </div>
+  <div id="symRecentList" style="flex:1;overflow-y:auto;padding:4px;"></div>
+</div>
 <div id="symLibPreview" style="border-top:1px solid #333;display:none;flex-direction:column;flex-shrink:0;">
   <div style="padding:5px 8px;background:#252525;display:flex;align-items:center;gap:4px;">
     <span id="symLibPreviewName" style="font-size:11px;color:#ccc;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
@@ -83,25 +92,31 @@ const symLib = (() => {
     document.getElementById('symLibFavBtn').onclick = toggleFavorite;
     document.getElementById('symTabList').onclick = () => switchTab('list');
     document.getElementById('symTabFav').onclick = () => switchTab('fav');
+    document.getElementById('symTabRecent').onclick = () => switchTab('recent');
+    document.getElementById('symRecentClear').onclick = () => {
+      if (!recent.length) return;
+      if (confirm('最近使った履歴を全て消去しますか?')) { recent = []; saveRecent(); renderRecentList(); }
+    };
     return panel;
   }
 
   function switchTab(tab) {
     activeTab = tab;
-    const listPane = document.getElementById('symListPane');
-    const favPane  = document.getElementById('symFavPane');
-    const btnList  = document.getElementById('symTabList');
-    const btnFav   = document.getElementById('symTabFav');
-    if (tab === 'list') {
-      listPane.style.display = 'flex'; favPane.style.display = 'none';
-      btnList.style.borderBottomColor = '#0067c0'; btnList.style.color = '#ddd'; btnList.style.background = '#252525';
-      btnFav.style.borderBottomColor = 'transparent'; btnFav.style.color = '#888'; btnFav.style.background = '#1e1e1e';
-    } else {
-      listPane.style.display = 'none'; favPane.style.display = 'flex';
-      btnFav.style.borderBottomColor = '#f5a623'; btnFav.style.color = '#ddd'; btnFav.style.background = '#252525';
-      btnList.style.borderBottomColor = 'transparent'; btnList.style.color = '#888'; btnList.style.background = '#1e1e1e';
-      renderFavList();
-    }
+    const panes = { list: 'symListPane', fav: 'symFavPane', recent: 'symRecentPane' };
+    const btns  = { list: ['symTabList', '#0067c0'], fav: ['symTabFav', '#f5a623'], recent: ['symTabRecent', '#6fbf6f'] };
+    Object.keys(panes).forEach(k => {
+      const pane = document.getElementById(panes[k]);
+      const btn  = document.getElementById(btns[k][0]);
+      const on = (k === tab);
+      if (pane) pane.style.display = on ? 'flex' : 'none';
+      if (btn) {
+        btn.style.borderBottomColor = on ? btns[k][1] : 'transparent';
+        btn.style.color = on ? '#ddd' : '#888';
+        btn.style.background = on ? '#252525' : '#1e1e1e';
+      }
+    });
+    if (tab === 'fav') renderFavList();
+    if (tab === 'recent') renderRecentList();
   }
 
   // ── ZIP ──────────────────────────────────────────────────────
@@ -195,6 +210,7 @@ const symLib = (() => {
         show.map((e, i) => {
           const isFav = favorites.some(f => f.path === e.path);
           return `<div class="slItem" data-idx="${i}" style="border:1px solid #333;border-radius:4px;cursor:pointer;background:#252525;padding:4px;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;">
+            <span class="addBtn" data-idx="${i}" title="キャンバスへ追加" style="position:absolute;top:1px;left:3px;font-size:13px;cursor:pointer;color:#6fbf6f;font-weight:bold;">＋</span>
             <span class="favStar" data-idx="${i}" style="position:absolute;top:2px;right:3px;font-size:11px;cursor:pointer;color:${isFav?'#f5a623':'#555'};">${isFav?'★':'☆'}</span>
             <canvas class="thumbCanvas" data-idx="${i}" width="90" height="60" style="background:#111;border-radius:2px;display:block;"></canvas>
             <div style="font-size:9px;color:#9ec6f7;text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${e.label}">${e.label}</div>
@@ -206,9 +222,13 @@ const symLib = (() => {
         el.onmouseover = () => { el.style.background = '#2d3a4a'; };
         el.onmouseout  = () => { el.style.background = '#252525'; };
         el.onclick = (ev) => {
-          if (ev.target.classList.contains('favStar')) return;
+          if (ev.target.classList.contains('favStar') || ev.target.classList.contains('addBtn')) return;
           selectEntry(filtered[parseInt(el.dataset.idx)]);
         };
+        el.ondblclick = () => addEntry(filtered[parseInt(el.dataset.idx)]);
+      });
+      list.querySelectorAll('.addBtn').forEach(btn => {
+        btn.onclick = (ev) => { ev.stopPropagation(); addEntry(filtered[parseInt(btn.dataset.idx)]); };
       });
       list.querySelectorAll('.favStar').forEach(star => {
         star.onclick = (ev) => {
@@ -251,6 +271,7 @@ const symLib = (() => {
             <div style="font-weight:bold;color:#9ec6f7;font-size:11px;">${e.label}</div>
             <div style="color:#777;font-size:10px;">${e.std.replace('_',' ')} / ${e.cat} / ${e.fname}</div>
           </div>
+          <span class="addBtn" data-idx="${i}" title="キャンバスへ追加" style="font-size:15px;cursor:pointer;color:#6fbf6f;font-weight:bold;flex-shrink:0;">＋</span>
           <span class="favStar" data-idx="${i}" style="font-size:13px;cursor:pointer;color:${isFav?'#f5a623':'#555'};flex-shrink:0;">${isFav?'★':'☆'}</span>
         </div>`;
       }).join('');
@@ -261,9 +282,13 @@ const symLib = (() => {
         el.onmouseover = () => { el.style.background = '#2d3a4a'; };
         el.onmouseout  = () => { el.style.background = '#252525'; };
         el.onclick = (ev) => {
-          if (ev.target.classList.contains('favStar')) return;
+          if (ev.target.classList.contains('favStar') || ev.target.classList.contains('addBtn')) return;
           selectEntry(filtered[parseInt(el.dataset.idx)]);
         };
+        el.ondblclick = () => addEntry(filtered[parseInt(el.dataset.idx)]);
+      });
+      list.querySelectorAll('.addBtn').forEach(btn => {
+        btn.onclick = (ev) => { ev.stopPropagation(); addEntry(filtered[parseInt(btn.dataset.idx)]); };
       });
       list.querySelectorAll('.favStar').forEach(star => {
         star.onclick = (ev) => {
@@ -305,6 +330,7 @@ const symLib = (() => {
     list.innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:2px;">` +
       favorites.map((e, i) =>
         `<div class="favItem" data-idx="${i}" style="border:1px solid #554400;border-radius:4px;cursor:pointer;background:#2a2400;padding:4px;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;">
+          <span class="favAdd" data-idx="${i}" title="キャンバスへ追加" style="position:absolute;top:1px;left:3px;font-size:13px;cursor:pointer;color:#6fbf6f;font-weight:bold;">＋</span>
           <span class="favRemove" data-idx="${i}" style="position:absolute;top:2px;right:3px;font-size:10px;cursor:pointer;color:#f5a623;">★</span>
           <canvas class="favThumb" data-idx="${i}" width="90" height="60" style="background:#111;border-radius:2px;display:block;"></canvas>
           <div style="font-size:9px;color:#f5c842;text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${e.label}">${e.label}</div>
@@ -315,9 +341,13 @@ const symLib = (() => {
       el.onmouseover = () => { el.style.background = '#3a3200'; };
       el.onmouseout  = () => { el.style.background = '#2a2400'; };
       el.onclick = (ev) => {
-        if (ev.target.classList.contains('favRemove')) return;
+        if (ev.target.classList.contains('favRemove') || ev.target.classList.contains('favAdd')) return;
         selectEntry(favorites[parseInt(el.dataset.idx)]);
       };
+      el.ondblclick = () => addEntry(favorites[parseInt(el.dataset.idx)]);
+    });
+    list.querySelectorAll('.favAdd').forEach(btn => {
+      btn.onclick = (ev) => { ev.stopPropagation(); addEntry(favorites[parseInt(btn.dataset.idx)]); };
     });
     list.querySelectorAll('.favRemove').forEach(btn => {
       btn.onclick = (ev) => {
@@ -347,6 +377,83 @@ const symLib = (() => {
         generateThumb(cv, favorites[parseInt(cv.dataset.idx)]);
       });
     }
+  }
+
+  // ── 最近使ったリスト ──────────────────────────────────────────
+  function renderRecentList() {
+    const list = document.getElementById('symRecentList'); if (!list) return;
+    const countEl = document.getElementById('symRecentCount');
+    if (countEl) countEl.textContent = `(${recent.length}件)`;
+
+    if (!recent.length) {
+      list.innerHTML = '<div style="padding:16px;color:#666;font-size:11px;text-align:center;">シンボルを追加すると履歴が表示されます</div>';
+      return;
+    }
+
+    if (thumbObserver) { thumbObserver.disconnect(); thumbObserver = null; }
+
+    list.innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:2px;">` +
+      recent.map((e, i) =>
+        `<div class="recItem" data-idx="${i}" style="border:1px solid #2e4a38;border-radius:4px;cursor:pointer;background:#1e2a22;padding:4px;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative;">
+          <span class="recAdd" data-idx="${i}" title="キャンバスへ追加" style="position:absolute;top:1px;left:3px;font-size:13px;cursor:pointer;color:#6fbf6f;font-weight:bold;">＋</span>
+          <span class="recRemove" data-idx="${i}" title="履歴から削除" style="position:absolute;top:2px;right:3px;font-size:10px;cursor:pointer;color:#777;">✕</span>
+          <canvas class="recThumb" data-idx="${i}" width="90" height="60" style="background:#111;border-radius:2px;display:block;"></canvas>
+          <div style="font-size:9px;color:#9ed6b0;text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${e.label}">${e.label}</div>
+        </div>`
+      ).join('') + `</div>`;
+
+    list.querySelectorAll('.recItem').forEach(el => {
+      el.onmouseover = () => { el.style.background = '#263a2c'; };
+      el.onmouseout  = () => { el.style.background = '#1e2a22'; };
+      el.onclick = (ev) => {
+        if (ev.target.classList.contains('recRemove') || ev.target.classList.contains('recAdd')) return;
+        selectEntry(recent[parseInt(el.dataset.idx)]);
+      };
+      el.ondblclick = () => addEntry(recent[parseInt(el.dataset.idx)]);
+    });
+    list.querySelectorAll('.recAdd').forEach(btn => {
+      btn.onclick = (ev) => { ev.stopPropagation(); addEntry(recent[parseInt(btn.dataset.idx)]); };
+    });
+    list.querySelectorAll('.recRemove').forEach(btn => {
+      btn.onclick = (ev) => {
+        ev.stopPropagation();
+        recent.splice(parseInt(btn.dataset.idx), 1);
+        saveRecent();
+        renderRecentList();
+      };
+    });
+
+    // 遅延サムネイル
+    if (typeof IntersectionObserver !== 'undefined') {
+      thumbObserver = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          const cv = entry.target;
+          if (cv.dataset.loaded) return;
+          cv.dataset.loaded = '1';
+          thumbObserver.unobserve(cv);
+          generateThumb(cv, recent[parseInt(cv.dataset.idx)]);
+        });
+      }, { root: list, rootMargin: '60px' });
+      list.querySelectorAll('.recThumb').forEach(cv => thumbObserver.observe(cv));
+    } else {
+      list.querySelectorAll('.recThumb').forEach(cv => generateThumb(cv, recent[parseInt(cv.dataset.idx)]));
+    }
+  }
+
+  function pushRecent(entry) {
+    const idx = recent.findIndex(r => r.path === entry.path);
+    if (idx >= 0) recent.splice(idx, 1);
+    recent.unshift({ path: entry.path, label: entry.label, fname: entry.fname, std: entry.std, cat: entry.cat, type3: entry.type3 });
+    if (recent.length > 30) recent.length = 30;
+    saveRecent();
+    if (activeTab === 'recent') renderRecentList();
+  }
+
+  function saveRecent() {
+    try { localStorage.setItem('symLibRecent', JSON.stringify(recent)); } catch(e) {}
+    const c = document.getElementById('symRecentCount');
+    if (c) c.textContent = `(${recent.length}件)`;
   }
 
   // ── お気に入り操作 ────────────────────────────────────────────
@@ -481,12 +588,32 @@ const symLib = (() => {
   // ── キャンバスに追加 ──────────────────────────────────────────
   async function addToCanvas() {
     if (!previewEntry) return;
-    let shapes = previewShapes;
+    await addEntry(previewEntry);
+  }
+
+  // 非ブロッキング通知(連続配置でもOKクリック不要)
+  function toast(msg) {
+    let t = document.getElementById('symLibToast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'symLibToast';
+      t.style.cssText = 'position:fixed;bottom:34px;left:50%;transform:translateX(-50%);background:#2a2a2a;color:#9ec6f7;border:1px solid #0067c0;border-radius:4px;padding:6px 14px;font-size:12px;z-index:9999;pointer-events:none;opacity:0;transition:opacity .2s;';
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.opacity = '1';
+    clearTimeout(t._tm);
+    t._tm = setTimeout(() => { t.style.opacity = '0'; }, 1800);
+  }
+
+  async function addEntry(entry) {
+    if (!entry) return;
+    let shapes = (previewEntry && entry.path === previewEntry.path && previewShapes.length) ? previewShapes : [];
     if (!shapes.length && zipData) {
-      const zFile = findZipFile(previewEntry.path);
+      const zFile = findZipFile(entry.path);
       if (zFile) { const buf=await zFile.async('arraybuffer'); shapes=parseDxfShapes(new TextDecoder('shift-jis').decode(buf)); }
     }
-    if (!shapes.length) { alert('シンボルデータが空です'); return; }
+    if (!shapes.length) { alert('シンボルデータが空です（ZIP未読込の可能性があります）'); return; }
 
     const {mnX,mnY,mxX,mxY}=getBBox(shapes);
     const dxfW=Math.max(mxX-mnX,1), dxfH=Math.max(mxY-mnY,1);
@@ -501,7 +628,7 @@ const symLib = (() => {
       return s;
     });
 
-    const symType = 'lib_' + previewEntry.path.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const symType = 'lib_' + entry.path.replace(/[^a-zA-Z0-9_\-]/g, '_');
 
     // プレビュー画像生成
     let preview='';
@@ -526,15 +653,15 @@ const symLib = (() => {
       preview=pv.toDataURL('image/png');
     } catch(e) {}
 
-    const symDef={type:symType, name:previewEntry.label, label:previewEntry.label,
-      cat:previewEntry.type3||'ライブラリ', w:dxfW*SCALE, h:dxfH*SCALE,
+    const symDef={type:symType, name:entry.label, label:entry.label,
+      cat:entry.type3||'ライブラリ', w:dxfW*SCALE, h:dxfH*SCALE,
       shapes:canvasShapes, terminals:[], preview};
     const existing=state.customSymbols.findIndex(s=>s.type===symType);
     if(existing>=0) state.customSymbols[existing]=symDef;
     else state.customSymbols.push(symDef);
 
     if(typeof DEFS!=='undefined')
-      DEFS[symType]={w:dxfW*SCALE,h:dxfH*SCALE,cat:symDef.cat,name:previewEntry.label,label:previewEntry.label,jis:'',terminals:[]};
+      DEFS[symType]={w:dxfW*SCALE,h:dxfH*SCALE,cat:symDef.cat,name:entry.label,label:entry.label,jis:'',terminals:[]};
 
     pushH();
     const cx=(window.innerWidth/2-state.pan.x)/state.zoom;
@@ -542,17 +669,18 @@ const symLib = (() => {
     state.elements.push({
       id:genId('el'), type:symType,
       x:cx, y:cy, rot:0, flipH:false, flipV:false,
-      label:previewEntry.label,
+      label:entry.label,
       layer: activeLayer(),
-      source: 'library', sourcePath: previewEntry.path,
+      source: 'library', sourcePath: entry.path,
       labelOffX:0, labelOffY:dxfH*SCALE/2+14,
       color:null, lineStyle:null,
       w:dxfW*SCALE, h:dxfH*SCALE
     });
 
+    pushRecent(entry);
     if(typeof renderCustomSymbols==='function') renderCustomSymbols();
     draw();
-    alert(`「${previewEntry.label}」を追加しました`);
+    toast(`「${entry.label}」を追加しました`);
   }
 
   // ── FileSystemFileHandle をIndexedDBに保存・復元 ──────────────
