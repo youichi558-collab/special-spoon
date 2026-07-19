@@ -38,6 +38,7 @@ import os
 import csv
 
 import pdfplumber
+from normalize import contains as fuzzy_contains
 
 
 def ffill_row(cells):
@@ -68,7 +69,7 @@ def search_pdf(pdf_path, model_query, out_rows, ncols_label=4):
     with pdfplumber.open(pdf_path) as pdf:
         for page_idx, page in enumerate(pdf.pages, start=1):
             text = page.extract_text() or ''
-            if model_query not in text:
+            if not fuzzy_contains(text, model_query):
                 continue
             tables = page.find_tables()
             for table in tables:
@@ -82,7 +83,7 @@ def search_pdf(pdf_path, model_query, out_rows, ncols_label=4):
                     for ci, val in enumerate(filled):
                         if ci < ncols_label:
                             continue
-                        if model_query in val:
+                        if fuzzy_contains(val, model_query):
                             target_col = ci
                             break
                     if target_col is not None:

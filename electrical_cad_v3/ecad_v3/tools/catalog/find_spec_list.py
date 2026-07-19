@@ -46,6 +46,7 @@ import os
 import csv
 
 import pdfplumber
+from normalize import contains as fuzzy_contains
 
 
 def get_cell_texts(page, table):
@@ -105,7 +106,7 @@ def search_pdf(pdf_path, model_query, header_rows, out_rows):
     with pdfplumber.open(pdf_path) as pdf:
         for page_idx, page in enumerate(pdf.pages, start=1):
             text = page.extract_text() or ''
-            if model_query not in text:
+            if not fuzzy_contains(text, model_query):
                 continue
             tables = page.find_tables()
             for table in tables:
@@ -115,7 +116,7 @@ def search_pdf(pdf_path, model_query, header_rows, out_rows):
                 labels = build_header_labels(grid, header_rows)
                 data = vfill_columns(grid[header_rows:])
                 for row in data:
-                    if any(model_query in (v or '') for v in row):
+                    if any(fuzzy_contains(v or '', model_query) for v in row):
                         print(f"  一致: {os.path.basename(pdf_path)} page {page_idx}")
                         for ci, val in enumerate(row):
                             label = labels[ci] if ci < len(labels) else f'列{ci}'
