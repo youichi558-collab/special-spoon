@@ -24,6 +24,8 @@ function pushH() {
   // 現在ページを未保存マーク
   state.pages[state.currentPage].dirty = true;
   renderPageTabs();
+  // 自動保存（デバウンス：変更確定の1.5秒後にlocalStorageへ）
+  if (typeof scheduleAutosave === 'function') scheduleAutosave();
 }
 
 function undo() {
@@ -37,6 +39,7 @@ function undo() {
   state.currentPage = snap.currentPage;
   state.sel.els.clear(); state.sel.wires.clear();
   renderPageTabs(); draw(); updateRightPanel();
+  if (typeof scheduleAutosave === 'function') scheduleAutosave();
 }
 
 function redo() {
@@ -50,6 +53,7 @@ function redo() {
   state.currentPage = snap.currentPage;
   state.sel.els.clear(); state.sel.wires.clear();
   renderPageTabs(); draw(); updateRightPanel();
+  if (typeof scheduleAutosave === 'function') scheduleAutosave();
 }
 
 // ----------------------------------------------------------------

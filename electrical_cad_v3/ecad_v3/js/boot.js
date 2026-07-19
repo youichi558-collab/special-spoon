@@ -9,6 +9,9 @@
   cv.height = cwEl.clientHeight;
   // resizeイベントはinput.jsで管理
 
+  // 自動保存データがあれば復元（描画・DEFS登録より前）
+  restoreAutosave();
+
   // カスタムシンボルをDEFSに登録
   state.customSymbols.forEach(s => { DEFS[s.type] = s; });
 
