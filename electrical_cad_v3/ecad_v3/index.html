@@ -64,8 +64,8 @@
           <div class="rb rb-sm" onclick="rotateSel(90)" title="回転 R"><svg viewBox="0 0 14 14"><path d="M10 4a5 5 0 1 0 1.5 3.5M10 4V1M10 4H7" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>回転</div>
           <div class="rb rb-sm" onclick="flipSel('h')" title="左右反転 H"><svg viewBox="0 0 14 14"><path d="M7 2v10M3 4l4 3-4 3M11 4l-4 3 4 3" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>反転H</div>
           <div class="rb rb-sm" onclick="flipSel('v')" title="上下反転"><svg viewBox="0 0 14 14"><path d="M2 7h10M4 3l3 4 3-4M4 11l3-4 3 4" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>反転V</div>
-          <div class="rb rb-sm" onclick="groupSelected()" title="グループ化 G"><svg viewBox="0 0 14 14"><rect x="2" y="2" width="10" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="3,2"/><rect x="4" y="4" width="2" height="2" fill="currentColor"/><rect x="8" y="4" width="2" height="2" fill="currentColor"/><rect x="4" y="8" width="2" height="2" fill="currentColor"/><rect x="8" y="8" width="2" height="2" fill="currentColor"/></svg>G化</div>
-          <div class="rb rb-sm" onclick="ungroupSelected()" title="グループ解除 Shift+G"><svg viewBox="0 0 14 14"><rect x="2" y="2" width="10" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="3,2"/><path d="M5 7h4M7 5v4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>G解除</div>
+          <div class="rb rb-sm" onclick="groupSelected()" title="グループ化 Ctrl+G"><svg viewBox="0 0 14 14"><rect x="2" y="2" width="10" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="3,2"/><rect x="4" y="4" width="2" height="2" fill="currentColor"/><rect x="8" y="4" width="2" height="2" fill="currentColor"/><rect x="4" y="8" width="2" height="2" fill="currentColor"/><rect x="8" y="8" width="2" height="2" fill="currentColor"/></svg>G化</div>
+          <div class="rb rb-sm" onclick="ungroupSelected()" title="グループ解除 Ctrl+Shift+G"><svg viewBox="0 0 14 14"><rect x="2" y="2" width="10" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="3,2"/><path d="M5 7h4M7 5v4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>G解除</div>
         </div>
         <div class="rg-label">変形</div>
       </div>
@@ -210,6 +210,7 @@
         <div class="rg-btns">
           <div class="rb rb-sm" onclick="toggleRightPanel()"><svg viewBox="0 0 14 14"><rect x="1" y="2" width="12" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M9 2v10" stroke="currentColor" stroke-width="1.3"/></svg>プロパティ</div>
           <div class="rb rb-sm" onclick="toggleLeftPanel()"><svg viewBox="0 0 14 14"><rect x="1" y="2" width="12" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5 2v10" stroke="currentColor" stroke-width="1.3"/></svg>シンボル欄</div>
+          <div class="rb rb-sm" onclick="openFP('shortcut-p')" title="キーボードショートカット一覧"><svg viewBox="0 0 14 14"><rect x="1" y="3" width="12" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M3 5.5h1M5.5 5.5h1M8 5.5h1M10.5 5.5h.5M3 8.5h1M5 8.5h4M10.5 8.5h.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>ショートカット</div>
         </div>
         <div class="rg-label">パネル</div>
       </div>
@@ -308,8 +309,8 @@
       <div class="ctx-item" id="ctx-fliph" onclick="flipSel('h');hideCtx()">左右反転</div>
       <div class="ctx-item" id="ctx-explode" onclick="explodeSelected();hideCtx()">分解</div>
       <div class="ctx-sep"></div>
-      <div class="ctx-item" id="ctx-group" onclick="groupSelected();hideCtx()">グループ化 (G)</div>
-      <div class="ctx-item" id="ctx-ungroup" onclick="ungroupSelected();hideCtx()">グループ解除 (Shift+G)</div>
+      <div class="ctx-item" id="ctx-group" onclick="groupSelected();hideCtx()">グループ化 (Ctrl+G)</div>
+      <div class="ctx-item" id="ctx-ungroup" onclick="ungroupSelected();hideCtx()">グループ解除 (Ctrl+Shift+G)</div>
       <div class="ctx-sep"></div>
       <div class="ctx-item" id="ctx-prop" onclick="showPropPanel();hideCtx()">プロパティ...</div>
     </div>
@@ -320,6 +321,58 @@
     <div class="fp" id="wire-p"><h3>線番 割付結果</h3><div id="wire-body"></div><div style="display:flex;gap:6px;margin-top:8px"><button class="fp-btn primary" onclick="exportWireCSV()">CSV出力</button><button class="fp-btn" onclick="closeFP('wire-p')">閉じる</button></div></div>
     <div class="fp" id="term-p"><h3>端子台一覧</h3><div id="term-body"></div><div style="display:flex;gap:6px;margin-top:8px"><button class="fp-btn primary" onclick="exportTermCSV()">CSV出力</button><button class="fp-btn" onclick="closeFP('term-p')">閉じる</button></div></div>
     <div class="fp" id="termtbl-p"><h3>端子表（接続情報）</h3><div id="termtbl-body"></div><div style="display:flex;gap:6px;margin-top:8px"><button class="fp-btn primary" onclick="exportTerminalCSV()">CSV出力</button><button class="fp-btn" onclick="closeFP('termtbl-p')">閉じる</button></div></div>
+
+    <!-- ショートカット一覧 -->
+    <div class="fp" id="shortcut-p" style="width:460px">
+      <h3>キーボードショートカット</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px;font-size:11px">
+        <div>
+          <h4 style="font-size:10px;color:var(--fg3);margin:6px 0 3px;border-bottom:1px solid var(--bd)">編集</h4>
+          <table class="tbl"><tbody>
+            <tr><td style="white-space:nowrap"><b>Ctrl+Z</b></td><td>元に戻す</td></tr>
+            <tr><td><b>Ctrl+Y</b></td><td>やり直し</td></tr>
+            <tr><td><b>Ctrl+C / X / V</b></td><td>コピー / 切取 / 貼付</td></tr>
+            <tr><td><b>Del</b></td><td>削除</td></tr>
+            <tr><td><b>Ctrl+A</b></td><td>すべて選択</td></tr>
+            <tr><td><b>Ctrl+S</b></td><td>保存</td></tr>
+            <tr><td><b>Ctrl+G</b></td><td>グループ化</td></tr>
+            <tr><td><b>Ctrl+Shift+G</b></td><td>グループ解除</td></tr>
+          </tbody></table>
+          <h4 style="font-size:10px;color:var(--fg3);margin:6px 0 3px;border-bottom:1px solid var(--bd)">移動（選択中）</h4>
+          <table class="tbl"><tbody>
+            <tr><td style="white-space:nowrap"><b>矢印</b></td><td>1単位</td></tr>
+            <tr><td><b>Shift+矢印</b></td><td>グリッド単位</td></tr>
+            <tr><td><b>Ctrl+矢印</b></td><td>0.1単位（微調整）</td></tr>
+          </tbody></table>
+        </div>
+        <div>
+          <h4 style="font-size:10px;color:var(--fg3);margin:6px 0 3px;border-bottom:1px solid var(--bd)">ツール</h4>
+          <table class="tbl"><tbody>
+            <tr><td style="white-space:nowrap"><b>S / W / T</b></td><td>選択 / 配線 / テキスト</td></tr>
+            <tr><td><b>R</b></td><td>90°回転</td></tr>
+            <tr><td><b>H / V</b></td><td>左右反転 / 上下反転</td></tr>
+            <tr><td><b>P</b></td><td>部品番号 採番・編集</td></tr>
+            <tr><td><b>Esc</b></td><td>キャンセル→選択モード</td></tr>
+            <tr><td><b>Enter</b></td><td>曲線を確定</td></tr>
+          </tbody></table>
+          <h4 style="font-size:10px;color:var(--fg3);margin:6px 0 3px;border-bottom:1px solid var(--bd)">表示・ページ</h4>
+          <table class="tbl"><tbody>
+            <tr><td style="white-space:nowrap"><b>+ / − / 0</b></td><td>拡大 / 縮小 / 全体表示</td></tr>
+            <tr><td><b>F8</b></td><td>直交モード切替</td></tr>
+            <tr><td><b>Shift（押しっぱなし）</b></td><td>一時的に直交ON</td></tr>
+            <tr><td><b>Ctrl+Tab</b></td><td>次ページ（+Shiftで前）</td></tr>
+          </tbody></table>
+          <h4 style="font-size:10px;color:var(--fg3);margin:6px 0 3px;border-bottom:1px solid var(--bd)">マウス</h4>
+          <table class="tbl"><tbody>
+            <tr><td style="white-space:nowrap"><b>ホイール</b></td><td>ズーム</td></tr>
+            <tr><td><b>中ボタンドラッグ</b></td><td>画面移動（パン）</td></tr>
+            <tr><td><b>右クリック</b></td><td>メニュー</td></tr>
+            <tr><td><b>ページタブWクリック</b></td><td>ページ名変更</td></tr>
+          </tbody></table>
+        </div>
+      </div>
+      <div style="margin-top:10px"><button class="fp-btn" onclick="closeFP('shortcut-p')">閉じる</button></div>
+    </div>
 
     <!-- PDF出力オプション -->
     <div class="fp" id="pdf-opt-p" style="width:280px">

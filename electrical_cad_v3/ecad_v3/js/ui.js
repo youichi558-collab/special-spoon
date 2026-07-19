@@ -1020,8 +1020,35 @@ function delCusSym(type) {
 function renderPageTabs() {
   const el = document.getElementById('page-tabs'); if (!el) return;
   el.innerHTML = state.pages.map((p,i) =>
-    `<div class="page-tab${i===state.currentPage?' active':''}" onclick="switchPage(${i})" ondblclick="renamePage(${i})" style="display:flex;align-items:center;gap:4px">${p.name||('Sheet'+(i+1))}${p.dirty?'<span style="color:var(--red);font-size:10px">●</span>':''}${state.pages.length>1?`<span onclick="event.stopPropagation();deletePage(${i})" style="font-size:10px;color:var(--fg3);cursor:pointer;line-height:1" title="削除">×</span>`:''}</div>`
+    `<div class="page-tab${i===state.currentPage?' active':''}" draggable="true" onclick="switchPage(${i})" ondblclick="renamePage(${i})" ondragstart="pageDragStart(event,${i})" ondragover="pageDragOver(event)" ondrop="pageDrop(event,${i})" style="display:flex;align-items:center;gap:4px" title="ドラッグで並び替え／ダブルクリックで名前変更">${p.name||('Sheet'+(i+1))}${p.dirty?'<span style="color:var(--red);font-size:10px">●</span>':''}${state.pages.length>1?`<span onclick="event.stopPropagation();deletePage(${i})" style="font-size:10px;color:var(--fg3);cursor:pointer;line-height:1" title="削除">×</span>`:''}</div>`
   ).join('') + `<div class="page-tab-add" onclick="addPage()">＋</div>`;
+}
+
+// ── ページタブ ドラッグ並び替え ──
+let _pgDragFrom = null;
+function pageDragStart(ev, i) {
+  _pgDragFrom = i;
+  ev.dataTransfer.effectAllowed = 'move';
+}
+function pageDragOver(ev) {
+  ev.preventDefault();
+  ev.dataTransfer.dropEffect = 'move';
+}
+function pageDrop(ev, to) {
+  ev.preventDefault();
+  const from = _pgDragFrom; _pgDragFrom = null;
+  if (from === null || from === to) return;
+  movePage(from, to);
+}
+function movePage(from, to) {
+  if (from < 0 || from >= state.pages.length || to < 0 || to >= state.pages.length) return;
+  if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
+  pushH();
+  const cur = state.pages[state.currentPage];
+  const [pg] = state.pages.splice(from, 1);
+  state.pages.splice(to, 0, pg);
+  state.currentPage = state.pages.indexOf(cur);
+  renderPageTabs(); draw(); updateRightPanel();
 }
 
 function switchPage(idx) {
@@ -1938,3 +1965,40 @@ function restoreAllSyms() {
   localStorage.removeItem('hiddenSyms');
   renderSymFloat();
 }
+
+
+// ----------------------------------------------------------------
+// フローティングパネル(.fp)をタイトル(h3)ドラッグで移動可能に
+// ----------------------------------------------------------------
+function makeFpDraggable() {
+  document.querySelectorAll('.fp').forEach(fp => {
+    const handle = fp.querySelector('h3');
+    if (!handle || handle._fpDrag) return;
+    handle._fpDrag = true;
+    handle.style.cursor = 'move';
+    handle.title = 'ドラッグで移動';
+    handle.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      if (e.target.closest('button,input,select,[onclick]')) return;
+      e.preventDefault();
+      const r = fp.getBoundingClientRect();
+      // transform中央寄せ・right固定をやめて絶対座標に切替
+      fp.style.transform = 'none';
+      fp.style.left = r.left + 'px';
+      fp.style.top = r.top + 'px';
+      fp.style.right = 'auto';
+      const ox = e.clientX - r.left, oy = e.clientY - r.top;
+      const mv = ev => {
+        fp.style.left = Math.max(0, Math.min(window.innerWidth - 80, ev.clientX - ox)) + 'px';
+        fp.style.top  = Math.max(0, Math.min(window.innerHeight - 40, ev.clientY - oy)) + 'px';
+      };
+      const up = () => {
+        document.removeEventListener('mousemove', mv);
+        document.removeEventListener('mouseup', up);
+      };
+      document.addEventListener('mousemove', mv);
+      document.addEventListener('mouseup', up);
+    });
+  });
+}
+makeFpDraggable();
