@@ -282,7 +282,59 @@ function placePart(type, ref, terminals) {
   setMode('sym', type);
   document.getElementById('s-hint').textContent = `「${ref}」→ クリックで配置`;
 }
-function showPartReg() { openFP('part-reg-p'); }
+function showPartReg() {
+  openFP('part-reg-p');
+  loadCatalogList();
+}
+
+// ローカルサーバーのAPIからカタログ一覧を取得してプルダウンに反映
+async function loadCatalogList() {
+  const sel = document.getElementById('cs-catalog');
+  if (!sel) return;
+  try {
+    const res = await fetch('/api/catalogs');
+    const data = await res.json();
+    const catalogs = data.catalogs || [];
+    sel.innerHTML = catalogs.length
+      ? catalogs.map(c => `<option value="${c}">${c}</option>`).join('')
+      : '<option value="">(catalog_config.jsonに未設定)</option>';
+  } catch (e) {
+    sel.innerHTML = '<option value="">(サーバー未対応・start.batを最新版で起動してください)</option>';
+  }
+}
+
+// カタログPDF内を型式検索し、結果をパネルに表示
+async function catalogSearch() {
+  const catalog = document.getElementById('cs-catalog').value;
+  const mode = document.getElementById('cs-mode').value;
+  const model = document.getElementById('cs-model').value.trim();
+  const resultEl = document.getElementById('cs-result');
+  if (!model) { alert('型式を入力してください'); return; }
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = '検索中...';
+  try {
+    const url = `/api/search?catalog=${encodeURIComponent(catalog)}&model=${encodeURIComponent(model)}&mode=${encodeURIComponent(mode)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.error) { resultEl.innerHTML = `<span style="color:var(--red)">${data.error}</span>`; return; }
+    if (!data.rows || !data.rows.length) { resultEl.innerHTML = `「${model}」は見つかりませんでした。`; return; }
+    resultEl.innerHTML = data.rows.map(r =>
+      `<div style="display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--bg4);padding:2px 0">
+        <span style="color:var(--fg3)">${r.label}</span><span style="font-weight:600">${r.value}</span>
+      </div>`
+    ).join('') + `<div style="margin-top:6px"><button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick='appendSearchToCsv(${JSON.stringify(model)})'>この型式をCSV欄に追記</button></div>`;
+  } catch (e) {
+    resultEl.innerHTML = `<span style="color:var(--red)">検索エラー: ${e.message}（server.pyで起動していますか？）</span>`;
+  }
+}
+
+// 検索結果を元に、CSV一括登録欄へ型式だけ入れた行を追記（値は目視で埋めてもらう運用）
+function appendSearchToCsv(model) {
+  const ta = document.getElementById('pr-csv');
+  const line = `,${model},coil,,,,,`;
+  ta.value = ta.value ? (ta.value.replace(/\n+$/, '') + '\n' + line) : line;
+  ta.scrollTop = ta.scrollHeight;
+}
 
 // 外形図DXFファイル読込（エンコーディング自動判定して文字列化）
 function _readDxfFileAsText(file, cb) {
