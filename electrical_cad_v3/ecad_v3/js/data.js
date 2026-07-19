@@ -20,16 +20,7 @@ const LAYERS = [
 
 const BUILTIN_PARTS = [
   { maker:'三菱電機', ref:'S-T10',    type:'coil',    volt:'AC200V', amp:'10A',    terminals:'A1,A2,1,3,5,2,4,6', contacts:'a3b1' },
-  { maker:'三菱電機', ref:'S-T21',    type:'coil',    volt:'AC200V', amp:'21A',    terminals:'A1,A2,1,3,5,2,4,6', contacts:'a3b1' },
-  { maker:'三菱電機', ref:'NF30-CS',  type:'breaker', volt:'',       amp:'5-30A',  terminals:'1,2,3,4,5,6',       contacts:''     },
   { maker:'三菱電機', ref:'NF63-CV',  type:'breaker', volt:'',       amp:'40-63A', terminals:'1,2,3,4,5,6',       contacts:''     },
-  { maker:'オムロン', ref:'G2R-1',    type:'coil',    volt:'DC24V',  amp:'',       terminals:'1,2,3,4,5',         contacts:'a1b1' },
-  { maker:'オムロン', ref:'G2R-2',    type:'coil',    volt:'DC24V',  amp:'',       terminals:'1,2,3,4,5,6,7,8',   contacts:'a2b0' },
-  { maker:'オムロン', ref:'H3Y-2',    type:'timer_coil',volt:'24-240V',amp:'',     terminals:'1,2,3,4,5,6,7,8',   contacts:'a2b0' },
-  { maker:'富士電機', ref:'SC-03',    type:'coil',    volt:'AC200V', amp:'11A',    terminals:'A1,A2,1,3,5,2,4,6', contacts:'a3b1' },
-  { maker:'富士電機', ref:'BW32AAG',  type:'breaker', volt:'',       amp:'20A',    terminals:'1,2,3,4,5,6',       contacts:''     },
-  { maker:'シュナイダー', ref:'LC1D09',type:'coil',   volt:'AC24V',  amp:'9A',     terminals:'A1,A2,1,3,5,2,4,6', contacts:'a3b1' },
-  { maker:'パナソニック', ref:'BKW3103K',type:'breaker',volt:'',     amp:'30A',    terminals:'1,2,3,4',           contacts:''     },
 ];
 
 const DEFS = {
