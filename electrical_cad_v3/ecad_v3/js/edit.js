@@ -386,6 +386,28 @@ function clearAll() {
   draw(); updateRightPanel();
 }
 
+// 図面ファイル全体を白紙の状態にする（自動保存されていた前回の作業も破棄する）
+// clearAll()は「現在ページの中身」だけを消すのに対し、こちらはページ構成・
+// ファイル名・履歴・自動保存データまで含めて完全に新規状態へリセットする。
+function newProject() {
+  if (!confirm('新規作成します。保存していない変更（自動保存されたものも含む）は失われます。よろしいですか？')) return;
+
+  state.pages = [{ name: 'Sheet1', elements: [], wires: [], groups: [], guides: [], frameObj: null }];
+  state.currentPage = 0;
+  state.saveFileName = '';
+  state.sel.els.clear(); state.sel.wires.clear();
+  state.wirePoints = []; state.preview = null;
+  state.hist = []; state.redoHist = [];
+
+  // localStorageの自動保存データも消す。これをしないと次回リロード時に
+  // また元の図面が復元されてしまい「新規作成」の意味がなくなるため。
+  try { localStorage.removeItem(AUTOSAVE_KEY); } catch (e) {}
+
+  renderPageTabs(); draw(); updateRightPanel();
+  const h = document.getElementById('s-hint');
+  if (h) h.textContent = '新規図面を作成しました';
+}
+
 // ----------------------------------------------------------------
 // 変形
 // ----------------------------------------------------------------
