@@ -445,7 +445,10 @@
     
     <!-- 部品登録 -->
     <div class="fp" id="part-reg-p">
-      <h3>カスタム部品登録</h3>
+      <div style="display:flex;align-items:center;margin-bottom:6px">
+        <h3 style="flex:1;margin:0">カスタム部品登録</h3>
+        <span onclick="closeFP('part-reg-p')" style="cursor:pointer;font-size:18px;color:var(--fg3);padding:0 4px">×</span>
+      </div>
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;padding:6px;background:var(--bg3);border-radius:4px">
         <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="partsDb.pickExisting()">📂 開く</button>
         <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="partsDb.createNew()">🆕 新規作成</button>
