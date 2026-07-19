@@ -304,6 +304,9 @@ async function loadCatalogList() {
 }
 
 // カタログPDF内を型式検索し、結果をパネルに表示
+let _lastSearchRows = [];
+let _lastSearchModel = '';
+
 async function catalogSearch() {
   const catalog = document.getElementById('cs-catalog').value;
   const mode = document.getElementById('cs-mode').value;
@@ -318,14 +321,31 @@ async function catalogSearch() {
     const data = await res.json();
     if (data.error) { resultEl.innerHTML = `<span style="color:var(--red)">${data.error}</span>`; return; }
     if (!data.rows || !data.rows.length) { resultEl.innerHTML = `「${model}」は見つかりませんでした。`; return; }
+    _lastSearchRows = data.rows;
+    _lastSearchModel = model;
     resultEl.innerHTML = data.rows.map(r =>
       `<div style="display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--bg4);padding:2px 0">
         <span style="color:var(--fg3)">${r.label}</span><span style="font-weight:600">${r.value}</span>
       </div>`
-    ).join('') + `<div style="margin-top:6px"><button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick='appendSearchToCsv(${JSON.stringify(model)})'>この型式をCSV欄に追記</button></div>`;
+    ).join('') + `<div style="margin-top:6px;display:flex;gap:6px">
+        <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick='appendSearchToCsv(${JSON.stringify(model)})'>この型式をCSV欄に追記</button>
+        <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="exportSearchResultCSV()">検索結果をCSVで保存</button>
+      </div>`;
   } catch (e) {
     resultEl.innerHTML = `<span style="color:var(--red)">検索エラー: ${e.message}（server.pyで起動していますか？）</span>`;
   }
+}
+
+// 直近の検索結果(項目・値の一覧)をCSVファイルとしてPCに保存
+function exportSearchResultCSV() {
+  if (!_lastSearchRows.length) { alert('検索結果がありません'); return; }
+  const esc = s => `"${String(s ?? '').replace(/"/g, '""')}"`;
+  const lines = ['ソースファイル,ページ,項目,値'];
+  _lastSearchRows.forEach(r => {
+    lines.push([esc(r.source), esc(r.page), esc(r.label), esc(r.value)].join(','));
+  });
+  const fname = `${(_lastSearchModel || 'spec').replace(/[\\/:*?"<>|]/g, '_')}_spec.csv`;
+  dl('\uFEFF' + lines.join('\r\n'), fname, 'text/csv');
 }
 
 // 検索結果を元に、CSV一括登録欄へ型式だけ入れた行を追記（値は目視で埋めてもらう運用）
