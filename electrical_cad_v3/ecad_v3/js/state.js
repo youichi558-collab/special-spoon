@@ -12,6 +12,7 @@ const state = {
   saveFileName: '',
   customSymbols: [],
   customParts:   [],
+  hiddenBuiltinRefs: [], // 非表示にした標準部品(BUILTIN_PARTS)のref一覧
   wireNoRule: {
     mode: 'sequence',   // 'sequence' | 'position' | 'prefix'
     prefix: '',

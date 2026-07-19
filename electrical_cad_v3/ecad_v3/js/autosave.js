@@ -28,6 +28,7 @@ function doAutosave() {
       customSymbols: state.customSymbols,
       // 部品DBが外部ファイルで管理されている場合は埋め込まない（容量節約・二重管理防止）
       customParts:   (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.customParts,
+      hiddenBuiltinRefs: (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.hiddenBuiltinRefs,
       wireNoRule:    state.wireNoRule,
       layers:        LAYERS,
       pages:         state.pages,
@@ -64,6 +65,7 @@ function restoreAutosave() {
     state.wireNoRule   = d.wireNoRule || state.wireNoRule;
     state.customSymbols= d.customSymbols || [];
     state.customParts  = d.customParts   || [];
+    state.hiddenBuiltinRefs = d.hiddenBuiltinRefs || [];
     state.customSymbols.forEach(s => { DEFS[s.type] = s; });
     if (d.layers && d.layers.length) { LAYERS.length = 0; d.layers.forEach(l => LAYERS.push(l)); }
     if (typeof d.zoom === 'number' && d.zoom > 0) state.zoom = d.zoom;

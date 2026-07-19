@@ -78,6 +78,17 @@ function _mergeOrSetCustomParts(dParts) {
   }
 }
 
+// hiddenBuiltinRefs版（customPartsと同じ考え方: 外部DB使用時はマージ、未使用時は上書き）
+function _mergeOrSetHiddenBuiltinRefs(dRefs) {
+  if (!dRefs || !dRefs.length) return;
+  if (typeof partsDb !== 'undefined' && partsDb.hasFile()) {
+    state.hiddenBuiltinRefs = state.hiddenBuiltinRefs || [];
+    dRefs.forEach(ref => { if (!state.hiddenBuiltinRefs.includes(ref)) state.hiddenBuiltinRefs.push(ref); });
+  } else {
+    state.hiddenBuiltinRefs = dRefs;
+  }
+}
+
 function _pageFileName(pg, idx) {
   const base = (state.saveFileName || '図面').replace(/[\\/:*?"<>|]/g, '_');
   const name = (pg.name || ('Sheet'+(idx+1))).replace(/[\\/:*?"<>|]/g, '_');
@@ -100,6 +111,7 @@ function saveProject() {
     customSymbols: state.customSymbols,
     // 部品DBが外部ファイルで管理されている場合は図面ファイルに埋め込まない（シンボルライブラリと同様、分離管理）
     customParts:   (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.customParts,
+    hiddenBuiltinRefs: (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.hiddenBuiltinRefs,
     wireNoRule:    state.wireNoRule,
     layers:        LAYERS,
     pages: [pg],
@@ -122,6 +134,7 @@ function saveAllProject() {
     saveFileName: state.saveFileName,
     customSymbols: state.customSymbols,
     customParts:   (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.customParts,
+    hiddenBuiltinRefs: (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.hiddenBuiltinRefs,
     wireNoRule:    state.wireNoRule,
     layers:        LAYERS,
     pages: state.pages,
@@ -145,6 +158,7 @@ function loadProject(input) {
         state.wireNoRule   = d.wireNoRule || state.wireNoRule;
         state.customSymbols= d.customSymbols || [];
         _mergeOrSetCustomParts(d.customParts);
+        _mergeOrSetHiddenBuiltinRefs(d.hiddenBuiltinRefs);
         // 旧フォーマット互換：トップレベルのguides → page[0].guides に移行
         if (d.guides && d.guides.length) state.pages[0].guides = d.guides;
         // 各ページにguidesがなければ初期化
@@ -162,6 +176,7 @@ function loadProject(input) {
         }));
         state.customSymbols = d.customSymbols || [];
         _mergeOrSetCustomParts(d.customParts);
+        _mergeOrSetHiddenBuiltinRefs(d.hiddenBuiltinRefs);
       }
 
       state.currentPage = 0;

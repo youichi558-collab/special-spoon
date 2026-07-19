@@ -37,7 +37,8 @@ const partsDb = (() => {
     const file = await handle.getFile();
     const text = await file.text();
     const data = JSON.parse(text);
-    return Array.isArray(data) ? data : (data.customParts || []);
+    if (Array.isArray(data)) return { customParts: data, hiddenBuiltinRefs: [] };
+    return { customParts: data.customParts || [], hiddenBuiltinRefs: data.hiddenBuiltinRefs || [] };
   }
 
   async function ensurePermission(handle, mode) {
@@ -51,14 +52,15 @@ const partsDb = (() => {
     if (!window.showOpenFilePicker) { alert('このブラウザはFile System Access APIに対応していません（Chrome/Edge推奨）'); return; }
     try {
       const [handle] = await window.showOpenFilePicker({ types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }] });
-      const parts = await readFromHandle(handle);
-      if (state.customParts.length && !confirm(`現在の部品DB(${state.customParts.length}件)を、選択したファイルの内容(${parts.length}件)で置き換えます。よろしいですか？`)) return;
+      const data = await readFromHandle(handle);
+      if (state.customParts.length && !confirm(`現在の部品DB(${state.customParts.length}件)を、選択したファイルの内容(${data.customParts.length}件)で置き換えます。よろしいですか？`)) return;
       if (!(await ensurePermission(handle, 'readwrite'))) { setStatus('部品DBファイルへの書込み許可がありません'); return; }
       fileHandle = handle;
       await saveHandleRef(handle);
-      state.customParts = parts;
+      state.customParts = data.customParts;
+      state.hiddenBuiltinRefs = data.hiddenBuiltinRefs;
       if (typeof renderPartsAll === 'function') renderPartsAll();
-      setStatus(`部品DB: ${handle.name} (${parts.length}件)`);
+      setStatus(`部品DB: ${handle.name} (${data.customParts.length}件)`);
     } catch (e) { if (e.name !== 'AbortError') alert('読み込みエラー: ' + e.message); }
   }
 
@@ -79,7 +81,7 @@ const partsDb = (() => {
     try {
       if (!(await ensurePermission(fileHandle, 'readwrite'))) { setStatus('部品DBファイルへの書込み許可がありません（再選択してください）'); return; }
       const writable = await fileHandle.createWritable();
-      await writable.write(JSON.stringify(state.customParts, null, 2));
+      await writable.write(JSON.stringify({ customParts: state.customParts, hiddenBuiltinRefs: state.hiddenBuiltinRefs }, null, 2));
       await writable.close();
       setStatus(`部品DB: ${fileHandle.name} (${state.customParts.length}件・保存済み)`);
     } catch (e) { setStatus('部品DB保存エラー: ' + e.message); }
@@ -99,10 +101,11 @@ const partsDb = (() => {
     try {
       if (!(await ensurePermission(handle, 'readwrite'))) { setStatus('部品DBファイルへのアクセスが拒否されました（再選択してください）'); return; }
       fileHandle = handle;
-      const parts = await readFromHandle(handle);
-      state.customParts = parts;
+      const data = await readFromHandle(handle);
+      state.customParts = data.customParts;
+      state.hiddenBuiltinRefs = data.hiddenBuiltinRefs;
       if (typeof renderPartsAll === 'function') renderPartsAll();
-      setStatus(`部品DB: ${handle.name} (${parts.length}件)`);
+      setStatus(`部品DB: ${handle.name} (${data.customParts.length}件)`);
     } catch (e) { setStatus('部品DBの自動読込に失敗しました（再選択してください）'); }
   }
 

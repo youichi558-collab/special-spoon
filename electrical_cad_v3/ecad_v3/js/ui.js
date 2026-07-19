@@ -250,23 +250,59 @@ function pickSym(el, type) {
 // 部品DB
 // ----------------------------------------------------------------
 function allParts() {
-  return [...BUILTIN_PARTS, ...state.customParts.map(p => ({ ...p, custom:true }))];
+  const hidden = new Set(state.hiddenBuiltinRefs || []);
+  return [
+    ...BUILTIN_PARTS.filter(p => !hidden.has(p.ref)),
+    ...state.customParts.map(p => ({ ...p, custom:true })),
+  ];
 }
 function renderPartsAll()  { renderPartsTable(allParts()); }
 // filterParts は下で定義
 function renderPartsTable(parts) {
+  const hiddenCount = (state.hiddenBuiltinRefs || []).length;
   document.getElementById('parts-table').innerHTML = parts.map(p => `
     <div style="padding:4px 3px;border-bottom:1px solid var(--bg4);cursor:pointer" onclick="placePart('${p.type}','${p.ref}','${p.terminals||''}')">
       <div style="display:flex;justify-content:space-between">
         <span style="font-size:11px;font-weight:600;color:var(--fg)">${p.ref}</span>
-        ${p.custom?`<span onclick="event.stopPropagation();deletePart('${p.ref}')" style="font-size:9px;color:var(--red);cursor:pointer">×</span>`:''}
+        ${p.custom
+          ? `<span onclick="event.stopPropagation();deletePart('${p.ref}')" style="font-size:9px;color:var(--red);cursor:pointer" title="削除">×</span>`
+          : `<span onclick="event.stopPropagation();hideBuiltinPart('${p.ref}')" style="font-size:9px;color:var(--fg3);cursor:pointer" title="一覧から非表示にする（標準部品は削除できないため）">×</span>`}
       </div>
       <div style="font-size:10px;color:var(--fg3)">${p.maker} ${p.volt||''} ${p.amp||''}</div>
       ${p.contacts?`<div style="font-size:10px;color:var(--acc)">接点:${p.contacts}</div>`:''}
       ${p.outlineDxf
         ? `<div style="font-size:9px;color:var(--acc)">外形図: ${p.outlineDxfName||'あり'} <span onclick="event.stopPropagation();placePartOutline('${p.ref}')" style="cursor:pointer;text-decoration:underline">配置</span></div>`
         : (p.custom ? `<div style="font-size:9px;color:var(--fg3)">外形図なし <span onclick="event.stopPropagation();attachOutlineToPart('${p.ref}')" style="cursor:pointer;text-decoration:underline;color:var(--acc)">添付</span></div>` : '')}
-    </div>`).join('');
+    </div>`).join('')
+    + (hiddenCount ? `<div style="padding:6px 3px;text-align:center"><span onclick="showHiddenBuiltinParts()" style="font-size:10px;color:var(--acc);cursor:pointer;text-decoration:underline">非表示にした標準部品(${hiddenCount}件)を確認・復元</span></div>` : '');
+}
+// 標準部品(BUILTIN_PARTS)を一覧から非表示にする（コード埋め込みのため削除は不可、非表示扱いのみ）
+function hideBuiltinPart(ref) {
+  if (!confirm(`標準部品「${ref}」を一覧から非表示にしますか？（後で復元できます）`)) return;
+  state.hiddenBuiltinRefs = state.hiddenBuiltinRefs || [];
+  if (!state.hiddenBuiltinRefs.includes(ref)) state.hiddenBuiltinRefs.push(ref);
+  renderPartsAll();
+  partsDb.scheduleSave();
+}
+function unhideBuiltinPart(ref) {
+  state.hiddenBuiltinRefs = (state.hiddenBuiltinRefs || []).filter(r => r !== ref);
+  renderPartsAll();
+  partsDb.scheduleSave();
+  showHiddenBuiltinParts(); // 一覧を再表示して更新
+}
+// 非表示にした標準部品の一覧をアラートではなくパネルで表示・復元できるようにする
+function showHiddenBuiltinParts() {
+  const refs = state.hiddenBuiltinRefs || [];
+  const resultEl = document.getElementById('cs-result');
+  if (!resultEl) return;
+  showPartReg();
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = refs.length
+    ? refs.map(ref => `<div style="display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--bg4);padding:2px 0">
+        <span>${ref}</span>
+        <span onclick="unhideBuiltinPart('${ref}')" style="color:var(--acc);cursor:pointer;text-decoration:underline">再表示する</span>
+      </div>`).join('')
+    : '非表示の標準部品はありません。';
 }
 function deletePart(ref) {
   if (!confirm(`「${ref}」を削除しますか？`)) return;
@@ -1841,18 +1877,22 @@ function renderPartsFloat() {
 function renderPartsTable2(parts) {
   const el = document.getElementById('parts-table2');
   if (!el) return;
+  const hiddenCount = (state.hiddenBuiltinRefs || []).length;
   el.innerHTML = parts.map(p => `
     <div style="padding:4px 3px;border-bottom:1px solid var(--bg4);cursor:pointer" onclick="placePart('${p.type}','${p.ref}','${p.terminals||''}')">
       <div style="display:flex;justify-content:space-between">
         <span style="font-size:11px;font-weight:600;color:var(--fg)">${p.ref}</span>
-        ${p.custom?`<span onclick="event.stopPropagation();deletePart('${p.ref}')" style="font-size:9px;color:var(--red);cursor:pointer">×</span>`:''}
+        ${p.custom
+          ? `<span onclick="event.stopPropagation();deletePart('${p.ref}')" style="font-size:9px;color:var(--red);cursor:pointer" title="削除">×</span>`
+          : `<span onclick="event.stopPropagation();hideBuiltinPart('${p.ref}')" style="font-size:9px;color:var(--fg3);cursor:pointer" title="一覧から非表示にする（標準部品は削除できないため）">×</span>`}
       </div>
       <div style="font-size:10px;color:var(--fg3)">${p.maker} ${p.volt||''} ${p.amp||''}</div>
       ${p.contacts?`<div style="font-size:10px;color:var(--acc)">接点:${p.contacts}</div>`:''}
       ${p.outlineDxf
         ? `<div style="font-size:9px;color:var(--acc)">外形図: ${p.outlineDxfName||'あり'} <span onclick="event.stopPropagation();placePartOutline('${p.ref}')" style="cursor:pointer;text-decoration:underline">配置</span></div>`
         : (p.custom ? `<div style="font-size:9px;color:var(--fg3)">外形図なし <span onclick="event.stopPropagation();attachOutlineToPart('${p.ref}')" style="cursor:pointer;text-decoration:underline;color:var(--acc)">添付</span></div>` : '')}
-    </div>`).join('');
+    </div>`).join('')
+    + (hiddenCount ? `<div style="padding:6px 3px;text-align:center"><span onclick="showHiddenBuiltinParts()" style="font-size:10px;color:var(--acc);cursor:pointer;text-decoration:underline">非表示にした標準部品(${hiddenCount}件)を確認・復元</span></div>` : '');
 }
 function filterParts(q) {
   const parts = allParts().filter(p => !q || p.ref.toLowerCase().includes(q.toLowerCase()) || p.maker.toLowerCase().includes(q.toLowerCase()));
