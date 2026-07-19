@@ -13,6 +13,7 @@
 # ================================================================
 import json
 import os
+import string
 import sys
 import urllib.parse
 from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -36,6 +37,23 @@ def load_config():
         return default
 
 
+def save_config(cfg):
+    with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
+        json.dump(cfg, f, ensure_ascii=False, indent=2)
+
+
+def list_drives():
+    """Windowsのドライブ一覧（C:\\, D:\\ など）を返す。Windows以外ならルートのみ。"""
+    if os.name == 'nt':
+        drives = []
+        for letter in string.ascii_uppercase:
+            d = f"{letter}:\\"
+            if os.path.exists(d):
+                drives.append(d)
+        return drives
+    return ['/']
+
+
 class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -45,7 +63,78 @@ class Handler(SimpleHTTPRequestHandler):
         if parsed.path == '/api/catalogs':
             self.handle_catalogs()
             return
+        if parsed.path == '/api/browse':
+            self.handle_browse(parsed)
+            return
         super().do_GET()
+
+    def do_POST(self):
+        parsed = urllib.parse.urlparse(self.path)
+        if parsed.path == '/api/save_catalog':
+            self.handle_save_catalog()
+            return
+        self.send_error(404)
+
+    def handle_browse(self, parsed):
+        """指定パス配下のサブフォルダ一覧とPDF件数を返す（フォルダピッカー用）"""
+        qs = urllib.parse.parse_qs(parsed.query)
+        path = (qs.get('path') or [''])[0]
+
+        if not path:
+            self._send_json({"path": "", "is_root": True, "dirs": list_drives(), "pdf_count": 0})
+            return
+
+        if not os.path.isdir(path):
+            self._send_json({"error": f"フォルダが見つかりません: {path}"}, status=400)
+            return
+
+        try:
+            entries = os.listdir(path)
+        except Exception as e:
+            self._send_json({"error": f"読み取りエラー: {e}"}, status=500)
+            return
+
+        dirs = []
+        pdf_count = 0
+        for name in sorted(entries):
+            full = os.path.join(path, name)
+            try:
+                if os.path.isdir(full):
+                    dirs.append(name)
+                elif name.lower().endswith('.pdf'):
+                    pdf_count += 1
+            except Exception:
+                continue
+
+        parent = os.path.dirname(path.rstrip('\\/'))
+        # ドライブ直下(例 C:\)ではこれ以上上に行けないようにする
+        if os.name == 'nt' and len(path.rstrip('\\/')) <= 2:
+            parent = ''
+
+        self._send_json({
+            "path": path,
+            "is_root": False,
+            "parent": parent,
+            "dirs": dirs,
+            "pdf_count": pdf_count,
+        })
+
+    def handle_save_catalog(self):
+        """フォルダピッカーで選んだパスに名前を付けてcatalog_config.jsonへ保存"""
+        length = int(self.headers.get('Content-Length', 0))
+        try:
+            body = json.loads(self.rfile.read(length) or b'{}')
+        except Exception:
+            body = {}
+        name = (body.get('name') or '').strip()
+        path = (body.get('path') or '').strip()
+        if not name or not path:
+            self._send_json({"error": "nameとpathの両方が必要です"}, status=400)
+            return
+        cfg = load_config()
+        cfg.setdefault('catalog_paths', {})[name] = path
+        save_config(cfg)
+        self._send_json({"ok": True, "catalogs": list(cfg['catalog_paths'].keys())})
 
     def handle_catalogs(self):
         """設定済みのカタログ名一覧を返す（プルダウン用）"""
@@ -55,6 +144,7 @@ class Handler(SimpleHTTPRequestHandler):
     def handle_search(self, parsed):
         qs = urllib.parse.parse_qs(parsed.query)
         catalog = (qs.get('catalog') or [''])[0]
+        raw_path = (qs.get('path') or [''])[0]
         model = (qs.get('model') or [''])[0]
         mode = (qs.get('mode') or ['pivot'])[0]
         header_rows = int((qs.get('header_rows') or ['3'])[0])
@@ -63,8 +153,13 @@ class Handler(SimpleHTTPRequestHandler):
             self._send_json({"error": "modelパラメータが必要です"}, status=400)
             return
 
-        cfg = load_config()
-        path = cfg.get("catalog_paths", {}).get(catalog)
+        if raw_path:
+            # カタログ名を経由せず、フォルダピッカーで選んだ生パスを直接使う場合
+            path = raw_path
+        else:
+            cfg = load_config()
+            path = cfg.get("catalog_paths", {}).get(catalog)
+
         if not path or not os.path.exists(path):
             self._send_json({
                 "error": f"カタログ「{catalog}」のパスが未設定、または見つかりません（catalog_config.jsonを確認してください）",

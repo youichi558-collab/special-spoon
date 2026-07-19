@@ -336,6 +336,63 @@ function appendSearchToCsv(model) {
   ta.scrollTop = ta.scrollHeight;
 }
 
+// ----------------------------------------------------------------
+// フォルダブラウザ（カタログ検索フォルダの選択・追加）
+// ----------------------------------------------------------------
+let _fbCurrentPath = '';
+
+async function openFolderBrowser() {
+  document.getElementById('folder-browser').style.display = 'flex';
+  await fbNavigate('');
+}
+function closeFolderBrowser() {
+  document.getElementById('folder-browser').style.display = 'none';
+}
+
+async function fbNavigate(path) {
+  const listEl = document.getElementById('fb-list');
+  const pathEl = document.getElementById('fb-current-path');
+  listEl.innerHTML = '読み込み中...';
+  try {
+    const res = await fetch(`/api/browse?path=${encodeURIComponent(path)}`);
+    const data = await res.json();
+    if (data.error) { listEl.innerHTML = `<span style="color:var(--red)">${data.error}</span>`; return; }
+    _fbCurrentPath = data.path;
+    pathEl.textContent = data.is_root ? 'ドライブを選択してください' : `${data.path}　（PDF: ${data.pdf_count}件）`;
+    let html = '';
+    if (!data.is_root && data.parent !== undefined && data.parent !== '') {
+      html += `<div class="fb-item" onclick="fbNavigate(${JSON.stringify(data.parent)})" style="padding:5px 6px;cursor:pointer;border-radius:3px;color:var(--fg3)">.. (上へ)</div>`;
+    }
+    (data.dirs || []).forEach(d => {
+      const full = data.is_root ? d : (data.path.replace(/[\\/]+$/, '') + (data.path.includes('\\') ? '\\' : '/') + d);
+      html += `<div class="fb-item" onclick='fbNavigate(${JSON.stringify(full)})' style="padding:5px 6px;cursor:pointer;border-radius:3px">📁 ${d}</div>`;
+    });
+    listEl.innerHTML = html || '<span style="color:var(--fg3)">(サブフォルダなし)</span>';
+  } catch (e) {
+    listEl.innerHTML = `<span style="color:var(--red)">エラー: ${e.message}（server.pyで起動していますか？）</span>`;
+  }
+}
+
+async function saveFolderAsCatalog() {
+  const name = document.getElementById('fb-name').value.trim();
+  if (!name) { alert('カタログ名を入力してください'); return; }
+  if (!_fbCurrentPath) { alert('フォルダを選択してください'); return; }
+  try {
+    const res = await fetch('/api/save_catalog', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, path: _fbCurrentPath }),
+    });
+    const data = await res.json();
+    if (data.error) { alert(data.error); return; }
+    closeFolderBrowser();
+    await loadCatalogList();
+    document.getElementById('cs-catalog').value = name;
+    alert(`「${name}」として登録しました: ${_fbCurrentPath}`);
+  } catch (e) {
+    alert('保存エラー: ' + e.message);
+  }
+}
+
 // 外形図DXFファイル読込（エンコーディング自動判定して文字列化）
 function _readDxfFileAsText(file, cb) {
   const rd = new FileReader();
