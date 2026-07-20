@@ -244,6 +244,8 @@
     style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;border:1px solid var(--bd2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--fg);white-space:nowrap;">№採番</div>
   <div onclick="startWireNoSeq()" title="線番を連続採番：配線をクリックで順番に割り当て（Nキー）"
     style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;border:1px solid var(--bd2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--fg);white-space:nowrap;">線番採番</div>
+  <div onclick="toggleSearchPanel()" title="検索（Ctrl+F）：部品番号・線番・テキストを全ページ横断検索"
+    style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;border:1px solid var(--bd2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--fg);white-space:nowrap;">🔍検索</div>
 </div>
 <div id="main-row">
   <!-- 左パネル -->
@@ -337,6 +339,7 @@
             <tr><td><b>Ctrl+C / X / V</b></td><td>コピー / 切取 / 貼付</td></tr>
             <tr><td><b>Del</b></td><td>削除</td></tr>
             <tr><td><b>Ctrl+A</b></td><td>すべて選択</td></tr>
+            <tr><td><b>Ctrl+F</b></td><td>検索（全ページ横断）</td></tr>
             <tr><td><b>Ctrl+S</b></td><td>保存</td></tr>
             <tr><td><b>Ctrl+G</b></td><td>グループ化</td></tr>
             <tr><td><b>Ctrl+Shift+G</b></td><td>グループ解除</td></tr>
@@ -689,6 +692,7 @@
 <script src="js/dxf_export.js"></script>
 <script src="js/dxf_import.js"></script>
 <script src="js/report.js"></script>
+<script src="js/search.js"></script>
 <script src="js/pdf_export.js"></script>
 <script src="js/symbol_lib.js"></script>
 <script src="js/parts_db.js"></script>

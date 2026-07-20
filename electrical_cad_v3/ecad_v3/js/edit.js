@@ -791,6 +791,7 @@ document.addEventListener('keydown', e => {
       case 'y': case 'Y': e.preventDefault(); redo(); break;
       case 's': e.preventDefault(); saveProject(); break;
       case 'a': e.preventDefault(); selectAll(); break;
+      case 'f': case 'F': e.preventDefault(); toggleSearchPanel(); break;
       case 'c': case 'C': e.preventDefault(); copySelected(); break;
       case 'x': case 'X': e.preventDefault(); cutSelected(); break;
       case 'v': case 'V': e.preventDefault(); pasteSelected(); break;

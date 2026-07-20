@@ -49,6 +49,20 @@ function draw() {
 
   // ラバーバンド選択ボックス
   if (!state.pdfMode) drawGuides();
+
+  // 検索ヒットの点滅マーカー
+  if (!state.pdfMode && state.searchHit) {
+    const h = state.searchHit;
+    const t = (Date.now() - h.t0) / 400;
+    const rw = (16 + 10 * Math.abs(Math.sin(t * Math.PI))) / state.zoom;
+    ctx.save();
+    ctx.strokeStyle = '#ff9800';
+    ctx.lineWidth = 2.5 / state.zoom;
+    ctx.beginPath();
+    ctx.arc(h.x, h.y, rw, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
   ctx.restore();
   drawSelBox();
 
