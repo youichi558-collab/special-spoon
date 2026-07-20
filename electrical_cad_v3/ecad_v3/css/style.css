@@ -124,6 +124,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--acc);}
 .badge-b{background:var(--abg);color:var(--afg);}
 .badge-g{background:var(--gbg);color:var(--gfg);}
 .badge-p{background:var(--pbg);color:var(--pfg);}
+.badge-o{background:var(--obg);color:var(--ofg);}
 .fp-btn{padding:4px 10px;font-size:11px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg);}
 .fp-btn:hover{background:var(--bg3);}
 .fp-btn.primary{background:var(--acc);color:#fff;border-color:var(--acc);}

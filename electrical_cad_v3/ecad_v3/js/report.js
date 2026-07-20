@@ -2,13 +2,71 @@
 // report.js — 線番・BOM・端子台・リファレンスパネル
 // 依存: state, getDef, dl
 // ================================================================
+// 一括割付: 全ページ通しで未採番の配線のみに連番を割り付け(既存線番との衝突は自動回避)
 function autoWireNumber(){
-  pushH();let n=1;state.wires.forEach(w=>{if(!w.wireNo){w.wireNo='W'+String(n).padStart(3,'0');}n++;});
-  let html=`<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">${state.wires.length}本に線番を割付しました</p><table class="tbl"><tr><th>線番</th><th>始点</th><th>終点</th><th>レイヤー</th></tr>`;
-  state.wires.forEach(w=>{const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];const p0=pts[0],p1=pts[pts.length-1];html+=`<tr><td><span class="badge badge-b">${w.wireNo||'-'}</span></td><td>${Math.round(p0.x)},${Math.round(p0.y)}</td><td>${Math.round(p1.x)},${Math.round(p1.y)}</td><td>${w.layer||''}</td></tr>`;});
-  html+='</table>';document.getElementById('wire-body').innerHTML=html;openFP('wire-p');draw();
+  const start = prompt('一括割付の開始線番（例: W001）\n未採番の配線のみ、全ページ通しで割り付けます', state.wireNoRule || 'W001');
+  if (!start || !start.trim()) return;
+  state.wireNoRule = start.trim();
+  if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
+  pushH();
+  const used = new Set();
+  state.pages.forEach(pg => (pg.wires||[]).forEach(w => { if (w.wireNo) used.add(w.wireNo); }));
+  let next = start.trim(), cnt = 0;
+  state.pages.forEach(pg => (pg.wires||[]).forEach(w => {
+    if (w.wireNo) return;
+    while (used.has(next)) next = incRef(next);
+    w.wireNo = next; used.add(next); next = incRef(next); cnt++;
+  }));
+  wireNoTable(`${cnt}本に線番を割付しました（全ページ・未採番のみ）`);
+  draw();
 }
-function exportWireCSV(){const rows=['線番,始点X,始点Y,終点X,終点Y,レイヤー',...state.wires.map(w=>{const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];const p0=pts[0],p1=pts[pts.length-1];return`${w.wireNo||''},${Math.round(p0.x)},${Math.round(p0.y)},${Math.round(p1.x)},${Math.round(p1.y)},${w.layer||''}`;})];dl(rows.join('\n'),'wire_numbers.csv','text/csv');}
+
+// 線番表: 全ページ集計。同一線番の複数使用は箇所数と橙バッジで表示
+function wireNoTable(msg){
+  if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
+  const map = new Map(); let unnumbered = 0, total = 0;
+  state.pages.forEach((pg, pi) => {
+    const pname = pg.name || ('Sheet'+(pi+1));
+    (pg.wires||[]).forEach(w => {
+      total++;
+      if (!w.wireNo) { unnumbered++; return; }
+      if (!map.has(w.wireNo)) map.set(w.wireNo, {});
+      const rec = map.get(w.wireNo);
+      rec[pname] = (rec[pname]||0) + 1;
+    });
+  });
+  const keys = [...map.keys()].sort((a,b)=>String(a).localeCompare(String(b),'ja',{numeric:true}));
+  let html = `<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">`;
+  if (msg) html += msg + '<br>';
+  html += `配線 全${total}本 / 線番 ${keys.length}種`;
+  if (unnumbered) html += ` / <span style="color:var(--red);font-weight:600">未採番 ${unnumbered}本</span>`;
+  html += `<br>※箇所数2以上（橙）は同一線番の複数使用。同一ネットの継続なら正常です</p>`;
+  html += `<table class="tbl"><tr><th>線番</th><th>ページ</th><th>箇所数</th></tr>`;
+  keys.forEach(no => {
+    const rec = map.get(no);
+    const pages = Object.entries(rec).map(([p,c]) => c>1 ? `${p}(${c})` : p).join(', ');
+    const cnt = Object.values(rec).reduce((a,b)=>a+b,0);
+    html += `<tr><td><span class="badge ${cnt>1?'badge-o':'badge-b'}">${no}</span></td><td>${pages}</td><td>${cnt}</td></tr>`;
+  });
+  html += `</table>`;
+  document.getElementById('wire-body').innerHTML = html;
+  openFP('wire-p');
+}
+
+// CSV: 全ページ分を出力
+function exportWireCSV(){
+  if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
+  const rows = ['線番,ページ,始点X,始点Y,終点X,終点Y,レイヤー'];
+  state.pages.forEach((pg, pi) => {
+    const pname = pg.name || ('Sheet'+(pi+1));
+    (pg.wires||[]).forEach(w => {
+      const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
+      const p0 = pts[0], p1 = pts[pts.length-1];
+      rows.push(`${w.wireNo||''},${pname},${Math.round(p0.x)},${Math.round(p0.y)},${Math.round(p1.x)},${Math.round(p1.y)},${w.layer||''}`);
+    });
+  });
+  dl(rows.join('\n'), 'wire_numbers.csv', 'text/csv');
+}
 // 全ページの要素を集計し、種別×型番でグルーピング。項目記号(partRef)は各行に一覧表示する。
 function collectBOMRows(){
   const skip=['text','rect','circle','fline','dim','leader'];

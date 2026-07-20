@@ -152,6 +152,7 @@
           <div class="rb rb-sm" id="rb-guide_h" onclick="setMode('guide_h')"><svg viewBox="0 0 14 14"><path d="M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2,1.5"/></svg>水平補助</div>
           <div class="rb rb-sm" id="rb-guide_v" onclick="setMode('guide_v')"><svg viewBox="0 0 14 14"><path d="M7 1v12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2,1.5"/></svg>垂直補助</div>
           <div class="rb rb-sm" onclick="autoWireNumber()"><svg viewBox="0 0 14 14"><path d="M2 4h10M2 7h7M2 10h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><text x="10" y="11" font-size="6" fill="currentColor">#</text></svg>線番割付</div>
+          <div class="rb rb-sm" onclick="wireNoTable()" title="全ページの線番一覧・重複チェック"><svg viewBox="0 0 14 14"><rect x="1.5" y="2" width="11" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M1.5 5.2h11M5.5 2v10" stroke="currentColor" stroke-width="1.1"/></svg>線番表</div>
           <div class="rb rb-sm" onclick="showRefPanel()"><svg viewBox="0 0 14 14"><path d="M7 2a5 5 0 1 1 0 10" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M4 7h6M8 5l2 2-2 2" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>接点Ref</div>
         </div>
         <div class="rg-label">配線</div>
@@ -241,6 +242,8 @@
     style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;border:1px solid var(--bd2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--fg);white-space:nowrap;">№表示</div>
   <div onclick="startPartRefSeq()" title="部品番号を連続採番：シンボルをクリックで順番に割り当て（Pキー）"
     style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;border:1px solid var(--bd2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--fg);white-space:nowrap;">№採番</div>
+  <div onclick="startWireNoSeq()" title="線番を連続採番：配線をクリックで順番に割り当て（Nキー）"
+    style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;border:1px solid var(--bd2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--fg);white-space:nowrap;">線番採番</div>
 </div>
 <div id="main-row">
   <!-- 左パネル -->
@@ -352,6 +355,7 @@
             <tr><td><b>R</b></td><td>90°回転</td></tr>
             <tr><td><b>H / V</b></td><td>左右反転 / 上下反転</td></tr>
             <tr><td><b>P</b></td><td>部品番号 採番・編集</td></tr>
+            <tr><td><b>N</b></td><td>線番 連続採番</td></tr>
             <tr><td><b>Esc</b></td><td>キャンセル→選択モード</td></tr>
             <tr><td><b>Enter</b></td><td>曲線を確定</td></tr>
           </tbody></table>

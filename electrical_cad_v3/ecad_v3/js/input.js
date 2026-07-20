@@ -140,6 +140,21 @@ cv.addEventListener('mousedown', e => {
     return;
   }
 
+  // 線番連続採番モード：配線クリックで割り当て→自動インクリメント
+  if (state.mode === 'wireno') {
+    state.mouse.down = false; state.mouse.dragging = false;
+    const w = hitTestWire(wx, wy);
+    if (w) {
+      pushH();
+      const assigned = state.wireNoNext || '';
+      w.wireNo = assigned;
+      state.wireNoNext = incRef(assigned);
+      document.getElementById('s-hint').textContent = `「${assigned}」を割当 → 次:「${state.wireNoNext}」をクリック  [ESC] 終了`;
+      draw();
+    }
+    return;
+  }
+
   // 左ボタン → リサイズハンドル優先チェック（selectモード時）
   if (state.mode === 'select') {
     const h = hitResizeHandle(wx, wy);

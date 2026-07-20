@@ -756,6 +756,25 @@ function exitPartRefSeq() {
   updateHint(); draw();
 }
 
+// 線番 連続採番モード：開始線番を指定→配線をクリックするたびに自動採番
+function startWireNoSeq() {
+  const start = prompt('開始線番を入力（例: W001）\nクリックした配線に順番に割り当てます', state.wireNoNext || state.wireNoRule || 'W001');
+  if (!start || !start.trim()) return;
+  state.wireNoNext = start.trim();
+  state.wireNoRule = start.trim(); // 採番書式として保存(一括割付のデフォルトにも使用)
+  state.mode = 'wireno'; state.symType = null;
+  document.querySelectorAll('.sym-item').forEach(el => el.classList.remove('on'));
+  document.getElementById('rb-sel')?.classList.remove('on');
+  document.getElementById('s-hint').textContent = `「${state.wireNoNext}」を割り当て → 配線をクリック  [ESC] 終了`;
+  draw();
+}
+function exitWireNoSeq() {
+  state.mode = 'select';
+  document.getElementById('s-hint').textContent = '';
+  document.getElementById('rb-sel')?.classList.add('on');
+  updateHint(); draw();
+}
+
 document.addEventListener('keydown', e => {
   // Shiftキーで一時的に直交ON（INPUT等フォーカス中でも動作させる）
   if (e.key === 'Shift' && !e.repeat && !state.ortho) {
@@ -798,6 +817,9 @@ document.addEventListener('keydown', e => {
       if (state.mode === 'partref') {
         exitPartRefSeq(); break;
       }
+      if (state.mode === 'wireno') {
+        exitWireNoSeq(); break;
+      }
       if (state.mode === 'paste') {
         state.mode = 'select'; state.pasteStep = null; state.pasteBaseWorld = null; state.preview = null;
         document.getElementById('s-hint').textContent = '';
@@ -823,6 +845,7 @@ document.addEventListener('keydown', e => {
     case 'h': flipSel('h'); break;
     case 'v': flipSel('v'); break;
     case 'p': e.preventDefault(); if (!quickPartRefEdit()) startPartRefSeq(); break;
+    case 'n': e.preventDefault(); startWireNoSeq(); break;
     case '+': case '=': doZoom(1.25); break;
     case '-': doZoom(0.8); break;
     case '0': resetView(); break;
