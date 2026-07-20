@@ -1715,6 +1715,7 @@ function updateHint() {
     junction: 'クリックで接続点を配置',
     guide_h:  'クリック位置に水平補助線を配置',
     guide_v:  'クリック位置に垂直補助線を配置',
+    measure:  '測定: 1点目をクリック（図形は作成されません）',
   };
   const el = document.getElementById('s-hint');
   if (el) el.textContent = hints[state.mode] || '';

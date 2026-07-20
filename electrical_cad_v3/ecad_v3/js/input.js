@@ -332,6 +332,11 @@ function currentTool() {
 }
 
 function setMode(m, sym) {
+  // 直前ツールを記録(Enter/Spaceで再実行するため)。採番系・貼付は対象外
+  if (m !== 'select' && m !== 'paste' && m !== 'partref' && m !== 'wireno') {
+    state.lastToolMode = m;
+    state.lastToolSym  = (m === 'sym') ? (sym || state.symType) : null;
+  }
   state.mode     = m;
   state.symType  = sym || null;
   state.preview  = null;

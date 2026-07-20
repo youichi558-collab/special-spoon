@@ -530,6 +530,126 @@ function rotateSel(deg) {
   draw(); updateRightPanel();
 }
 
+// ── 選択の複製(ID再付与・グループ複製・平行移動)。commitPasteと同じ流儀 ──
+// 複製した配線のwireNoは新回路のためクリアする(重複線番の防止)
+function duplicateSelection(dx, dy) {
+  const els   = state.elements.filter(el => state.sel.els.has(el.id));
+  const wires = state.wires.filter(w   => state.sel.wires.has(w.id));
+  if (!els.length && !wires.length) return null;
+  const elIdSet   = new Set(els.map(e => e.id));
+  const wireIdSet = new Set(wires.map(w => w.id));
+  const groups = (state.page.groups || [])
+    .map(g => ({ elIds: g.elIds.filter(id => elIdSet.has(id)), wireIds: g.wireIds.filter(id => wireIdSet.has(id)) }))
+    .filter(g => g.elIds.length + g.wireIds.length > 0);
+  const idMap = {};
+  const newEls = els.map(el => {
+    const ne = JSON.parse(JSON.stringify(el));
+    idMap[el.id] = ne.id = genId('el');
+    moveEntity(ne, dx, dy);
+    return ne;
+  });
+  const newWires = wires.map(w => {
+    const nw = JSON.parse(JSON.stringify(w));
+    idMap[w.id] = nw.id = genId('w');
+    nw.pts = (nw.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}]).map(p => ({ x: p.x+dx, y: p.y+dy }));
+    nw.x1 = nw.pts[0].x; nw.y1 = nw.pts[0].y;
+    nw.x2 = nw.pts[nw.pts.length-1].x; nw.y2 = nw.pts[nw.pts.length-1].y;
+    nw.wireNo = '';
+    return nw;
+  });
+  state.elements.push(...newEls);
+  state.wires.push(...newWires);
+  state.page.groups = state.page.groups || [];
+  groups.forEach(g => {
+    const elIds   = g.elIds.map(id => idMap[id]).filter(Boolean);
+    const wireIds = g.wireIds.map(id => idMap[id]).filter(Boolean);
+    if (elIds.length + wireIds.length > 0) state.page.groups.push({ id: genId('g'), elIds, wireIds });
+  });
+  return { newEls, newWires };
+}
+
+// ── オフセット(平行複写): 選択図形を指定距離×本数だけ垂直方向に複写 ──
+// 方向は選択中の最初の線分(配線 or 線要素)の垂直。線が無ければ真下方向。
+function offsetCopySelection() {
+  if (!state.sel.els.size && !state.sel.wires.size) { alert('先にオフセットしたい図形を選択してください'); return; }
+  const input = prompt('オフセット距離を入力（負の値で逆側）\n「距離,本数」で等間隔に複数コピー（例: 20,5）', state._lastOffsetInput || '20,1');
+  if (!input) return;
+  const m = String(input).trim().split(/[,、\s]+/);
+  const dist  = parseFloat(m[0]);
+  const count = Math.max(1, parseInt(m[1] || '1', 10) || 1);
+  if (!isFinite(dist) || dist === 0) return;
+  state._lastOffsetInput = input.trim();
+  let px = 0, py = 1; // デフォルト: 真下
+  const refWire = state.wires.find(w => state.sel.wires.has(w.id));
+  const refLineEl = refWire ? null : state.elements.find(el => state.sel.els.has(el.id) && el.x1 != null && el.x2 != null);
+  const ref = refWire || refLineEl;
+  if (ref) {
+    const dx = ref.x2 - ref.x1, dy = ref.y2 - ref.y1, len = Math.hypot(dx, dy);
+    if (len > 0.01) { px = -dy / len; py = dx / len; }
+  }
+  pushH();
+  const origEls = new Set(state.sel.els), origWires = new Set(state.sel.wires);
+  const allNewEls = [], allNewWires = [];
+  for (let k = 1; k <= count; k++) {
+    state.sel.els = new Set(origEls); state.sel.wires = new Set(origWires);
+    const r = duplicateSelection(px * dist * k, py * dist * k);
+    if (r) { allNewEls.push(...r.newEls); allNewWires.push(...r.newWires); }
+  }
+  state.sel.els   = new Set(allNewEls.map(e => e.id));
+  state.sel.wires = new Set(allNewWires.map(w => w.id));
+  draw(); updateRightPanel();
+  if (typeof setHint === 'function') setHint(`${count}組をオフセット複写しました（距離${dist}）`);
+}
+
+// ── ミラー用の座標鏡映(moveEntityと同じフィールド網羅) ──
+function mirrorEntity(el, axis, a) {
+  const rf = v => 2 * a - v;
+  if (axis === 'h') { // 垂直軸 x=a で左右鏡映
+    if (el.cx != null) el.cx = rf(el.cx);
+    if (el.x  != null) el.x  = rf(el.x);
+    if (el.x1 != null) el.x1 = rf(el.x1);
+    if (el.x2 != null) el.x2 = rf(el.x2);
+    if (el.x3 != null) el.x3 = rf(el.x3);
+    if (el.bx != null) el.bx = rf(el.bx);
+    if (el.pts) { el.pts = el.pts.map(p => ({ x: rf(p.x), y: p.y })); el.x1 = el.pts[0]?.x; el.x2 = el.pts[el.pts.length-1]?.x; }
+    if (el.sa != null && el.ea != null) { const s = el.sa, e2 = el.ea; el.sa = 180 - e2; el.ea = 180 - s; }
+    if (el.type) { el.rot = (360 - (el.rot || 0)) % 360; el.flipH = !el.flipH; }
+  } else { // 水平軸 y=a で上下鏡映
+    if (el.cy != null) el.cy = rf(el.cy);
+    if (el.y  != null) el.y  = rf(el.y);
+    if (el.y1 != null) el.y1 = rf(el.y1);
+    if (el.y2 != null) el.y2 = rf(el.y2);
+    if (el.y3 != null) el.y3 = rf(el.y3);
+    if (el.by != null) el.by = rf(el.by);
+    if (el.pts) { el.pts = el.pts.map(p => ({ x: p.x, y: rf(p.y) })); el.y1 = el.pts[0]?.y; el.y2 = el.pts[el.pts.length-1]?.y; }
+    if (el.sa != null && el.ea != null) { const s = el.sa, e2 = el.ea; el.sa = -e2; el.ea = -s; }
+    if (el.type) { el.rot = (360 - (el.rot || 0)) % 360; el.flipV = !el.flipV; }
+  }
+}
+
+// ── ミラーコピー: 選択BBoxの右端(h)/下端(v)を軸に反転複製を隣接配置 ──
+function mirrorCopySelection(axis) {
+  if (!state.sel.els.size && !state.sel.wires.size) { alert('先にミラーコピーしたい図形を選択してください'); return; }
+  const pts = [];
+  state.elements.filter(el => state.sel.els.has(el.id)).forEach(el => {
+    if (el.x  != null) pts.push({ x: el.x,  y: el.y });
+    if (el.x1 != null) pts.push({ x: el.x1, y: el.y1 }, { x: el.x2, y: el.y2 });
+  });
+  state.wires.filter(w => state.sel.wires.has(w.id)).forEach(w =>
+    (w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}]).forEach(p => pts.push(p)));
+  if (!pts.length) return;
+  const a = axis === 'h' ? Math.max(...pts.map(p => p.x)) : Math.max(...pts.map(p => p.y));
+  pushH();
+  const r = duplicateSelection(0, 0);
+  if (!r) return;
+  r.newEls.forEach(el  => mirrorEntity(el, axis, a));
+  r.newWires.forEach(w => mirrorEntity(w,  axis, a));
+  state.sel.els   = new Set(r.newEls.map(e => e.id));
+  state.sel.wires = new Set(r.newWires.map(w => w.id));
+  draw(); updateRightPanel();
+  if (typeof setHint === 'function') setHint(axis === 'h' ? '右側にミラーコピーしました' : '下側にミラーコピーしました');
+}
+
 function flipSel(axis) {
   const targets = state.elements.filter(el => state.sel.els.has(el.id));
   if (!targets.length) return;
@@ -809,9 +929,12 @@ document.addEventListener('keydown', e => {
 
   switch (e.key) {
     case 'Delete': case 'Backspace': e.preventDefault(); delSel(); break;
-    case 'Enter':
+    case 'Enter': case ' ':
       if (state.mode === 'bezier' && state.mouse.bezierPts?.length >= 2) {
         e.preventDefault(); currentTool().confirm();
+      } else if (state.mode === 'select' && state.lastToolMode) {
+        // コマンド繰り返し: 直前の作図ツールを再実行
+        e.preventDefault(); setMode(state.lastToolMode, state.lastToolSym);
       }
       break;
     case 'Escape':
@@ -833,6 +956,7 @@ document.addEventListener('keydown', e => {
       if (document.getElementById('pdf-preview-overlay')?.style.display === 'flex') { closePDFPreview(); break; }
       if (document.body.classList.contains('fullscreen')) { toggleExpand(); break; }
       state.wirePoints = []; state.preview = null; state.dimState = null; state.pendingOutline = null;
+      state.angleDimState = null; state.mouse.measP1 = null;
       state.mouse.shapeStart = null; state.mouse.arcP1 = null; state.mouse.arcP2 = null; state.mouse.arc3P1 = null; state.mouse.arc3P2 = null; state.mouse.triP1 = null; state.mouse.triP2 = null;
       state.mode = 'select'; state.symType = null;
       document.querySelectorAll('.sym-item').forEach(el => el.classList.remove('on'));

@@ -881,9 +881,43 @@ const chainDimTool = {
   onUp() {}, onHover(wx, wy) { this.onMove(wx, wy); }
 };
 
+// ----------------------------------------------------------------
+// 測定ツール (measure): 2点間の距離・ΔX/ΔY・角度を測るだけ(図形は作らない)
+// ----------------------------------------------------------------
+const measureTool = {
+  onDown(wx, wy) {
+    const pt = getAllSnapPoints(wx, wy);
+    const sc = state.drawScale || 1;
+    if (!state.mouse.measP1) {
+      state.mouse.measP1 = { x: pt.x, y: pt.y };
+      setHint('測定: 2点目をクリック');
+    } else {
+      const p1 = state.mouse.measP1;
+      const dx = pt.x - p1.x, dy = pt.y - p1.y;
+      const len = Math.hypot(dx, dy) * sc;
+      const ang = ((Math.atan2(-dy, dx) * 180 / Math.PI) + 360) % 360;
+      setHint(`距離: ${len.toFixed(2)}　ΔX: ${(Math.abs(dx)*sc).toFixed(2)}　ΔY: ${(Math.abs(dy)*sc).toFixed(2)}　角度: ${ang.toFixed(1)}°　｜ クリックで次の測定 [Esc終了]`);
+      state.mouse.measP1 = null;
+      state.preview = { type:'dim_prev1', x1: p1.x, y1: p1.y, x2: pt.x, y2: pt.y };
+    }
+    draw();
+  },
+  onMove(wx, wy) {
+    if (!state.mouse.measP1) return;
+    const pt = getAllSnapPoints(wx, wy);
+    const p1 = state.mouse.measP1;
+    const len = Math.hypot(pt.x - p1.x, pt.y - p1.y) * (state.drawScale || 1);
+    state.preview = { type:'dim_prev1', x1: p1.x, y1: p1.y, x2: pt.x, y2: pt.y };
+    setHint(`測定中: ${len.toFixed(2)}　（クリックで確定）`);
+  },
+  onUp() {},
+  onHover(wx, wy) { this.onMove(wx, wy); }
+};
+
 TOOLS.dim    = dimTool;
 TOOLS.leader = leaderTool;
 TOOLS.angle_dim = angleDimTool;
 TOOLS.chain_dim = chainDimTool;
+TOOLS.measure = measureTool;
 
 
