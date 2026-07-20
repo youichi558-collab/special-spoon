@@ -798,8 +798,92 @@ const angleDimTool = {
   onHover(wx, wy) { this.onMove(wx, wy); }
 };
 
+// ----------------------------------------------------------------
+// 連続寸法ツール (chain_dim)
+// 1点目→2点目→引出位置で1本目を確定。以降はクリックするたびに
+// 前回の終点から連続して寸法を追加(同じ引出量・同じ側)。Esc/右クリックで終了。
+// ----------------------------------------------------------------
+const chainDimTool = {
+  onDown(wx, wy) {
+    const pt = getAllSnapPoints(wx, wy);
+    let sx = pt.x, sy = pt.y;
+    const ds = state.dimState;
+    if (!ds) {
+      state.dimState = { chain: true, step: 1, x1: sx, y1: sy };
+      setHint('連続寸法 (2/3): 測る2点目をクリック');
+    } else if (ds.step === 1) {
+      if (state.ortho) { const o = applyOrtho(ds.x1, ds.y1, sx, sy); sx = o.x; sy = o.y; }
+      if (Math.hypot(sx - ds.x1, sy - ds.y1) < 0.1) return;
+      ds.x2 = sx; ds.y2 = sy; ds.step = 2;
+      setHint('連続寸法 (3/3): 引出位置をクリック');
+    } else if (ds.step === 2) {
+      // 引出位置決定 → 1本目を確定して連鎖開始
+      const dx = ds.x2 - ds.x1, dy = ds.y2 - ds.y1, len = Math.hypot(dx, dy);
+      if (len < 0.1) { state.dimState = null; state.preview = null; updateHint(); return; }
+      const px = -dy / len, py = dx / len;
+      const mx = (ds.x1 + ds.x2) / 2, my = (ds.y1 + ds.y2) / 2;
+      const dot = (sx - mx) * px + (sy - my) * py;
+      ds.offset = Math.max(15, Math.abs(dot));
+      ds.offsetSign = dot >= 0 ? 1 : -1;
+      this._commit(ds.x1, ds.y1, ds.x2, ds.y2, ds.offset, ds.offsetSign);
+      ds.x1 = ds.x2; ds.y1 = ds.y2; ds.step = 3;
+      state.preview = null;
+      setHint('連続寸法: 次の点をクリックで追加 | Esc または右クリックで終了');
+    } else {
+      // step3以降: クリックごとに前回終点→今回点の寸法を追加
+      if (state.ortho) { const o = applyOrtho(ds.x1, ds.y1, sx, sy); sx = o.x; sy = o.y; }
+      if (Math.hypot(sx - ds.x1, sy - ds.y1) < 0.1) return;
+      this._commit(ds.x1, ds.y1, sx, sy, ds.offset, ds.offsetSign);
+      ds.x1 = sx; ds.y1 = sy;
+      state.preview = null;
+    }
+  },
+  _commit(x1, y1, x2, y2, offset, offsetSign) {
+    const len = Math.hypot(x2 - x1, y2 - y1);
+    const dist = Math.round(len * (state.drawScale || 1) * 100) / 100;
+    const def = state.dimDef || {};
+    pushH();
+    state.elements.push({ id: genId('el'), type: 'dim', x1, y1, x2, y2,
+      dimText: String(dist), offset, offsetSign,
+      layer: '寸法', x: (x1 + x2) / 2, y: (y1 + y2) / 2,
+      dimFs: def.fs, dimTx: def.tx, dimTy: def.ty,
+      gap: def.gap, ext: def.ext, color: def.color,
+      arrowStyle: def.arrowStyle || 'filled', arrowSz: def.arrowSz || 8 });
+    draw();
+  },
+  onMove(wx, wy) {
+    const pt = getAllSnapPoints(wx, wy);
+    let sx = pt.x, sy = pt.y;
+    const ds = state.dimState;
+    if (!ds) return;
+    if (ds.step === 1) {
+      if (state.ortho) { const o = applyOrtho(ds.x1, ds.y1, sx, sy); sx = o.x; sy = o.y; }
+      state.preview = { type: 'dim_prev1', x1: ds.x1, y1: ds.y1, x2: sx, y2: sy };
+    } else if (ds.step === 2) {
+      const dx = ds.x2 - ds.x1, dy = ds.y2 - ds.y1, len = Math.hypot(dx, dy);
+      if (len < 0.1) return;
+      const px = -dy / len, py = dx / len;
+      const mx = (ds.x1 + ds.x2) / 2, my = (ds.y1 + ds.y2) / 2;
+      const dot = (sx - mx) * px + (sy - my) * py;
+      state.preview = { type: 'dim_prev2', x1: ds.x1, y1: ds.y1, x2: ds.x2, y2: ds.y2,
+        dimText: String(Math.round(len * (state.drawScale || 1) * 100) / 100),
+        offset: Math.max(15, Math.abs(dot)), offsetSign: dot >= 0 ? 1 : -1, arrowSz: 8 };
+    } else {
+      // step3: 次セグメントのプレビュー(引出量は固定)
+      if (state.ortho) { const o = applyOrtho(ds.x1, ds.y1, sx, sy); sx = o.x; sy = o.y; }
+      const len = Math.hypot(sx - ds.x1, sy - ds.y1);
+      if (len < 0.1) { state.preview = null; return; }
+      state.preview = { type: 'dim_prev2', x1: ds.x1, y1: ds.y1, x2: sx, y2: sy,
+        dimText: String(Math.round(len * (state.drawScale || 1) * 100) / 100),
+        offset: ds.offset, offsetSign: ds.offsetSign, arrowSz: 8 };
+    }
+  },
+  onUp() {}, onHover(wx, wy) { this.onMove(wx, wy); }
+};
+
 TOOLS.dim    = dimTool;
 TOOLS.leader = leaderTool;
 TOOLS.angle_dim = angleDimTool;
+TOOLS.chain_dim = chainDimTool;
 
 

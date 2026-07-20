@@ -254,6 +254,14 @@ document.addEventListener('mouseup', e => {
 cv.addEventListener('contextmenu', e => {
   e.preventDefault();
   e.stopPropagation();
+  // 連続寸法の連鎖中は右クリック=終了(メニューは出さない)
+  if (state.mode === 'chain_dim' && state.dimState) {
+    state.dimState = null; state.preview = null;
+    if (typeof updateHint === 'function') updateHint();
+    state.mouse.panning = false; state.mouse.dragMoved = false;
+    draw();
+    return;
+  }
   if (!state.mouse.dragMoved) {
     showCtx(e.clientX, e.clientY);
   }
