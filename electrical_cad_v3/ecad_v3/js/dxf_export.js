@@ -383,8 +383,12 @@ function exportDXF(){
     } else if(el.type==='circle'){
       eCircle(layer,el.x,el.y,el.r||0);
     } else if(el.type==='arc'){
+      // 【弧の向き】Canvas(Y下向き)のccw=false=角度増加スイープは、Y反転後のDXF空間(Y上向き)
+      // では時計回りになる。DXF ARCは常にCCW(50→51)なので ccw=false のとき start/end を入れ替える。
+      // ※旧実装は条件が逆(if(el.ccw)でswap)で、全ケースで補角側の弧が出力されていた。
+      //   matplotlib数値検証(8ケース: 1/4円・半円・0°跨ぎ・優弧・狭角×ccw両値)で修正版の一致を確認済み(2026-07-21)。
       let sa=dxfAng(el.startA||0),ea=dxfAng(el.endA||0);
-      if(el.ccw){const t=sa;sa=ea;ea=t;}
+      if(!el.ccw){const t=sa;sa=ea;ea=t;}
       eArc(layer,el.x,el.y,el.r||0,sa,ea);
     } else if(el.type==='junction'){
       eCircle(layer,el.x,el.y,el.r||5);
@@ -404,7 +408,13 @@ function exportDXF(){
       eLine(layer,el.cx,el.cy,el.x2,el.y2);
       const a1=Math.atan2(el.y1-el.cy,el.x1-el.cx);
       const a2=Math.atan2(el.y2-el.cy,el.x2-el.cx);
-      eArc(layer,el.cx,el.cy,el.r||30,dxfAng(a2),dxfAng(a1));
+      // draw.jsと同じccw決定(劣角がπ超ならCanvasはccw=trueで描画)を再現し、
+      // arc要素と同じ規則(ccw=falseでswap)で出力。旧実装の無条件swapはccw=trueで逆側の弧になっていた。
+      let daAD=a2-a1; if(daAD<0)daAD+=Math.PI*2;
+      const ccwAD=daAD>Math.PI;
+      let sAD=dxfAng(a1),eAD=dxfAng(a2);
+      if(!ccwAD){const t=sAD;sAD=eAD;eAD=t;}
+      eArc(layer,el.cx,el.cy,el.r||30,sAD,eAD);
       eText(layer,el.x||el.cx,(el.y||el.cy)-(el.r||30)-8,el.dimFs||11,el.dimText||'');
     } else if(el.type==='bezier'&&el.pts?.length){
       // Catmull-Romスプライン→折れ線近似
