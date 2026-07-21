@@ -10,7 +10,8 @@ const DXF_LAYER_MAP = {
 };
 function dxfLayer(name){ return DXF_LAYER_MAP[name] || name || '0'; }
 // 【警告】\U+XXXX変換は試済み・失敗済み（AC1015でリテラル表示される）。再実装禁止。
-// 日本語文字化けの唯一の現実解: Shift-JIS(cp932)変換 + $DWGCODEPAGE=ANSI_932 + Uint8Array Blob出力
+// 日本語対応は実装済み(2026-07-21): sjis.jsのencodeSJISでShift-JIS(cp932)バイト出力 + $DWGCODEPAGE=ANSI_932。
+// 実機(DWG TrueView)での文字表示確認は未了 — 確認前にこの方式を変更しないこと。
 function toUnicodeDXF(str){ return String(str||''); }
 function addRect(ls,layer,x1,y1,x2,y2){
   const L=(ax1,ay1,ax2,ay2)=>ls.push('0','LINE','8',layer,'10',ax1.toFixed(2),'20',(-ay1).toFixed(2),'30','0','11',ax2.toFixed(2),'21',(-ay2).toFixed(2),'31','0');
@@ -79,7 +80,7 @@ function exportDXF(){
   // ================================================================
   p(0,'SECTION', 2,'HEADER');
   p(9,'$ACADVER',     1,'AC1015');
-  p(9,'$DWGCODEPAGE',  3,'ANSI_1252');
+  p(9,'$DWGCODEPAGE',  3,'ANSI_932'); // 日本語(Shift-JIS/cp932)。encodeSJISでのバイト出力とセット
   p(9,'$HANDSEED',    5,'__HANDSEED__');
   p(9,'$INSUNITS',   70, 4);  // mm
   p(9,'$MEASUREMENT',70, 1);  // メートル法
@@ -480,5 +481,10 @@ function exportDXF(){
   // ファイル出力
   const base=(state.saveFileName||'図面').replace(/[\\/:*?"<>|]/g,'_');
   const name=(pg.name||('Sheet'+(state.currentPage+1))).replace(/[\\/:*?"<>|]/g,'_');
-  dl(out.join('\r\n'), `${base}_${name}.dxf`, 'application/dxf');
+  // 【課題B対応】UTF-8のまま出すと$DWGCODEPAGE=ANSI_932と不整合になり文字化けするため、
+  // 全体をShift-JIS(cp932)バイト列に変換してBlob出力する(sjis.jsのencodeSJIS)。
+  // encodeSJISが無い環境(スタブ等)ではテキストのままフォールバック。
+  const dxfText = out.join('\r\n');
+  const payload = (typeof encodeSJIS === 'function') ? encodeSJIS(dxfText) : dxfText;
+  dl(payload, `${base}_${name}.dxf`, 'application/dxf');
 }
