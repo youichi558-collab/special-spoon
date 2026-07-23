@@ -184,11 +184,25 @@ function exportDXF(){
     ...(typeof LAYERS !== 'undefined' ? LAYERS : []).map(l=>({n:dxfLayer(l.name),c:l.locked?4:2}))
       .filter(l=>!LAYER_DEFS.some(d=>d.n===l.n))
   ];
+  // 【安全網】LAYERS配列に登録漏れの孤立レイヤー名(過去のdeleteLayerバグ等で発生しうる)を
+  // ENTITIESから実際に使用されているものだけ拾って追加登録する。これが無いと、テーブルに存在しない
+  // レイヤーをENTITIESが参照する不正なDXFになり、TrueView等の正規AutoCAD系リーダーが開けなくなる。
+  const knownLayerNames = new Set(allLayers.map(l=>l.n));
+  const usedLayerNames = new Set();
+  elements.forEach(el=>{ if(el.layer) usedLayerNames.add(dxfLayer(el.layer)); });
+  wires.forEach(w=>{ if(w.layer) usedLayerNames.add(dxfLayer(w.layer)); });
+  usedLayerNames.forEach(n=>{ if(!knownLayerNames.has(n)) allLayers.push({n, c:2}); });
   p(0,'TABLE', 2,'LAYER', 5,H_LAYER_TBL, 100,'AcDbSymbolTable', 70,allLayers.length);
+  // 【バグ修正】旧実装はallLayers内の位置iでLAYERS配列を直接引いていたが、allLayersは
+  // LAYER_DEFS(固定8件)+LAYERS(フィルタ後)の連結でインデックスが対応しておらず、常にズレた
+  // レイヤーの線種が適用されていた(インポート図面の破線/一点鎖線が別レイヤーの設定で出力される軽微な
+  // 不具合。TrueViewが開けない件とは無関係だが同時に発見したため修正)。名前引きに変更。
+  const layerByName = new Map((typeof LAYERS !== 'undefined' ? LAYERS : []).map(l=>[dxfLayer(l.name), l]));
   allLayers.forEach((ld,i)=>{
     const h = i < layerH.length ? layerH[i] : nh();
     p(0,'LAYER', 5,h, 100,'AcDbSymbolTableRecord', 100,'AcDbLayerTableRecord');
-    const ltype = (typeof LAYERS!=='undefined' && LAYERS[i]) ? (ltypeMap[LAYERS[i].lineDash||'solid']||'CONTINUOUS') : 'CONTINUOUS';
+    const srcLayer = layerByName.get(ld.n);
+    const ltype = srcLayer ? (ltypeMap[srcLayer.lineDash||'solid']||'CONTINUOUS') : 'CONTINUOUS';
     p(2,ld.n, 70,0, 62,ld.c, 6,ltype, 370,-3);
   });
   p(0,'ENDTAB');

@@ -182,14 +182,24 @@ function renameLayer(i) {
 }
 function deleteLayer(i) {
   const l = LAYERS[i];
-  const elCount = state.elements.filter(e=>e.layer===l.name).length;
-  const wCount  = state.wires.filter(w=>w.layer===l.name).length;
-  const total = elCount + wCount;
+  // 【バグ修正】LAYERSは全ページ共通のグローバル配列だが、旧実装はstate.elements/wires(現在ページのみ)
+  // しか付け替えていなかった。他ページに同名レイヤーの要素が残ったままLAYERSからは削除されるため、
+  // そのページをDXF書き出しするとLAYERテーブルに存在しないレイヤーをENTITIESが参照する不正な
+  // ファイルになる(TrueView等の正規AutoCAD系リーダーが開けない実例で発覚 2026-07-23)。
+  // 全ページを対象に付け替えるよう修正。
+  if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
+  let total = 0;
+  state.pages.forEach(pg => {
+    total += (pg.elements||[]).filter(e=>e.layer===l.name).length;
+    total += (pg.wires||[]).filter(w=>w.layer===l.name).length;
+  });
   if (total > 0) {
-    if (!confirm(`レイヤー「${l.name}」には${total}個のオブジェクトがあります。\n削除すると別レイヤーに移動します。\n続けますか？`)) return;
+    if (!confirm(`レイヤー「${l.name}」には全ページで${total}個のオブジェクトがあります。\n削除すると別レイヤーに移動します。\n続けますか？`)) return;
     const fallback = LAYERS.find((l2,j)=>j!==i)?.name || '回路';
-    state.elements.forEach(el=>{ if(el.layer===l.name) el.layer=fallback; });
-    state.wires.forEach(w=>{ if(w.layer===l.name) w.layer=fallback; });
+    state.pages.forEach(pg => {
+      (pg.elements||[]).forEach(el=>{ if(el.layer===l.name) el.layer=fallback; });
+      (pg.wires||[]).forEach(w=>{ if(w.layer===l.name) w.layer=fallback; });
+    });
   } else {
     if (!confirm(`レイヤー「${l.name}」を削除しますか？`)) return;
   }
@@ -197,6 +207,23 @@ function deleteLayer(i) {
   if (!LAYERS.find(l=>l.active)) LAYERS[0].active = true;
   renderLayers();
   draw();
+}
+
+// 【救済策】過去にdeleteLayerのバグで生じた「LAYERS未登録だが要素が参照している」孤立レイヤー名を
+// 全ページから検出し、LAYERSに復元登録する。既存図面ファイルの補修用。
+function repairOrphanLayers() {
+  if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
+  const known = new Set(LAYERS.map(l=>l.name));
+  const orphans = new Set();
+  state.pages.forEach(pg => {
+    (pg.elements||[]).forEach(el=>{ if(el.layer && !known.has(el.layer)) orphans.add(el.layer); });
+    (pg.wires||[]).forEach(w=>{ if(w.layer && !known.has(w.layer)) orphans.add(w.layer); });
+  });
+  if (!orphans.size) { alert('孤立レイヤー参照は見つかりませんでした。'); return; }
+  pushH();
+  orphans.forEach(name => LAYERS.push({ name, color:'#888888', visible:true, locked:false, active:false, lineWidth:1, lineDash:'solid', fontSize:null, attr:'' }));
+  renderLayers(); draw();
+  alert(`${orphans.size}件のレイヤーを復元登録しました:\n${[...orphans].join(', ')}`);
 }
 function applyLayerFontSize(i, val) {
   const fs = val ? parseInt(val) : null;
