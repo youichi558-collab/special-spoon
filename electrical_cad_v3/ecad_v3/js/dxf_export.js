@@ -219,7 +219,12 @@ function exportDXF(){
   // STYLE
   p(0,'TABLE', 2,'STYLE', 5,H_STYLE_TBL, 100,'AcDbSymbolTable', 70,1);
   p(0,'STYLE', 5,H_STYLE_STD, 100,'AcDbSymbolTableRecord', 100,'AcDbTextStyleTableRecord');
-  p(2,'STANDARD', 70,0, 40,'0.0', 41,'1.0', 50,'0.0', 71,0, 42,'2.5', 3,'', 4,'');
+  // 【文字化け修正】フォント未指定(3='', 4='')だと、AutoCAD/TrueViewは代替のSHXフォント
+  // (日本語グリフを持たない)で表示するため文字化けする。元図.DXFの実データを確認したところ、
+  // TrueTypeフォント名(arial.ttf)+XDATA(1001 ACAD/1000 Arial/1071 34)で、Windows側の
+  // フォントリンク機構によりShift-JIS文字を正しくレンダリングさせる構成だった。同じ値を採用。
+  p(2,'STANDARD', 70,0, 40,'0.0', 41,'1.0', 50,'0.0', 71,0, 42,'2.5', 3,'arial.ttf', 4,'');
+  p(1001,'ACAD', 1000,'Arial', 1071,34);
   p(0,'ENDTAB');
 
   // VIEW
