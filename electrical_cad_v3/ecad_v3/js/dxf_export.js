@@ -132,6 +132,13 @@ function exportDXF(){
   // CLASSES（最小限）
   // ================================================================
   p(0,'SECTION', 2,'CLASSES');
+  // 【追加構造対応・第2弾】LAYOUT/ACDBPLACEHOLDER/ACDBDICTIONARYWDFLTは"固定"組込型ではなく
+  // クラス宣言が必要な拡張オブジェクトのため、CLASSESセクションでの事前宣言が要る(ezdxf新規R2000
+  // 文書の実出力で確認)。前回のLAYOUT追加でOBJECTSにこれらを出力するようになったが、CLASSES宣言が
+  // 空のままだったため、正規AutoCAD系リーダーが未知のオブジェクトとして拒否している可能性が高い。
+  p(0,'CLASS',1,'ACDBDICTIONARYWDFLT',2,'AcDbDictionaryWithDefault',3,'ObjectDBX Classes',90,0,280,0,281,0);
+  p(0,'CLASS',1,'ACDBPLACEHOLDER',    2,'AcDbPlaceHolder',           3,'ObjectDBX Classes',90,0,280,0,281,0);
+  p(0,'CLASS',1,'LAYOUT',             2,'AcDbLayout',                3,'ObjectDBX Classes',90,0,280,0,281,0);
   p(0,'ENDSEC');
 
   // ================================================================
@@ -531,12 +538,14 @@ function exportDXF(){
 
   p(0,'EOF');
 
-  // $HANDSEEDを十分大きい固定値に置換
-  // HANDSEEDが使用済みハンドルより小さいとAutoCAD/DWG TrueViewが読込を中断する。
-  // 実ハンドルは0x200から連番なので、FFFFFF(約1670万)あれば全エンティティを確実に上回る。
-  // （HANDSEEDは実最大より大きければよく、大きすぎる分には無害）
+  // $HANDSEEDを実使用最大ハンドル+余裕分に置換。
+  // 【変更理由】理論上の最大値FFFFFFをそのまま使うと、正規AutoCAD系リーダーが「新規ハンドルを
+  // 割り当てる余地が無い」と判断し拒否する可能性がある(実ファイルのHANDSEEDは常に実使用最大に近い
+  // 控えめな値であり、理論上限の使用例は見られない)。_h(次回nh()呼び出し値)は現在のハンドル発行
+  // カウンタの続きなので、そのまま採用すれば必ず実使用最大より大きく、かつ妥当な範囲に収まる。
+  const handSeedVal = _h.toString(16).toUpperCase();
   for (let i = 0; i < out.length; i++) {
-    if (out[i] === '__HANDSEED__') { out[i] = 'FFFFFF'; break; }
+    if (out[i] === '__HANDSEED__') { out[i] = handSeedVal; break; }
   }
 
   // ファイル出力
