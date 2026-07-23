@@ -50,6 +50,7 @@ function _safeInit(label, fn) {
   });
 
   // 初期描画（ここが最も重要。前段が多少失敗していても、必ず到達させる）
+  _safeInit('リボン高さ同期', () => { if (typeof syncRibbonHeight === 'function') syncRibbonHeight(); });
   _safeInit('レイヤー表示', renderLayers);
   _safeInit('部品DB表示', renderPartsAll);
   _safeInit('カスタムシンボル表示', renderCustomSymbols);

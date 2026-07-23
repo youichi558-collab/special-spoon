@@ -10,7 +10,19 @@ function switchRibbon(name, el) {
   const t = document.getElementById('rp-' + name); if (t) t.style.display = 'flex';
   document.querySelectorAll('.rtab').forEach(e => e.classList.remove('on'));
   el.classList.add('on');
+  syncRibbonHeight();
 }
+
+// リボンは折り返し表示のためタブごとに実際の高さが変わる。#rp(右パネル)は position:fixed で
+// top:var(--ribbon-h)に依存しているため、ズレないようリボンの実測高さを都度反映する。
+function syncRibbonHeight() {
+  const rb = document.getElementById('ribbon');
+  if (!rb) return;
+  requestAnimationFrame(() => {
+    document.documentElement.style.setProperty('--ribbon-h', rb.offsetHeight + 'px');
+  });
+}
+window.addEventListener('resize', syncRibbonHeight);
 
 function switchLTab(name, el) {
   document.querySelectorAll('.lt').forEach(e => e.classList.remove('on'));
