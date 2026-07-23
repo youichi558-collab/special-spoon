@@ -236,7 +236,11 @@ function exportDXF(){
   // 通常のAcDbSymbolTableに加えて追加のサブクラスマーカー"100 AcDbDimStyleTable"が必須。
   // 元図.DXFの実データで確認(TrueViewエラー「クラス AcDbDimStyleTableのクラスセパレータが必要」で発覚)。
   p(0,'TABLE', 2,'DIMSTYLE', 5,H_DIMST_TBL, 100,'AcDbSymbolTable', 70,1, 100,'AcDbDimStyleTable');
-  p(0,'DIMSTYLE', 5,H_DIMST_STD, 100,'AcDbSymbolTableRecord', 100,'AcDbDimStyleTableRecord');
+  // 【真の本命修正】DIMSTYLEの個々のテーブルエントリは、他の全テーブル(LAYER/STYLE等)が使う
+  // group code 5(ハンドル)ではなく、group code 105を使う仕様(DXFリファレンスで明記、
+  // 元図.DXFの実データでも確認: 105,ハンドル値)。前回のAcDbDimStyleTableマーカー追加だけでは
+  // 直らず、TrueViewが同じ行番号で同じエラーを出し続けた真因はこちら。
+  p(0,'DIMSTYLE', 105,H_DIMST_STD, 330,H_DIMST_TBL, 100,'AcDbSymbolTableRecord', 100,'AcDbDimStyleTableRecord');
   p(2,'STANDARD', 70,0);
   p(40,'1.0', 41,'2.5', 42,'0.625', 43,'3.75', 44,'1.25', 45,'0.0', 46,'0.0', 47,'0.0', 48,'0.0');
   p(140,'2.5', 141,'2.5', 142,'0.0', 143,'25.4', 144,'1.0', 145,'0.0', 146,'1.0', 147,'0.625');
