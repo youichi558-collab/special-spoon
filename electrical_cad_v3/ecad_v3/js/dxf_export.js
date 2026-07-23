@@ -192,7 +192,7 @@ function exportDXF(){
   elements.forEach(el=>{ if(el.layer) usedLayerNames.add(dxfLayer(el.layer)); });
   wires.forEach(w=>{ if(w.layer) usedLayerNames.add(dxfLayer(w.layer)); });
   usedLayerNames.forEach(n=>{ if(!knownLayerNames.has(n)) allLayers.push({n, c:2}); });
-  p(0,'TABLE', 2,'LAYER', 5,H_LAYER_TBL, 330,H_BLKREC_TBL, 100,'AcDbSymbolTable', 70,allLayers.length);
+  p(0,'TABLE', 2,'LAYER', 5,H_LAYER_TBL, 100,'AcDbSymbolTable', 70,allLayers.length);
   // 【バグ修正】旧実装はallLayers内の位置iでLAYERS配列を直接引いていたが、allLayersは
   // LAYER_DEFS(固定8件)+LAYERS(フィルタ後)の連結でインデックスが対応しておらず、常にズレた
   // レイヤーの線種が適用されていた(インポート図面の破線/一点鎖線が別レイヤーの設定で出力される軽微な
