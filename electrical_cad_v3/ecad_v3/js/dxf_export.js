@@ -192,7 +192,7 @@ function exportDXF(){
   elements.forEach(el=>{ if(el.layer) usedLayerNames.add(dxfLayer(el.layer)); });
   wires.forEach(w=>{ if(w.layer) usedLayerNames.add(dxfLayer(w.layer)); });
   usedLayerNames.forEach(n=>{ if(!knownLayerNames.has(n)) allLayers.push({n, c:2}); });
-  p(0,'TABLE', 2,'LAYER', 5,H_LAYER_TBL, 100,'AcDbSymbolTable', 70,allLayers.length);
+  p(0,'TABLE', 2,'LAYER', 5,H_LAYER_TBL, 330,H_BLKREC_TBL, 100,'AcDbSymbolTable', 70,allLayers.length);
   // 【バグ修正】旧実装はallLayers内の位置iでLAYERS配列を直接引いていたが、allLayersは
   // LAYER_DEFS(固定8件)+LAYERS(フィルタ後)の連結でインデックスが対応しておらず、常にズレた
   // レイヤーの線種が適用されていた(インポート図面の破線/一点鎖線が別レイヤーの設定で出力される軽微な
@@ -200,10 +200,14 @@ function exportDXF(){
   const layerByName = new Map((typeof LAYERS !== 'undefined' ? LAYERS : []).map(l=>[dxfLayer(l.name), l]));
   allLayers.forEach((ld,i)=>{
     const h = i < layerH.length ? layerH[i] : nh();
-    p(0,'LAYER', 5,h, 100,'AcDbSymbolTableRecord', 100,'AcDbLayerTableRecord');
+    p(0,'LAYER', 5,h, 330,H_LAYER_TBL, 100,'AcDbSymbolTableRecord', 100,'AcDbLayerTableRecord');
     const srcLayer = layerByName.get(ld.n);
     const ltype = srcLayer ? (ltypeMap[srcLayer.lineDash||'solid']||'CONTINUOUS') : 'CONTINUOUS';
-    p(2,ld.n, 70,0, 62,ld.c, 6,ltype, 370,-3);
+    // 【本命修正】group 390(プロットスタイル名ハンドル)が無いと、TrueViewは
+    // 「テーブル LAYER にエラー発生。印刷スタイル名を受け取れません」で読込全体を破棄する
+    // (元図.DXFの全LAYERエントリに390が存在することを確認して特定。2026-07-23)。
+    // ACAD_PLOTSTYLENAME辞書の"Normal"プレースホルダ(H_PLOTSTYLE_NORMAL)を全レイヤーに割当てる。
+    p(2,ld.n, 70,0, 62,ld.c, 6,ltype, 370,-3, 390,H_PLOTSTYLE_NORMAL);
   });
   p(0,'ENDTAB');
 
