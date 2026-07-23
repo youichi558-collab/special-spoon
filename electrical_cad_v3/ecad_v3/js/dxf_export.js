@@ -50,8 +50,10 @@ function exportDXF(){
   // パンすれば済むが、TrueViewでは扱いにくいとの指摘 2026-07-23)。元の図面データ自体は
   // 一切変更せず、DXF書き出し時のみ全図形を平行移動し、バウンディングボックスの左下隅が
   // 原点(0,0)に来るようにする(AutoCADの一般的な図面枠配置の流儀に合わせる)。
-  const offX = -minX, offY = -minY;
-  const cx=((maxX-minX)/2).toFixed(2), cy=((maxY-minY)/2).toFixed(2);
+  // チェックボックス「原点シフト」でon/off可能(既定on)。offなら元の絶対座標のまま出力。
+  const shiftOn = (typeof state !== 'undefined' && state.dxfOriginShift === false) ? false : true;
+  const offX = shiftOn ? -minX : 0, offY = shiftOn ? -minY : 0;
+  const cx=(shiftOn ? (maxX-minX)/2 : (minX+maxX)/2).toFixed(2), cy=(shiftOn ? (maxY-minY)/2 : (minY+maxY)/2).toFixed(2);
   const vh=Math.max(maxY-minY,maxX-minX,100).toFixed(2);
 
   // レイヤー定義
@@ -96,8 +98,8 @@ function exportDXF(){
   p(9,'$HANDSEED',    5,'__HANDSEED__');
   p(9,'$INSUNITS',   70, 4);  // mm
   p(9,'$MEASUREMENT',70, 1);  // メートル法
-  p(9,'$EXTMIN',     10,'0.000', 20,'0.000', 30,'0.0');
-  p(9,'$EXTMAX',     10,(maxX-minX).toFixed(3), 20,(maxY-minY).toFixed(3), 30,'0.0');
+  p(9,'$EXTMIN',     10,(shiftOn?0:minX).toFixed(3), 20,(shiftOn?0:minY).toFixed(3), 30,'0.0');
+  p(9,'$EXTMAX',     10,(shiftOn?maxX-minX:maxX).toFixed(3), 20,(shiftOn?maxY-minY:maxY).toFixed(3), 30,'0.0');
   p(9,'$LIMMIN',     10,'0.0', 20,'0.0');
   p(9,'$LIMMAX',     10,'420.0', 20,'297.0');
   p(9,'$CLAYER',      8,'0');
