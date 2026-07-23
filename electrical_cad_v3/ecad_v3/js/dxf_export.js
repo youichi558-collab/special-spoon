@@ -45,7 +45,13 @@ function exportDXF(){
     else if(el.x!=null) ext(el.x,-el.y);
   });
   if(minX>maxX){minX=0;minY=-297;maxX=420;maxY=0;}
-  const cx=((minX+maxX)/2).toFixed(2), cy=((minY+maxY)/2).toFixed(2);
+  // 【原点シフト】インポート図面はページ中央付近が座標原点(0,0)になっていることが多く、
+  // TrueViewで開くとUCS原点マーカーが図面の真ん中に重なって見づらい(AutoCAD本体なら
+  // パンすれば済むが、TrueViewでは扱いにくいとの指摘 2026-07-23)。元の図面データ自体は
+  // 一切変更せず、DXF書き出し時のみ全図形を平行移動し、バウンディングボックスの左下隅が
+  // 原点(0,0)に来るようにする(AutoCADの一般的な図面枠配置の流儀に合わせる)。
+  const offX = -minX, offY = -minY;
+  const cx=((maxX-minX)/2).toFixed(2), cy=((maxY-minY)/2).toFixed(2);
   const vh=Math.max(maxY-minY,maxX-minX,100).toFixed(2);
 
   // レイヤー定義
@@ -90,8 +96,8 @@ function exportDXF(){
   p(9,'$HANDSEED',    5,'__HANDSEED__');
   p(9,'$INSUNITS',   70, 4);  // mm
   p(9,'$MEASUREMENT',70, 1);  // メートル法
-  p(9,'$EXTMIN',     10,minX.toFixed(3), 20,minY.toFixed(3), 30,'0.0');
-  p(9,'$EXTMAX',     10,maxX.toFixed(3), 20,maxY.toFixed(3), 30,'0.0');
+  p(9,'$EXTMIN',     10,'0.000', 20,'0.000', 30,'0.0');
+  p(9,'$EXTMAX',     10,(maxX-minX).toFixed(3), 20,(maxY-minY).toFixed(3), 30,'0.0');
   p(9,'$LIMMIN',     10,'0.0', 20,'0.0');
   p(9,'$LIMMAX',     10,'420.0', 20,'297.0');
   p(9,'$CLAYER',      8,'0');
@@ -327,37 +333,40 @@ function exportDXF(){
   p(0,'SECTION', 2,'ENTITIES');
 
   // エンティティ出力ヘルパー（全てサブクラスマーカー付き）
+  // 原点シフト用ヘルパー(X: 生値+offX、Y: 反転後の値+offY)
+  const fx = v => (v+offX).toFixed(3);
+  const fy = v => (-v+offY).toFixed(3);
   function eLine(layer,x1,y1,x2,y2){
     p(0,'LINE',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbLine',
-      10,x1.toFixed(3),20,(-y1).toFixed(3),30,'0.0',
-      11,x2.toFixed(3),21,(-y2).toFixed(3),31,'0.0');
+      10,fx(x1),20,fy(y1),30,'0.0',
+      11,fx(x2),21,fy(y2),31,'0.0');
   }
   function eCircle(layer,cx,cy,r){
     p(0,'CIRCLE',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbCircle',
-      10,cx.toFixed(3),20,(-cy).toFixed(3),30,'0.0',40,r.toFixed(3));
+      10,fx(cx),20,fy(cy),30,'0.0',40,r.toFixed(3));
   }
   function eArc(layer,cx,cy,r,sa,ea){
     p(0,'ARC',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbCircle',
-      10,cx.toFixed(3),20,(-cy).toFixed(3),30,'0.0',40,r.toFixed(3),
+      10,fx(cx),20,fy(cy),30,'0.0',40,r.toFixed(3),
       100,'AcDbArc',50,sa.toFixed(3),51,ea.toFixed(3));
   }
   function eText(layer,x,y,h,str,rot){
     if(!str) return;
     const u=toUnicodeDXF(str);
     p(0,'TEXT',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbText',
-      10,x.toFixed(3),20,(-y).toFixed(3),30,'0.0',40,String(h),1,u);
+      10,fx(x),20,fy(y),30,'0.0',40,String(h),1,u);
     if(rot) p(50,String(rot));
-    p(7,'STANDARD',72,1,11,x.toFixed(3),21,(-y).toFixed(3),31,'0.0',100,'AcDbText',73,0);
+    p(7,'STANDARD',72,1,11,fx(x),21,fy(y),31,'0.0',100,'AcDbText',73,0);
   }
   function eSolid(layer,x,y,ux,uy,a){
     // 寸法矢印（SOLID→AcDbTrace）
     const h=Math.hypot(ux,uy);if(h<1e-9)return;
     const ax=ux/h,ay=uy/h,nx=-ay*a*0.3,ny=ax*a*0.3;
     p(0,'SOLID',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbTrace',
-      10,(x         ).toFixed(3),20,(-y         ).toFixed(3),30,'0.0',
-      11,(x+ax*a+nx ).toFixed(3),21,(-(y+ay*a+ny)).toFixed(3),31,'0.0',
-      12,(x+ax*a-nx ).toFixed(3),22,(-(y+ay*a-ny)).toFixed(3),32,'0.0',
-      13,(x+ax*a    ).toFixed(3),23,(-(y+ay*a    )).toFixed(3),33,'0.0');
+      10,fx(x         ),20,fy(y         ),30,'0.0',
+      11,fx(x+ax*a+nx ),21,fy(y+ay*a+ny ),31,'0.0',
+      12,fx(x+ax*a-nx ),22,fy(y+ay*a-ny ),32,'0.0',
+      13,fx(x+ax*a    ),23,fy(y+ay*a    ),33,'0.0');
   }
   function eRect(layer,x,y,w,h){
     eLine(layer,x,y,x+w,y);eLine(layer,x+w,y,x+w,y+h);
