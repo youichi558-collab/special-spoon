@@ -116,9 +116,10 @@ function startElResize(h, e) {
   const startHandleDist = Math.hypot(h.wx - el.x, h.wy - el.y);
   state.resize = { el, handle: h.hid, orig: JSON.parse(JSON.stringify(el)), startHandleDist, startScale: el.scale||1 };
   const onMove = e2 => { const {x:wx,y:wy}=tw(e2.clientX-r.left,e2.clientY-r.top); applyElResize(wx,wy); updateResizeHandles(); draw(); };
-  const onUp   = () => { state.resize={el:null,handle:'',orig:null}; updateResizeHandles(); draw(); document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); };
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup',   onUp);
+  const onUp   = () => { state.resize={el:null,handle:'',orig:null}; updateResizeHandles(); draw(); document.removeEventListener('pointermove',onMove); document.removeEventListener('pointerup',onUp); document.removeEventListener('pointercancel',onUp); };
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup',   onUp);
+  document.addEventListener('pointercancel', onUp);
 }
 
 function applyElResize(wx, wy) {
@@ -162,9 +163,10 @@ function startGroupResize(h, e) {
   state.groupResize = { active:true, handle:h.hid, orig:{ bounds:{...bounds}, els:elRefs.map(el=>JSON.parse(JSON.stringify(el))), wires:wireRefs.map(w=>JSON.parse(JSON.stringify(w))), elRefs, wireRefs } };
   const r = cv.getBoundingClientRect();
   const onMove = e2 => { const {x:wx,y:wy}=tw(e2.clientX-r.left,e2.clientY-r.top); applyGroupResize(wx,wy); updateResizeHandles(); draw(); };
-  const onUp   = () => { state.groupResize={active:false,handle:'',orig:null}; updateResizeHandles(); draw(); document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); };
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup',   onUp);
+  const onUp   = () => { state.groupResize={active:false,handle:'',orig:null}; updateResizeHandles(); draw(); document.removeEventListener('pointermove',onMove); document.removeEventListener('pointerup',onUp); document.removeEventListener('pointercancel',onUp); };
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup',   onUp);
+  document.addEventListener('pointercancel', onUp);
 }
 
 function applyGroupResize(wx, wy) {

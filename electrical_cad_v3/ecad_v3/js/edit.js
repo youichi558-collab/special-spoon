@@ -818,6 +818,7 @@ function showPartRefInput(wx, wy, prefill, onConfirm, onCancel) {
   const safeDone = (ok) => {
     if (done) return; done = true;
     document.removeEventListener('mousedown', onOut, true);
+    document.removeEventListener('pointerdown', onOut, true);
     const v = inp.value.trim();
     wrap.remove();
     if (ok) onConfirm(v); else if (onCancel) onCancel();
@@ -828,9 +829,14 @@ function showPartRefInput(wx, wy, prefill, onConfirm, onCancel) {
     if (e.key === 'Escape') { e.preventDefault(); safeDone(false); }
   });
   const onOut = (e) => {
-    if (!wrap.contains(e.target)) { e.stopPropagation(); safeDone(true); }
+    if (!wrap.contains(e.target)) {
+      document.removeEventListener('mousedown', onOut, true);
+      document.removeEventListener('pointerdown', onOut, true);
+      e.stopPropagation(); safeDone(true);
+    }
   };
   document.addEventListener('mousedown', onOut, true);
+  document.addEventListener('pointerdown', onOut, true);
 }
 
 // P: 選択中のシンボルへ順番にインライン入力（前回入力値+1を自動プリセット）

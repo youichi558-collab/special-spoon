@@ -68,6 +68,11 @@ const state = {
     dragGroup: [],
     dragMoved: false,
     selboxing: false,
+    // ── タッチ入力用（input.js: タップ/ドラッグ/ロングタップ判定）
+    _touchPend: null,         // {cx,cy,wx,wy,clientX,clientY} タップ確定待ちの情報
+    _touchTimer: null,        // ロングタップ判定タイマー
+    _touchLong: false,        // ロングタップ発火済みフラグ
+    _touchDragStarted: false, // タップ→ドラッグへ昇格済みフラグ
   },
 
   // ----------------------------------------------------------------

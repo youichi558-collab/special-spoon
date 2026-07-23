@@ -76,7 +76,21 @@ body{font-family:'Segoe UI',sans-serif;font-size:12px;background:var(--bg);color
 
 /* ========= キャンバス ========= */
 #cw{flex:1;overflow:visible;position:relative;background:var(--canvas);}
-#cv{display:block;cursor:default;}
+#cv{display:block;cursor:default;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
+
+/* ========= タッチデバイス対応（iPad/Apple Pencil等） =========
+   any-pointer:coarse は「指タッチが使える環境」全般に一致する(Apple Pencil使用時も
+   デバイス自体はタッチ対応のためこの条件に入る)。ボタン・タブ類を一回り大きくし、
+   誤タップを減らす。マウスのみの環境(pointer:fine かつ any-pointer:coarseでない)は対象外。 */
+@media (any-pointer: coarse) {
+  .rb{padding:6px 9px;min-width:44px;font-size:11px;gap:2px;}
+  .rb svg{width:22px;height:22px;}
+  .rb-sm{padding:6px 10px;font-size:12px;}
+  .rb-sm svg{width:17px;height:17px;}
+  .rtab{padding:9px 16px;font-size:12px;}
+  .lt{padding:16px 6px;font-size:11px;}
+  .ctx-item{padding:9px 14px;font-size:13px;}
+}
 
 /* ========= 右プロパティパネル ========= */
 #rp{position:fixed;right:0;top:var(--ribbon-h,90px);bottom:24px;width:200px;background:var(--bg2);border-left:1px solid var(--bd);display:flex;flex-direction:column;transition:transform 0.2s;z-index:20;}

@@ -246,11 +246,13 @@ const textTool = {
     const onOutside = (e2) => {
       if (!wrap.contains(e2.target)) {
         document.removeEventListener('mousedown', onOutside, true);
+        document.removeEventListener('pointerdown', onOutside, true);
         e2.stopPropagation();
         safeFinish(true);
       }
     };
     document.addEventListener('mousedown', onOutside, true);
+    document.addEventListener('pointerdown', onOutside, true);
   },
   onMove() {}, onUp() {}, onHover() {}
 };
@@ -699,11 +701,13 @@ function showLeaderTextInput(wx, wy, onConfirm) {
   const onOut = (e) => {
     if (!wrap.contains(e.target)) {
       document.removeEventListener('mousedown', onOut, true);
+      document.removeEventListener('pointerdown', onOut, true);
       e.stopPropagation();
       safeDone(true);
     }
   };
   document.addEventListener('mousedown', onOut, true);
+  document.addEventListener('pointerdown', onOut, true);
 }
 
 const leaderTool = {

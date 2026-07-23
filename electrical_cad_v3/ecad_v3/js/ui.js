@@ -82,7 +82,7 @@ function renderLayers() {
       </tr>`;
     tbody.innerHTML = bulkRow + LAYERS.map((l, i) => `
       <tr draggable="true" data-layidx="${i}" style="background:${l.active?'var(--acc-dim,rgba(0,103,192,0.12))':'var(--bg2)'};border-bottom:1px solid var(--bd2);cursor:pointer" onclick="setActLayer(${i})" ondragstart="layDragStart(event,${i})" ondragover="layDragOver(event)" ondrop="layDrop(event,${i})" ondragend="layDragEnd(event)">
-        <td style="padding:4px 6px;text-align:center;cursor:grab;color:var(--fg3)" title="ドラッグで並び替え">⠿</td>
+        <td style="padding:4px 6px;text-align:center;cursor:grab;color:var(--fg3);touch-action:none" title="ドラッグで並び替え" onpointerdown="layRowPointerDown(event,${i})">⠿</td>
         <td style="padding:4px 6px;text-align:center" onclick="event.stopPropagation();togLayVis(${i})" title="表示切替">
           <span style="font-size:13px;color:${l.visible?'var(--fg)':'var(--fg3)'}">${l.visible?'●':'○'}</span>
         </td>
@@ -138,7 +138,36 @@ function renderLayers() {
     if (colorBox) colorBox.style.background = activeLayer?.color || '#888';
   }
 }
-// レイヤー並び替えドラッグ
+// レイヤー並び替えドラッグ（タッチ用：HTML5 DnD(draggable)はiOS/Android共に指では発火しないため、
+// pointerdown/move/upで独自実装。マウスは従来通りHTML5 DnD(下のlayDragStart等)を使用する）
+function layRowPointerDown(e, i) {
+  if (e.pointerType !== 'touch') return; // マウス/ペンは既存のdraggable DnDに任せる
+  e.preventDefault();
+  let dragIdx = i;
+  let pushed = false;
+  const onMove = (ev) => {
+    const el = document.elementFromPoint(ev.clientX, ev.clientY);
+    const row = el && el.closest ? el.closest('tr[data-layidx]') : null;
+    if (!row) return;
+    const toIdx = parseInt(row.dataset.layidx, 10);
+    if (isNaN(toIdx) || toIdx === dragIdx) return;
+    if (!pushed) { pushH(); pushed = true; }
+    const moved = LAYERS.splice(dragIdx, 1)[0];
+    LAYERS.splice(toIdx, 0, moved);
+    dragIdx = toIdx;
+    renderLayers();
+  };
+  const onUp = () => {
+    if (pushed) draw();
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    document.removeEventListener('pointercancel', onUp);
+  };
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+  document.addEventListener('pointercancel', onUp);
+}
+
 let _layDragFrom = -1;
 function layDragStart(e, i) {
   _layDragFrom = i;
@@ -1863,11 +1892,13 @@ function layFloatDown(e) {
     p.style.top  = (ev.clientY - _lfOy) + 'px';
   }
   function onUp() {
-    window.removeEventListener('mousemove', onMove);
-    window.removeEventListener('mouseup', onUp);
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('pointercancel', onUp);
   }
-  window.addEventListener('mousemove', onMove);
-  window.addEventListener('mouseup', onUp);
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+  window.addEventListener('pointercancel', onUp);
 }
 function initLayFloat() {}
 
@@ -2027,9 +2058,10 @@ function _makeFloatDrag(panelId) {
     const r = p.getBoundingClientRect();
     ox = e.clientX - r.left; oy = e.clientY - r.top;
     function onMove(ev) { p.style.left=(ev.clientX-ox)+'px'; p.style.top=(ev.clientY-oy)+'px'; }
-    function onUp() { window.removeEventListener('mousemove',onMove); window.removeEventListener('mouseup',onUp); }
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+    function onUp() { window.removeEventListener('pointermove',onMove); window.removeEventListener('pointerup',onUp); window.removeEventListener('pointercancel',onUp); }
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
   };
 }
 function symFloatDown(e) { _makeFloatDrag('sym-float')(e); }
@@ -2062,7 +2094,7 @@ function makeFpDraggable() {
     handle._fpDrag = true;
     handle.style.cursor = 'move';
     handle.title = 'ドラッグで移動';
-    handle.addEventListener('mousedown', e => {
+    handle.addEventListener('pointerdown', e => {
       if (e.button !== 0) return;
       if (e.target.closest('button,input,select,[onclick]')) return;
       e.preventDefault();
@@ -2078,11 +2110,13 @@ function makeFpDraggable() {
         fp.style.top  = Math.max(0, Math.min(window.innerHeight - 40, ev.clientY - oy)) + 'px';
       };
       const up = () => {
-        document.removeEventListener('mousemove', mv);
-        document.removeEventListener('mouseup', up);
+        document.removeEventListener('pointermove', mv);
+        document.removeEventListener('pointerup', up);
+        document.removeEventListener('pointercancel', up);
       };
-      document.addEventListener('mousemove', mv);
-      document.addEventListener('mouseup', up);
+      document.addEventListener('pointermove', mv);
+      document.addEventListener('pointerup', up);
+      document.addEventListener('pointercancel', up);
     });
   });
 }
