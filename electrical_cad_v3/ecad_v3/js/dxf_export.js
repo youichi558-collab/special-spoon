@@ -70,6 +70,12 @@ function exportDXF(){
   const H_APPID_TBL    = nh(), H_APPID_ACAD = nh();
   const H_DIMST_TBL    = nh(), H_DIMST_STD  = nh();
   const H_BLKREC_TBL   = nh(), H_BLKREC_MDL = nh(), H_BLKREC_PPR = nh();
+  const H_ROOT_DICT = nh(), H_GRP_DICT = nh();
+  const H_COLOR_DICT = nh(), H_LAYOUT_DICT = nh(), H_MATERIAL_DICT = nh();
+  const H_MLEADER_DICT = nh(), H_MLINE_DICT = nh(), H_PLOTSET_DICT = nh();
+  const H_PLOTSTYLE_DICT = nh(), H_PLOTSTYLE_NORMAL = nh();
+  const H_SCALELIST_DICT = nh(), H_TABLESTYLE_DICT = nh(), H_VISUALSTYLE_DICT = nh();
+  const H_LAYOUT_MODEL = nh(), H_LAYOUT_PAPER = nh();
   const symBlkRecH     = SYM_NAMES.map(()=>nh());
   const H_MDL_BLK      = nh(), H_MDL_EBLK  = nh();
   const H_PPR_BLK      = nh(), H_PPR_EBLK  = nh();
@@ -463,9 +469,64 @@ function exportDXF(){
   // OBJECTS
   // ================================================================
   p(0,'SECTION', 2,'OBJECTS');
-  const H_ROOT_DICT = nh(), H_GRP_DICT = nh();
-  p(0,'DICTIONARY',5,H_ROOT_DICT,330,'0',100,'AcDbDictionary',281,1,3,'ACAD_GROUP',350,H_GRP_DICT);
-  p(0,'DICTIONARY',5,H_GRP_DICT,330,H_ROOT_DICT,100,'AcDbDictionary',281,1);
+  // 【課題A構造対応】DXF R2000以降はモデル/ペーパー空間ごとにLAYOUTオブジェクトが必須。
+  // 欠落しているとDWG TrueView等の正規AutoCAD系リーダーは開けない(ezdxf/ODA系は読込時に自動補完するため
+  // audit通過だけでは検知できない差異。ezdxf公式ドキュメントのLayout Management Structuresで仕様確認済み、
+  // かつezdxf新規R2000文書の実出力を参考にレイアウト有無以外の付随要素(main VIEWPORT/reactor/拡張辞書)は
+  // モデル空間の表示には必須でないことを確認済み(2026-07-23))。
+  // ルート辞書: AutoCADが標準生成する主要エントリを一通り用意(中身が空でも辞書自体の存在が期待される)
+  p(0,'DICTIONARY',5,H_ROOT_DICT,330,'0',100,'AcDbDictionary',281,1,
+    3,'ACAD_COLOR',        350,H_COLOR_DICT,
+    3,'ACAD_GROUP',        350,H_GRP_DICT,
+    3,'ACAD_LAYOUT',       350,H_LAYOUT_DICT,
+    3,'ACAD_MATERIAL',     350,H_MATERIAL_DICT,
+    3,'ACAD_MLEADERSTYLE', 350,H_MLEADER_DICT,
+    3,'ACAD_MLINESTYLE',   350,H_MLINE_DICT,
+    3,'ACAD_PLOTSETTINGS', 350,H_PLOTSET_DICT,
+    3,'ACAD_PLOTSTYLENAME',350,H_PLOTSTYLE_DICT,
+    3,'ACAD_SCALELIST',    350,H_SCALELIST_DICT,
+    3,'ACAD_TABLESTYLE',   350,H_TABLESTYLE_DICT,
+    3,'ACAD_VISUALSTYLE',  350,H_VISUALSTYLE_DICT);
+  p(0,'DICTIONARY',5,H_GRP_DICT,        330,H_ROOT_DICT,100,'AcDbDictionary',281,1);
+  p(0,'DICTIONARY',5,H_COLOR_DICT,      330,H_ROOT_DICT,100,'AcDbDictionary',281,1);
+  p(0,'DICTIONARY',5,H_MATERIAL_DICT,   330,H_ROOT_DICT,100,'AcDbDictionary',281,1);
+  p(0,'DICTIONARY',5,H_MLEADER_DICT,    330,H_ROOT_DICT,100,'AcDbDictionary',281,1);
+  p(0,'DICTIONARY',5,H_MLINE_DICT,      330,H_ROOT_DICT,100,'AcDbDictionary',281,1);
+  p(0,'DICTIONARY',5,H_PLOTSET_DICT,    330,H_ROOT_DICT,100,'AcDbDictionary',281,1);
+  p(0,'DICTIONARY',5,H_SCALELIST_DICT,  330,H_ROOT_DICT,100,'AcDbDictionary',281,1);
+  p(0,'DICTIONARY',5,H_TABLESTYLE_DICT, 330,H_ROOT_DICT,100,'AcDbDictionary',281,1);
+  p(0,'DICTIONARY',5,H_VISUALSTYLE_DICT,330,H_ROOT_DICT,100,'AcDbDictionary',281,1);
+  // ACAD_PLOTSTYLENAME は既定プロットスタイル"Normal"を持つ特殊辞書(ACDBDICTIONARYWDFLT)
+  p(0,'ACDBDICTIONARYWDFLT',5,H_PLOTSTYLE_DICT,330,H_ROOT_DICT,100,'AcDbDictionary',281,1,
+    3,'Normal',350,H_PLOTSTYLE_NORMAL,100,'AcDbDictionaryWithDefault',340,H_PLOTSTYLE_NORMAL);
+  p(0,'ACDBPLACEHOLDER',5,H_PLOTSTYLE_NORMAL,330,H_PLOTSTYLE_DICT);
+  // ACAD_LAYOUT辞書: "Model"と"Layout1"をLAYOUTオブジェクトへ登録
+  p(0,'DICTIONARY',5,H_LAYOUT_DICT,330,H_ROOT_DICT,100,'AcDbDictionary',281,1,
+    3,'Model',  350,H_LAYOUT_MODEL,
+    3,'Layout1',350,H_LAYOUT_PAPER);
+  // LAYOUTオブジェクト共通フィールド(ezdxf新規R2000文書の実出力に準拠。プロット設定は既定値でTrueView上の
+  // 表示・印刷設定用途のみに影響し、モデル空間の図形表示そのものには影響しない)
+  function emitLayout(handle, blkRecH, name, tabOrder, isModel, ex10,ey10,ex11,ey11){
+    p(0,'LAYOUT',5,handle,330,H_LAYOUT_DICT,
+      100,'AcDbPlotSettings',
+      1,'', 2,'', 4,'A3', 6,'',
+      40,'7.5',41,'20.0',42,'7.5',43,'20.0',
+      44,'420.0',45,'297.0',46,'0.0',47,'0.0',
+      48,'0.0',49,'0.0',140,'0.0',141,'0.0',
+      142,'1.0',143,'1.0',70,(isModel?1024:0),72,1,73,0,74,5,
+      7,'',75,16,76,0,77,2,78,300,147,'1.0',148,'0.0',149,'0.0',
+      100,'AcDbLayout',
+      1,name,70,1,71,tabOrder,
+      10,ex10,20,ey10,11,ex11,21,ey11,
+      12,'0.0',22,'0.0',32,'0.0',
+      14,'1e+20',24,'1e+20',34,'1e+20',
+      15,'-1e+20',25,'-1e+20',35,'-1e+20',
+      146,'0.0',13,'0.0',23,'0.0',33,'0.0',
+      16,'1.0',26,'0.0',36,'0.0',17,'0.0',27,'1.0',37,'0.0',
+      76,1,330,blkRecH);
+  }
+  emitLayout(H_LAYOUT_MODEL, H_BLKREC_MDL, 'Model',   0, true,  '0.0','0.0','420.0','297.0');
+  emitLayout(H_LAYOUT_PAPER, H_BLKREC_PPR, 'Layout1', 1, false, '0.0','0.0','420.0','297.0');
   p(0,'ENDSEC');
 
   p(0,'EOF');
