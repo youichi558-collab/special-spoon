@@ -62,7 +62,7 @@ function exportDXF(){
 
   // ハンドル事前割当
   const H_VPORT_TBL    = nh(), H_VPORT_ACT   = nh();
-  const H_LTYPE_TBL    = nh(), H_CONT=nh(), H_DASHED=nh(), H_DOT=nh(), H_DDOT=nh();
+  const H_LTYPE_TBL    = nh(), H_LTYPE_BYBLOCK=nh(), H_LTYPE_BYLAYER=nh(), H_CONT=nh(), H_DASHED=nh(), H_DOT=nh(), H_DDOT=nh();
   const H_LAYER_TBL    = nh(); const layerH = LAYER_DEFS.map(()=>nh());
   const H_STYLE_TBL    = nh(), H_STYLE_STD  = nh();
   const H_VIEW_TBL     = nh();
@@ -160,11 +160,16 @@ function exportDXF(){
   p(0,'ENDTAB');
 
   // LTYPE
-  p(0,'TABLE', 2,'LTYPE', 5,H_LTYPE_TBL, 100,'AcDbSymbolTable', 70,4);
+  // 【本命修正】AutoCAD/TrueViewはLTYPEテーブルに既定の"ByBlock"・"ByLayer"エントリが
+  // 必須(実体を持たない特殊エントリだが、無いと「既定エントリByLayerがありません」で読込拒否)。
+  // 元図.DXFの実データで確認: ByBlock/ByLayer/Continuousの順で並ぶ。テーブル数(70)も6に変更。
+  p(0,'TABLE', 2,'LTYPE', 5,H_LTYPE_TBL, 100,'AcDbSymbolTable', 70,6);
   function ltype(h,name,desc,pat,elem){
     p(0,'LTYPE', 5,h, 100,'AcDbSymbolTableRecord', 100,'AcDbLinetypeTableRecord');
     p(2,name, 70,0, 3,desc, 72,65, 73,elem||0, 40,pat||'0.0');
   }
+  ltype(H_LTYPE_BYBLOCK, 'ByBlock', '');
+  ltype(H_LTYPE_BYLAYER, 'ByLayer', '');
   ltype(H_CONT,  'CONTINUOUS','Solid line');
   // 各ダッシュ要素は 49(長さ)+74(要素タイプ=0) のペアが必須。
   // 74を省略するとAutoCAD/TrueViewが「複合線種にグループコード49がありません」で読込拒否する。
