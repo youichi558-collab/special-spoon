@@ -232,7 +232,10 @@ function exportDXF(){
   p(0,'ENDTAB');
 
   // DIMSTYLE
-  p(0,'TABLE', 2,'DIMSTYLE', 5,H_DIMST_TBL, 100,'AcDbSymbolTable', 70,1);
+  // 【本命修正】DIMSTYLEテーブルだけは他テーブル(VPORT/LAYER/STYLE等)と異なり、
+  // 通常のAcDbSymbolTableに加えて追加のサブクラスマーカー"100 AcDbDimStyleTable"が必須。
+  // 元図.DXFの実データで確認(TrueViewエラー「クラス AcDbDimStyleTableのクラスセパレータが必要」で発覚)。
+  p(0,'TABLE', 2,'DIMSTYLE', 5,H_DIMST_TBL, 100,'AcDbSymbolTable', 70,1, 100,'AcDbDimStyleTable');
   p(0,'DIMSTYLE', 5,H_DIMST_STD, 100,'AcDbSymbolTableRecord', 100,'AcDbDimStyleTableRecord');
   p(2,'STANDARD', 70,0);
   p(40,'1.0', 41,'2.5', 42,'0.625', 43,'3.75', 44,'1.25', 45,'0.0', 46,'0.0', 47,'0.0', 48,'0.0');
