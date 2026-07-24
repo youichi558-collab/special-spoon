@@ -1,6 +1,6 @@
 @echo off
 cd /d %~dp0
-echo é›»æ°—å›è·¯å›³ã‚¨ãƒ‡ã‚£ã‚¿ã‚’èµ·å‹•ã—ã¾ã™...
+echo “d‹C‰ñ˜H}ƒGƒfƒBƒ^‚ğ‹N“®‚µ‚Ü‚·...
 start http://localhost:8080
 py server.py
 pause
