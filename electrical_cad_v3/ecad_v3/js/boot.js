@@ -58,4 +58,5 @@ function _safeInit(label, fn) {
   _safeInit('描画', draw);
   _safeInit('ヒント更新', updateHint);
   _safeInit('右パネル更新', updateRightPanel);
+  _safeInit('接続点スタイルボタン同期', () => { if (typeof syncJunctionStyleBtns === 'function') syncJunctionStyleBtns(); });
 })();

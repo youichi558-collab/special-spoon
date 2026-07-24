@@ -452,6 +452,7 @@ function exportDXF(){
       eArc(layer,el.x,el.y,el.r||0,sa,ea);
     } else if(el.type==='junction'){
       eCircle(layer,el.x,el.y,el.r||5);
+      if(el.style==='dbl') eCircle(layer,el.x,el.y,(el.r||5)*0.55);
     } else if(el.type==='triangle'){
       eLine(layer,el.x1,el.y1,el.x2,el.y2);
       eLine(layer,el.x2,el.y2,el.x3,el.y3);

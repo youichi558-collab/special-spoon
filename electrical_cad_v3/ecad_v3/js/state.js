@@ -109,6 +109,7 @@ const state = {
   pendingTerm:  null,
   showPartRef:  false,  // 部品番号のキャンバス表示（PDF出力にも反映される）
   showSymPins:  false,  // 【検証用/仮】シンボル端子(ピン)位置のマーカー表示（PDF出力には反映されない）
+  junctionStyle: 'dot', // 接続点の見た目: 'dot'=塗りつぶし丸(既定・分岐点用) / 'circle'=白丸(端子台の端子) / 'dbl'=二重丸
   showUnconnected: false,   // 未接続端子マーカーの表示ON/OFF
   _unconnectedResults: [],  // runUnconnectedCheck()で計算したキャッシュ(毎フレーム再計算しない)
   partRefNext:  null,   // 連続採番モードの次に割り当てる番号

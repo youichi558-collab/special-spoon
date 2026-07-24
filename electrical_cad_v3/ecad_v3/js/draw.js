@@ -391,12 +391,25 @@ function drawJunctionEl(el, sel, lc) {
   ctx.save();
   const c = lc;
   const r = el.r || 5;
-  ctx.fillStyle = c;
+  const style = el.style || 'dot';
   if (sel) {
     ctx.strokeStyle = '#0067c0'; ctx.lineWidth = 1.5 / state.zoom;
     ctx.beginPath(); ctx.arc(el.x, el.y, r + 2/state.zoom, 0, Math.PI*2); ctx.stroke();
   }
-  ctx.beginPath(); ctx.arc(el.x, el.y, r, 0, Math.PI*2); ctx.fill();
+  if (style === 'circle' || style === 'dbl') {
+    // 白丸(端子台の端子): 背景色で塗って輪郭のみ描く
+    ctx.fillStyle = state.darkMode ? '#252525' : '#d4d4cc';
+    ctx.beginPath(); ctx.arc(el.x, el.y, r, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = c; ctx.lineWidth = Math.max(1, r*0.3) / state.zoom;
+    ctx.beginPath(); ctx.arc(el.x, el.y, r, 0, Math.PI*2); ctx.stroke();
+    if (style === 'dbl') {
+      ctx.beginPath(); ctx.arc(el.x, el.y, r*0.55, 0, Math.PI*2); ctx.stroke();
+    }
+  } else {
+    // 塗りつぶし丸(既定・配線分岐点)
+    ctx.fillStyle = c;
+    ctx.beginPath(); ctx.arc(el.x, el.y, r, 0, Math.PI*2); ctx.fill();
+  }
   ctx.restore();
 }
 

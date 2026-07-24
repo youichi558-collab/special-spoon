@@ -1349,6 +1349,7 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>X</label><input type="number" id="pp-jx" value="${Math.round(el.x*1000)/1000}" step="any"></div>`;
     html += `<div class="pp-row"><label>Y</label><input type="number" id="pp-jy" value="${Math.round(el.y*1000)/1000}" step="any"></div>`;
     html += `<div class="pp-row"><label>半径</label><input type="number" id="pp-jr" value="${el.r||2}" min="1" max="30" step="1"></div>`;
+    html += `<div class="pp-row"><label>見た目</label><select id="pp-jstyle"><option value="dot"${(el.style||'dot')==='dot'?' selected':''}>●塗りつぶし</option><option value="circle"${el.style==='circle'?' selected':''}>○白丸</option><option value="dbl"${el.style==='dbl'?' selected':''}>◎二重丸</option></select></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
   } else if (el && el.type === 'text') {
     html += `<div class="pp-row"><label>テキスト</label><textarea rows="2" id="pp-text">${el.text||''}</textarea></div>`;
@@ -1662,6 +1663,7 @@ function applyRightPanel() {
   if (el && el.type === 'junction') {
     if (v('pp-jx')!=='') { el.x = parseFloat(v('pp-jx')); el.y = parseFloat(v('pp-jy')); }
     if (v('pp-jr')!=='') el.r = Math.max(1, parseFloat(v('pp-jr')));
+    if (v('pp-jstyle')!=='') el.style = v('pp-jstyle');
     el.layer = v('pp-layer');
   } else if (el && el.type === 'text') {
     el.text = v('pp-text'); el.fs = parseInt(v('pp-fs'))||14;
@@ -1899,6 +1901,21 @@ function syncPartRefBtn() {
 }
 
 // 【検証用/仮】端子(ピン)マーカー表示トグル
+// 接続点の見た目(次に配置するものに適用)
+function setJunctionStyle(style) {
+  state.junctionStyle = style;
+  syncJunctionStyleBtns();
+}
+function syncJunctionStyleBtns() {
+  ['dot','circle','dbl'].forEach(s => {
+    const b = document.getElementById('jst-' + s);
+    if (!b) return;
+    const on = (state.junctionStyle || 'dot') === s;
+    b.style.background = on ? 'var(--acc)' : 'transparent';
+    b.style.color      = on ? '#fff' : 'var(--fg)';
+  });
+}
+
 function toggleSymPinsDisp() {
   state.showSymPins = !state.showSymPins;
   syncSymPinsBtn(); draw();
