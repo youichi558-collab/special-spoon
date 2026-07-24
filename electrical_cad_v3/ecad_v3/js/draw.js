@@ -236,17 +236,37 @@ function drawElements() {
 }
 
 // 【検証用/仮】シンボル端子(ピン)位置を小さい丸マーカーで表示する。
-// symbol_pins.js の getSymbolPinsWorld() を使って各シンボル要素のピンを
-// ワールド座標に変換し、赤丸+端子名で描く。PDF出力・DXF等には一切影響しない。
+// snap.js のスナップ判定と全く同じデータ(cS.terminals / 標準シンボルの左右端)を使う。
+// つまりこの表示 = 実際にワイヤーがスナップする位置、そのもの。
+// PDF出力・DXF等には一切影響しない。
 const SYM_ONLY_TYPES = ['text','rect','circle','fline','triangle','arc','junction','bezier','dim','angle_dim','leader'];
 function drawSymPinMarkers() {
-  if (typeof getSymbolPinsWorld !== 'function') return;
   ctx.save();
   state.elements.forEach(el => {
     if (SYM_ONLY_TYPES.includes(el.type)) return; // シンボル以外はスキップ
     const lay = LAYERS.find(l => l.name === el.layer);
     if (lay && !lay.visible) return;
-    const pins = getSymbolPinsWorld(el.type, el.x, el.y, el.rot||0, el.flipH, el.flipV, el.scale);
+
+    const cS  = state.customSymbols.find(s => s.type === el.type);
+    const rot = (el.rot || 0) * Math.PI / 180;
+    let pins = [];
+    if (cS && cS.terminals && cS.terminals.length) {
+      pins = cS.terminals.map((t, i) => {
+        const rx = t.x * Math.cos(rot) - t.y * Math.sin(rot);
+        const ry = t.x * Math.sin(rot) + t.y * Math.cos(rot);
+        return { x: el.x + rx, y: el.y + ry, name: `T${i}` };
+      });
+    } else {
+      // 標準シンボル、またはterminals未定義のカスタムシンボル
+      // → snap.js と同じフォールバック(左右端の中点)
+      const d  = getDef(el.type) || {};
+      const sc = el.scale || 1;
+      const hw = (d.w || 0) / 2 * sc;
+      pins = [+hw, -hw].map((dx, i) => {
+        const rx = dx * Math.cos(rot), ry = dx * Math.sin(rot);
+        return { x: el.x + rx, y: el.y + ry, name: i === 0 ? 'R' : 'L' };
+      });
+    }
     pins.forEach(p => {
       ctx.beginPath();
       ctx.arc(p.x, p.y, 4/state.zoom, 0, Math.PI*2);

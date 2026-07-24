@@ -641,6 +641,33 @@
       </div>
     </div>
 
+    <!-- 登録済みシンボルの端子(ピン)編集パネル -->
+    <div class="fp" id="pin-edit-p" style="width:460px;max-height:90vh">
+      <h3>端子(ピン)編集 — <span id="pe-name" style="color:var(--acc)"></span></h3>
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <div>
+          <canvas id="pin-edit-cv" width="320" height="260"
+            style="border:1px solid var(--bd);cursor:crosshair;display:block;background:#fff"></canvas>
+          <div style="font-size:10px;color:var(--fg3);margin-top:3px">クリックで端子を追加／既存の端子付近をクリックで削除　ホイールでズーム</div>
+        </div>
+        <div style="min-width:150px;display:flex;flex-direction:column;gap:8px">
+          <button class="fp-btn primary" onclick="peAutoDetect()">🔍 自動候補(開放端検出)</button>
+          <div>
+            <div style="font-size:11px;font-weight:600;margin-bottom:4px">端子点一覧</div>
+            <div id="pe-term-list" style="font-size:10px;color:var(--fg3);max-height:140px;overflow-y:auto"></div>
+          </div>
+          <div style="font-size:10px;color:var(--fg3);line-height:1.5">
+            図形(線・円等)はここでは編集できません。<br>
+            端子点のみ追加/削除できます。
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <button class="fp-btn primary" onclick="savePinEdits()">保存</button>
+        <button class="fp-btn" onclick="cancelPinEdit()">キャンセル</button>
+      </div>
+    </div>
+
   <!-- AI アシストパネル -->
   <div id="ai-panel" style="display:none">
     <div id="ai-panel-header">
@@ -689,7 +716,6 @@
 <script src="js/data.js"></script>
 <script src="js/draw.js"></script>
 <script src="js/symbols.js"></script>
-<script src="js/symbol_pins.js"></script>
 <script src="js/frame.js"></script>
 <script src="js/snap.js"></script>
 <script src="js/hit_test.js"></script>
@@ -722,6 +748,7 @@
 <script src="js/search.js"></script>
 <script src="js/pdf_export.js"></script>
 <script src="js/symbol_lib.js"></script>
+<script src="js/pin_editor.js"></script>
 <script src="js/parts_db.js"></script>
 <script src="js/autosave.js"></script>
 <script src="js/boot.js"></script>

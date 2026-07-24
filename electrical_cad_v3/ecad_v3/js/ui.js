@@ -1082,8 +1082,9 @@ function renderCustomSymbols() {
     `<h4>${cat}</h4>` + syms.map(s =>
       `<div class="sym-item" onclick="pickSym(this,'${s.type}')" style="flex-direction:column;align-items:flex-start;gap:2px;padding:4px">
         ${s.preview ? `<img src="${s.preview}" style="width:40px;height:30px;object-fit:contain;background:#fff;border-radius:2px;display:block">` : ''}
-        <div style="display:flex;width:100%;align-items:center"><span>${s.name}</span>
-        <span onclick="event.stopPropagation();delCusSym('${s.type}')" style="margin-left:auto;color:var(--red);font-size:10px;cursor:pointer">×</span></div>
+        <div style="display:flex;width:100%;align-items:center;gap:4px"><span>${s.name}</span>
+        <span onclick="event.stopPropagation();openPinEditor('${s.type}')" title="端子(ピン)編集: ${(s.terminals||[]).length}点定義済み" style="margin-left:auto;color:${(s.terminals||[]).length?'#0067c0':'var(--fg3)'};font-size:11px;cursor:pointer">📍${(s.terminals||[]).length||''}</span>
+        <span onclick="event.stopPropagation();delCusSym('${s.type}')" style="color:var(--red);font-size:10px;cursor:pointer">×</span></div>
       </div>`
     ).join('')
   ).join('');
