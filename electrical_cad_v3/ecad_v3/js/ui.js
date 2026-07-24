@@ -2103,9 +2103,11 @@ function renderSymFloat() {
     html += `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:3px">`;
     state.customSymbols.forEach(s => {
       const img = s.preview ? `<img src="${s.preview}" style="width:64px;height:48px;object-fit:contain;background:#fff;border-radius:2px">` : `<svg width="36" height="28"></svg>`;
+      const termCount = (s.terminals||[]).length;
       html += `<div class="sym-item" onclick="pickSym(this,'${s.type}')" style="flex-direction:column;align-items:center;padding:5px 3px;gap:3px;position:relative">
         ${img}
         <span style="font-size:9px;text-align:center;line-height:1.2">${s.label||s.type}</span>
+        <span onclick="event.stopPropagation();openPinEditor('${s.type}')" title="端子(ピン)編集: ${termCount}点定義済み" style="position:absolute;top:2px;left:2px;font-size:9px;color:${termCount?'#0067c0':'var(--fg3)'};cursor:pointer">📍${termCount||''}</span>
         <span onclick="event.stopPropagation();delCusSym('${s.type}')" style="position:absolute;top:2px;right:2px;font-size:9px;color:var(--red);cursor:pointer">×</span>
       </div>`;
     });
