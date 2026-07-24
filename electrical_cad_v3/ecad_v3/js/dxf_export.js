@@ -194,7 +194,7 @@ function exportDXF(){
   const allLayers = [
     ...LAYER_DEFS,
     // LAYERS変数（状態由来）もマージ（重複はスキップ）
-    ...(typeof LAYERS !== 'undefined' ? LAYERS : []).map(l=>({n:dxfLayer(l.name),c:l.locked?4:2}))
+    ...(typeof LAYERS !== 'undefined' ? LAYERS : []).map(l=>({n:dxfLayer(l.name),c:hexToACI(l.color)}))
       .filter(l=>!LAYER_DEFS.some(d=>d.n===l.n))
   ];
   // 【安全網】LAYERS配列に登録漏れの孤立レイヤー名(過去のdeleteLayerバグ等で発生しうる)を

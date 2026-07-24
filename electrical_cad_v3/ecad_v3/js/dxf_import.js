@@ -53,6 +53,29 @@ function parseDXF(text, isOwnFile){
     const code=parseInt(lines[i]);
     if(!isNaN(code))pairs.push({code,val:lines[i+1]});
   }
+
+  // TABLESセクションのLAYERテーブルを事前スキャン（名前→ACI色/OFF/凍結）
+  // ※自ツール出力(isOwnFile)は自前の色管理と二重にならないよう対象外にする
+  const layerTableInfo = new Map();
+  if (!isOwnFile) {
+    let inTables=false, inLayerTbl=false, cur=null;
+    for (let j=0; j<pairs.length; j++) {
+      const {code, val} = pairs[j];
+      if (code===0 && val==='SECTION') { inTables=false; inLayerTbl=false; }
+      if (code===2 && val==='TABLES') inTables=true;
+      if (code===0 && val==='ENDSEC') { inTables=false; inLayerTbl=false; }
+      if (!inTables) continue;
+      if (code===2 && val==='LAYER') inLayerTbl=true;
+      if (inLayerTbl && code===0 && val==='ENDTAB') { if(cur&&cur.name) layerTableInfo.set(cur.name,cur); inLayerTbl=false; cur=null; }
+      if (!inLayerTbl) continue;
+      if (code===0 && val==='LAYER') { if(cur&&cur.name) layerTableInfo.set(cur.name,cur); cur={name:null,aci:7,off:false,frozen:false}; }
+      if (!cur) continue;
+      if (code===2) cur.name = fromUnicodeDXF(val);
+      if (code===62) { const c=parseInt(val,10); cur.aci=Math.abs(c); cur.off=(c<0); }
+      if (code===70) { const f=parseInt(val,10)||0; cur.frozen=!!(f&1); }
+    }
+  }
+
   let lc=0,cc=0,tc=0,ic=0;let i=0;
   let parsedFrameObj=null;
   let parsedJunctions=[];
@@ -266,9 +289,15 @@ function parseDXF(text, isOwnFile){
   state.page.elements = state.page.elements.filter(el => !looksLikeFrameLayer(el.layer));
   state.page.wires    = state.page.wires.filter(w   => !looksLikeFrameLayer(w.layer));
 
-  // DXFで出現したレイヤーをLAYERSに自動登録
+  // DXFで出現したレイヤーをLAYERSに自動登録（TABLESセクションに実際の色/OFF状態があれば反映）
   const allLayers=new Set([...state.elements.map(e=>e.layer),...state.wires.map(w=>w.layer)]);
-  allLayers.forEach(name=>{if(name&&!LAYERS.find(l=>l.name===name)){LAYERS.push({name,color:'#228844',visible:true,locked:false,active:false,lineWidth:1,lineDash:'solid',fontSize:null,attr:''});}});
+  allLayers.forEach(name=>{
+    if(!name||LAYERS.find(l=>l.name===name))return;
+    const info = layerTableInfo.get(name);
+    const color = info ? aciToHex(info.aci) : '#228844';
+    const visible = info ? !(info.off || info.frozen) : true;
+    LAYERS.push({name,color,visible,locked:false,active:false,lineWidth:1,lineDash:'solid',fontSize:null,attr:''});
+  });
   renderLayers();
   document.getElementById('dxf-log-body').innerHTML=`<p style="font-size:11px;margin-bottom:8px">読込完了: <b>${total}</b>要素</p><table class="tbl"><tr><th>種別</th><th>件数</th></tr><tr><td>配線</td><td>${lc}</td></tr><tr><td>円</td><td>${cc}</td></tr><tr><td>テキスト</td><td>${tc}</td></tr><tr><td>シンボル</td><td>${ic}</td></tr></table>${total===0?'<p style="font-size:11px;color:var(--red);margin-top:6px">要素が読み込めませんでした</p>':''}`;
   // 座標範囲を検出（外部DXFのみ縮尺ダイアログを表示）
