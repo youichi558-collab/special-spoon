@@ -269,6 +269,10 @@
     style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;border:1px solid var(--bd2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--fg);white-space:nowrap;">🔍検索</div>
   <div onclick="toggleSymPinsDisp()" id="qb-pins" title="【検証用/仮】シンボル端子(ピン)位置を赤丸で表示。設計中のフェーズ0データ確認用（PDF出力には出ません）"
     style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;border:1px solid var(--bd2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--fg);white-space:nowrap;">🔴端子(仮)</div>
+  <div onclick="runUnconnectedCheck()" title="未接続端子チェック：端子(terminals定義済みシンボル)に配線が繋がっていない箇所をオレンジの⚠で表示（クリックのたびに再チェック）"
+    style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;border:1px solid var(--bd2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--fg);white-space:nowrap;">⚠未接続</div>
+  <div onclick="toggleUnconnectedDisp()" id="qb-unconn" title="未接続端子マーカーの表示/非表示切り替え(再チェックはしません)"
+    style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;border:1px solid var(--bd2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--fg);white-space:nowrap;">👁</div>
 </div>
 <div id="main-row">
   <!-- 左パネル -->
@@ -642,16 +646,16 @@
     </div>
 
     <!-- 登録済みシンボルの端子(ピン)編集パネル -->
-    <div class="fp" id="pin-edit-p" style="width:540px;max-width:95vw;max-height:90vh">
+    <div class="fp" id="pin-edit-p" style="width:460px;max-height:90vh">
       <h3>端子(ピン)編集 — <span id="pe-name" style="color:var(--acc)"></span></h3>
       <div style="display:flex;gap:12px;align-items:flex-start">
-        <div style="flex-shrink:0">
+        <div>
           <canvas id="pin-edit-cv" width="320" height="260"
             style="border:1px solid var(--bd);cursor:crosshair;display:block;background:#fff"></canvas>
-          <div style="font-size:10px;color:var(--fg3);margin-top:3px;width:320px">クリックで端子を追加／既存の端子付近をクリックで削除　ホイールでズーム</div>
+          <div style="font-size:10px;color:var(--fg3);margin-top:3px">クリックで端子を追加／既存の端子付近をクリックで削除　ホイールでズーム</div>
         </div>
-        <div style="width:170px;flex-shrink:0;display:flex;flex-direction:column;gap:8px">
-          <button class="fp-btn primary" style="width:100%;white-space:normal;line-height:1.4;box-sizing:border-box" onclick="peAutoDetect()">🔍 自動候補<br>(開放端検出)</button>
+        <div style="min-width:150px;display:flex;flex-direction:column;gap:8px">
+          <button class="fp-btn primary" onclick="peAutoDetect()">🔍 自動候補(開放端検出)</button>
           <div>
             <div style="font-size:11px;font-weight:600;margin-bottom:4px">端子点一覧</div>
             <div id="pe-term-list" style="font-size:10px;color:var(--fg3);max-height:140px;overflow-y:auto"></div>
@@ -749,6 +753,7 @@
 <script src="js/pdf_export.js"></script>
 <script src="js/symbol_lib.js"></script>
 <script src="js/pin_editor.js"></script>
+<script src="js/conn_check.js"></script>
 <script src="js/parts_db.js"></script>
 <script src="js/autosave.js"></script>
 <script src="js/boot.js"></script>

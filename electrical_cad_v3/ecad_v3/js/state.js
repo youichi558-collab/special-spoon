@@ -109,6 +109,8 @@ const state = {
   pendingTerm:  null,
   showPartRef:  false,  // 部品番号のキャンバス表示（PDF出力にも反映される）
   showSymPins:  false,  // 【検証用/仮】シンボル端子(ピン)位置のマーカー表示（PDF出力には反映されない）
+  showUnconnected: false,   // 未接続端子マーカーの表示ON/OFF
+  _unconnectedResults: [],  // runUnconnectedCheck()で計算したキャッシュ(毎フレーム再計算しない)
   partRefNext:  null,   // 連続採番モードの次に割り当てる番号
   dimState:      null,
   angleDimState: null,

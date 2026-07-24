@@ -41,6 +41,10 @@ function draw() {
   // 【検証用/仮】シンボル端子(ピン)マーカー表示。PDF出力には反映しない
   if (!state.pdfMode && state.showSymPins) drawSymPinMarkers();
 
+  // 未接続端子マーカー(runUnconnectedCheck()のキャッシュ結果を描画するだけ、
+  // ここでは再計算しない)。PDF出力には反映しない
+  if (!state.pdfMode && state.showUnconnected) drawUnconnectedMarkers();
+
   // グループ境界ボックス
   if (!state.pdfMode) drawGroupBoxes();
 
@@ -276,6 +280,25 @@ function drawSymPinMarkers() {
       ctx.fillStyle = '#ff0000';
       ctx.fillText(p.name || p.id, p.x + 6/state.zoom, p.y - 6/state.zoom);
     });
+  });
+  ctx.restore();
+}
+
+// 未接続端子マーカー(state._unconnectedResultsのキャッシュを描画するだけ。
+// ここでは再計算しない。runUnconnectedCheck()で計算されたものを表示する)
+function drawUnconnectedMarkers() {
+  ctx.save();
+  (state._unconnectedResults || []).forEach(r => {
+    ctx.beginPath();
+    ctx.arc(r.x, r.y, 6/state.zoom, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,152,0,0.85)';
+    ctx.fill();
+    ctx.strokeStyle = '#e65100'; ctx.lineWidth = 1.2/state.zoom;
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold ${9/state.zoom}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('!', r.x, r.y + 3/state.zoom);
   });
   ctx.restore();
 }
