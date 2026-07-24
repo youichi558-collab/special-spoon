@@ -38,6 +38,9 @@ function draw() {
   // 要素
   drawElements();
 
+  // 【検証用/仮】シンボル端子(ピン)マーカー表示。PDF出力には反映しない
+  if (!state.pdfMode && state.showSymPins) drawSymPinMarkers();
+
   // グループ境界ボックス
   if (!state.pdfMode) drawGroupBoxes();
 
@@ -230,6 +233,31 @@ function drawElements() {
       drawSymEl(el, sel, lc);
     }
   });
+}
+
+// 【検証用/仮】シンボル端子(ピン)位置を小さい丸マーカーで表示する。
+// symbol_pins.js の getSymbolPinsWorld() を使って各シンボル要素のピンを
+// ワールド座標に変換し、赤丸+端子名で描く。PDF出力・DXF等には一切影響しない。
+const SYM_ONLY_TYPES = ['text','rect','circle','fline','triangle','arc','junction','bezier','dim','angle_dim','leader'];
+function drawSymPinMarkers() {
+  if (typeof getSymbolPinsWorld !== 'function') return;
+  ctx.save();
+  state.elements.forEach(el => {
+    if (SYM_ONLY_TYPES.includes(el.type)) return; // シンボル以外はスキップ
+    const lay = LAYERS.find(l => l.name === el.layer);
+    if (lay && !lay.visible) return;
+    const pins = getSymbolPinsWorld(el.type, el.x, el.y, el.rot||0, el.flipH, el.flipV, el.scale);
+    pins.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 4/state.zoom, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255,0,0,0.75)';
+      ctx.fill();
+      ctx.font = `${10/state.zoom}px sans-serif`;
+      ctx.fillStyle = '#ff0000';
+      ctx.fillText(p.name || p.id, p.x + 6/state.zoom, p.y - 6/state.zoom);
+    });
+  });
+  ctx.restore();
 }
 
 function drawTextEl(el, sel, lc, lay) {

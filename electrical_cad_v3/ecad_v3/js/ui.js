@@ -1810,6 +1810,19 @@ function syncPartRefBtn() {
   b.style.fontWeight = state.showPartRef ? '600' : '400';
 }
 
+// 【検証用/仮】端子(ピン)マーカー表示トグル
+function toggleSymPinsDisp() {
+  state.showSymPins = !state.showSymPins;
+  syncSymPinsBtn(); draw();
+}
+function syncSymPinsBtn() {
+  const b = document.getElementById('qb-pins');
+  if (!b) return;
+  b.style.background = state.showSymPins ? 'var(--acc)' : 'var(--bg)';
+  b.style.color      = state.showSymPins ? '#fff' : 'var(--fg)';
+  b.style.fontWeight = state.showSymPins ? '600' : '400';
+}
+
 function toggleDark() {
   state.darkMode = !state.darkMode;
   document.body.classList.toggle('dk', state.darkMode);

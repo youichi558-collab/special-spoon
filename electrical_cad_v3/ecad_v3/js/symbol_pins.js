@@ -47,16 +47,17 @@ function getSymbolPinsLocal(type) {
 // ローカル座標のピンを、実際の配置(x,y,rot,fH,fV)に応じたワールド座標へ変換する。
 // drawSym() のtransform順序(translate→rotate→scale(fH)→scale(fV))に対応させて
 // 逆順(flip適用→rotate→translate)でローカル点を変換している。
-function getSymbolPinsWorld(type, x, y, rot, fH, fV) {
+function getSymbolPinsWorld(type, x, y, rot, fH, fV, scale) {
   const locals = getSymbolPinsLocal(type);
+  const sc = scale || 1;
   const rad = (rot || 0) * Math.PI / 180;
   const cos = Math.cos(rad), sin = Math.sin(rad);
   return locals.map(p => {
     let lx = p.x, ly = p.y;
     if (fH) lx = -lx;
     if (fV) ly = -ly;
-    const rx = lx * cos - ly * sin;
-    const ry = lx * sin + ly * cos;
+    const rx = (lx * cos - ly * sin) * sc;
+    const ry = (lx * sin + ly * cos) * sc;
     return { id: p.id, name: p.name, x: x + rx, y: y + ry };
   });
 }
