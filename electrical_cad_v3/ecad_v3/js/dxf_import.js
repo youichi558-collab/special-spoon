@@ -289,6 +289,16 @@ function parseDXF(text, isOwnFile){
   state.page.elements = state.page.elements.filter(el => !looksLikeFrameLayer(el.layer));
   state.page.wires    = state.page.wires.filter(w   => !looksLikeFrameLayer(w.layer));
 
+  // 【重要】*Dブロックから取り出した寸法線(LINE/TEXT)を、レイヤー自動登録より前にマージする。
+  // 以前はここでマージしていなかったため、寸法要素が持つレイヤー名(例:元図.DXFのLAYER-092)が
+  // このあとのallLayers走査に含まれず、TABLESセクションの実色を反映できないままエクスポート側の
+  // 安全網(登録漏れレイヤーへの固定色2番)に落ちて、寸法線が本来の色と異なる色で出力される
+  // 不具合があった(2026-07-24、盛田さんの実データで発見)。
+  if (_dimW.length || _dimE.length) {
+    state.page.wires.push(..._dimW);
+    state.page.elements.push(..._dimE);
+  }
+
   // DXFで出現したレイヤーをLAYERSに自動登録（TABLESセクションに実際の色/OFF状態があれば反映）
   const allLayers=new Set([...state.elements.map(e=>e.layer),...state.wires.map(w=>w.layer)]);
   allLayers.forEach(name=>{
@@ -316,17 +326,11 @@ function parseDXF(text, isOwnFile){
       document.getElementById('dxf-scale-range').textContent =
         `座標範囲: ${rangeW} × ${rangeH} 単位　（A3高さ基準の推奨倍率: ${recScale}）`;
       document.getElementById('dxf-scale-val').value = recScale;
-      if(_dimW.length||_dimE.length){state.page.wires.push(..._dimW);state.page.elements.push(..._dimE);}
       document.getElementById('dxf-scale-overlay').style.display = 'flex';
       return; // applyDXFScale()でdraw()を呼ぶ
     }
   }
 
-  // *Dブロックから取り出した寸法線 LINE/TEXT を追加
-  if(_dimW.length||_dimE.length){
-    state.page.wires.push(..._dimW);
-    state.page.elements.push(..._dimE);
-  }
   const ov = document.getElementById('dxf-log-overlay');
   ov.style.display = 'flex';
   draw();
