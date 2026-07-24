@@ -771,6 +771,85 @@ function showSymReg() {
   };
 }
 
+// ローカル座標点を、配置済み要素(el)のx/y/rot/flipH/flipV/scaleで変換する
+function srXformPt(lx, ly, el) {
+  let x = lx, y = ly;
+  if (el.flipH) x = -x;
+  if (el.flipV) y = -y;
+  const rad = (el.rot || 0) * Math.PI / 180;
+  const cos = Math.cos(rad), sin = Math.sin(rad);
+  const sc = el.scale || 1;
+  const rx = (x * cos - y * sin) * sc;
+  const ry = (x * sin + y * cos) * sc;
+  return { x: el.x + rx, y: el.y + ry };
+}
+// 角度(度)を、配置済み要素(el)のflipH/flipV/rotで変換する
+function srXformAngle(aDeg, el) {
+  const rad = aDeg * Math.PI / 180;
+  let vx = Math.cos(rad), vy = Math.sin(rad);
+  if (el.flipH) vx = -vx;
+  if (el.flipV) vy = -vy;
+  const rot = (el.rot || 0) * Math.PI / 180;
+  const cos = Math.cos(rot), sin = Math.sin(rot);
+  const nx = vx * cos - vy * sin, ny = vx * sin + vy * cos;
+  return Math.atan2(ny, nx) * 180 / Math.PI;
+}
+// 配置済みシンボルインスタンス(el)を、登録済みカスタム/ライブラリシンボル(cS)の
+// shapes定義を実際の配置(位置・回転・反転・拡大率)で変換して平坦化する
+function flattenSymbolElToShapes(el, cS) {
+  const flipped = !!el.flipH !== !!el.flipV; // 反転が奇数回→弧の向きが逆転
+  const sc = el.scale || 1;
+  const out = [];
+  (cS.shapes || []).forEach(s => {
+    if (s.t === 'L') {
+      const p1 = srXformPt(s.x1, s.y1, el), p2 = srXformPt(s.x2, s.y2, el);
+      out.push({ t:'L', x1:p1.x, y1:p1.y, x2:p2.x, y2:p2.y });
+    } else if (s.t === 'C') {
+      const c = srXformPt(s.cx, s.cy, el);
+      out.push({ t:'C', cx:c.x, cy:c.y, r: s.r * sc });
+    } else if (s.t === 'A') {
+      const c = srXformPt(s.cx, s.cy, el);
+      let sa = srXformAngle(s.sa, el), ea = srXformAngle(s.ea, el);
+      if (flipped) { const tmp = sa; sa = ea; ea = tmp; }
+      out.push({ t:'A', cx:c.x, cy:c.y, r: s.r * sc, sa, ea });
+    } else if (s.t === 'P' && s.pts) {
+      out.push({ t:'P', pts: s.pts.map(p => { const q = srXformPt(p[0], p[1], el); return [q.x, q.y]; }), cl: s.cl });
+    } else if (s.t === 'R') {
+      const p1 = srXformPt(s.x, s.y, el), p2 = srXformPt(s.x+s.w, s.y, el);
+      const p3 = srXformPt(s.x+s.w, s.y+s.h, el), p4 = srXformPt(s.x, s.y+s.h, el);
+      if ((el.rot||0) % 360 === 0) {
+        const minX=Math.min(p1.x,p3.x), maxX=Math.max(p1.x,p3.x);
+        const minY=Math.min(p1.y,p3.y), maxY=Math.max(p1.y,p3.y);
+        out.push({ t:'R', x:minX, y:minY, w:maxX-minX, h:maxY-minY });
+      } else {
+        out.push({ t:'P', pts:[[p1.x,p1.y],[p2.x,p2.y],[p3.x,p3.y],[p4.x,p4.y]], cl:true });
+      }
+    } else if (s.t === 'T') {
+      const p = srXformPt(s.x, s.y, el);
+      out.push({ t:'T', text:s.text, x:p.x, y:p.y, fs:s.fs });
+    }
+  });
+  return out;
+}
+// クリップボード要素1つを「ワールド座標の生shape配列」(sa/eaは度数法で統一)に変換する。
+// 未対応(標準シンボル・junction・bezier・dim等)はnullを返す。
+function srWorldShapesForEl(el) {
+  if (el.type === 'fline') return [{ t:'L', x1:el.x1, y1:el.y1, x2:el.x2, y2:el.y2 }];
+  if (el.type === 'circle') return [{ t:'C', cx:el.x, cy:el.y, r:el.r||0 }];
+  if (el.type === 'rect') return [{ t:'R', x:el.x, y:el.y, w:el.w||0, h:el.h||0 }];
+  if (el.type === 'triangle') return [
+    { t:'L', x1:el.x1, y1:el.y1, x2:el.x2, y2:el.y2 },
+    { t:'L', x1:el.x2, y1:el.y2, x2:el.x3, y2:el.y3 },
+    { t:'L', x1:el.x3, y1:el.y3, x2:el.x1, y2:el.y1 },
+  ];
+  if (el.type === 'arc') return [{ t:'A', cx:el.x, cy:el.y, r:el.r||0, sa:(el.startA||0)*180/Math.PI, ea:(el.endA||0)*180/Math.PI }];
+  if (el.type === 'text') return [{ t:'T', text:el.text||'', x:el.x, y:el.y, fs:el.fs||14 }];
+  // 配置済みシンボル(カスタム/ライブラリ)インスタンス → 実際の配置で平坦化
+  const cS = state.customSymbols.find(s => s.type === el.type);
+  if (cS && cS.shapes && cS.shapes.length) return flattenSymbolElToShapes(el, cS);
+  return null; // 標準シンボル・junction・bezier・dim等は非対応
+}
+
 function srPasteFromClipboard() {
   const cb = state.clipboard;
   if (!cb?.els?.length && !cb?.wires?.length) { alert('先にCADで図形を選択してCtrl+Cでコピーしてください'); return; }
@@ -778,15 +857,20 @@ function srPasteFromClipboard() {
   // バウンディングボックス計算
   let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
   const addPt = (x,y) => { minX=Math.min(minX,x); minY=Math.min(minY,y); maxX=Math.max(maxX,x); maxY=Math.max(maxY,y); };
+  let skipped = 0;
   cb.els.forEach(el => {
-    if (el.type==='fline'||el.type==='dim'||el.type==='leader') { addPt(el.x1,el.y1); addPt(el.x2,el.y2); }
-    else if (el.type==='circle'||el.type==='arc') { addPt(el.x-(el.r||0),el.y-(el.r||0)); addPt(el.x+(el.r||0),el.y+(el.r||0)); }
-    else if (el.type==='rect') { addPt(el.x,el.y); addPt(el.x+(el.w||0),el.y+(el.h||0)); }
-    else if (el.type==='triangle') { addPt(el.x1,el.y1); addPt(el.x2,el.y2); addPt(el.x3,el.y3); }
-    else if (el.x!=null) addPt(el.x,el.y);
+    const ws = srWorldShapesForEl(el);
+    if (!ws) { skipped++; return; }
+    ws.forEach(s => {
+      if (s.t==='L') { addPt(s.x1,s.y1); addPt(s.x2,s.y2); }
+      else if (s.t==='C'||s.t==='A') { addPt(s.cx-s.r,s.cy-s.r); addPt(s.cx+s.r,s.cy+s.r); }
+      else if (s.t==='R') { addPt(s.x,s.y); addPt(s.x+s.w,s.y+s.h); }
+      else if (s.t==='P'&&s.pts) s.pts.forEach(p=>addPt(p[0],p[1]));
+      else if (s.t==='T') addPt(s.x,s.y);
+    });
   });
   cb.wires.forEach(w => { (w.pts||[]).forEach(p => addPt(p.x, p.y)); });
-  if (!isFinite(minX)) return;
+  if (!isFinite(minX)) { alert('対応していない図形のみが選択されています(標準シンボル・接続点・寸法線等は貼り付け非対応)'); return; }
 
   const bW = maxX-minX || 1, bH = maxY-minY || 1;
   const cx = (minX+maxX)/2, cy = (minY+maxY)/2;
@@ -800,23 +884,25 @@ function srPasteFromClipboard() {
   // 変換してSR形式に
   const shapes = [];
   cb.els.forEach(el => {
-    if (el.type==='fline') shapes.push({t:'L', x1:tx(el.x1),y1:ty(el.y1),x2:tx(el.x2),y2:ty(el.y2)});
-    else if (el.type==='circle') shapes.push({t:'C', cx:tx(el.x),cy:ty(el.y),r:Math.round(el.r*scale)});
-    else if (el.type==='rect') shapes.push({t:'R', x:tx(el.x),y:ty(el.y),w:Math.round(el.w*scale),h:Math.round(el.h*scale)});
-    else if (el.type==='triangle') {
-      shapes.push({t:'L',x1:tx(el.x1),y1:ty(el.y1),x2:tx(el.x2),y2:ty(el.y2)});
-      shapes.push({t:'L',x1:tx(el.x2),y1:ty(el.y2),x2:tx(el.x3),y2:ty(el.y3)});
-      shapes.push({t:'L',x1:tx(el.x3),y1:ty(el.y3),x2:tx(el.x1),y2:ty(el.y1)});
-    } else if (el.type==='arc') {
-      // 弧を複数の直線に近似
-      const steps=8, r=Math.round(el.r*scale), ccx=tx(el.x), ccy=ty(el.y);
-      for (let i=0;i<steps;i++) {
-        const a0=el.startA+(el.endA-el.startA)*i/steps;
-        const a1=el.startA+(el.endA-el.startA)*(i+1)/steps;
-        shapes.push({t:'L',x1:Math.round(ccx+Math.cos(a0)*r),y1:Math.round(ccy+Math.sin(a0)*r),
-                         x2:Math.round(ccx+Math.cos(a1)*r),y2:Math.round(ccy+Math.sin(a1)*r)});
+    const ws = srWorldShapesForEl(el);
+    if (!ws) return;
+    ws.forEach(s => {
+      if (s.t==='L') shapes.push({t:'L', x1:tx(s.x1),y1:ty(s.y1),x2:tx(s.x2),y2:ty(s.y2)});
+      else if (s.t==='C') shapes.push({t:'C', cx:tx(s.cx),cy:ty(s.cy),r:Math.round(s.r*scale)});
+      else if (s.t==='R') shapes.push({t:'R', x:tx(s.x),y:ty(s.y),w:Math.round(s.w*scale),h:Math.round(s.h*scale)});
+      else if (s.t==='P' && s.pts) shapes.push({t:'P', pts:s.pts.map(p=>[tx(p[0]),ty(p[1])]), cl:s.cl});
+      else if (s.t==='T') shapes.push({t:'T', text:s.text, x:tx(s.x), y:ty(s.y), fs:s.fs});
+      else if (s.t==='A') {
+        // 弧を複数の直線に近似(sa/eaは度数法)
+        const steps=8, r=Math.round(s.r*scale), ccx=tx(s.cx), ccy=ty(s.cy);
+        for (let i=0;i<steps;i++) {
+          const a0=(s.sa+(s.ea-s.sa)*i/steps)*Math.PI/180;
+          const a1=(s.sa+(s.ea-s.sa)*(i+1)/steps)*Math.PI/180;
+          shapes.push({t:'L',x1:Math.round(ccx+Math.cos(a0)*r),y1:Math.round(ccy+Math.sin(a0)*r),
+                           x2:Math.round(ccx+Math.cos(a1)*r),y2:Math.round(ccy+Math.sin(a1)*r)});
+        }
       }
-    }
+    });
   });
 
   // ワイヤーを直線として変換
@@ -828,6 +914,7 @@ function srPasteFromClipboard() {
   });
   _srShapes = shapes;
   srRender();
+  if (skipped > 0) alert(`${skipped}個の要素は貼り付けに対応していないためスキップされました(標準シンボル・接続点・寸法線・ベジェ曲線等)`);
 }
 
 function srClear() {
