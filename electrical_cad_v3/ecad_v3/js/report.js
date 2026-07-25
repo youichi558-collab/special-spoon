@@ -12,7 +12,7 @@ const REPORT_TABS = [
   { key:'ref',     label:'接点Ref',    call:'showRefPanel()' },
 ];
 
-let _lastReportTab = 'bom'; // 帳票ボタン1つから開く際、前回開いていたタブを記憶(保存対象外)
+let _lastReportTab = 'bom'; // 帳票系タブが最後に表示していた種類を記憶(現状は参照専用、保存対象外)
 
 function _reportOpen(tabKey, title, bodyHtml, csvFn) {
   _lastReportTab = tabKey;
@@ -32,11 +32,6 @@ function _reportOpen(tabKey, title, bodyHtml, csvFn) {
   openFP('report-p');
 }
 
-// リボンの「帳票」ボタン1つの入口：前回開いていたタブを再度開く(初回はbom)
-function openReportPanel() {
-  const fns = { bom:showBOM, wire:wireNoTable, term:showTerminals, termtbl:showTerminalTable, conntbl:showConnTable, tbtbl:showTBTable, ref:showRefPanel };
-  (fns[_lastReportTab] || showBOM)();
-}
 
 // 一括割付: 全ページ通しで未採番の配線のみに連番を割り付け(既存線番との衝突は自動回避)
 function autoWireNumber(){
