@@ -104,8 +104,8 @@ function _connSortRows(rows) {
 function showConnTable() {
   const rows = _connSortRows(buildConnectionRows());
   if (!rows.length) {
-    document.getElementById('conntbl-body').innerHTML = '<p style="font-size:11px;color:var(--fg3)">配線がありません</p>';
-    openFP('conntbl-p'); return;
+    _reportOpen('conntbl', '接続表', '<p style="font-size:11px;color:var(--fg3)">配線がありません</p>', null);
+    return;
   }
   let unmatched = 0;
   let html = `<table class="tbl"><tr><th>線番</th><th>ページ</th><th>始点</th><th>始点端子</th><th>終点</th><th>終点端子</th><th>レイヤー</th></tr>`;
@@ -118,8 +118,7 @@ function showConnTable() {
   let msg = `<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">配線 全${rows.length}本`;
   if (unmatched) msg += ` / <span style="color:var(--red);font-weight:600">端子未特定 ${unmatched}本</span>(許容誤差${CONN_TABLE_TOL}以内に端子なし。配線の端点が端子からズレている可能性があります)`;
   msg += `</p>`;
-  document.getElementById('conntbl-body').innerHTML = msg + html;
-  openFP('conntbl-p');
+  _reportOpen('conntbl', '接続表', msg + html, exportConnCSV);
 }
 
 function exportConnCSV() {
@@ -173,8 +172,8 @@ function _tbSortRows(rows) {
 function showTBTable() {
   const rows = _tbSortRows(buildTerminalBlockRows());
   if (!rows.length) {
-    document.getElementById('tbtbl-body').innerHTML = '<p style="font-size:11px;color:var(--fg3)">端子台の端子(○/◎)が配置されていません</p>';
-    openFP('tbtbl-p'); return;
+    _reportOpen('tbtbl', '端子台表', '<p style="font-size:11px;color:var(--fg3)">端子台の端子(○/◎)が配置されていません</p>', null);
+    return;
   }
   let unconn = 0;
   let html = `<table class="tbl"><tr><th>端子台</th><th>型式</th><th>端子番号</th><th>ページ</th><th>接続線番</th></tr>`;
@@ -186,8 +185,7 @@ function showTBTable() {
   let msg = `<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">端子 全${rows.length}点`;
   if (unconn) msg += ` / <span style="color:var(--red);font-weight:600">未接続 ${unconn}点</span>`;
   msg += `</p>`;
-  document.getElementById('tbtbl-body').innerHTML = msg + html;
-  openFP('tbtbl-p');
+  _reportOpen('tbtbl', '端子台表', msg + html, exportTBCSV);
 }
 
 function exportTBCSV() {

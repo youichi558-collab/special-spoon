@@ -358,13 +358,15 @@
     </div>
 
     <!-- フローティングパネル群 -->
-    <div class="fp" id="bom-p"><h3>部品表 (BOM)</h3><div id="bom-body"></div><div style="display:flex;gap:6px;margin-top:8px"><button class="fp-btn primary" onclick="exportBOMCSV()">CSV出力</button><button class="fp-btn" onclick="closeFP('bom-p')">閉じる</button></div></div>
-    <div class="fp" id="ref-p"><h3>接点・コイル リファレンス</h3><div id="ref-body"></div><div style="margin-top:8px"><button class="fp-btn" onclick="closeFP('ref-p')">閉じる</button></div></div>
-    <div class="fp" id="wire-p"><h3>線番 割付結果</h3><div id="wire-body"></div><div style="display:flex;gap:6px;margin-top:8px"><button class="fp-btn primary" onclick="exportWireCSV()">CSV出力</button><button class="fp-btn" onclick="closeFP('wire-p')">閉じる</button></div></div>
-    <div class="fp" id="term-p"><h3>端子台一覧</h3><div id="term-body"></div><div style="display:flex;gap:6px;margin-top:8px"><button class="fp-btn primary" onclick="exportTermCSV()">CSV出力</button><button class="fp-btn" onclick="closeFP('term-p')">閉じる</button></div></div>
-    <div class="fp" id="termtbl-p"><h3>端子表（接続情報）</h3><div id="termtbl-body"></div><div style="display:flex;gap:6px;margin-top:8px"><button class="fp-btn primary" onclick="exportTerminalCSV()">CSV出力</button><button class="fp-btn" onclick="closeFP('termtbl-p')">閉じる</button></div></div>
-    <div class="fp" id="conntbl-p"><h3>接続表</h3><div id="conntbl-body"></div><div style="display:flex;gap:6px;margin-top:8px"><button class="fp-btn primary" onclick="exportConnCSV()">CSV出力</button><button class="fp-btn" onclick="closeFP('conntbl-p')">閉じる</button></div></div>
-    <div class="fp" id="tbtbl-p"><h3>端子台表</h3><div id="tbtbl-body"></div><div style="display:flex;gap:6px;margin-top:8px"><button class="fp-btn primary" onclick="exportTBCSV()">CSV出力</button><button class="fp-btn" onclick="closeFP('tbtbl-p')">閉じる</button></div></div>
+    <div class="fp" id="report-p" style="width:660px;max-width:95vw">
+      <div id="report-tabs" style="display:flex;gap:3px;flex-wrap:wrap;border-bottom:1px solid var(--bd2);padding-bottom:0;margin-bottom:8px"></div>
+      <h3 id="report-title"></h3>
+      <div id="report-body"></div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button class="fp-btn primary" id="report-csv-btn">CSV出力</button>
+        <button class="fp-btn" onclick="closeFP('report-p')">閉じる</button>
+      </div>
+    </div>
 
     <!-- ショートカット一覧 -->
     <div class="fp" id="shortcut-p" style="width:460px">

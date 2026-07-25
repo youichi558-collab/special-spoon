@@ -1,7 +1,34 @@
 // ================================================================
-// report.js — 線番・BOM・端子台・リファレンスパネル
-// 依存: state, getDef, dl
+// 帳票パネル共通ヘルパー（部品表・線番表・端子台一覧・端子表・接続表・
+// 端子台表・接点Refを1つのパネル内タブとして切替表示する）
 // ================================================================
+const REPORT_TABS = [
+  { key:'bom',     label:'部品表',     call:'showBOM()' },
+  { key:'wire',    label:'線番表',     call:'wireNoTable()' },
+  { key:'term',    label:'端子台一覧', call:'showTerminals()' },
+  { key:'termtbl', label:'端子表',     call:'showTerminalTable()' },
+  { key:'conntbl', label:'接続表',     call:'showConnTable()' },
+  { key:'tbtbl',   label:'端子台表',   call:'showTBTable()' },
+  { key:'ref',     label:'接点Ref',    call:'showRefPanel()' },
+];
+
+function _reportOpen(tabKey, title, bodyHtml, csvFn) {
+  const tabsEl = document.getElementById('report-tabs');
+  if (tabsEl) {
+    tabsEl.innerHTML = REPORT_TABS.map(t =>
+      `<button class="rep-tab${t.key===tabKey?' on':''}" onclick="${t.call}">${t.label}</button>`
+    ).join('');
+  }
+  document.getElementById('report-title').textContent = title;
+  document.getElementById('report-body').innerHTML = bodyHtml;
+  const csvBtn = document.getElementById('report-csv-btn');
+  if (csvBtn) {
+    csvBtn.style.display = csvFn ? '' : 'none';
+    csvBtn.onclick = csvFn || null;
+  }
+  openFP('report-p');
+}
+
 // 一括割付: 全ページ通しで未採番の配線のみに連番を割り付け(既存線番との衝突は自動回避)
 function autoWireNumber(){
   const start = prompt('一括割付の開始線番（例: W001）\n未採番の配線のみ、全ページ通しで割り付けます', state.wireNoRule || 'W001');
@@ -49,8 +76,7 @@ function wireNoTable(msg){
     html += `<tr><td><span class="badge ${cnt>1?'badge-o':'badge-b'}">${no}</span></td><td>${pages}</td><td>${cnt}</td></tr>`;
   });
   html += `</table>`;
-  document.getElementById('wire-body').innerHTML = html;
-  openFP('wire-p');
+  _reportOpen('wire', '線番 割付結果', html, exportWireCSV);
 }
 
 // CSV: 全ページ分を出力
@@ -85,11 +111,10 @@ function collectBOMRows(){
   return Object.values(counts);
 }
 function showBOM(){
-  const skip=['text','rect','circle','fline','dim','leader'];
   const rows=collectBOMRows();
-  const total=state.pages.reduce((s,pg)=>s+(pg.elements||[]).filter(e=>!skip.includes(e.type)).length,0);
+  const total=state.pages.reduce((s,pg)=>s+(pg.elements||[]).filter(e=>!['text','rect','circle','fline','dim','leader'].includes(e.type)).length,0);
   let html=rows.length?`<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">全${state.pages.length}ページ集計・合計 ${total} 個</p><table class="tbl"><tr><th>型番/名称</th><th>種別</th><th>JIS</th><th>項目記号</th><th>数量</th></tr>${rows.map(r=>`<tr><td>${r.label}</td><td>${r.type}</td><td style="color:var(--acc)">${r.jis}</td><td style="font-size:10px;color:var(--fg3)">${r.refs.join(', ')||'-'}</td><td style="font-weight:600">${r.count}</td></tr>`).join('')}</table>`:'<p style="font-size:11px;color:var(--fg3)">配置されたシンボルがありません</p>';
-  document.getElementById('bom-body').innerHTML=html;openFP('bom-p');
+  _reportOpen('bom', '部品表 (BOM)', html, exportBOMCSV);
 }
 function exportBOMCSV(){
   const rows=collectBOMRows();
@@ -101,12 +126,12 @@ function showRefPanel(){
   const map={};coils.forEach(c=>{const k=c.coilName||c.label||'?';if(!map[k])map[k]={coil:c,contacts:[]};});
   contacts.forEach(ct=>{const k=ct.refCoil||(coils.find(c=>(c.coilName||c.label)===ct.label)?ct.label:null);if(k){if(!map[k])map[k]={coil:null,contacts:[]};if(!map[k].contacts.includes(ct))map[k].contacts.push(ct);}});
   let html=Object.keys(map).length?`<table class="tbl"><tr><th>コイル名</th><th>種別</th><th>接点</th><th>数</th></tr>${Object.entries(map).map(([key,{coil,contacts}])=>`<tr><td><b>${key}</b></td><td>${coil?`<span class="badge badge-p">${coil.type==='timer_coil'?'タイマ':'リレー'}</span>`:'<span class="badge" style="background:var(--rbg);color:var(--red)">未配置</span>'}</td><td>${contacts.map(c=>`<span class="badge badge-${getDef(c.type).contactType==='a'?'g':'b'}">${c.label}</span>`).join(' ')||'なし'}</td><td>${contacts.length}</td></tr>`).join('')}</table>`:'<p style="font-size:11px;color:var(--fg3)">コイルシンボルがありません</p>';
-  document.getElementById('ref-body').innerHTML=html;openFP('ref-p');
+  _reportOpen('ref', '接点・コイル リファレンス', html, null);
 }
 function showTerminals(){
   const terms=state.elements.filter(el=>el.type==='terminal');
   let html=terms.length?`<table class="tbl"><tr><th>No</th><th>ラベル</th><th>端子番号</th><th>線番</th><th>メモ</th></tr>${terms.map((t,i)=>`<tr><td>${i+1}</td><td>${t.label||''}</td><td>${t.terminals||''}</td><td>${t.wireNo||''}</td><td>${t.note||''}</td></tr>`).join('')}</table>`:'<p style="font-size:11px;color:var(--fg3)">端子台がありません</p>';
-  document.getElementById('term-body').innerHTML=html;openFP('term-p');
+  _reportOpen('term', '端子台一覧', html, exportTermCSV);
 }
 function exportTermCSV(){const terms=state.elements.filter(el=>el.type==='terminal');dl(['No,ラベル,端子番号,線番,メモ',...terms.map((t,i)=>`${i+1},${t.label||''},${t.terminals||''},${t.wireNo||''},${t.note||''}`)].join('\n'),'terminals.csv','text/csv');}
 
@@ -118,8 +143,8 @@ function showTerminalTable() {
   const skip = ['text','rect','circle','fline','dim','leader','angle_dim','wire'];
   const els = state.elements.filter(el => !skip.includes(el.type));
   if (!els.length) {
-    document.getElementById('termtbl-body').innerHTML = '<p style="font-size:11px;color:var(--fg3)">部品がありません</p>';
-    openFP('termtbl-p'); return;
+    _reportOpen('termtbl', '端子表（接続情報）', '<p style="font-size:11px;color:var(--fg3)">部品がありません</p>', null);
+    return;
   }
 
   // 部品ごとに接続配線を集計
@@ -153,8 +178,7 @@ function showTerminalTable() {
     }
   });
   html += '</table>';
-  document.getElementById('termtbl-body').innerHTML = html;
-  openFP('termtbl-p');
+  _reportOpen('termtbl', '端子表（接続情報）', html, exportTerminalCSV);
 }
 
 function exportTerminalCSV() {
