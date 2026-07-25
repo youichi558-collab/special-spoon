@@ -1900,18 +1900,15 @@ function syncPartRefBtn() {
   b.style.fontWeight = state.showPartRef ? '600' : '400';
 }
 
-// 【検証用/仮】端子(ピン)マーカー表示トグル
-// 接続点の見た目を選ぶと同時に配置モードに入る(2手間を解消)
+// 接続点の見た目(分岐点/端子○/端子◎)を選ぶと同時に配置モードに入る
 function setJunctionStyle(style) {
   state.junctionStyle = style;
   // スタイルに応じた見やすいデフォルトサイズ(既にユーザーが変えていればそれを尊重)
   if (!state._junctionRTouched) {
     state.junctionR = (style === 'dot') ? 2 : 5;
   }
-  const sizeInput = document.getElementById('jst-size');
-  if (sizeInput) sizeInput.value = state.junctionR;
+  setMode('junction'); // setModeが全rb-*の.onを一旦クリアするため、この後にsyncを呼ぶ
   syncJunctionStyleBtns();
-  setMode('junction');
 }
 function setJunctionSize(val) {
   const r = Math.max(1, parseFloat(val) || 2);
@@ -1921,15 +1918,13 @@ function setJunctionSize(val) {
 function syncJunctionStyleBtns() {
   const sizeInput = document.getElementById('jst-size');
   if (sizeInput) sizeInput.value = state.junctionR || 2;
-  ['dot','circle','dbl'].forEach(s => {
-    const b = document.getElementById('jst-' + s);
-    if (!b) return;
-    const on = (state.junctionStyle || 'dot') === s;
-    b.style.background = on ? 'var(--acc)' : 'transparent';
-    b.style.color      = on ? '#fff' : 'var(--fg)';
-  });
+  const map = { dot:'rb-junction-dot', circle:'rb-junction-circle', dbl:'rb-junction-dbl' };
+  Object.values(map).forEach(id => document.getElementById(id)?.classList.remove('on'));
+  const activeId = map[state.junctionStyle || 'dot'];
+  document.getElementById(activeId)?.classList.add('on');
 }
 
+// 【検証用/仮】端子(ピン)マーカー表示トグル
 function toggleSymPinsDisp() {
   state.showSymPins = !state.showSymPins;
   syncSymPinsBtn(); draw();
