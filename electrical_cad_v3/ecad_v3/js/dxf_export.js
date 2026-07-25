@@ -453,7 +453,7 @@ function exportDXF(){
     } else if(el.type==='junction'){
       eCircle(layer,el.x,el.y,el.r||5);
       if(el.style==='dbl') eCircle(layer,el.x,el.y,(el.r||5)*0.55);
-      if(el.label) eText(layer,el.x+(el.r||5)+4,el.y,11,el.label);
+      if(el.label && el.style!=='dot') eText(layer,el.x+(el.r||5)+4,el.y,11,el.label);
     } else if(el.type==='triangle'){
       eLine(layer,el.x1,el.y1,el.x2,el.y2);
       eLine(layer,el.x2,el.y2,el.x3,el.y3);

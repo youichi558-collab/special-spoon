@@ -1345,14 +1345,17 @@ function updateRightPanel() {
   let html = '';
 
   if (el && el.type === 'junction') {
-    html += `<p style="font-size:10px;font-weight:600;color:var(--fg4);padding:6px 10px 2px">接続点／端子台の端子</p>`;
+    const isTerm = (el.style === 'circle' || el.style === 'dbl'); // 白丸/二重丸のみ端子台の端子として扱う
+    html += `<p style="font-size:10px;font-weight:600;color:var(--fg4);padding:6px 10px 2px">${isTerm ? '端子台の端子' : '接続点(分岐点)'}</p>`;
     html += `<div class="pp-row"><label>X</label><input type="number" id="pp-jx" value="${Math.round(el.x*1000)/1000}" step="any"></div>`;
     html += `<div class="pp-row"><label>Y</label><input type="number" id="pp-jy" value="${Math.round(el.y*1000)/1000}" step="any"></div>`;
     html += `<div class="pp-row"><label>半径</label><input type="number" id="pp-jr" value="${el.r||2}" min="1" max="30" step="1"></div>`;
     html += `<div class="pp-row"><label>見た目</label><select id="pp-jstyle"><option value="dot"${(el.style||'dot')==='dot'?' selected':''}>●塗りつぶし</option><option value="circle"${el.style==='circle'?' selected':''}>○白丸</option><option value="dbl"${el.style==='dbl'?' selected':''}>◎二重丸</option></select></div>`;
-    html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-jlabel" value="${el.label||''}" placeholder="例: A, 1"></div>`;
-    html += `<div class="pp-row"><label>項目記号</label><input type="text" id="pp-jref" value="${el.partRef||''}" placeholder="例: TB1"></div>`;
-    html += `<div class="pp-row"><label>型式(BOM用)</label><input type="text" id="pp-jmodel" value="${el.partModel||''}" placeholder="例: 端子台 M4"></div>`;
+    if (isTerm) {
+      html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-jlabel" value="${el.label||''}" placeholder="例: A, 1"></div>`;
+      html += `<div class="pp-row"><label>項目記号</label><input type="text" id="pp-jref" value="${el.partRef||''}" placeholder="例: TB1"></div>`;
+      html += `<div class="pp-row"><label>型式(BOM用)</label><input type="text" id="pp-jmodel" value="${el.partModel||''}" placeholder="例: 端子台 M4"></div>`;
+    }
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
   } else if (el && el.type === 'text') {
     html += `<div class="pp-row"><label>テキスト</label><textarea rows="2" id="pp-text">${el.text||''}</textarea></div>`;
@@ -1667,9 +1670,14 @@ function applyRightPanel() {
     if (v('pp-jx')!=='') { el.x = parseFloat(v('pp-jx')); el.y = parseFloat(v('pp-jy')); }
     if (v('pp-jr')!=='') el.r = Math.max(1, parseFloat(v('pp-jr')));
     if (v('pp-jstyle')!=='') el.style = v('pp-jstyle');
-    el.label     = v('pp-jlabel');
-    el.partRef   = v('pp-jref');
-    el.partModel = v('pp-jmodel');
+    if (el.style === 'circle' || el.style === 'dbl') {
+      el.label     = v('pp-jlabel');
+      el.partRef   = v('pp-jref');
+      el.partModel = v('pp-jmodel');
+    } else {
+      // 分岐点(●)には端子情報は不要
+      delete el.label; delete el.partRef; delete el.partModel;
+    }
     el.layer = v('pp-layer');
   } else if (el && el.type === 'text') {
     el.text = v('pp-text'); el.fs = parseInt(v('pp-fs'))||14;

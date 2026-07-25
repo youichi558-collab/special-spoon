@@ -412,8 +412,8 @@ function drawJunctionEl(el, sel, lc) {
   }
   ctx.restore();
 
-  // 端子番号ラベル(常時表示、図面を読むための必須情報)
-  if (el.label) {
+  // 端子番号ラベル(常時表示、図面を読むための必須情報。分岐点(●)には表示しない)
+  if (el.label && style !== 'dot') {
     ctx.save();
     ctx.fillStyle = c;
     ctx.font = `${11/state.zoom}px sans-serif`;
@@ -421,8 +421,8 @@ function drawJunctionEl(el, sel, lc) {
     ctx.fillText(el.label, el.x + r + 4/state.zoom, el.y + 4/state.zoom);
     ctx.restore();
   }
-  // 項目記号(TB1等、部品番号表示ON時のみ。symと同じ表示規約に合わせる)
-  if (state.showPartRef && !state.pdfSkipText && el.partRef) {
+  // 項目記号(TB1等、部品番号表示ON時のみ。分岐点(●)には表示しない)
+  if (state.showPartRef && !state.pdfSkipText && el.partRef && style !== 'dot') {
     ctx.save();
     ctx.fillStyle = state.darkMode ? '#4da3ff' : '#1d6fb5';
     ctx.font = `bold ${10/state.zoom}px sans-serif`;
