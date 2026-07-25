@@ -196,6 +196,8 @@
           <div class="rb rb-sm" onclick="showBOM()"><svg viewBox="0 0 14 14"><rect x="2" y="2" width="10" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5 5h4M5 7h4M5 9h2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>部品表</div>
           <div class="rb rb-sm" onclick="showTerminals()"><svg viewBox="0 0 14 14"><rect x="4" y="3" width="6" height="8" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M2 7h2M12 7h-2M6 6l2 2-2 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>端子台</div>
           <div class="rb rb-sm" onclick="showTerminalTable()"><svg viewBox="0 0 14 14"><rect x="1" y="2" width="12" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M1 5h12M5 5v7" stroke="currentColor" stroke-width="1.1"/></svg>端子表</div>
+          <div class="rb rb-sm" onclick="showConnTable()" title="配線ごとの始点・終点の接続関係を一覧表示"><svg viewBox="0 0 14 14"><circle cx="3" cy="3.5" r="1.8" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="11" cy="10.5" r="1.8" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4.5 4.8L9.5 9.2" stroke="currentColor" stroke-width="1.2"/></svg>接続表</div>
+          <div class="rb rb-sm" onclick="showTBTable()" title="端子台(○/◎)ごとの接続を一覧表示"><svg viewBox="0 0 14 14"><circle cx="3" cy="7" r="1.6" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="7" cy="7" r="1.6" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="11" cy="7" r="1.6" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M1 7h1M5 7h1M9 7h1M13 7h1" stroke="currentColor" stroke-width="1"/></svg>端子台表</div>
           <div class="rb rb-sm" onclick="exportAIAnalysis()"><svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5 7h4M7 5v4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>AI解析</div>
           <div class="rb rb-sm" onclick="showPartReg()"><svg viewBox="0 0 14 14"><rect x="3" y="2" width="8" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5 5h4M5 8h2M9 8v3M9 8h2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>部品登録</div>
           <div class="rb rb-sm" onclick="showSymReg()"><svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M7 5v4M5 7h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>シンボル登録</div>
@@ -361,6 +363,8 @@
     <div class="fp" id="wire-p"><h3>線番 割付結果</h3><div id="wire-body"></div><div style="display:flex;gap:6px;margin-top:8px"><button class="fp-btn primary" onclick="exportWireCSV()">CSV出力</button><button class="fp-btn" onclick="closeFP('wire-p')">閉じる</button></div></div>
     <div class="fp" id="term-p"><h3>端子台一覧</h3><div id="term-body"></div><div style="display:flex;gap:6px;margin-top:8px"><button class="fp-btn primary" onclick="exportTermCSV()">CSV出力</button><button class="fp-btn" onclick="closeFP('term-p')">閉じる</button></div></div>
     <div class="fp" id="termtbl-p"><h3>端子表（接続情報）</h3><div id="termtbl-body"></div><div style="display:flex;gap:6px;margin-top:8px"><button class="fp-btn primary" onclick="exportTerminalCSV()">CSV出力</button><button class="fp-btn" onclick="closeFP('termtbl-p')">閉じる</button></div></div>
+    <div class="fp" id="conntbl-p"><h3>接続表</h3><div id="conntbl-body"></div><div style="display:flex;gap:6px;margin-top:8px"><button class="fp-btn primary" onclick="exportConnCSV()">CSV出力</button><button class="fp-btn" onclick="closeFP('conntbl-p')">閉じる</button></div></div>
+    <div class="fp" id="tbtbl-p"><h3>端子台表</h3><div id="tbtbl-body"></div><div style="display:flex;gap:6px;margin-top:8px"><button class="fp-btn primary" onclick="exportTBCSV()">CSV出力</button><button class="fp-btn" onclick="closeFP('tbtbl-p')">閉じる</button></div></div>
 
     <!-- ショートカット一覧 -->
     <div class="fp" id="shortcut-p" style="width:460px">
@@ -761,6 +765,7 @@
 <script src="js/symbol_lib.js"></script>
 <script src="js/pin_editor.js"></script>
 <script src="js/conn_check.js"></script>
+<script src="js/conn_table.js"></script>
 <script src="js/parts_db.js"></script>
 <script src="js/autosave.js"></script>
 <script src="js/boot.js"></script>
