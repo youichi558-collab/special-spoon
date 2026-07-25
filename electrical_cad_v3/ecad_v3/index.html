@@ -152,11 +152,14 @@
     <div id="rp-draw" class="rg-wrap" style="display:none;gap:0">
       <div class="rg">
         <div class="rg-btns">
-          <div class="rb rb-sm" id="rb-junction" onclick="setMode('junction')"><svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="3.5" fill="currentColor"/></svg>接続点</div>
-          <div style="display:flex;gap:1px;align-items:center;padding:0 2px" title="接続点の見た目(次に配置するものに適用)">
+          <div class="rb rb-sm" id="rb-junction" onclick="setJunctionStyle(state.junctionStyle||'dot')"><svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="3.5" fill="currentColor"/></svg>接続点</div>
+          <div style="display:flex;gap:1px;align-items:center;padding:0 2px" title="クリックで見た目を選んですぐ配置モードに入ります">
             <span onclick="setJunctionStyle('dot')" id="jst-dot" style="cursor:pointer;font-size:13px;padding:2px 3px;border-radius:3px">●</span>
             <span onclick="setJunctionStyle('circle')" id="jst-circle" style="cursor:pointer;font-size:13px;padding:2px 3px;border-radius:3px">○</span>
             <span onclick="setJunctionStyle('dbl')" id="jst-dbl" style="cursor:pointer;font-size:13px;padding:2px 3px;border-radius:3px">◎</span>
+            <input type="number" id="jst-size" value="2" min="1" max="30" step="1" title="サイズ(半径)"
+              oninput="setJunctionSize(this.value)"
+              style="width:32px;font-size:11px;padding:1px 2px;margin-left:3px;border:1px solid var(--bd2);border-radius:3px;background:var(--bg);color:var(--fg)">
           </div>
           <div class="rb rb-sm" id="rb-guide_h" onclick="setMode('guide_h')"><svg viewBox="0 0 14 14"><path d="M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2,1.5"/></svg>水平補助</div>
           <div class="rb rb-sm" id="rb-guide_v" onclick="setMode('guide_v')"><svg viewBox="0 0 14 14"><path d="M7 1v12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2,1.5"/></svg>垂直補助</div>

@@ -1901,12 +1901,26 @@ function syncPartRefBtn() {
 }
 
 // 【検証用/仮】端子(ピン)マーカー表示トグル
-// 接続点の見た目(次に配置するものに適用)
+// 接続点の見た目を選ぶと同時に配置モードに入る(2手間を解消)
 function setJunctionStyle(style) {
   state.junctionStyle = style;
+  // スタイルに応じた見やすいデフォルトサイズ(既にユーザーが変えていればそれを尊重)
+  if (!state._junctionRTouched) {
+    state.junctionR = (style === 'dot') ? 2 : 5;
+  }
+  const sizeInput = document.getElementById('jst-size');
+  if (sizeInput) sizeInput.value = state.junctionR;
   syncJunctionStyleBtns();
+  setMode('junction');
+}
+function setJunctionSize(val) {
+  const r = Math.max(1, parseFloat(val) || 2);
+  state.junctionR = r;
+  state._junctionRTouched = true; // 以後スタイル切替してもユーザー指定サイズを保持
 }
 function syncJunctionStyleBtns() {
+  const sizeInput = document.getElementById('jst-size');
+  if (sizeInput) sizeInput.value = state.junctionR || 2;
   ['dot','circle','dbl'].forEach(s => {
     const b = document.getElementById('jst-' + s);
     if (!b) return;
