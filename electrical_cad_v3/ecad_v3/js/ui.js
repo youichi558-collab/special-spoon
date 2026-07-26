@@ -1850,11 +1850,11 @@ function showCtx(cx, cy) {
   menu.style.left = cx + 'px'; menu.style.top = cy + 'px';
   menu.classList.add('open');
   // 画面下部・右端で見切れる場合は表示位置を補正する。
-  // #ctxmenuを実際にクリッピングしているのは#app(overflow:hidden)なので、
-  // window.innerWidth/innerHeightではなく#appの実境界と比較する
-  // (ブラウザの余白・スクロールバーの分だけwindowとずれることがあるため)。
+  // #ctxmenuを実際にクリッピングしているのは#main-row(overflow:hidden)。
+  // #app全体だとリボン・ステータスバーの分だけ境界がずれるため、#main-rowの実境界と比較する。
   const pad = 4;
-  const bound = document.getElementById('app')?.getBoundingClientRect()
+  const bound = document.getElementById('main-row')?.getBoundingClientRect()
+    || document.getElementById('app')?.getBoundingClientRect()
     || { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
   const rect = menu.getBoundingClientRect();
   let dx = 0, dy = 0;
