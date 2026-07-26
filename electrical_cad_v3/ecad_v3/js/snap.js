@@ -47,7 +47,16 @@ function getAllSnapPoints(wx, wy) {
       }
       return;
     }
-    if (state.snapEnd && !['text','rect','circle','fline','dim','leader'].includes(el.type)) {
+    // ジャンクション(端子台の端子○/◎・分岐点●)：中心点スナップ
+    // 補助線を端子中心に合わせて引けるようにするため専用に扱う。
+    // wire.fromElId/toElIdの記録に使われるsnapType:'terminal'を踏襲し、配線ツールでの
+    // 接続記録(report.js旧BOM機能)にも従来通り使えるようにする。
+    if (el.type === 'junction') {
+      const d = Math.hypot(wx - el.x, wy - el.y);
+      if (d < bestD) { bestD = d; best = { x: el.x, y: el.y, snapType: 'terminal', elId: el.id, termIdx: 0 }; }
+      return;
+    }
+    if (state.snapEnd && !['text','rect','circle','fline','dim','leader','junction'].includes(el.type)) {
       const d = getDef(el.type) || {};
       const cS = state.customSymbols.find(s => s.type === el.type);
       const rot = (el.rot || 0) * Math.PI / 180;
