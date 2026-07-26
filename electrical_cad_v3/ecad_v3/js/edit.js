@@ -691,6 +691,26 @@ function applyGroupMove() {
   draw(); updateRightPanel();
 }
 
+// ----------------------------------------------------------------
+// 選択中のcircle要素をjunction(端子台の端子)に一括変換
+// 外部DXFの円がそのまま読み込まれているケースで、座標(位置・半径)は変えずに
+// 「これは端子だ」という意味情報だけを後付けする。配線の引き直しは不要。
+// ----------------------------------------------------------------
+function convertSelectedToJunction() {
+  const targets = state.elements.filter(el => state.sel.els.has(el.id) && el.type === 'circle');
+  if (!targets.length) { alert('選択範囲に円(circle)がありません。端子に変換したい円を選択してください。'); return; }
+  pushH();
+  const style = state.junctionStyle || 'circle';
+  targets.forEach(el => {
+    el.type = 'junction';
+    el.style = style;
+    // 半径は元のDXF円のサイズをそのまま維持する(見た目・実寸を壊さないため)
+    if (!el.r || el.r <= 0) el.r = state.junctionR || 2;
+  });
+  draw();
+  alert(`${targets.length}個の円を端子(${style === 'dbl' ? '◎' : style === 'dot' ? '●' : '○'})に変換しました。`);
+}
+
 function groupSelected() {
   const elIds   = [...state.sel.els];
   const wireIds = [...state.sel.wires];

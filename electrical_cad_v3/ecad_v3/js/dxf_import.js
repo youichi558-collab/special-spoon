@@ -120,6 +120,67 @@ function parseDXF(text, isOwnFile){
     }
   }
 
+  // 未対応ブロック(mapBlockで一致しないINSERT)のフォールバック展開用に、
+  // BLOCKSセクションの名前付きブロック定義(*で始まる無名ブロックは除く)を事前スキャンする。
+  // ここで集めた図形はブロックのローカル座標系(canvas変換済み: y反転のみ、平行移動/回転/縮尺は未適用)で保持し、
+  // 実際のINSERT出現時に挿入点・回転・縮尺を適用して配置する。
+  const blockDefs = new Map(); // name -> [{type,...}]
+  if (!isOwnFile) {
+    let _inBl2=false, _curArr=null;
+    for (let j=0; j<pairs.length; j++) {
+      const c=pairs[j].code, v=pairs[j].val;
+      if (c===0 && v==='SECTION') { _inBl2=false; _curArr=null; }
+      if (c===2 && v==='BLOCKS') _inBl2=true;
+      if (c===0 && v==='ENDSEC') { _inBl2=false; _curArr=null; }
+      if (!_inBl2) continue;
+      if (c===0 && v==='BLOCK') {
+        const e=readEnt(pairs,j);
+        const name=e['2']||'';
+        _curArr = (name && !name.startsWith('*')) ? [] : null;
+        if (_curArr) blockDefs.set(name,_curArr);
+        j=e._end-1; continue;
+      }
+      if (c===0 && v==='ENDBLK') { _curArr=null; continue; }
+      if (!_curArr) continue;
+      if (c===0 && v==='LINE') {
+        const e=readEnt(pairs,j);
+        const x1=+e['10']||0,y1=-(+e['20']||0),x2=+e['11']||0,y2=-(+e['21']||0);
+        if (Math.hypot(x2-x1,y2-y1)>0.01) _curArr.push({type:'fline',x1,y1,x2,y2,layer:e['8']});
+        j=e._end-1; continue;
+      }
+      if (c===0 && v==='CIRCLE') {
+        const e=readEnt(pairs,j);
+        const r=+e['40']||0;
+        if (r>0) _curArr.push({type:'circle',x:+e['10']||0,y:-(+e['20']||0),r,layer:e['8']});
+        j=e._end-1; continue;
+      }
+      if (c===0 && v==='ARC') {
+        const e=readEnt(pairs,j);
+        const r=+e['40']||0;
+        if (r>0) {
+          const sa=+e['50']||0, ea=+e['51']||0;
+          _curArr.push({type:'arc',x:+e['10']||0,y:-(+e['20']||0),r,startA:-sa*Math.PI/180,endA:-ea*Math.PI/180,ccw:true,layer:e['8']});
+        }
+        j=e._end-1; continue;
+      }
+      if (c===0 && (v==='TEXT'||v==='MTEXT')) {
+        const e=readEnt(pairs,j);
+        let t=(e['1']||e['3']||'').replace(/\\[A-Za-z][^;]*;/g,'').replace(/[{}]/g,'').replace(/\\P/g,' ').trim();
+        t=fromUnicodeDXF(t);
+        const h=+e['40']||12;
+        if (t && t!=='<>') _curArr.push({type:'text',x:+e['10']||0,y:-(+e['20']||0),text:t,fs:Math.max(8,Math.min(72,h)),layer:e['8']});
+        j=e._end-1; continue;
+      }
+      if (c===0 && v==='LWPOLYLINE') {
+        const e=readPoly(pairs,j);
+        if (e.pts && e.pts.length>=2) {
+          for (let k=0;k<e.pts.length-1;k++) _curArr.push({type:'fline',x1:e.pts[k].x,y1:e.pts[k].y,x2:e.pts[k+1].x,y2:e.pts[k+1].y,layer:e['8']});
+        }
+        j=e._end-1; continue;
+      }
+    }
+  }
+
   pushH(); // 読込全ルートでundoに乗る
   const hasContent=state.elements.length>0||state.wires.length>0;
   if(hasContent){
@@ -180,7 +241,41 @@ function parseDXF(text, isOwnFile){
         const e=readEnt(pairs,i);
         const bname=e['2']||'';
         const mapped=mapBlock(bname);
-        if(mapped){const def=getDef(mapped);state.elements.push({id:genId('el'),type:mapped,x:+e['10']||0,y:-(+e['20']||0),label:def?.label||bname,layer:e['8']||'回路',rot:+e['50']||0,flipH:false,flipV:false});ic++;}
+        if(mapped){
+          const def=getDef(mapped);state.elements.push({id:genId('el'),type:mapped,x:+e['10']||0,y:-(+e['20']||0),label:def?.label||bname,layer:e['8']||'回路',rot:+e['50']||0,flipH:false,flipV:false});ic++;
+        } else {
+          // 未対応ブロック: 消さずにブロック定義の図形を挿入点・回転・縮尺を適用して展開配置する
+          // (自社シンボルとして認識できないだけで、座標情報自体は失わない)
+          const bd=blockDefs.get(bname);
+          if(bd&&bd.length){
+            const icx=+e['10']||0, icy=-(+e['20']||0);
+            const rotDeg=+e['50']||0, xs=+e['41']||1, ys=+e['42']||1;
+            const rad=-rotDeg*Math.PI/180; // canvasはY反転のためDXFのCCW回転符号を反転
+            const cosR=Math.cos(rad), sinR=Math.sin(rad);
+            const tp=(lx,ly)=>{const sx=lx*xs,sy=ly*ys;return{x:icx+sx*cosR-sy*sinR,y:icy+sx*sinR+sy*cosR};};
+            const rAvg=(xs+ys)/2;
+            bd.forEach(el=>{
+              if(el.type==='fline'){
+                const p1=tp(el.x1,el.y1),p2=tp(el.x2,el.y2);
+                if(Math.hypot(p2.x-p1.x,p2.y-p1.y)>0.05)state.wires.push({id:genId('w'),x1:p1.x,y1:p1.y,x2:p2.x,y2:p2.y,pts:[p1,p2],layer:el.layer||e['8']||'配線',wireNo:null});
+              }else if(el.type==='circle'){
+                const p=tp(el.x,el.y);
+                const rr=el.r*rAvg;
+                const jm=parsedJunctions.find(j=>Math.hypot(j.x-p.x,j.y-p.y)<0.1);
+                if(jm){state.elements.push({id:genId('el'),type:'junction',x:p.x,y:p.y,r:jm.r||rr,color:jm.color,layer:jm.layer||el.layer||e['8']||'回路'});}
+                else{state.elements.push({id:genId('el'),type:'circle',x:p.x,y:p.y,r:rr,layer:el.layer||e['8']||'外形'});}
+              }else if(el.type==='arc'){
+                const p=tp(el.x,el.y);
+                state.elements.push({id:genId('el'),type:'arc',x:p.x,y:p.y,r:el.r*rAvg,startA:el.startA+rad,endA:el.endA+rad,ccw:true,layer:el.layer||e['8']||'外形'});
+              }else if(el.type==='text'){
+                const p=tp(el.x,el.y);
+                state.elements.push({id:genId('el'),type:'text',x:p.x,y:p.y,text:el.text,fs:el.fs,layer:el.layer||e['8']||'注記'});
+              }
+            });
+            ic++;
+          }
+          // ブロック定義自体が見つからない場合(BLOCKSに実体がない参照等)は座標情報がないため従来通りスキップ
+        }
         i=e._end;continue;
       }
       if(val==='LWPOLYLINE'){
