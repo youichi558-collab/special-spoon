@@ -700,7 +700,9 @@ function convertSelectedToJunction() {
   const targets = state.elements.filter(el => state.sel.els.has(el.id) && el.type === 'circle');
   if (!targets.length) { alert('選択範囲に円(circle)がありません。端子に変換したい円を選択してください。'); return; }
   pushH();
-  const style = state.junctionStyle || 'circle';
+  // 既定は白丸(circle)。分岐点用の黒丸(dot)はこの変換の用途に合わないため既定にしない。
+  // ◎(dbl)を明示的に選んでいる場合のみそれを尊重する。
+  const style = (state.junctionStyle === 'dbl') ? 'dbl' : 'circle';
   targets.forEach(el => {
     el.type = 'junction';
     el.style = style;
