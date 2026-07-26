@@ -364,8 +364,11 @@
 
     <!-- フローティングパネル群 -->
     <div class="fp" id="report-p" style="width:660px;max-width:95vw">
+      <div style="display:flex;align-items:center;margin-bottom:6px">
+        <h3 id="report-title" style="flex:1;margin:0"></h3>
+        <span onclick="closeFP('report-p')" style="cursor:pointer;font-size:18px;color:var(--fg3);padding:0 4px">×</span>
+      </div>
       <div id="report-tabs" style="display:flex;gap:3px;flex-wrap:wrap;border-bottom:1px solid var(--bd2);padding-bottom:0;margin-bottom:8px"></div>
-      <h3 id="report-title"></h3>
       <div id="report-body"></div>
       <div style="display:flex;gap:6px;margin-top:8px">
         <button class="fp-btn primary" id="report-csv-btn">CSV出力</button>
