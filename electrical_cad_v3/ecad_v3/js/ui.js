@@ -1849,14 +1849,19 @@ function showCtx(cx, cy) {
   });
   menu.style.left = cx + 'px'; menu.style.top = cy + 'px';
   menu.classList.add('open');
-  // 画面下部・右端で見切れる場合は表示位置を画面内に収まるよう補正する
+  // 画面下部・右端で見切れる場合は表示位置を補正する。
+  // #ctxmenuを実際にクリッピングしているのは#app(overflow:hidden)なので、
+  // window.innerWidth/innerHeightではなく#appの実境界と比較する
+  // (ブラウザの余白・スクロールバーの分だけwindowとずれることがあるため)。
   const pad = 4;
+  const bound = document.getElementById('app')?.getBoundingClientRect()
+    || { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
   const rect = menu.getBoundingClientRect();
   let dx = 0, dy = 0;
-  if (rect.right  > window.innerWidth)  dx = window.innerWidth  - rect.right  - pad;
-  if (rect.bottom > window.innerHeight) dy = window.innerHeight - rect.bottom - pad;
-  if (rect.left < 0) dx = -rect.left + pad;
-  if (rect.top  < 0) dy = -rect.top  + pad;
+  if (rect.right  > bound.right)  dx = bound.right  - rect.right  - pad;
+  if (rect.bottom > bound.bottom) dy = bound.bottom - rect.bottom - pad;
+  if (rect.left < bound.left) dx = bound.left - rect.left + pad;
+  if (rect.top  < bound.top)  dy = bound.top  - rect.top  + pad;
   if (dx || dy) {
     menu.style.left = (cx + dx) + 'px';
     menu.style.top  = (cy + dy) + 'px';
