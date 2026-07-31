@@ -128,16 +128,17 @@ def search_pdf(pdf_path, model_query, header_rows, out_rows, stop_at_first=False
     return False
 
 
-def search_model(target, model_query, header_rows=3, stop_at_first=False):
+def search_model(target, model_query, header_rows=3, stop_at_first=False, use_index=True):
     """target(PDFファイル or フォルダ)からmodel_queryを検索し、
     [(source_file, page_no, label, value), ...] を返す。サーバーからも呼べるように分離。
     stop_at_first=True の場合、最初に見つかった時点で残りの検索を打ち切る（高速だが、
     同じ型式が複数箇所にある場合は最初の1件しか拾えない）。
 
     索引(catalog_index)が作成済みの場合は、型式を含む可能性のあるファイルだけに
-    事前に絞り込んでから検索する(値の抽出ロジック自体は変更しない)。"""
+    事前に絞り込んでから検索する(値の抽出ロジック自体は変更しない)。
+    use_index=False を指定すると索引を使わず強制的に全件スキャンする(索引の検証用)。"""
     if os.path.isdir(target):
-        candidate_files = catalog_index.find_candidate_files(target, model_query)
+        candidate_files = catalog_index.find_candidate_files(target, model_query) if use_index else None
         if candidate_files is not None:
             pdf_files = [os.path.join(target, f) for f in candidate_files]
         else:

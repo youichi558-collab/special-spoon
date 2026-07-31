@@ -478,6 +478,31 @@ async function catalogSearch() {
   }
 }
 
+// 索引を使った検索と、索引を使わない全件スキャンを同じ条件で両方実行し、
+// 結果が完全に一致するか確認する(索引を信用してよいかの検証用)
+async function verifyIndexSearch() {
+  const catalog = document.getElementById('cs-catalog').value;
+  const mode = document.getElementById('cs-mode').value;
+  const model = document.getElementById('cs-model').value.trim();
+  const resultEl = document.getElementById('cs-result');
+  if (!model) { alert('型式を入力してください'); return; }
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = '検証中...（索引ありと索引なしの両方で検索するため、通常の検索より時間がかかります）';
+  try {
+    const url = `/api/verify_search?catalog=${encodeURIComponent(catalog)}&model=${encodeURIComponent(model)}&mode=${encodeURIComponent(mode)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.error) { resultEl.innerHTML = `<span style="color:var(--red)">${data.error}</span>`; return; }
+    if (data.match) {
+      resultEl.innerHTML = `<span style="color:#2a8">✓ 一致しました。索引ありで${data.indexed_count}件、全件スキャンでも${data.full_count}件、内容も完全に同じです。</span>`;
+    } else {
+      resultEl.innerHTML = `<span style="color:var(--red)">✗ 不一致です！索引あり:${data.indexed_count}件 / 全件スキャン:${data.full_count}件。索引が古い可能性があります。「インデックス作成/更新」を実行してから再度検証してください。</span>`;
+    }
+  } catch (e) {
+    resultEl.innerHTML = `<span style="color:var(--red)">検証エラー: ${e.message}（server.pyで起動していますか？）</span>`;
+  }
+}
+
 // 直近の検索結果(項目・値の一覧)をCSVファイルとしてPCに保存
 function exportSearchResultCSV() {
   if (!_lastSearchRows.length) { alert('検索結果がありません'); return; }

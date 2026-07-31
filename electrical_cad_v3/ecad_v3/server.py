@@ -77,6 +77,9 @@ class Handler(SimpleHTTPRequestHandler):
         if parsed.path == '/api/build_index':
             self.handle_build_index(parsed)
             return
+        if parsed.path == '/api/verify_search':
+            self.handle_verify_search(parsed)
+            return
         super().do_GET()
 
     def do_POST(self):
@@ -242,6 +245,47 @@ class Handler(SimpleHTTPRequestHandler):
             self._send_json({"error": f"インデックス作成中にエラーが発生しました: {e}"}, status=500)
             return
         self._send_json(result)
+
+    def handle_verify_search(self, parsed):
+        """索引あり(通常の検索)と索引なし(強制全件スキャン)で同じ条件で検索し、
+        結果が完全に一致するか比較する(索引を信用してよいかの検証用)。"""
+        qs = urllib.parse.parse_qs(parsed.query)
+        model = (qs.get('model') or [''])[0]
+        mode = (qs.get('mode') or ['pivot'])[0]
+        header_rows = int((qs.get('header_rows') or ['3'])[0])
+        if not model:
+            self._send_json({"error": "modelパラメータが必要です"}, status=400)
+            return
+        path, catalog = self._resolve_catalog_path(qs)
+        if not path:
+            self._send_json({"error": f"カタログ「{catalog}」のパスが未設定、または見つかりません"}, status=400)
+            return
+        try:
+            import pdfplumber  # noqa: F401
+        except ImportError:
+            self._send_json({"error": "pdfplumberが未インストールです。コマンドプロンプトで 'py -m pip install pdfplumber' を実行してください"}, status=500)
+            return
+        try:
+            if mode == 'list':
+                import find_spec_list as finder
+                rows_indexed = finder.search_model(path, model, header_rows, use_index=True)
+                rows_full = finder.search_model(path, model, header_rows, use_index=False)
+            else:
+                import find_spec as finder
+                rows_indexed = finder.search_model(path, model, use_index=True)
+                rows_full = finder.search_model(path, model, use_index=False)
+        except Exception as e:
+            self._send_json({"error": f"検証中にエラーが発生しました: {e}"}, status=500)
+            return
+        # 順序に依存しない比較(ファイル列挙順が索引経由と全件スキャンで一致するとは限らないため)
+        match = sorted(rows_indexed) == sorted(rows_full)
+        self._send_json({
+            "match": match,
+            "indexed_count": len(rows_indexed),
+            "full_count": len(rows_full),
+            "indexed_rows": [{"source": r[0], "page": r[1], "label": r[2], "value": r[3]} for r in rows_indexed],
+            "full_rows": [{"source": r[0], "page": r[1], "label": r[2], "value": r[3]} for r in rows_full],
+        })
 
     def _send_json(self, obj, status=200):
         body = json.dumps(obj, ensure_ascii=False).encode('utf-8')
