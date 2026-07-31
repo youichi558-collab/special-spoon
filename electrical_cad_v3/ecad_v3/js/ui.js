@@ -642,6 +642,14 @@ function _fbBreadcrumb(fullPath) {
   }).join(' <span style="color:var(--fg4)">›</span> ');
 }
 
+// パス文字列から末尾のフォルダ名だけを取り出す(カタログ名の自動入力用)
+function _fbBasename(fullPath) {
+  const sep = fullPath.includes('\\') ? '\\' : '/';
+  const trimmed = fullPath.replace(/[\\/]+$/, '');
+  const parts = trimmed.split(sep).filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : trimmed;
+}
+
 async function fbNavigate(path) {
   const listEl = document.getElementById('fb-list');
   const pathEl = document.getElementById('fb-current-path');
@@ -651,6 +659,10 @@ async function fbNavigate(path) {
     const data = await res.json();
     if (data.error) { listEl.innerHTML = `<span style="color:var(--red)">${data.error}</span>`; return; }
     _fbCurrentPath = data.path;
+    // フォルダ名を自動でカタログ名欄に入れておく(毎回手入力しなくて済むように)。
+    // ユーザーは必要ならそのまま上書き編集できる。
+    const nameEl = document.getElementById('fb-name');
+    if (nameEl && !data.is_root) nameEl.value = _fbBasename(data.path);
     // 常に「💽 ドライブ一覧」に一発で戻れるリンクを先頭に表示し、
     // それ以降はクリックで直接その階層へ飛べるパンくずリストにする
     const homeLink = `<span onclick="fbNavigate('')" style="cursor:pointer;color:var(--acc);text-decoration:underline">💽 ドライブ一覧</span>`;
