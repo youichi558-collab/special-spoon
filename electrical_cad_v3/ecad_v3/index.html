@@ -766,6 +766,10 @@
       <span onclick="closeFolderBrowser()" style="cursor:pointer;font-size:16px;color:var(--fg3);padding:0 4px">×</span>
     </div>
     <div style="padding:6px 12px;font-size:11px;color:var(--fg3);border-bottom:1px solid var(--bd2)" id="fb-current-path">読み込み中...</div>
+    <div style="padding:6px 12px;display:flex;gap:6px;border-bottom:1px solid var(--bd2)">
+      <input type="text" id="fb-path-input" placeholder="パスを直接入力(例: \\サーバー名\共有フォルダ)" style="flex:1;font-size:11px;padding:4px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:3px" onkeydown="if(event.key==='Enter')fbGoToPath()">
+      <button class="fp-btn" style="font-size:11px;padding:4px 8px" onclick="fbGoToPath()">移動</button>
+    </div>
     <div style="flex:1;overflow-y:auto;padding:6px" id="fb-list"></div>
     <div style="padding:8px 12px;border-top:1px solid var(--bd2);display:flex;gap:6px;align-items:center">
       <input type="text" id="fb-name" placeholder="カタログ名（例: 三菱電磁開閉器）" style="flex:1;font-size:11px;padding:4px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:3px">

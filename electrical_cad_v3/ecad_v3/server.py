@@ -13,10 +13,15 @@
 # ================================================================
 import json
 import os
+import re
 import string
 import sys
 import urllib.parse
 from http.server import HTTPServer, SimpleHTTPRequestHandler
+
+# UNCパスの共有ルート(例: \\server\share)を検出する正規表現。
+# これより上(\\serverだけ等)はos.listdirできないため、親フォルダとして扱わない。
+_UNC_SHARE_ROOT_RE = re.compile(r'^\\\\[^\\]+\\[^\\]+$')
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'tools', 'catalog'))
 
@@ -109,6 +114,9 @@ class Handler(SimpleHTTPRequestHandler):
         parent = os.path.dirname(path.rstrip('\\/'))
         # ドライブ直下(例 C:\)ではこれ以上上に行けないようにする
         if os.name == 'nt' and len(path.rstrip('\\/')) <= 2:
+            parent = ''
+        # UNC共有ルート(例 \\server\share)ではこれ以上上(\\serverだけ等)に行けないようにする
+        elif _UNC_SHARE_ROOT_RE.match(path.rstrip('\\/')):
             parent = ''
 
         self._send_json({

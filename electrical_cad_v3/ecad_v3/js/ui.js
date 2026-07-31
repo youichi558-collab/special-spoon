@@ -529,10 +529,32 @@ function closeFolderBrowser() {
   document.getElementById('folder-browser').style.display = 'none';
 }
 
+// パス直接入力欄から移動(UNCパス \\サーバー\共有 の直接指定に対応)
+function fbGoToPath() {
+  const v = document.getElementById('fb-path-input').value.trim();
+  if (!v) return;
+  fbNavigate(v);
+}
+
 // パス文字列からクリック可能なパンくずリスト(区間ごとに直接移動できるリンク)を作る
 function _fbBreadcrumb(fullPath) {
-  const sep = fullPath.includes('\\') ? '\\' : '/';
   const trimmed = fullPath.replace(/[\\/]+$/, '');
+  // UNCパス(\\サーバー名\共有フォルダ\...)は、サーバー名+共有名を1つの単位として扱う
+  // (\\サーバー名 だけではフォルダ一覧を取得できないため、そこだけは分割しない)
+  if (/^\\\\/.test(trimmed)) {
+    const rest = trimmed.replace(/^\\\\/, '');
+    const parts = rest.split('\\').filter(Boolean);
+    if (parts.length < 2) return `<span>${trimmed}</span>`;
+    const rootLabel = `${parts[0]}\\${parts[1]}`;
+    let acc = '\\\\' + rootLabel;
+    const segs = [`<span onclick='fbNavigate(${JSON.stringify(acc + '\\')})' style="cursor:pointer;color:var(--acc);text-decoration:underline">\\\\${rootLabel}</span>`];
+    for (let i = 2; i < parts.length; i++) {
+      acc += '\\' + parts[i];
+      segs.push(`<span onclick='fbNavigate(${JSON.stringify(acc + '\\')})' style="cursor:pointer;color:var(--acc);text-decoration:underline">${parts[i]}</span>`);
+    }
+    return segs.join(' <span style="color:var(--fg4)">›</span> ');
+  }
+  const sep = fullPath.includes('\\') ? '\\' : '/';
   const isAbsUnix = sep === '/' && trimmed.startsWith('/');
   const parts = trimmed.split(sep).filter(Boolean);
   let acc = '';
