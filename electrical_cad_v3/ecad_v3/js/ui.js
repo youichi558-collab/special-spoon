@@ -55,9 +55,6 @@ function closePrt() {
 function closeLayFloat() {
   document.getElementById('lay-float').style.display = 'none';
   document.querySelectorAll('.lt').forEach(e => e.classList.remove('on'));
-  // シンボルタブに戻す
-  const symTab = document.querySelector('.lt');
-  if (symTab) { symTab.classList.add('on'); document.getElementById('lt-sym').style.display = 'block'; }
 }
 
 // ----------------------------------------------------------------
@@ -122,9 +119,6 @@ function renderLayers() {
         </td>
       </tr>`).join('');
   }
-  // サイドバーの旧リストも更新（互換）
-  const ll = document.getElementById('layer-list');
-  if (ll) ll.innerHTML = '';
   document.getElementById('s-lay').textContent = LAYERS.find(l => l.active)?.name || '回路';
   // リボンのアクティブレイヤードロップダウンを同期
   const sel = document.getElementById('active-layer-sel');
@@ -339,26 +333,8 @@ function allParts() {
     ...state.customParts.map(p => ({ ...p, custom:true })),
   ];
 }
-function renderPartsAll()  { renderPartsTable(allParts()); }
+function renderPartsAll()  { renderPartsTable2(allParts()); }
 // filterParts は下で定義
-function renderPartsTable(parts) {
-  const hiddenCount = (state.hiddenBuiltinRefs || []).length;
-  document.getElementById('parts-table').innerHTML = parts.map(p => `
-    <div style="padding:4px 3px;border-bottom:1px solid var(--bg4);cursor:pointer" onclick="placePart('${p.type}','${p.ref}','${p.terminals||''}')">
-      <div style="display:flex;justify-content:space-between">
-        <span style="font-size:11px;font-weight:600;color:var(--fg)">${p.ref}</span>
-        ${p.custom
-          ? `<span onclick="event.stopPropagation();deletePart('${p.ref}')" style="font-size:9px;color:var(--red);cursor:pointer" title="削除">×</span>`
-          : `<span onclick="event.stopPropagation();hideBuiltinPart('${p.ref}')" style="font-size:9px;color:var(--fg3);cursor:pointer" title="一覧から非表示にする（標準部品は削除できないため）">×</span>`}
-      </div>
-      <div style="font-size:10px;color:var(--fg3)">${p.maker} ${p.volt||''} ${p.amp||''}</div>
-      ${p.contacts?`<div style="font-size:10px;color:var(--acc)">接点:${p.contacts}</div>`:''}
-      ${p.outlineDxf
-        ? `<div style="font-size:9px;color:var(--acc)">外形図: ${p.outlineDxfName||'あり'} <span onclick="event.stopPropagation();placePartOutline('${p.ref}')" style="cursor:pointer;text-decoration:underline">配置</span></div>`
-        : (p.custom ? `<div style="font-size:9px;color:var(--fg3)">外形図なし <span onclick="event.stopPropagation();attachOutlineToPart('${p.ref}')" style="cursor:pointer;text-decoration:underline;color:var(--acc)">添付</span></div>` : '')}
-    </div>`).join('')
-    + (hiddenCount ? `<div style="padding:6px 3px;text-align:center"><span onclick="showHiddenBuiltinParts()" style="font-size:10px;color:var(--acc);cursor:pointer;text-decoration:underline">非表示にした標準部品(${hiddenCount}件)を確認・復元</span></div>` : '');
-}
 // 標準部品(BUILTIN_PARTS)を一覧から非表示にする（コード埋め込みのため削除は不可、非表示扱いのみ）
 function hideBuiltinPart(ref) {
   if (!confirm(`標準部品「${ref}」を一覧から非表示にしますか？（後で復元できます）`)) return;
@@ -1155,34 +1131,16 @@ function saveCustomSymbol() {
       terminals: _srTerms.map((t,i) => ({ id:`t${i}`, x:t.x, y:t.y })) };
   }
   closeFP('sym-reg-p');
-  renderCustomSymbols();
+  renderSymFloat();
   alert(`「${name}」を登録しました。シンボルパレットのカスタムタブから配置できます。`);
 }
 
-function renderCustomSymbols() {
-  const el = document.getElementById('cus-list');
-  if (!el) return;
-  if (!state.customSymbols.length) { el.innerHTML = '<p style="font-size:11px;color:var(--fg3);padding:4px">登録済みシンボルがありません</p>'; return; }
-  const grps = {};
-  state.customSymbols.forEach(s => { if (!grps[s.cat]) grps[s.cat]=[]; grps[s.cat].push(s); });
-  el.innerHTML = Object.entries(grps).map(([cat,syms]) =>
-    `<h4>${cat}</h4>` + syms.map(s =>
-      `<div class="sym-item" onclick="pickSym(this,'${s.type}')" style="flex-direction:column;align-items:flex-start;gap:2px;padding:4px">
-        ${s.preview ? `<img src="${s.preview}" style="width:40px;height:30px;object-fit:contain;background:#fff;border-radius:2px;display:block">` : ''}
-        <div style="display:flex;width:100%;align-items:center;gap:4px"><span>${s.name}</span>
-        <span onclick="event.stopPropagation();openPinEditor('${s.type}')" title="端子(ピン)編集: ${(s.terminals||[]).length}点定義済み" style="margin-left:auto;color:${(s.terminals||[]).length?'#0067c0':'var(--fg3)'};font-size:11px;cursor:pointer">📍${(s.terminals||[]).length||''}</span>
-        <span onclick="event.stopPropagation();delCusSym('${s.type}')" style="color:var(--red);font-size:10px;cursor:pointer">×</span></div>
-      </div>`
-    ).join('')
-  ).join('');
-}
 function delCusSym(type) {
   if (!confirm('削除しますか？')) return;
   state.customSymbols = state.customSymbols.filter(s => s.type !== type);
   saveSymbolsToStorage();
   delete DEFS[type];
-
-  renderCustomSymbols();
+  renderSymFloat();
 }
 
 // ----------------------------------------------------------------
@@ -2144,7 +2102,6 @@ function renderSymFloat() {
   }
   body.innerHTML = html;
 }
-// renderCustomSymbols は上で定義済み
 
 // ----------------------------------------------------------------
 // 部品DBフローティングパネル
@@ -2174,7 +2131,6 @@ function renderPartsTable2(parts) {
 }
 function filterParts(q) {
   const parts = allParts().filter(p => !q || p.ref.toLowerCase().includes(q.toLowerCase()) || p.maker.toLowerCase().includes(q.toLowerCase()));
-  renderPartsTable(parts);
   renderPartsTable2(parts);
 }
 
@@ -2202,18 +2158,6 @@ function prtFloatDown(e) { _makeFloatDrag('prt-float')(e); }
 // ----------------------------------------------------------------
 // 標準シンボルの表示/非表示管理
 // ----------------------------------------------------------------
-function hideBuiltinSym(type) {
-  const sym = BUILTIN_SYMS.find(s => s.type === type);
-  if (!confirm(`「${sym?.label||type}」を非表示にしますか？`)) return;
-  const hidden = JSON.parse(localStorage.getItem('hiddenSyms')||'[]');
-  if (!hidden.includes(type)) hidden.push(type);
-  localStorage.setItem('hiddenSyms', JSON.stringify(hidden));
-  renderSymFloat();
-}
-function restoreAllSyms() {
-  localStorage.removeItem('hiddenSyms');
-  renderSymFloat();
-}
 
 
 // ----------------------------------------------------------------

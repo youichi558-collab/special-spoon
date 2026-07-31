@@ -53,7 +53,7 @@ function _safeInit(label, fn) {
   _safeInit('リボン高さ同期', () => { if (typeof syncRibbonHeight === 'function') syncRibbonHeight(); });
   _safeInit('レイヤー表示', renderLayers);
   _safeInit('部品DB表示', renderPartsAll);
-  _safeInit('カスタムシンボル表示', renderCustomSymbols);
+  _safeInit('カスタムシンボル表示', renderSymFloat);
   _safeInit('ページタブ表示', renderPageTabs);
   _safeInit('描画', draw);
   _safeInit('ヒント更新', updateHint);

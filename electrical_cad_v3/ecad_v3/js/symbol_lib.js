@@ -678,7 +678,7 @@ const symLib = (() => {
     });
 
     pushRecent(entry);
-    if(typeof renderCustomSymbols==='function') renderCustomSymbols();
+    if(typeof renderSymFloat==='function') renderSymFloat();
     draw();
     toast(`「${entry.label}」を追加しました`);
   }

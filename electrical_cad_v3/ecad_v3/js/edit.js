@@ -188,7 +188,7 @@ function loadProject(input) {
         (pg.elements||[]).forEach(el => { if (el.type !== 'junction') el.color = undefined; });
         (pg.wires||[]).forEach(w => { w.color = undefined; });
       });
-      renderCustomSymbols(); renderPartsAll(); renderPageTabs(); draw(); updateRightPanel();
+      renderSymFloat(); renderPartsAll(); renderPageTabs(); draw(); updateRightPanel();
       if (typeof partsDb !== 'undefined') partsDb.scheduleSave();
       alert('読込完了');
     } catch(err) {

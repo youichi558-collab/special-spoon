@@ -296,27 +296,10 @@
       <div class="lt" onclick="switchLTab('lay',this)">レイヤー</div>
       <div class="lt" onclick="switchLTab('prt',this)">部品DB</div>
     </div>
-    <div id="lp-body" style="display:none">
-      <div id="lt-sym">
-        <div style="padding-top:6px">
-          <div style="font-size:10px;color:var(--fg3);margin-bottom:4px">カスタムシンボル</div>
-          <div id="cus-list"></div>
-        </div>
-      </div>
-      <!-- 標準シンボル(電源・受動素子・スイッチ・制御機器)は使用しないため削除済み。
-           必要であれば以前のコミット(f39307e以前)からindex.htmlの該当箇所を復元可能。
-           pickSym()等の関連JS関数・DXFインポートのmapBlock()自動判定には影響なし。 -->
-      <div id="lt-lay" style="display:none">
-        <button onclick="addLayer()" style="width:100%;font-size:10px;padding:4px;margin-bottom:5px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)">+ レイヤー追加</button>
-        <button onclick="repairOrphanLayers()" title="全ページから、LAYERSに未登録だが要素が参照しているレイヤー名を検出して復元登録します(DXF出力が壊れる原因になるため)" style="width:100%;font-size:10px;padding:4px;margin-bottom:5px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)">孤立レイヤーを復元</button>
-        <div id="layer-list"></div>
-      </div>
-      <div id="lt-prt" style="display:none">
-        <input type="text" id="part-search" placeholder="型番・メーカー検索" oninput="filterParts(this.value)" style="margin-bottom:5px">
-        <div id="parts-table"></div>
-      </div>
-
-    </div>
+    <!-- #lp-tabsのボタンはswitchLTab()経由でsym-float/lay-float/prt-float(浮動パネル)を開閉する。
+         以前ここにあった#lp-body(旧インライン一覧)は常時display:noneで実際には表示されておらず、
+         完全に未使用だったため削除した。カスタムシンボル一覧・レイヤー一覧・部品DB一覧は
+         それぞれsym-float/lay-float/prt-floatが表示を担っている。 -->
   </div>
 
   <!-- キャンバス -->
@@ -808,6 +791,7 @@
   <div id="lay-float-title" onpointerdown="layFloatDown(event)" style="display:flex;align-items:center;padding:6px 10px;background:var(--bg3);border-bottom:1px solid var(--bd2);border-radius:6px 6px 0 0;cursor:move;user-select:none">
     <span style="flex:1;font-size:12px;font-weight:600;color:var(--fg)">レイヤー</span>
     <button onclick="addLayer()" style="font-size:10px;padding:2px 8px;margin-right:6px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg);white-space:nowrap">+ 追加</button>
+    <button onclick="repairOrphanLayers()" title="全ページから、LAYERSに未登録だが要素が参照しているレイヤー名を検出して復元登録します(DXF出力が壊れる原因になるため)" style="font-size:10px;padding:2px 8px;margin-right:6px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg);white-space:nowrap">孤立復元</button>
     <span onclick="closeLayFloat()" style="cursor:pointer;font-size:14px;color:var(--fg3);padding:0 4px">×</span>
   </div>
   <div style="overflow-x:auto">
