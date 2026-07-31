@@ -584,7 +584,7 @@ async function fbNavigate(path) {
     }
     let html = '';
     if (!data.is_root && data.parent !== undefined && data.parent !== '') {
-      html += `<div class="fb-item" onclick="fbNavigate(${JSON.stringify(data.parent)})" style="padding:5px 6px;cursor:pointer;border-radius:3px;color:var(--fg3)">.. (上へ)</div>`;
+      html += `<div class="fb-item" onclick='fbNavigate(${JSON.stringify(data.parent)})' style="padding:5px 6px;cursor:pointer;border-radius:3px;color:var(--fg3)">.. (上へ)</div>`;
     }
     (data.dirs || []).forEach(d => {
       const full = data.is_root ? d : (data.path.replace(/[\\/]+$/, '') + (data.path.includes('\\') ? '\\' : '/') + d);
