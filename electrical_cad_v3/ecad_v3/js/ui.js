@@ -2122,41 +2122,11 @@ function importCustomSymbols() {
 function renderSymFloat() {
   const body = document.getElementById('sym-float-body');
   if (!body) return;
-  // カテゴリーごとにグループ化
-  const _hiddenSyms = JSON.parse(localStorage.getItem('hiddenSyms')||'[]');
-  const visibleSyms = BUILTIN_SYMS.filter(s => !_hiddenSyms.includes(s.type));
-  const cats = {};
-  visibleSyms.forEach(s => { if (!cats[s.cat]) cats[s.cat]=[]; cats[s.cat].push(s); });
-  const _symOn = t => (state.mode === 'sym' && state.symType === t) ? ' on' : '';
-  const _symItem = (s, showHide) =>
-    `<div class="sym-item${_symOn(s.type)}" onclick="pickSym(this,'${s.type}')" style="flex-direction:column;align-items:center;padding:5px 3px;gap:3px;position:relative">
-        ${showHide ? `<span onclick="event.stopPropagation();hideBuiltinSym('${s.type}')" style="position:absolute;top:2px;right:2px;font-size:9px;color:var(--fg3);cursor:pointer;line-height:1">×</span>` : ''}
-        ${s.svg}
-        <span style="font-size:9px;text-align:center;line-height:1.2">${s.label}</span>
-      </div>`;
+  // 標準シンボル(電源・受動素子・スイッチ・制御機器)は使用しないため一切表示しない。
+  // カスタムシンボルのみを表示する。
   let html = '';
-  if (_hiddenSyms.length > 0) {
-    html += `<div style="text-align:right;margin-bottom:4px"><span onclick="restoreAllSyms()" style="font-size:9px;color:var(--acc);cursor:pointer">すべて復元</span></div>`;
-  }
-  // 最近使ったシンボル
-  let _recTypes = [];
-  try { _recTypes = JSON.parse(localStorage.getItem('recentBuiltinSyms') || '[]'); } catch(e) {}
-  const _recSyms = _recTypes.map(t => visibleSyms.find(s => s.type === t)).filter(Boolean);
-  if (_recSyms.length) {
-    html += `<div style="font-size:9px;color:var(--fg3);font-weight:700;margin:2px 0 3px;text-transform:uppercase;letter-spacing:.06em">🕒 最近使った</div>`;
-    html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid var(--bd2)">`;
-    _recSyms.forEach(s => { html += _symItem(s, false); });
-    html += `</div>`;
-  }
-  Object.entries(cats).forEach(([cat, syms]) => {
-    html += `<div style="font-size:9px;color:var(--fg3);font-weight:700;margin:6px 0 3px;text-transform:uppercase;letter-spacing:.06em">${cat}</div>`;
-    html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-bottom:4px">`;
-    syms.forEach(s => { html += _symItem(s, true); });
-    html += `</div>`;
-  });
-  // カスタムシンボル
   if (state.customSymbols && state.customSymbols.length) {
-    html += `<div style="font-size:9px;color:var(--fg3);font-weight:700;margin:8px 0 3px;text-transform:uppercase;letter-spacing:.06em;border-top:1px solid var(--bd2);padding-top:6px">カスタム</div>`;
+    html += `<div style="font-size:9px;color:var(--fg3);font-weight:700;margin:2px 0 3px;text-transform:uppercase;letter-spacing:.06em">カスタム</div>`;
     html += `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:3px">`;
     state.customSymbols.forEach(s => {
       const img = s.preview ? `<img src="${s.preview}" style="width:64px;height:48px;object-fit:contain;background:#fff;border-radius:2px">` : `<svg width="36" height="28"></svg>`;
@@ -2169,6 +2139,8 @@ function renderSymFloat() {
       </div>`;
     });
     html += `</div>`;
+  } else {
+    html = `<p style="font-size:11px;color:var(--fg3);padding:4px">登録済みシンボルがありません</p>`;
   }
   body.innerHTML = html;
 }
