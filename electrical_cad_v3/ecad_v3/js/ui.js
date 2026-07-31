@@ -529,6 +529,20 @@ function closeFolderBrowser() {
   document.getElementById('folder-browser').style.display = 'none';
 }
 
+// パス文字列からクリック可能なパンくずリスト(区間ごとに直接移動できるリンク)を作る
+function _fbBreadcrumb(fullPath) {
+  const sep = fullPath.includes('\\') ? '\\' : '/';
+  const trimmed = fullPath.replace(/[\\/]+$/, '');
+  const isAbsUnix = sep === '/' && trimmed.startsWith('/');
+  const parts = trimmed.split(sep).filter(Boolean);
+  let acc = '';
+  return parts.map((p, i) => {
+    acc = (i === 0) ? (isAbsUnix ? sep : '') + p : acc + sep + p;
+    const full = acc + sep;
+    return `<span onclick='fbNavigate(${JSON.stringify(full)})' style="cursor:pointer;color:var(--acc);text-decoration:underline">${p}</span>`;
+  }).join(' <span style="color:var(--fg4)">›</span> ');
+}
+
 async function fbNavigate(path) {
   const listEl = document.getElementById('fb-list');
   const pathEl = document.getElementById('fb-current-path');
@@ -538,14 +552,23 @@ async function fbNavigate(path) {
     const data = await res.json();
     if (data.error) { listEl.innerHTML = `<span style="color:var(--red)">${data.error}</span>`; return; }
     _fbCurrentPath = data.path;
-    pathEl.textContent = data.is_root ? 'ドライブを選択してください' : `${data.path}　（PDF: ${data.pdf_count}件）`;
+    // 常に「💽 ドライブ一覧」に一発で戻れるリンクを先頭に表示し、
+    // それ以降はクリックで直接その階層へ飛べるパンくずリストにする
+    const homeLink = `<span onclick="fbNavigate('')" style="cursor:pointer;color:var(--acc);text-decoration:underline">💽 ドライブ一覧</span>`;
+    if (data.is_root) {
+      pathEl.innerHTML = `${homeLink}　（下の一覧からドライブを選んでください）`;
+    } else {
+      pathEl.innerHTML = `${homeLink} <span style="color:var(--fg4)">›</span> ${_fbBreadcrumb(data.path)}　<span style="color:var(--fg3)">(PDF: ${data.pdf_count}件)</span>`;
+    }
     let html = '';
     if (!data.is_root && data.parent !== undefined && data.parent !== '') {
       html += `<div class="fb-item" onclick="fbNavigate(${JSON.stringify(data.parent)})" style="padding:5px 6px;cursor:pointer;border-radius:3px;color:var(--fg3)">.. (上へ)</div>`;
     }
     (data.dirs || []).forEach(d => {
       const full = data.is_root ? d : (data.path.replace(/[\\/]+$/, '') + (data.path.includes('\\') ? '\\' : '/') + d);
-      html += `<div class="fb-item" onclick='fbNavigate(${JSON.stringify(full)})' style="padding:5px 6px;cursor:pointer;border-radius:3px">📁 ${d}</div>`;
+      // ドライブ(ルート画面)とサブフォルダはアイコン・表記を変えて区別する
+      const label = data.is_root ? `💽 ${d}　ドライブ` : `📁 ${d}`;
+      html += `<div class="fb-item" onclick='fbNavigate(${JSON.stringify(full)})' style="padding:5px 6px;cursor:pointer;border-radius:3px">${label}</div>`;
     });
     listEl.innerHTML = html || '<span style="color:var(--fg3)">(サブフォルダなし)</span>';
   } catch (e) {
