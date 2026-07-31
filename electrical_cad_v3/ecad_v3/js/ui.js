@@ -382,6 +382,27 @@ function showPartReg() {
   loadCatalogList().then(() => refreshIndexStatus());
 }
 
+// カタログ登録を一覧から削除する(catalog_config.jsonの登録名を消すだけ。
+// 実際のフォルダやインデックスファイルは削除しない)
+async function deleteCatalog() {
+  const name = document.getElementById('cs-catalog').value;
+  if (!name) { alert('削除するカタログを選択してください'); return; }
+  if (!confirm(`「${name}」の登録を削除しますか？（フォルダ本体や索引ファイルは削除されません）`)) return;
+  try {
+    const res = await fetch('/api/delete_catalog', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    const data = await res.json();
+    if (data.error) { alert(data.error); return; }
+    await loadCatalogList();
+    document.getElementById('cs-index-status').textContent = '';
+    alert(`「${name}」の登録を削除しました`);
+  } catch (e) {
+    alert('削除エラー: ' + e.message);
+  }
+}
+
 // ローカルサーバーのAPIからカタログ一覧を取得してプルダウンに反映
 async function loadCatalogList() {
   const sel = document.getElementById('cs-catalog');

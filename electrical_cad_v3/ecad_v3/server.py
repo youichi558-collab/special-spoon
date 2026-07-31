@@ -84,6 +84,9 @@ class Handler(SimpleHTTPRequestHandler):
         if parsed.path == '/api/save_catalog':
             self.handle_save_catalog()
             return
+        if parsed.path == '/api/delete_catalog':
+            self.handle_delete_catalog()
+            return
         self.send_error(404)
 
     def handle_browse(self, parsed):
@@ -154,6 +157,26 @@ class Handler(SimpleHTTPRequestHandler):
         """設定済みのカタログ名一覧を返す（プルダウン用）"""
         cfg = load_config()
         self._send_json({"catalogs": list(cfg.get("catalog_paths", {}).keys())})
+
+    def handle_delete_catalog(self):
+        """catalog_config.jsonから登録名を削除する(あくまで登録の解除。
+        実際のフォルダやインデックス(.catalog_index.sqlite3)は削除しない)"""
+        length = int(self.headers.get('Content-Length', 0))
+        try:
+            body = json.loads(self.rfile.read(length) or b'{}')
+        except Exception:
+            body = {}
+        name = (body.get('name') or '').strip()
+        if not name:
+            self._send_json({"error": "nameが必要です"}, status=400)
+            return
+        cfg = load_config()
+        if name not in cfg.get('catalog_paths', {}):
+            self._send_json({"error": f"「{name}」は登録されていません"}, status=400)
+            return
+        del cfg['catalog_paths'][name]
+        save_config(cfg)
+        self._send_json({"ok": True, "catalogs": list(cfg['catalog_paths'].keys())})
 
     def _resolve_catalog_path(self, qs):
         """クエリの catalog(登録名) または path(生パス) からカタログフォルダの実パスを解決する。

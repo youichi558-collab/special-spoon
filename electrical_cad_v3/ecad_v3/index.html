@@ -557,7 +557,10 @@
       <p style="font-size:10px;color:var(--fg3);margin-bottom:4px">catalog_config.json に登録したカタログPDF/フォルダから型式を検索します。表の形式はカタログによって「フレームが列（三菱タイプ）」と「フレームが行のかたまり（富士タイプ）」の2種類あるので、見た目に合わせて選んでください。</p>
       <div class="g2">
         <div class="fr"><label>カタログ</label>
-          <select id="cs-catalog" onchange="refreshIndexStatus()"><option value="">(読込中...)</option></select>
+          <div style="display:flex;gap:4px;align-items:center">
+            <select id="cs-catalog" onchange="refreshIndexStatus()" style="flex:1"><option value="">(読込中...)</option></select>
+            <span onclick="deleteCatalog()" title="選択中のカタログ登録を削除(フォルダ本体・索引ファイルは削除されません)" style="cursor:pointer;color:var(--red);font-size:14px;padding:0 4px">🗑</span>
+          </div>
         </div>
         <div class="fr"><label>表の形式</label>
           <select id="cs-mode">
