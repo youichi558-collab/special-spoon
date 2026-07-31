@@ -568,12 +568,12 @@
       </div>
       <div style="margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="openFolderBrowser()">📁 フォルダを選択して追加</button>
-        <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="buildCatalogIndex()">⚡ インデックス作成/更新</button>
         <span id="cs-index-status" style="font-size:10px;color:var(--fg3)"></span>
       </div>
       <p style="font-size:9px;color:var(--fg3);margin:-4px 0 6px">
-        インデックスを作っておくと、次回以降の検索が大幅に速くなります(全PDFの文章を1回だけ読み取ってキャッシュし、
-        検索時は該当しそうなファイルだけを開くため)。ファイルを追加・更新したら作成し直してください(更新分だけ処理されます)。
+        索引(インデックス)はCADの画面からではなく、ecad_v3フォルダ内の「インデックス作成.bat」を
+        ダブルクリックして作成・更新してください(登録済みの全カタログをまとめて処理します)。
+        作っておくと検索が大幅に速くなります。
       </p>
       <div class="fr"><label>型式</label><input type="text" id="cs-model" placeholder="例: S-T20 または SC20XA-□10"></div>
       <label style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--fg3);margin:2px 0 6px">

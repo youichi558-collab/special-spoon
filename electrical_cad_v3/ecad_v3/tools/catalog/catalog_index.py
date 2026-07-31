@@ -21,8 +21,14 @@ catalog_index.py
   (カタログフォルダごとに1つ。フォルダを消せば索引も一緒に消える)。
 
 使い方(単体実行時):
-    python3 catalog_index.py build <カタログフォルダ>   # インデックス作成/更新
+    python3 catalog_index.py build <カタログフォルダ>   # 指定フォルダのインデックス作成/更新
+    python3 catalog_index.py build-all                  # catalog_config.json登録済みの全カタログをまとめて処理
     python3 catalog_index.py stats <カタログフォルダ>   # 索引の状態を表示
+
+※ CADの画面(server.py)からインデックスを作成する機能は用意していない。
+   CADとインデックス作成を別プロセスとして切り離すため、作成・更新は
+   このスクリプト(またはecad_v3直下の「インデックス作成.bat」)から行う。
+   CAD側はできあがった索引を読んで検索・状態表示・検証をするだけ。
 """
 import os
 import sqlite3
@@ -149,11 +155,57 @@ def find_candidate_files(catalog_path, model_query):
     return sorted(files)
 
 
+def build_all_from_config(config_path, progress_cb=None):
+    """catalog_config.jsonに登録されている全カタログをまとめてインデックス化する。
+    戻り値: {カタログ名: build_indexの結果dict または {"error": ...}}"""
+    import json
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            cfg = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+    results = {}
+    for name, path in cfg.get('catalog_paths', {}).items():
+        if progress_cb:
+            progress_cb(name, path)
+        if not path or not os.path.isdir(path):
+            results[name] = {"error": f"フォルダが見つかりません: {path}"}
+            continue
+        results[name] = build_index(path)
+    return results
+
+
 def main():
-    if len(sys.argv) < 3 or sys.argv[1] not in ('build', 'stats'):
+    if len(sys.argv) < 2 or sys.argv[1] not in ('build', 'stats', 'build-all'):
         print(__doc__)
         sys.exit(1)
-    cmd, path = sys.argv[1], sys.argv[2]
+    cmd = sys.argv[1]
+    if cmd == 'build-all':
+        # catalog_config.json (tools/catalog の2つ上、ecad_v3直下)を読んで、
+        # 登録されている全カタログをまとめてインデックス化する
+        config_path = sys.argv[2] if len(sys.argv) > 2 else os.path.join(
+            os.path.dirname(__file__), '..', '..', 'catalog_config.json')
+        config_path = os.path.abspath(config_path)
+        print(f"設定ファイル: {config_path}\n")
+
+        def cb(name, path):
+            print(f"=== {name} ({path}) ===")
+        results = build_all_from_config(config_path, progress_cb=cb)
+        if not results:
+            print("catalog_config.jsonにカタログが登録されていません。")
+            print("先にCADの部品登録パネルで「フォルダを選択して追加」からカタログを登録してください。")
+            return
+        for name, r in results.items():
+            if "error" in r:
+                print(f"  → エラー: {r['error']}")
+            else:
+                print(f"  → 更新{r['scanned']}件・スキップ{r['skipped']}件・総{r['pages']}ページ ({r['elapsed']}秒)")
+        return
+
+    if len(sys.argv) < 3:
+        print(__doc__)
+        sys.exit(1)
+    path = sys.argv[2]
     if cmd == 'build':
         def cb(done, total, fname, skipped):
             mark = 'skip' if skipped else 'done'

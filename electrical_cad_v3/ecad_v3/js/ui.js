@@ -416,9 +416,9 @@ async function refreshIndexStatus() {
     const data = await res.json();
     if (data.error) { statusEl.textContent = ''; return; }
     if (!data.exists) {
-      statusEl.innerHTML = `<span style="color:var(--fg3)">索引未作成（検索は毎回全PDFを読むため遅くなります）</span>`;
+      statusEl.innerHTML = `<span style="color:var(--fg3)">索引未作成（検索は毎回全PDFを読むため遅くなります。ecad_v3フォルダの「インデックス作成.bat」で作成できます）</span>`;
     } else if (data.stale_count > 0) {
-      statusEl.innerHTML = `<span style="color:var(--acc)">索引あり(${data.files}件/${data.pages}ページ) — ただし${data.stale_count}件のファイルが未反映です。更新をおすすめします</span>`;
+      statusEl.innerHTML = `<span style="color:var(--acc)">索引あり(${data.files}件/${data.pages}ページ) — ただし${data.stale_count}件のファイルが未反映です。「インデックス作成.bat」の再実行をおすすめします</span>`;
     } else {
       statusEl.innerHTML = `<span style="color:var(--fg3)">索引あり(${data.files}件/${data.pages}ページ、最新)</span>`;
     }
@@ -429,21 +429,6 @@ async function refreshIndexStatus() {
 
 // カタログのインデックス(各PDFページの全文キャッシュ)を作成・更新する。
 // 差分更新のため、2回目以降は変更のあったファイルだけが処理される。
-async function buildCatalogIndex() {
-  const catalog = document.getElementById('cs-catalog').value;
-  if (!catalog) { alert('カタログを選択してください'); return; }
-  const statusEl = document.getElementById('cs-index-status');
-  statusEl.innerHTML = `<span style="color:var(--acc)">インデックス作成中...（フォルダが大きいと初回は数分かかることがあります）</span>`;
-  try {
-    const res = await fetch(`/api/build_index?${_csCatalogQuery()}`);
-    const data = await res.json();
-    if (data.error) { statusEl.innerHTML = `<span style="color:var(--red)">${data.error}</span>`; return; }
-    statusEl.innerHTML = `<span style="color:var(--fg3)">完了: 更新${data.scanned}件・スキップ${data.skipped}件・総${data.pages}ページ (${data.elapsed}秒)</span>`;
-  } catch (e) {
-    statusEl.innerHTML = `<span style="color:var(--red)">エラー: ${e.message}（server.pyで起動していますか？）</span>`;
-  }
-}
-
 // カタログPDF内を型式検索し、結果をパネルに表示
 let _lastSearchRows = [];
 let _lastSearchModel = '';
@@ -496,7 +481,7 @@ async function verifyIndexSearch() {
     if (data.match) {
       resultEl.innerHTML = `<span style="color:#2a8">✓ 一致しました。索引ありで${data.indexed_count}件、全件スキャンでも${data.full_count}件、内容も完全に同じです。</span>`;
     } else {
-      resultEl.innerHTML = `<span style="color:var(--red)">✗ 不一致です！索引あり:${data.indexed_count}件 / 全件スキャン:${data.full_count}件。索引が古い可能性があります。「インデックス作成/更新」を実行してから再度検証してください。</span>`;
+      resultEl.innerHTML = `<span style="color:var(--red)">✗ 不一致です！索引あり:${data.indexed_count}件 / 全件スキャン:${data.full_count}件。索引が古い可能性があります。ecad_v3フォルダの「インデックス作成.bat」を実行してから再度検証してください。</span>`;
     }
   } catch (e) {
     resultEl.innerHTML = `<span style="color:var(--red)">検証エラー: ${e.message}（server.pyで起動していますか？）</span>`;

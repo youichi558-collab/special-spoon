@@ -74,9 +74,6 @@ class Handler(SimpleHTTPRequestHandler):
         if parsed.path == '/api/index_stats':
             self.handle_index_stats(parsed)
             return
-        if parsed.path == '/api/build_index':
-            self.handle_build_index(parsed)
-            return
         if parsed.path == '/api/verify_search':
             self.handle_verify_search(parsed)
             return
@@ -224,27 +221,6 @@ class Handler(SimpleHTTPRequestHandler):
             return
         stale = catalog_index.stale_files(path)
         self._send_json({"exists": True, "files": stats["files"], "pages": stats["pages"], "stale_count": len(stale or [])})
-
-    def handle_build_index(self, parsed):
-        """カタログフォルダのインデックス(各ページ全文キャッシュ)を作成・更新する。
-        フォルダが大きい場合は数分かかることがある(検索と同様、その間サーバーは他の要求を待たせる)。"""
-        qs = urllib.parse.parse_qs(parsed.query)
-        path, catalog = self._resolve_catalog_path(qs)
-        if not path:
-            self._send_json({"error": f"カタログ「{catalog}」のパスが未設定、または見つかりません"}, status=400)
-            return
-        try:
-            import pdfplumber  # noqa: F401
-        except ImportError:
-            self._send_json({"error": "pdfplumberが未インストールです。コマンドプロンプトで 'py -m pip install pdfplumber' を実行してください"}, status=500)
-            return
-        import catalog_index
-        try:
-            result = catalog_index.build_index(path)
-        except Exception as e:
-            self._send_json({"error": f"インデックス作成中にエラーが発生しました: {e}"}, status=500)
-            return
-        self._send_json(result)
 
     def handle_verify_search(self, parsed):
         """索引あり(通常の検索)と索引なし(強制全件スキャン)で同じ条件で検索し、
