@@ -7,7 +7,7 @@
 # 起動: py server.py  (start.bat から呼ばれる)
 # 停止: Ctrl+C
 #
-# 必要ライブラリ: pdfplumber (pip install pdfplumber --break-system-packages)
+# 必要ライブラリ: pdfplumber (コマンドプロンプトで: py -m pip install pdfplumber)
 #   ※ 未インストールでも通常のCAD機能（静的ファイル配信）は動く。
 #      検索APIを使うときだけ pdfplumber が必要。
 # ================================================================
@@ -178,7 +178,7 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             import pdfplumber  # noqa: F401  (存在確認)
         except ImportError:
-            self._send_json({"error": "pdfplumberが未インストールです。'pip install pdfplumber --break-system-packages' を実行してください"}, status=500)
+            self._send_json({"error": "pdfplumberが未インストールです。コマンドプロンプトで 'py -m pip install pdfplumber' を実行してください"}, status=500)
             return
 
         try:
