@@ -379,7 +379,7 @@ function placePart(type, ref, terminals) {
 }
 function showPartReg() {
   openFP('part-reg-p');
-  loadCatalogList();
+  loadCatalogList().then(() => refreshIndexStatus());
 }
 
 // ローカルサーバーのAPIからカタログ一覧を取得してプルダウンに反映
@@ -395,6 +395,52 @@ async function loadCatalogList() {
       : '<option value="">(catalog_config.jsonに未設定)</option>';
   } catch (e) {
     sel.innerHTML = '<option value="">(サーバー未対応・start.batを最新版で起動してください)</option>';
+  }
+}
+
+// カタログ選択欄で選ばれているカタログ名を、/api/index_stats・/api/build_index用の
+// クエリ文字列(catalog=名前 または フォルダピッカーで選んだ生パスならpath=...)に変換する
+function _csCatalogQuery() {
+  const catalog = document.getElementById('cs-catalog').value;
+  return `catalog=${encodeURIComponent(catalog)}`;
+}
+
+// カタログ選択が変わったら索引の状態(件数・古いファイルの有無)を表示する
+async function refreshIndexStatus() {
+  const statusEl = document.getElementById('cs-index-status');
+  const catalog = document.getElementById('cs-catalog').value;
+  if (!catalog) { statusEl.textContent = ''; return; }
+  statusEl.textContent = '索引を確認中...';
+  try {
+    const res = await fetch(`/api/index_stats?${_csCatalogQuery()}`);
+    const data = await res.json();
+    if (data.error) { statusEl.textContent = ''; return; }
+    if (!data.exists) {
+      statusEl.innerHTML = `<span style="color:var(--fg3)">索引未作成（検索は毎回全PDFを読むため遅くなります）</span>`;
+    } else if (data.stale_count > 0) {
+      statusEl.innerHTML = `<span style="color:var(--acc)">索引あり(${data.files}件/${data.pages}ページ) — ただし${data.stale_count}件のファイルが未反映です。更新をおすすめします</span>`;
+    } else {
+      statusEl.innerHTML = `<span style="color:var(--fg3)">索引あり(${data.files}件/${data.pages}ページ、最新)</span>`;
+    }
+  } catch (e) {
+    statusEl.textContent = '';
+  }
+}
+
+// カタログのインデックス(各PDFページの全文キャッシュ)を作成・更新する。
+// 差分更新のため、2回目以降は変更のあったファイルだけが処理される。
+async function buildCatalogIndex() {
+  const catalog = document.getElementById('cs-catalog').value;
+  if (!catalog) { alert('カタログを選択してください'); return; }
+  const statusEl = document.getElementById('cs-index-status');
+  statusEl.innerHTML = `<span style="color:var(--acc)">インデックス作成中...（フォルダが大きいと初回は数分かかることがあります）</span>`;
+  try {
+    const res = await fetch(`/api/build_index?${_csCatalogQuery()}`);
+    const data = await res.json();
+    if (data.error) { statusEl.innerHTML = `<span style="color:var(--red)">${data.error}</span>`; return; }
+    statusEl.innerHTML = `<span style="color:var(--fg3)">完了: 更新${data.scanned}件・スキップ${data.skipped}件・総${data.pages}ページ (${data.elapsed}秒)</span>`;
+  } catch (e) {
+    statusEl.innerHTML = `<span style="color:var(--red)">エラー: ${e.message}（server.pyで起動していますか？）</span>`;
   }
 }
 
@@ -612,6 +658,7 @@ async function saveFolderAsCatalog() {
     closeFolderBrowser();
     await loadCatalogList();
     document.getElementById('cs-catalog').value = name;
+    refreshIndexStatus();
     alert(`「${name}」として登録しました: ${_fbCurrentPath}`);
   } catch (e) {
     alert('保存エラー: ' + e.message);

@@ -71,6 +71,12 @@ class Handler(SimpleHTTPRequestHandler):
         if parsed.path == '/api/browse':
             self.handle_browse(parsed)
             return
+        if parsed.path == '/api/index_stats':
+            self.handle_index_stats(parsed)
+            return
+        if parsed.path == '/api/build_index':
+            self.handle_build_index(parsed)
+            return
         super().do_GET()
 
     def do_POST(self):
@@ -149,10 +155,22 @@ class Handler(SimpleHTTPRequestHandler):
         cfg = load_config()
         self._send_json({"catalogs": list(cfg.get("catalog_paths", {}).keys())})
 
-    def handle_search(self, parsed):
-        qs = urllib.parse.parse_qs(parsed.query)
+    def _resolve_catalog_path(self, qs):
+        """クエリの catalog(登録名) または path(生パス) からカタログフォルダの実パスを解決する。
+        見つからない場合は None を返す(呼び出し側でエラーレスポンスを組み立てる)。"""
         catalog = (qs.get('catalog') or [''])[0]
         raw_path = (qs.get('path') or [''])[0]
+        if raw_path:
+            path = raw_path
+        else:
+            cfg = load_config()
+            path = cfg.get("catalog_paths", {}).get(catalog)
+        if not path or not os.path.exists(path):
+            return None, catalog
+        return path, catalog
+
+    def handle_search(self, parsed):
+        qs = urllib.parse.parse_qs(parsed.query)
         model = (qs.get('model') or [''])[0]
         mode = (qs.get('mode') or ['pivot'])[0]
         header_rows = int((qs.get('header_rows') or ['3'])[0])
@@ -162,14 +180,8 @@ class Handler(SimpleHTTPRequestHandler):
             self._send_json({"error": "modelパラメータが必要です"}, status=400)
             return
 
-        if raw_path:
-            # カタログ名を経由せず、フォルダピッカーで選んだ生パスを直接使う場合
-            path = raw_path
-        else:
-            cfg = load_config()
-            path = cfg.get("catalog_paths", {}).get(catalog)
-
-        if not path or not os.path.exists(path):
+        path, catalog = self._resolve_catalog_path(qs)
+        if not path:
             self._send_json({
                 "error": f"カタログ「{catalog}」のパスが未設定、または見つかりません（catalog_config.jsonを確認してください）",
             }, status=400)
@@ -194,6 +206,42 @@ class Handler(SimpleHTTPRequestHandler):
 
         result = [{"source": r[0], "page": r[1], "label": r[2], "value": r[3]} for r in rows]
         self._send_json({"rows": result, "stop_first": stop_first})
+
+    def handle_index_stats(self, parsed):
+        """索引の有無・件数・古いファイルの有無を返す(検索前の状態確認・警告表示用)"""
+        qs = urllib.parse.parse_qs(parsed.query)
+        path, catalog = self._resolve_catalog_path(qs)
+        if not path:
+            self._send_json({"error": f"カタログ「{catalog}」のパスが未設定、または見つかりません"}, status=400)
+            return
+        import catalog_index
+        stats = catalog_index.index_stats(path)
+        if stats is None:
+            self._send_json({"exists": False})
+            return
+        stale = catalog_index.stale_files(path)
+        self._send_json({"exists": True, "files": stats["files"], "pages": stats["pages"], "stale_count": len(stale or [])})
+
+    def handle_build_index(self, parsed):
+        """カタログフォルダのインデックス(各ページ全文キャッシュ)を作成・更新する。
+        フォルダが大きい場合は数分かかることがある(検索と同様、その間サーバーは他の要求を待たせる)。"""
+        qs = urllib.parse.parse_qs(parsed.query)
+        path, catalog = self._resolve_catalog_path(qs)
+        if not path:
+            self._send_json({"error": f"カタログ「{catalog}」のパスが未設定、または見つかりません"}, status=400)
+            return
+        try:
+            import pdfplumber  # noqa: F401
+        except ImportError:
+            self._send_json({"error": "pdfplumberが未インストールです。コマンドプロンプトで 'py -m pip install pdfplumber' を実行してください"}, status=500)
+            return
+        import catalog_index
+        try:
+            result = catalog_index.build_index(path)
+        except Exception as e:
+            self._send_json({"error": f"インデックス作成中にエラーが発生しました: {e}"}, status=500)
+            return
+        self._send_json(result)
 
     def _send_json(self, obj, status=200):
         body = json.dumps(obj, ensure_ascii=False).encode('utf-8')

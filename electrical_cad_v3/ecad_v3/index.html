@@ -557,7 +557,7 @@
       <p style="font-size:10px;color:var(--fg3);margin-bottom:4px">catalog_config.json に登録したカタログPDF/フォルダから型式を検索します。表の形式はカタログによって「フレームが列（三菱タイプ）」と「フレームが行のかたまり（富士タイプ）」の2種類あるので、見た目に合わせて選んでください。</p>
       <div class="g2">
         <div class="fr"><label>カタログ</label>
-          <select id="cs-catalog"><option value="">(読込中...)</option></select>
+          <select id="cs-catalog" onchange="refreshIndexStatus()"><option value="">(読込中...)</option></select>
         </div>
         <div class="fr"><label>表の形式</label>
           <select id="cs-mode">
@@ -566,9 +566,15 @@
           </select>
         </div>
       </div>
-      <div style="margin-bottom:6px">
+      <div style="margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="openFolderBrowser()">📁 フォルダを選択して追加</button>
+        <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="buildCatalogIndex()">⚡ インデックス作成/更新</button>
+        <span id="cs-index-status" style="font-size:10px;color:var(--fg3)"></span>
       </div>
+      <p style="font-size:9px;color:var(--fg3);margin:-4px 0 6px">
+        インデックスを作っておくと、次回以降の検索が大幅に速くなります(全PDFの文章を1回だけ読み取ってキャッシュし、
+        検索時は該当しそうなファイルだけを開くため)。ファイルを追加・更新したら作成し直してください(更新分だけ処理されます)。
+      </p>
       <div class="fr"><label>型式</label><input type="text" id="cs-model" placeholder="例: S-T20 または SC20XA-□10"></div>
       <label style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--fg3);margin:2px 0 6px">
         <input type="checkbox" id="cs-stop-first">最初に見つかった時点で中断する（高速。同じ型式が複数ファイルにある場合は最初の1件しか出ません）

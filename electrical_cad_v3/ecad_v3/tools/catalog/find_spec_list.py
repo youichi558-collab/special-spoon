@@ -47,6 +47,7 @@ import csv
 
 import pdfplumber
 from normalize import contains as fuzzy_contains
+import catalog_index
 
 
 def get_cell_texts(page, table):
@@ -131,9 +132,16 @@ def search_model(target, model_query, header_rows=3, stop_at_first=False):
     """target(PDFファイル or フォルダ)からmodel_queryを検索し、
     [(source_file, page_no, label, value), ...] を返す。サーバーからも呼べるように分離。
     stop_at_first=True の場合、最初に見つかった時点で残りの検索を打ち切る（高速だが、
-    同じ型式が複数箇所にある場合は最初の1件しか拾えない）。"""
+    同じ型式が複数箇所にある場合は最初の1件しか拾えない）。
+
+    索引(catalog_index)が作成済みの場合は、型式を含む可能性のあるファイルだけに
+    事前に絞り込んでから検索する(値の抽出ロジック自体は変更しない)。"""
     if os.path.isdir(target):
-        pdf_files = [os.path.join(target, f) for f in sorted(os.listdir(target)) if f.lower().endswith('.pdf')]
+        candidate_files = catalog_index.find_candidate_files(target, model_query)
+        if candidate_files is not None:
+            pdf_files = [os.path.join(target, f) for f in candidate_files]
+        else:
+            pdf_files = [os.path.join(target, f) for f in sorted(os.listdir(target)) if f.lower().endswith('.pdf')]
     else:
         pdf_files = [target]
 
