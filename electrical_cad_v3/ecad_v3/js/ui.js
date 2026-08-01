@@ -1200,22 +1200,26 @@ function srRender() {
 function srDrawShape(c, s, color) {
   const T  = v => SR_CX + v * _srZoom;
   const TY = v => SR_CY + v * _srZoom;
+  // 配置時(symbols.js)の既定太さ1.0に合わせ、図形ごとのlineWidthがあればそれを使う。
+  // パネル内は座標を_srZoom倍に拡大して表示しているので、太さも同じ倍率をかけて
+  // 見た目の比率を保つ(拡大表示なのに線だけ細く見える/太く見えるのを防ぐ)。
+  const lw = (s.lineWidth || 1.0) * _srZoom;
   c.save(); c.strokeStyle = color || '#222'; c.fillStyle = color || '#222';
   if (s.t==='L') {
-    c.lineWidth = 1.5; c.beginPath(); c.moveTo(T(s.x1),TY(s.y1)); c.lineTo(T(s.x2),TY(s.y2)); c.stroke();
+    c.lineWidth = lw; c.beginPath(); c.moveTo(T(s.x1),TY(s.y1)); c.lineTo(T(s.x2),TY(s.y2)); c.stroke();
   } else if (s.t==='C') {
-    c.lineWidth = 1.5; c.beginPath(); c.arc(T(s.cx),TY(s.cy),Math.max(1,s.r*_srZoom),0,Math.PI*2); c.stroke();
+    c.lineWidth = lw; c.beginPath(); c.arc(T(s.cx),TY(s.cy),Math.max(1,s.r*_srZoom),0,Math.PI*2); c.stroke();
   } else if (s.t==='R') {
-    c.lineWidth = 1.5; c.strokeRect(T(s.x),TY(s.y),s.w*_srZoom,s.h*_srZoom);
+    c.lineWidth = lw; c.strokeRect(T(s.x),TY(s.y),s.w*_srZoom,s.h*_srZoom);
   } else if (s.t==='T') {
     c.font = `${Math.max(4,(s.fs||14)*_srZoom/2)}px sans-serif`; c.textAlign = 'center';
     c.fillText(s.text, T(s.x), TY(s.y));
   } else if (s.t==='A') {
-    c.lineWidth = 1.5; c.beginPath();
+    c.lineWidth = lw; c.beginPath();
     c.arc(T(s.cx),TY(s.cy),Math.max(1,s.r*_srZoom), (s.sa||0)*Math.PI/180, (s.ea||0)*Math.PI/180, false);
     c.stroke();
   } else if (s.t==='P' && s.pts && s.pts.length) {
-    c.lineWidth = 1.5; c.beginPath();
+    c.lineWidth = lw; c.beginPath();
     c.moveTo(T(s.pts[0][0]),TY(s.pts[0][1]));
     for (let k=1;k<s.pts.length;k++) c.lineTo(T(s.pts[k][0]),TY(s.pts[k][1]));
     if (s.cl) c.closePath();
