@@ -1657,6 +1657,7 @@ function updateRightPanel() {
     // 端子台(junction)では同じ label を端子番号として使っているので注意。
     // コイル名/参照コイル名は廃止。接点とコイルの紐づけはデバイス(partRef)で行う。
     html += `<div class="pp-row"><label>デバイス</label><input type="text" id="pp-partref" value="${el.partRef||''}" placeholder="例: MC1, NFB1"></div>`;
+    html += `<div class="pp-row"><label>デバイスを図面に表示</label><input type="checkbox" id="pp-devhide"${el.devHide?'':' checked'} title="3極品等、同じデバイスを複数のシンボルに分けて配置する場合に使います。デバイス名は全部の要素に同じ値を入れつつ、文字はどれか1つだけに絞れます"></div>`;
     html += `<div class="pp-row"><label>デバイスサイズ</label><input type="number" id="pp-dfs" value="${el.devFs||11}" step="1" min="6" max="32" oninput="previewDeviceOff()"></div>`;
     html += `<div class="pp-row"><label>デバイス位置X補正</label><input type="number" id="pp-dox" value="${el.devOffX!==undefined?el.devOffX:''}" placeholder="自動" step="5" oninput="previewDeviceOff()"></div>`;
     html += `<div class="pp-row"><label>デバイス位置Y補正</label><input type="number" id="pp-doy" value="${el.devOffY!==undefined?el.devOffY:''}" placeholder="自動" step="5" oninput="previewDeviceOff()"></div>`;
@@ -2019,6 +2020,7 @@ function applyRightPanel() {
   } else if (el) {
     el.label     = v('pp-label');
     el.partRef   = v('pp-partref');
+    el.devHide   = !document.getElementById('pp-devhide')?.checked;
     el.partModel = v('pp-partmodel');
     el.devFs     = parseInt(v('pp-dfs')) || undefined;
     el.devOffX   = v('pp-dox') !== '' ? parseInt(v('pp-dox')) : undefined;

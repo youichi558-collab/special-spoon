@@ -539,9 +539,13 @@ function drawSymEl(el, sel, lc) {
   // デバイス表示（表示ON時）。
   // 以前は未入力シンボルにオレンジの「?」を描いていたが、デバイスを持たない
   // シンボルすべてに出て図面が読めなくなるため廃止した。
+  // 3極品のように同じデバイスを複数要素に分けて配置する場合、
+  // 部品表・接続表を正しく集計するには全要素に同じデバイス名を入れる必要がある。
+  // その一方で文字は1箇所だけに出したいので、要素ごとに devHide で
+  // 表示/非表示を切り替えられるようにしている(既定は表示=false)。
   // 位置・サイズは devOffX / devOffY / devFs で個別に調整できる。
   // 既定は従来どおりシンボル上端の少し上。回転には追随しない（従来の見た目を維持）。
-  if (state.showPartRef && !state.pdfSkipText && el.partRef) {
+  if (state.showPartRef && !state.pdfSkipText && el.partRef && !el.devHide) {
     const d  = getDef(el.type) || { w:64, h:34 };
     const sc = el.scale || 1;
     const fs = Math.round((el.devFs || 11) * sc);
