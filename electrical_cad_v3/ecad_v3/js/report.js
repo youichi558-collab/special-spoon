@@ -97,21 +97,37 @@ function exportWireCSV(){
   });
   dl(rows.join('\n'), 'wire_numbers.csv', 'text/csv');
 }
+// デバイス名の表記ゆれを吸収するための正規化。
+// 集計のキーにのみ使い、画面表示には元の表記を使う。
+//   全角英数→半角 / 大文字化 / 空白除去 / 区切り記号除去 / 数値の前ゼロ除去
+//   例: 「ＭＣＣＢ－０１」「mccb 1」「MCCB-1」→ いずれも "MCCB1"
+function normalizeRef(s){
+  return String(s||'')
+    .normalize('NFKC')            // 全角英数・全角記号を半角へ
+    .toUpperCase()
+    .replace(/[\s\u3000]/g,'')    // 半角/全角スペース
+    .replace(/[-_.・ー－—–]/g,'') // ハイフン類・アンダースコア・中黒
+    .replace(/(\D|^)0+(\d)/g,'$1$2'); // 数値の前ゼロ (MCCB01 → MCCB1)
+}
+
 // 全ページの要素をデバイス(partRef)単位で1台にまとめ、型番ごとに台数を数える。
 // 従来は要素を1個ずつ数えていたため、同じデバイスの接点が独立した部品として
 // 計上されていた(コイル1+接点4 → 5個)。発注上は1台なのでデバイスで束ねる。
+// デバイス名は normalizeRef() で表記ゆれを吸収してから束ねる。
 // デバイス未設定の要素は従来どおり 種別×型番 でまとめ、別枠として出す。
 function collectBOMRows(){
   const skip=['text','rect','circle','fline','dim','leader','angle_dim','wire'];
-  const devices={};   // partRef -> { ref, models:Set, types:Set, parts:0 }
-  const noRef={};     // 種別|名称 -> 従来形式の行
+  const devices={};   // 正規化キー -> { spellings:Map(表記->出現数), models:Set, types:Set, parts:0 }
+  const noRef={};
   state.pages.forEach(pg=>{
     (pg.elements||[]).forEach(el=>{
       if(skip.includes(el.type))return;
-      const ref=(el.partRef||'').trim();
-      if(ref){
-        if(!devices[ref])devices[ref]={ref,models:new Set(),types:new Set(),parts:0};
-        const dv=devices[ref];
+      const raw=(el.partRef||'').trim();
+      const key=normalizeRef(raw);
+      if(key){
+        if(!devices[key])devices[key]={spellings:new Map(),models:new Set(),types:new Set(),parts:0};
+        const dv=devices[key];
+        dv.spellings.set(raw,(dv.spellings.get(raw)||0)+1);
         dv.parts++;
         dv.types.add(el.type);
         const m=(el.partModel||'').trim();
@@ -129,6 +145,9 @@ function collectBOMRows(){
   // 型番(無ければ種別)ごとにデバイスを束ねて台数を出す
   const byModel={};
   Object.values(devices).forEach(dv=>{
+    // 表示名は最も多く使われている表記を採用する
+    const spells=[...dv.spellings.entries()].sort((a,b)=>b[1]-a[1]);
+    const ref=spells[0][0];
     const models=[...dv.models];
     const model=models[0]||'';
     const primary=[...dv.types][0]||'';
@@ -136,11 +155,14 @@ function collectBOMRows(){
     if(!byModel[k])byModel[k]={type:primary,model,label:model||'(型番未設定)',
                                refs:[],count:0,parts:0,jis:getDef(primary)?.jis||'',noRef:false,warn:''};
     const row=byModel[k];
-    row.refs.push(dv.ref);
+    row.refs.push(ref);
     row.count++;                 // 台数 = デバイス数
     row.parts+=dv.parts;         // 構成要素数(接点・端子の個数)
-    if(models.length>1)row.warn=`${dv.ref}に型番が複数(${models.join(' / ')})`;
-    if(!model)row.warn=row.warn||'型番未設定';
+    const ws=[];
+    if(spells.length>1)ws.push(`${ref}に表記ゆれ(${spells.map(s=>s[0]).join(' / ')})`);
+    if(models.length>1)ws.push(`${ref}に型番が複数(${models.join(' / ')})`);
+    if(!model)ws.push('型番未設定');
+    if(ws.length)row.warn=row.warn?`${row.warn}｜${ws.join('｜')}`:ws.join('｜');
   });
 
   return [...Object.values(byModel),...Object.values(noRef)];
