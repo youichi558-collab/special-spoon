@@ -862,24 +862,46 @@ function showSymReg() {
   };
   cv.setAttribute('tabindex', '0');
   cv.focus();
-  cv.onkeydown = e => {
+  srEnsureKeyHandler();
+}
+
+// シンボル登録パネルの矢印キー移動。
+// 以前はcanvasにフォーカスがある時だけ効いていたため、ボタンを押すと
+// フォーカスが移って動かなくなり、さらに矢印キーが裏の図面に届いて
+// 選択中の要素を動かしてしまっていた。documentのキャプチャ段階で
+// 受け取り、パネルが開いている間は他のハンドラへ渡さない。
+let _srKeyBound = false;
+function srEnsureKeyHandler() {
+  if (_srKeyBound) return;
+  _srKeyBound = true;
+  document.addEventListener('keydown', e => {
+    const p = document.getElementById('sym-reg-p');
+    if (!p || !p.classList.contains('open')) return;
+    // 幅/高さ/シンボル名などの入力欄では通常のカーソル移動を優先
+    const ae = document.activeElement;
+    if (ae && ['INPUT','TEXTAREA','SELECT'].includes(ae.tagName)) return;
+
     const step = e.shiftKey ? SR_GRID : 1;
-    let dx=0, dy=0;
-    if (e.key==='ArrowLeft')  dx=-step;
-    else if (e.key==='ArrowRight') dx=step;
-    else if (e.key==='ArrowUp')    dy=-step;
-    else if (e.key==='ArrowDown')  dy=step;
+    let dx = 0, dy = 0;
+    if      (e.key === 'ArrowLeft')  dx = -step;
+    else if (e.key === 'ArrowRight') dx =  step;
+    else if (e.key === 'ArrowUp')    dy = -step;
+    else if (e.key === 'ArrowDown')  dy =  step;
     else return;
+
     e.preventDefault();
+    e.stopPropagation();   // 裏の図面へ矢印キーを渡さない
     _srShapes.forEach(s => {
-      if (s.t==='L') { s.x1+=dx; s.y1+=dy; s.x2+=dx; s.y2+=dy; }
+      if      (s.t==='L') { s.x1+=dx; s.y1+=dy; s.x2+=dx; s.y2+=dy; }
       else if (s.t==='C') { s.cx+=dx; s.cy+=dy; }
-      else if (s.t==='R') { s.x+=dx; s.y+=dy; }
-      else if (s.t==='T') { s.x+=dx; s.y+=dy; }
+      else if (s.t==='R') { s.x+=dx;  s.y+=dy; }
+      else if (s.t==='T') { s.x+=dx;  s.y+=dy; }
+      else if (s.t==='P' && s.pts) s.pts = s.pts.map(pt => [pt[0]+dx, pt[1]+dy]);
     });
     _srTerms.forEach(t => { t.x+=dx; t.y+=dy; });
+    srUpdateTermList();
     srRender();
-  };
+  }, true);
 }
 
 // ローカル座標点を、配置済み要素(el)のx/y/rot/flipH/flipV/scaleで変換する
