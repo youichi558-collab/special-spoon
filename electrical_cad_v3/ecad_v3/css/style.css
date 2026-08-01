@@ -115,6 +115,9 @@ body{font-family:'Segoe UI',sans-serif;font-size:12px;background:var(--bg);color
 .pp-details summary::before{content:'▸ ';display:inline-block;}
 .pp-details[open] summary::before{content:'▾ ';}
 .pp-details[open] summary{border-bottom:1px solid var(--bd2);}
+.pp-group{margin:6px 6px 8px;padding:4px 0 6px;border-radius:4px;background:var(--bg2);}
+.pp-group-cap{font-size:10px;font-weight:700;padding:2px 10px 4px;letter-spacing:.03em;}
+.pp-group .pp-details{margin-left:10px;margin-right:10px;}
 .pp-apply{margin:6px 10px;padding:5px;width:calc(100% - 20px);background:var(--acc);color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:11px;transition:opacity 0.1s;}
 .pp-apply:hover{opacity:.85;}
 .pp-apply:active{opacity:.7;transform:scale(0.98);}

@@ -1709,26 +1709,34 @@ function updateRightPanel() {
     // 「仕様」の内部フィールド名は label のまま(既存データ互換)。
     // 端子台(junction)では同じ label を端子番号として使っているので注意。
     // コイル名/参照コイル名は廃止。接点とコイルの紐づけはデバイス(partRef)で行う。
+    { const devC = el.devColor||(state.darkMode?'#4da3ff':'#1d6fb5');
+    html += `<div class="pp-group" style="border-left:4px solid ${devC}"><div class="pp-group-cap" style="color:${devC}">◆ デバイス</div>`;
     html += `<div class="pp-row"><label>デバイス</label><input type="text" id="pp-partref" value="${el.partRef||''}" placeholder="例: MC1, NFB1"></div>`;
     html += `<div class="pp-row"><label>デバイスを図面に表示</label><input type="checkbox" id="pp-devhide"${el.devHide?'':' checked'} title="3極品等、同じデバイスを複数のシンボルに分けて配置する場合に使います。デバイス名は全部の要素に同じ値を入れつつ、文字はどれか1つだけに絞れます"></div>`;
-    html += `<details class="pp-details" style="border-left:4px solid ${el.devColor||(state.darkMode?'#4da3ff':'#1d6fb5')}"><summary>デバイス表示の詳細（色・サイズ・位置）</summary>`;
+    html += `<details class="pp-details" style="border-left:4px solid ${devC}"><summary>デバイス表示の詳細（色・サイズ・位置）</summary>`;
     html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-dfs" value="${el.devFs||11}" step="1" min="6" max="32" oninput="previewDeviceOff()"></div>`;
     html += `<div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center"><input type="color" id="pp-dcolor" value="${el.devColor||'#1d6fb5'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer" oninput="syncColorCode('pp-dcolor','pp-dcolorcode');previewDeviceOff()"><input type="text" id="pp-dcolorcode" value="${el.devColor||'#1d6fb5'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-dcolorcode','pp-dcolor');previewDeviceOff()">${colorCodeBtns('pp-dcolorcode','pp-dcolor')}</div></div>`;
     html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-dox" value="${el.devOffX!==undefined?el.devOffX:''}" placeholder="自動" step="5" oninput="previewDeviceOff()"></div>`;
     html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-doy" value="${el.devOffY!==undefined?el.devOffY:''}" placeholder="自動" step="5" oninput="previewDeviceOff()"></div>`;
     html += `<div class="pp-row"><button onclick="resetDeviceOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button></div>`;
     html += `</details>`;
+    html += `</div>`; }
+    { const mdlC = el.modelColor||el.labelColor||'#555555';
+    html += `<div class="pp-group" style="border-left:4px solid ${mdlC}"><div class="pp-group-cap" style="color:${mdlC}">◆ 型式</div>`;
     html += `<div class="pp-row"><label>型番</label><input type="text" id="pp-partmodel" value="${el.partModel||''}" placeholder="例: S-T10（メーカー型番）"></div>`;
     html += `<div class="pp-row"><label>型式を図面に表示</label><input type="checkbox" id="pp-showmodel"${el.showModel?' checked':''} title="チェックしたシンボルにだけ型番が描画されます。接点側はOFFのままにしてください"></div>`;
-    html += `<details class="pp-details" style="border-left:4px solid ${el.modelColor||el.labelColor||'#555555'}"><summary>型式表示の詳細（色・サイズ・位置）</summary>`;
+    html += `<details class="pp-details" style="border-left:4px solid ${mdlC}"><summary>型式表示の詳細（色・サイズ・位置）</summary>`;
     html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-mfs" value="${el.modelFs||el.labelFs||11}" step="1" min="6" max="32" oninput="previewModelOff()"></div>`;
     html += `<div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center"><input type="color" id="pp-mcolor" value="${el.modelColor||el.labelColor||'#555555'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer" oninput="syncColorCode('pp-mcolor','pp-mcolorcode');previewModelOff()"><input type="text" id="pp-mcolorcode" value="${el.modelColor||el.labelColor||'#555555'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-mcolorcode','pp-mcolor');previewModelOff()">${colorCodeBtns('pp-mcolorcode','pp-mcolor')}</div></div>`;
     html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-mox" value="${el.modelOffX!==undefined?el.modelOffX:''}" placeholder="自動" step="5" oninput="previewModelOff()"></div>`;
     html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-moy" value="${el.modelOffY!==undefined?el.modelOffY:''}" placeholder="自動" step="5" oninput="previewModelOff()"></div>`;
     html += `<div class="pp-row"><button onclick="resetModelOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button></div>`;
     html += `</details>`;
+    html += `</div>`; }
+    { const lblC = el.labelColor||'#555555';
+    html += `<div class="pp-group" style="border-left:4px solid ${lblC}"><div class="pp-group-cap" style="color:${lblC}">◆ 仕様</div>`;
     html += `<div class="pp-row"><label>仕様</label><textarea rows="2" id="pp-label" style="text-align:${el.labelAlign||'center'}" placeholder="例: AC200V 3.7kW&#10;冷却ファン用（改行可）">${el.label||''}</textarea></div>`;
-    html += `<details class="pp-details" style="border-left:4px solid ${el.labelColor||'#555555'}"><summary>仕様表示の詳細（揃え・色・サイズ・位置）</summary>`;
+    html += `<details class="pp-details" style="border-left:4px solid ${lblC}"><summary>仕様表示の詳細（揃え・色・サイズ・位置）</summary>`;
     html += `<div class="pp-row"><label>文字揃え</label><select id="pp-lalign" onchange="previewLabelStyle()">
       <option value="left"  ${el.labelAlign==='left'  ?'selected':''}>左揃え</option>
       <option value="center"${!el.labelAlign||el.labelAlign==='center'?'selected':''}>中央揃え</option>
@@ -1740,6 +1748,7 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-loy" value="${el.labelOffY||''}" placeholder="自動" step="5" oninput="previewLabelOff()"></div>`;
     html += `<div class="pp-row"><button onclick="cancelLabelOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button></div>`;
     html += `</details>`;
+    html += `</div>`; }
     html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-term" value="${el.terminals||''}" placeholder="例: A1,A2,13,14"></div>`;
     html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${el.wireNo||''}"></div>`;
     html += `<div class="pp-row"><label>回転(°)</label><input type="number" id="pp-rot" value="${el.rot||0}" step="90"></div>`;
