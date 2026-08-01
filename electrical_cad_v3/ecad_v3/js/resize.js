@@ -11,7 +11,17 @@ function calcResizeHandles() {
   const { els, wires } = state.sel;
   if (els.size + wires.size >= 2) return calcGroupHandles();
   if (els.size === 1) return calcElHandles([...els][0]);
+  if (wires.size === 1 && els.size === 0) return calcWireHandles([...wires][0]);
   return [];
+}
+
+// 配線(wire)は複数点(pts)を持つポリラインなので、各頂点にハンドルを出す。
+// hidは 'wpt:<index>' とし、flineの'p1'/'p2'とは別体系にする。
+function calcWireHandles(wireId) {
+  const w = state.wires.find(x => x.id === wireId);
+  if (!w) return [];
+  const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
+  return pts.map((p, i) => ({ wx:p.x, wy:p.y, hid:`wpt:${i}`, el:w }));
 }
 
 function calcElHandles(elId) {
@@ -147,6 +157,31 @@ function applyElResize(wx, wy) {
       let ex = sp.x, ey = sp.y;
       if (state.ortho) { const o = applyOrtho(el.x1, el.y1, ex, ey); ex=o.x; ey=o.y; }
       el.x2 = ex; el.y2 = ey;
+    }
+  } else if (handle && handle.startsWith('wpt:')) {
+    // 配線(wire)の頂点ドラッグ。始点/終点は端子スナップで再接続し、
+    // 中間の折れ点はスナップのみ(端子接続の更新はしない)。
+    const idx = parseInt(handle.split(':')[1], 10);
+    const pts = el.pts || (el.pts = [{x:el.x1,y:el.y1},{x:el.x2,y:el.y2}]);
+    const isFirst = idx === 0, isLast = idx === pts.length - 1;
+    const sp = getAllSnapPoints(wx, wy);
+    state.snapPreview = sp;
+    let ex = sp.x, ey = sp.y;
+    if (state.ortho && pts.length > 1) {
+      const adj = isFirst ? pts[1] : isLast ? pts[pts.length-2] : null;
+      if (adj) { const o = applyOrtho(adj.x, adj.y, ex, ey); ex=o.x; ey=o.y; }
+    }
+    pts[idx] = { x: ex, y: ey };
+    el.x1 = pts[0].x; el.y1 = pts[0].y;
+    el.x2 = pts[pts.length-1].x; el.y2 = pts[pts.length-1].y;
+    // 始点/終点を動かした場合のみ、端子への再接続情報を更新する
+    if (isFirst) {
+      if (sp.snapType === 'terminal') { el.fromElId = sp.elId; el.fromTermIdx = sp.termIdx; }
+      else { el.fromElId = ''; el.fromTermIdx = ''; }
+    }
+    if (isLast) {
+      if (sp.snapType === 'terminal') { el.toElId = sp.elId; el.toTermIdx = sp.termIdx; }
+      else { el.toElId = ''; el.toTermIdx = ''; }
     }
   } else {
     // ハンドル開始距離とマウス現在距離の比でscaleを計算
