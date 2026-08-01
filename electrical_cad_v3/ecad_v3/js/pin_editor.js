@@ -142,6 +142,8 @@ function openPinEditor(type) {
 
   const nameEl = document.getElementById('pe-name');
   if (nameEl) nameEl.textContent = cS.name || type;
+  const roleEl = document.getElementById('pe-role');
+  if (roleEl) roleEl.value = cS.role || '';
 
   openFP('pin-edit-p');
   cv.onmousedown = peOnClick;
@@ -221,8 +223,10 @@ function savePinEdits() {
   const cS = (state.customSymbols || []).find(s => s.type === _peType);
   if (!cS) { alert('保存対象のシンボルが見つかりません'); closeFP('pin-edit-p'); return; }
   cS.terminals = JSON.parse(JSON.stringify(_peTerms));
+  cS.role = document.getElementById('pe-role')?.value || '';
   if (typeof DEFS !== 'undefined' && DEFS[_peType]) {
     DEFS[_peType].terminals = cS.terminals.map((t, i) => ({ id: `t${i}`, x: t.x, y: t.y }));
+    DEFS[_peType].role = cS.role;
   }
   if (typeof saveSymbolsToStorage === 'function') saveSymbolsToStorage();
   closeFP('pin-edit-p');

@@ -626,6 +626,14 @@
         <div style="min-width:180px;display:flex;flex-direction:column;gap:8px">
           <div class="fr"><label>シンボル名 *</label><input type="text" id="sr-name" placeholder="例: 電磁弁"></div>
           <div class="fr"><label>カテゴリ</label><input type="text" id="sr-cat" value="カスタム"></div>
+          <div class="fr"><label>種別（接点Ref用）</label>
+            <select id="sr-role">
+              <option value="">その他（Ref対象外）</option>
+              <option value="coil">コイル（本体側）</option>
+              <option value="contact_a">a接点</option>
+              <option value="contact_b">b接点</option>
+            </select>
+          </div>
           <div style="display:flex;gap:6px">
             <div class="fr" style="flex:1"><label>幅 (W)</label><input type="number" id="sr-w" value="64" min="10" max="300" oninput="srRender()"></div>
             <div class="fr" style="flex:1"><label>高さ (H)</label><input type="number" id="sr-h" value="40" min="10" max="300" oninput="srRender()"></div>
@@ -658,6 +666,14 @@
         </div>
         <div style="min-width:150px;display:flex;flex-direction:column;gap:8px">
           <button class="fp-btn primary" onclick="peAutoDetect()">🔍 自動候補(開放端検出)</button>
+          <div class="fr"><label style="font-size:11px;font-weight:600">種別（接点Ref用）</label>
+            <select id="pe-role">
+              <option value="">その他（Ref対象外）</option>
+              <option value="coil">コイル（本体側）</option>
+              <option value="contact_a">a接点</option>
+              <option value="contact_b">b接点</option>
+            </select>
+          </div>
           <div>
             <div style="font-size:11px;font-weight:600;margin-bottom:4px">端子点一覧</div>
             <div id="pe-term-list" style="font-size:10px;color:var(--fg3);max-height:140px;overflow-y:auto"></div>

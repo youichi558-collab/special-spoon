@@ -1116,6 +1116,7 @@ function srFitToContent() {
 function srClear() {
   _srShapes = []; _srTerms = []; _srTool = null; _srDraw = null; _srFirst = null;
   _srZoom = SR_SCALE;
+  const roleEl = document.getElementById('sr-role'); if (roleEl) roleEl.value = '';
   document.querySelectorAll('.sr-tool').forEach(b => b.classList.remove('active'));
   const n = document.getElementById('sr-name'); if (n) n.value = '';
   const c = document.getElementById('sr-cat'); if (c) c.value = 'カスタム';
@@ -1354,11 +1355,12 @@ function saveCustomSymbol() {
     tctx.restore();
     preview = thumbCv.toDataURL('image/png');
   }
-  const sym = { type, name, label:name, cat, w, h, shapes:[..._srShapes], terminals:[..._srTerms], preview };
+  const role = document.getElementById('sr-role')?.value || '';
+  const sym = { type, name, label:name, cat, role, w, h, shapes:[..._srShapes], terminals:[..._srTerms], preview };
   state.customSymbols.push(sym);
   saveSymbolsToStorage();
   if (typeof DEFS !== 'undefined') {
-    DEFS[type] = { w, h, cat, name, jis:'',
+    DEFS[type] = { w, h, cat, name, jis:'', role,
       terminals: _srTerms.map((t,i) => ({ id:`t${i}`, x:t.x, y:t.y })) };
   }
   closeFP('sym-reg-p');
@@ -1653,8 +1655,7 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>ラベル</label><input type="text" id="pp-label" value="${el.label||''}"></div>`;
     html += `<div class="pp-row"><label>ラベル色</label><div style="display:flex;gap:4px;align-items:center"><input type="color" id="pp-lcolor" value="${el.labelColor||'#555555'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer" oninput="syncColorCode('pp-lcolor','pp-lcolorcode');previewLabelStyle()"><input type="text" id="pp-lcolorcode" value="${el.labelColor||'#555555'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-lcolorcode','pp-lcolor');previewLabelStyle()">${colorCodeBtns('pp-lcolorcode','pp-lcolor')}</div></div>`;
     html += `<div class="pp-row"><label>ラベルサイズ</label><input type="number" id="pp-lfs" value="${el.labelFs||11}" step="1" min="6" max="32" oninput="previewLabelStyle()"></div>`;
-    if (def.isCoil)    html += `<div class="pp-row"><label>コイル名</label><input type="text" id="pp-coilname" value="${el.coilName||el.label||''}"></div>`;
-    if (def.isContact) html += `<div class="pp-row"><label>参照コイル名</label><input type="text" id="pp-refcoil" value="${el.refCoil||''}"></div>`;
+    // コイル名/参照コイル名は廃止。接点とコイルの紐づけはデバイス(partRef)で行う。
     html += `<div class="pp-row"><label>デバイス</label><input type="text" id="pp-partref" value="${el.partRef||''}" placeholder="例: MC1, NFB1"></div>`;
     html += `<div class="pp-row"><label>型番</label><input type="text" id="pp-partmodel" value="${el.partModel||''}" placeholder="例: S-T10（メーカー型番）"></div>`;
     html += `<div class="pp-row"><label>型式を図面に表示</label><input type="checkbox" id="pp-showmodel"${el.showModel?' checked':''} title="チェックしたシンボルにだけ型番が描画されます。接点側はOFFのままにしてください"></div>`;
@@ -1954,8 +1955,6 @@ function applyRightPanel() {
     el.note      = v('pp-note');
   } else if (el) {
     el.label     = v('pp-label');
-    el.coilName  = v('pp-coilname');
-    el.refCoil   = v('pp-refcoil');
     el.partRef   = v('pp-partref');
     el.partModel = v('pp-partmodel');
     el.showModel = !!document.getElementById('pp-showmodel')?.checked;

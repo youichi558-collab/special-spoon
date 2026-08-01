@@ -208,12 +208,73 @@ function exportBOMCSV(){
       ...rows.map(r=>`${r.label},${r.type},${r.jis},"${r.noRef?'未設定':r.refs.join('/')}",${r.count},${r.parts},${r.warn||''}`)
      ].join('\n'),'bom.csv','text/csv');
 }
+// 要素の役割を判定する。
+// カスタムシンボルはシンボル登録/端子編集で指定した role を使う。
+// 標準シンボルは DEFS の isCoil / isContact + contactType から導く。
+function symRole(el){
+  const d=getDef(el.type)||{};
+  if(d.role)return d.role;                       // 'coil' | 'contact_a' | 'contact_b'
+  if(d.isCoil)return 'coil';
+  if(d.isContact)return d.contactType==='b'?'contact_b':'contact_a';
+  return '';
+}
+
+// 接点・コイル リファレンス。
+// 旧実装は coilName / refCoil というフィールドで紐づける作りだったが、
+// このフィールドを書き込むコードが存在せず、実質 label 一致でしか動いて
+// いなかった。デバイス(partRef)で紐づける方式に作り直す。
+// デバイス名は normalizeRef() で表記ゆれを吸収する。
 function showRefPanel(){
-  const coils=state.elements.filter(el=>getDef(el.type)?.isCoil);
-  const contacts=state.elements.filter(el=>getDef(el.type)?.isContact||el.refCoil);
-  const map={};coils.forEach(c=>{const k=c.coilName||c.label||'?';if(!map[k])map[k]={coil:c,contacts:[]};});
-  contacts.forEach(ct=>{const k=ct.refCoil||(coils.find(c=>(c.coilName||c.label)===ct.label)?ct.label:null);if(k){if(!map[k])map[k]={coil:null,contacts:[]};if(!map[k].contacts.includes(ct))map[k].contacts.push(ct);}});
-  let html=Object.keys(map).length?`<table class="tbl"><tr><th>コイル名</th><th>種別</th><th>接点</th><th>数</th></tr>${Object.entries(map).map(([key,{coil,contacts}])=>`<tr><td><b>${key}</b></td><td>${coil?`<span class="badge badge-p">${coil.type==='timer_coil'?'タイマ':'リレー'}</span>`:'<span class="badge" style="background:var(--rbg);color:var(--red)">未配置</span>'}</td><td>${contacts.map(c=>`<span class="badge badge-${getDef(c.type).contactType==='a'?'g':'b'}">${c.label}</span>`).join(' ')||'なし'}</td><td>${contacts.length}</td></tr>`).join('')}</table>`:'<p style="font-size:11px;color:var(--fg3)">コイルシンボルがありません</p>';
+  const skip=['text','rect','circle','fline','dim','leader','angle_dim','wire'];
+  const devs={};   // 正規化キー -> { spellings:Map, coils:[], contacts:[] }
+  state.pages.forEach((pg,pi)=>{
+    (pg.elements||[]).forEach(el=>{
+      if(skip.includes(el.type))return;
+      const role=symRole(el);
+      if(!role)return;                            // Ref対象外
+      const raw=(el.partRef||'').trim();
+      const key=normalizeRef(raw)||`(未設定)#${el.type}`;
+      if(!devs[key])devs[key]={spellings:new Map(),coils:[],contacts:[],noRef:!raw};
+      const dv=devs[key];
+      if(raw)dv.spellings.set(raw,(dv.spellings.get(raw)||0)+1);
+      const rec={el,page:pi+1,role};
+      if(role==='coil')dv.coils.push(rec); else dv.contacts.push(rec);
+    });
+  });
+
+  const keys=Object.keys(devs);
+  if(!keys.length){
+    _reportOpen('ref','接点・コイル リファレンス',
+      '<p style="font-size:11px;color:var(--fg3)">対象のシンボルがありません。<br>'
+      +'カスタムシンボルは、シンボル登録または端子(ピン)編集で「種別（接点Ref用）」を'
+      +'指定すると対象になります。</p>', null);
+    return;
+  }
+
+  const rows=keys.sort().map(k=>{
+    const dv=devs[k];
+    const spells=[...dv.spellings.entries()].sort((a,b)=>b[1]-a[1]);
+    const name=spells.length?spells[0][0]:'(デバイス未設定)';
+    const warns=[];
+    if(spells.length>1)warns.push(`表記ゆれ: ${spells.map(s=>s[0]).join(' / ')}`);
+    if(!dv.coils.length)warns.push('コイル未配置');
+    if(dv.coils.length>1)warns.push(`コイルが${dv.coils.length}個`);
+    if(dv.noRef)warns.push('デバイス未設定');
+    const badge=c=>`<span class="badge badge-${c.role==='contact_a'?'g':'b'}">`
+      +`${c.role==='contact_a'?'a':'b'}接点 P${c.page}</span>`;
+    const coilTxt=dv.coils.length
+      ? dv.coils.map(c=>`<span class="badge badge-p">P${c.page}</span>`).join(' ')
+      : '<span class="badge" style="background:var(--rbg);color:var(--red)">未配置</span>';
+    return `<tr><td><b>${name}</b>${warns.length
+        ?`<br><span style="color:var(--red);font-size:10px">⚠ ${warns.join(' / ')}</span>`:''}</td>`
+      +`<td>${coilTxt}</td>`
+      +`<td>${dv.contacts.map(badge).join(' ')||'なし'}</td>`
+      +`<td>${dv.contacts.length}</td></tr>`;
+  }).join('');
+
+  const html=`<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">`
+    +`全${state.pages.length}ページ集計。Pの数字は配置ページです。</p>`
+    +`<table class="tbl"><tr><th>デバイス</th><th>コイル</th><th>接点</th><th>接点数</th></tr>${rows}</table>`;
   _reportOpen('ref', '接点・コイル リファレンス', html, null);
 }
 function showTerminals(){
