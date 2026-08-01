@@ -495,7 +495,9 @@ function drawSymEl(el, sel, lc) {
     const sc  = el.scale || 1;
     const loy = el.labelOffY || (d.h*sc/2 + 15*sc);
     const rot = (el.rot||0) * Math.PI/180;
-    const fs  = Math.round((el.labelFs||11) * sc);
+    // 文字サイズはシンボルのスケールに追随させない(印字上の実サイズとして固定)。
+    // 位置(loy等)はシンボルに対する相対配置なのでスケールに追随させたまま。
+    const fs  = Math.round(el.labelFs||11);
     ctx.save();
     // translate+rotateしたローカル座標系で描くと、文字揃えの基準x(lox)が
     // 全行共通のまま保てる。textAlignをleft/center/rightに切り替えるだけで
@@ -525,14 +527,14 @@ function drawSymEl(el, sel, lc) {
   if (el.showModel && el.partModel && !state.pdfSkipText) {
     const d   = getDef(el.type) || { w:64, h:34 };
     const sc  = el.scale || 1;
-    const fs  = Math.round((el.modelFs || el.labelFs || 11) * sc);
+    const fs  = Math.round(el.modelFs || el.labelFs || 11);
     // 型式専用の補正(modelOffX/Y)があればそれを使い、無ければ
     // ラベルの位置を基準に「ラベルがあれば1行下、無ければラベルの位置」に置く
     const base = el.labelOffY || (d.h*sc/2 + 15*sc);
     const lox  = el.modelOffX !== undefined ? el.modelOffX : (el.labelOffX || 0);
     // 仕様が複数行のときは、その行数ぶん下げて重ならないようにする
     const lblLines = el.label ? String(el.label).split('\n').length : 0;
-    const lblFs    = Math.round((el.labelFs||11) * sc);
+    const lblFs    = Math.round(el.labelFs||11);
     const loy  = el.modelOffY !== undefined ? el.modelOffY
                : base + (lblLines ? (lblLines - 1) * Math.round(lblFs*1.25) + fs + 3 : 0);
     const rot  = (el.rot||0) * Math.PI/180;
@@ -556,7 +558,7 @@ function drawSymEl(el, sel, lc) {
   if (state.showPartRef && !state.pdfSkipText && el.partRef && !el.devHide) {
     const d  = getDef(el.type) || { w:64, h:34 };
     const sc = el.scale || 1;
-    const fs = Math.round((el.devFs || 11) * sc);
+    const fs = Math.round(el.devFs || 11);
     const dx = el.devOffX || 0;
     const dy = el.devOffY !== undefined ? el.devOffY : -(d.h*sc/2 + 6);
     ctx.save();
