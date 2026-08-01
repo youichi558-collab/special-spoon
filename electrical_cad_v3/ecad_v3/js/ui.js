@@ -895,6 +895,7 @@ function srEnsureKeyHandler() {
     _srShapes.forEach(s => {
       if      (s.t==='L') { s.x1+=dx; s.y1+=dy; s.x2+=dx; s.y2+=dy; }
       else if (s.t==='C') { s.cx+=dx; s.cy+=dy; }
+      else if (s.t==='A') { s.cx+=dx; s.cy+=dy; }
       else if (s.t==='R') { s.x+=dx;  s.y+=dy; }
       else if (s.t==='T') { s.x+=dx;  s.y+=dy; }
       else if (s.t==='P' && s.pts) s.pts = s.pts.map(pt => [pt[0]+dx, pt[1]+dy]);
@@ -1378,7 +1379,15 @@ function saveCustomSymbol() {
     _srShapes.forEach(s => {
       if (s.t==='L') { tctx.beginPath(); tctx.moveTo(s.x1,s.y1); tctx.lineTo(s.x2,s.y2); tctx.stroke(); }
       else if (s.t==='C') { tctx.beginPath(); tctx.arc(s.cx,s.cy,s.r,0,Math.PI*2); tctx.stroke(); }
+      else if (s.t==='A') { tctx.beginPath(); tctx.arc(s.cx,s.cy,s.r,(s.sa||0)*Math.PI/180,(s.ea||0)*Math.PI/180,false); tctx.stroke(); }
       else if (s.t==='R') { tctx.strokeRect(s.x,s.y,s.w,s.h); }
+      else if (s.t==='P' && s.pts && s.pts.length) {
+        tctx.beginPath(); tctx.moveTo(s.pts[0][0],s.pts[0][1]);
+        for (let k=1;k<s.pts.length;k++) tctx.lineTo(s.pts[k][0],s.pts[k][1]);
+        if (s.cl) tctx.closePath();
+        tctx.stroke();
+      }
+      else if (s.t==='T') { tctx.font=`${(s.fs||14)/2}px sans-serif`; tctx.textAlign='center'; tctx.fillText(s.text,s.x,s.y); }
     });
     tctx.restore();
     preview = thumbCv.toDataURL('image/png');
