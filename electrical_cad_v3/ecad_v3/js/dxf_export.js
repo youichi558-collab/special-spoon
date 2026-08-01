@@ -429,7 +429,7 @@ function exportDXF(){
     const layer=dxfLayer(w.layer||'配線');
     const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
     for(let i=0;i<pts.length-1;i++) eLine(layer,pts[i].x,pts[i].y,pts[i+1].x,pts[i+1].y);
-    if(w.wireNo){const mp=pts[Math.floor(pts.length/2)];eText(layer,mp.x,mp.y-8,8,w.wireNo);}
+    if(w.wireNo){const mp=pts[Math.floor(pts.length/2)];eText(layer,mp.x,mp.y-8,w.wireNoFs||8,w.wireNo);}
   });
 
   // 要素

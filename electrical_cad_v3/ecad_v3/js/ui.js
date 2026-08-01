@@ -1659,6 +1659,7 @@ function updateRightPanel() {
     const wAng = wPts.length>=2 ? Math.round(Math.atan2(wPts[wPts.length-1].y-wPts[0].y, wPts[wPts.length-1].x-wPts[0].x)*180/Math.PI*10)/10 : 0;
     html += `<div class="pp-row"><label>角度(°)</label><input type="number" id="pp-wangle" value="${wAng}" step="1"></div>`;
     html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${item.wireNo||''}"></div>`;
+    html += `<div class="pp-row"><label>線番サイズ</label><input type="number" id="pp-wno-fs" value="${item.wireNoFs||10}" step="1" min="6" max="32"></div>`;
     html += `<div class="pp-row"><label>線番X補正</label><input type="number" id="pp-wno-ox" value="${item.wireNoOffX||0}" step="5"></div>`;
     html += `<div class="pp-row"><label>線番Y補正</label><input type="number" id="pp-wno-oy" value="${item.wireNoOffY||0}" step="5"></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${item.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
@@ -2050,6 +2051,7 @@ function applyRightPanel() {
     el.layer      = v('pp-layer');
   } else if (wire) {
     wire.wireNo    = v('pp-wireno'); wire.layer = v('pp-layer');
+    wire.wireNoFs  = parseInt(v('pp-wno-fs')) || 10;
     wire.wireNoOffX = parseFloat(v('pp-wno-ox'))||0;
     wire.wireNoOffY = parseFloat(v('pp-wno-oy'))||0;
     if (v('pp-wangle') !== '') {

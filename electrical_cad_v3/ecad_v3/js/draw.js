@@ -157,7 +157,7 @@ function drawWires() {
         const len = Math.hypot(dx, dy);
         if (len > 0.1) { nx = -dy/len; ny = dx/len; if (ny > 0) { nx=-nx; ny=-ny; } }
       }
-      const fs  = 10;
+      const fs  = w.wireNoFs || 10;
       const off = fs + 6;
       const tx = mp.x + nx*off + (w.wireNoOffX||0);
       const ty = mp.y + ny*off + (w.wireNoOffY||0);
