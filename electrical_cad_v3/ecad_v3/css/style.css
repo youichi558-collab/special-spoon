@@ -108,6 +108,13 @@ body{font-family:'Segoe UI',sans-serif;font-size:12px;background:var(--bg);color
 .pp-row input,.pp-row select,.pp-row textarea{width:100%;padding:3px 5px;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg);font-size:11px;box-sizing:border-box;}
 .pp-row input[type=number]{height:32px;font-size:13px;}
 .pp-row input:focus{outline:none;border-color:var(--acc);}
+.pp-details{margin:0 10px 6px;border:1px solid var(--bd2);border-radius:4px;background:var(--bg2);}
+.pp-details .pp-row{padding:4px 10px;}
+.pp-details summary{padding:5px 10px;font-size:10px;color:var(--fg3);cursor:pointer;user-select:none;list-style:none;}
+.pp-details summary::-webkit-details-marker{display:none;}
+.pp-details summary::before{content:'▸ ';display:inline-block;}
+.pp-details[open] summary::before{content:'▾ ';}
+.pp-details[open] summary{border-bottom:1px solid var(--bd2);}
 .pp-apply{margin:6px 10px;padding:5px;width:calc(100% - 20px);background:var(--acc);color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:11px;transition:opacity 0.1s;}
 .pp-apply:hover{opacity:.85;}
 .pp-apply:active{opacity:.7;transform:scale(0.98);}
