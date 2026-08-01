@@ -1659,12 +1659,14 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>デバイス</label><input type="text" id="pp-partref" value="${el.partRef||''}" placeholder="例: MC1, NFB1"></div>`;
     html += `<div class="pp-row"><label>デバイスを図面に表示</label><input type="checkbox" id="pp-devhide"${el.devHide?'':' checked'} title="3極品等、同じデバイスを複数のシンボルに分けて配置する場合に使います。デバイス名は全部の要素に同じ値を入れつつ、文字はどれか1つだけに絞れます"></div>`;
     html += `<div class="pp-row"><label>デバイスサイズ</label><input type="number" id="pp-dfs" value="${el.devFs||11}" step="1" min="6" max="32" oninput="previewDeviceOff()"></div>`;
+    html += `<div class="pp-row"><label>デバイスの色</label><div style="display:flex;gap:4px;align-items:center"><input type="color" id="pp-dcolor" value="${el.devColor||'#1d6fb5'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer" oninput="syncColorCode('pp-dcolor','pp-dcolorcode');previewDeviceOff()"><input type="text" id="pp-dcolorcode" value="${el.devColor||'#1d6fb5'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-dcolorcode','pp-dcolor');previewDeviceOff()">${colorCodeBtns('pp-dcolorcode','pp-dcolor')}</div></div>`;
     html += `<div class="pp-row"><label>デバイス位置X補正</label><input type="number" id="pp-dox" value="${el.devOffX!==undefined?el.devOffX:''}" placeholder="自動" step="5" oninput="previewDeviceOff()"></div>`;
     html += `<div class="pp-row"><label>デバイス位置Y補正</label><input type="number" id="pp-doy" value="${el.devOffY!==undefined?el.devOffY:''}" placeholder="自動" step="5" oninput="previewDeviceOff()"></div>`;
     html += `<div class="pp-row"><button onclick="resetDeviceOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">デバイス位置リセット</button></div>`;
     html += `<div class="pp-row"><label>型番</label><input type="text" id="pp-partmodel" value="${el.partModel||''}" placeholder="例: S-T10（メーカー型番）"></div>`;
     html += `<div class="pp-row"><label>型式を図面に表示</label><input type="checkbox" id="pp-showmodel"${el.showModel?' checked':''} title="チェックしたシンボルにだけ型番が描画されます。接点側はOFFのままにしてください"></div>`;
     html += `<div class="pp-row"><label>型式サイズ</label><input type="number" id="pp-mfs" value="${el.modelFs||el.labelFs||11}" step="1" min="6" max="32" oninput="previewModelOff()"></div>`;
+    html += `<div class="pp-row"><label>型式の色</label><div style="display:flex;gap:4px;align-items:center"><input type="color" id="pp-mcolor" value="${el.modelColor||el.labelColor||'#555555'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer" oninput="syncColorCode('pp-mcolor','pp-mcolorcode');previewModelOff()"><input type="text" id="pp-mcolorcode" value="${el.modelColor||el.labelColor||'#555555'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-mcolorcode','pp-mcolor');previewModelOff()">${colorCodeBtns('pp-mcolorcode','pp-mcolor')}</div></div>`;
     html += `<div class="pp-row"><label>型式位置X補正</label><input type="number" id="pp-mox" value="${el.modelOffX!==undefined?el.modelOffX:''}" placeholder="自動" step="5" oninput="previewModelOff()"></div>`;
     html += `<div class="pp-row"><label>型式位置Y補正</label><input type="number" id="pp-moy" value="${el.modelOffY!==undefined?el.modelOffY:''}" placeholder="自動" step="5" oninput="previewModelOff()"></div>`;
     html += `<div class="pp-row"><button onclick="resetModelOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">型式位置リセット</button></div>`;
@@ -1834,9 +1836,11 @@ function previewDeviceOff() {
   if (!el) return;
   const g = id => document.getElementById(id);
   const dox = g('pp-dox'), doy = g('pp-doy'), dfs = g('pp-dfs');
+  const dcolor = g('pp-dcolor');
   if (dox) el.devOffX = dox.value !== '' ? parseInt(dox.value) : undefined;
   if (doy) el.devOffY = doy.value !== '' ? parseInt(doy.value) : undefined;
   if (dfs) el.devFs   = parseInt(dfs.value) || undefined;
+  if (dcolor) el.devColor = dcolor.value || undefined;
   drawWithoutSel();
 }
 
@@ -1859,10 +1863,11 @@ function previewModelOff() {
   const el = rp?._el;
   if (!el) return;
   const g = id => document.getElementById(id);
-  const mox = g('pp-mox'), moy = g('pp-moy'), mfs = g('pp-mfs');
+  const mox = g('pp-mox'), moy = g('pp-moy'), mfs = g('pp-mfs'), mcolor = g('pp-mcolor');
   if (mox) el.modelOffX = mox.value !== '' ? parseInt(mox.value) : undefined;
   if (moy) el.modelOffY = moy.value !== '' ? parseInt(moy.value) : undefined;
   if (mfs) el.modelFs   = parseInt(mfs.value) || undefined;
+  if (mcolor) el.modelColor = mcolor.value || undefined;
   drawWithoutSel();
 }
 
@@ -2023,10 +2028,12 @@ function applyRightPanel() {
     el.devHide   = !document.getElementById('pp-devhide')?.checked;
     el.partModel = v('pp-partmodel');
     el.devFs     = parseInt(v('pp-dfs')) || undefined;
+    el.devColor  = v('pp-dcolorcode') || v('pp-dcolor') || undefined;
     el.devOffX   = v('pp-dox') !== '' ? parseInt(v('pp-dox')) : undefined;
     el.devOffY   = v('pp-doy') !== '' ? parseInt(v('pp-doy')) : undefined;
     el.showModel = !!document.getElementById('pp-showmodel')?.checked;
     el.modelFs   = parseInt(v('pp-mfs')) || undefined;
+    el.modelColor = v('pp-mcolorcode') || v('pp-mcolor') || undefined;
     el.modelOffX = v('pp-mox') !== '' ? parseInt(v('pp-mox')) : undefined;
     el.modelOffY = v('pp-moy') !== '' ? parseInt(v('pp-moy')) : undefined;
     el.terminals = v('pp-term');
