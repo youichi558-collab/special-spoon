@@ -505,6 +505,26 @@ function drawSymEl(el, sel, lc) {
     ctx.fillText(el.label, lx, ly);
     ctx.restore();
   }
+  // 型式(partModel)の図面表示。要素ごとの el.showModel が真のときだけ描く。
+  // 全体トグルにすると同じデバイスの接点すべてに型式が出てしまうため、
+  // 表示するシンボル(コイル・本体側)を個別に選べるようにしている。
+  if (el.showModel && el.partModel && !state.pdfSkipText) {
+    const d   = getDef(el.type) || { w:64, h:34 };
+    const sc  = el.scale || 1;
+    const fs  = Math.round((el.labelFs||11) * sc);
+    const lox = el.labelOffX || 0;
+    // ラベルがある場合はその1行下、無い場合はラベルの位置に描く
+    const base = el.labelOffY || (d.h*sc/2 + 15*sc);
+    const loy  = base + (el.label ? fs + 3 : 0);
+    const rot  = (el.rot||0) * Math.PI/180;
+    const mx   = el.x + lox*Math.cos(rot) - loy*Math.sin(rot);
+    const my   = el.y + lox*Math.sin(rot) + loy*Math.cos(rot);
+    ctx.save();
+    ctx.fillStyle = el.labelColor || (state.darkMode ? '#aaa' : '#555');
+    ctx.font = `${fs}px sans-serif`; ctx.textAlign = 'center';
+    ctx.fillText(el.partModel, mx, my);
+    ctx.restore();
+  }
   // デバイス表示（表示ON時。未入力シンボルはオレンジ「?」で明示）
   if (state.showPartRef && !state.pdfSkipText) {
     const d  = getDef(el.type) || { w:64, h:34 };
