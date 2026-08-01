@@ -1117,11 +1117,11 @@ function srDrawShape(c, s, color) {
   if (s.t==='L') {
     c.lineWidth = 1.5; c.beginPath(); c.moveTo(T(s.x1),TY(s.y1)); c.lineTo(T(s.x2),TY(s.y2)); c.stroke();
   } else if (s.t==='C') {
-    c.lineWidth = 1.5; c.beginPath(); c.arc(T(s.cx),TY(s.cy),Math.max(1,s.r*SR_SCALE),0,Math.PI*2); c.stroke();
+    c.lineWidth = 1.5; c.beginPath(); c.arc(T(s.cx),TY(s.cy),Math.max(1,s.r*_srZoom),0,Math.PI*2); c.stroke();
   } else if (s.t==='R') {
-    c.lineWidth = 1.5; c.strokeRect(T(s.x),TY(s.y),s.w*SR_SCALE,s.h*SR_SCALE);
+    c.lineWidth = 1.5; c.strokeRect(T(s.x),TY(s.y),s.w*_srZoom,s.h*_srZoom);
   } else if (s.t==='T') {
-    c.font = `${(s.fs||14)*SR_SCALE/2}px sans-serif`; c.textAlign = 'center';
+    c.font = `${Math.max(4,(s.fs||14)*_srZoom/2)}px sans-serif`; c.textAlign = 'center';
     c.fillText(s.text, T(s.x), TY(s.y));
   }
   c.restore();
