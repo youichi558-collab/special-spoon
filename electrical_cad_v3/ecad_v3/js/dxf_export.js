@@ -8,6 +8,17 @@ const DXF_LAYER_MAP = {
   "回路":"CIRCUIT","配線":"WIRE","注記":"NOTE",
   "外形":"OUTLINE","図面枠":"FRAME","寸法":"DIM","寸法_vis":"DIM_VIS"
 };
+
+// 仕様の左揃え/右揃え基準計算用。キャンバス側(draw.js)と同じ考え方で、
+// 揃えを変えても文章全体の中心位置が動かないようにするため、
+// 最長行の幅を計測する。DOM操作不要な一時canvasを使い回す。
+let _dxfMeasureCv = null;
+function dxfMeasureTextWidth(text, fontPx) {
+  if (!_dxfMeasureCv) _dxfMeasureCv = document.createElement('canvas');
+  const mctx = _dxfMeasureCv.getContext('2d');
+  mctx.font = `${fontPx}px sans-serif`;
+  return mctx.measureText(text).width;
+}
 function dxfLayer(name){ return DXF_LAYER_MAP[name] || name || '0'; }
 // 【警告】\U+XXXX変換は試済み・失敗済み（AC1015でリテラル表示される）。再実装禁止。
 // 日本語対応は実装済み(2026-07-21): sjis.jsのencodeSJISでShift-JIS(cp932)バイト出力 + $DWGCODEPAGE=ANSI_932。
@@ -504,13 +515,21 @@ function exportDXF(){
       p(50,String(el.rot||0),41,String(sc),42,String(sc),43,'1.0');
       if(hasAttrib){
         p(66,1);
-        const lox=el.labelOffX||0,loy=el.labelOffY||(d.h/2+15);
+        const loy=el.labelOffY||(d.h/2+15);
         const rot=(el.rot||0)*Math.PI/180;
         // 仕様は改行可能。1行ごとにATTRIBを出す(DXFのTEXTは改行を持てないため)
         const lines=String(el.label).split('\n');
-        const lh=Math.round((el.labelFs||11)*1.25);
+        const fs=el.labelFs||11;
+        const lh=Math.round(fs*1.25);
+        const align=el.labelAlign||'center';
+        // 揃えを変えても文章全体の中心位置(=キャンバス側と同じ)が動かないよう、
+        // 最長行の幅から基準x(lox)を計算する。手動のX補正はその上に追加で乗る。
+        let maxW=0;
+        if(align!=='center') lines.forEach(ln=>{maxW=Math.max(maxW, dxfMeasureTextWidth(ln,fs));});
+        const baseX = align==='left' ? -maxW/2 : align==='right' ? maxW/2 : 0;
+        const lox = baseX + (el.labelOffX||0);
         // 文字揃え: DXFの水平揃えコード(72グループ) 0=左 1=中央 2=右
-        const alignCode={left:0,center:1,right:2}[el.labelAlign||'center'];
+        const alignCode={left:0,center:1,right:2}[align];
         lines.forEach((ln,i)=>{
           if(!ln) return;
           const oy=loy+i*lh;

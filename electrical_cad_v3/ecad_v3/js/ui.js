@@ -1727,7 +1727,7 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-moy" value="${el.modelOffY!==undefined?el.modelOffY:''}" placeholder="自動" step="5" oninput="previewModelOff()"></div>`;
     html += `<div class="pp-row"><button onclick="resetModelOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button></div>`;
     html += `</details>`;
-    html += `<div class="pp-row"><label>仕様</label><textarea rows="2" id="pp-label" placeholder="例: AC200V 3.7kW&#10;冷却ファン用（改行可）">${el.label||''}</textarea></div>`;
+    html += `<div class="pp-row"><label>仕様</label><textarea rows="2" id="pp-label" style="text-align:${el.labelAlign||'center'}" placeholder="例: AC200V 3.7kW&#10;冷却ファン用（改行可）">${el.label||''}</textarea></div>`;
     html += `<details class="pp-details" style="border-left:4px solid ${el.labelColor||'#555555'}"><summary>仕様表示の詳細（揃え・色・サイズ・位置）</summary>`;
     html += `<div class="pp-row"><label>文字揃え</label><select id="pp-lalign" onchange="previewLabelStyle()">
       <option value="left"  ${el.labelAlign==='left'  ?'selected':''}>左揃え</option>
@@ -1872,7 +1872,11 @@ function previewLabelStyle() {
   const lalign = document.getElementById('pp-lalign');
   if (lcolor) el.labelColor = lcolor.value || undefined;
   if (lfs)    el.labelFs    = parseInt(lfs.value) || 11;
-  if (lalign) el.labelAlign = lalign.value || undefined;
+  if (lalign) {
+    el.labelAlign = lalign.value || undefined;
+    const ta = document.getElementById('pp-label');
+    if (ta) ta.style.textAlign = lalign.value || 'center';
+  }
   drawWithoutSel();
 }
 
@@ -2463,10 +2467,14 @@ function renderSymFloat() {
   if (state.customSymbols && state.customSymbols.length) {
     html += `<div style="font-size:9px;color:var(--fg3);font-weight:700;margin:2px 0 3px;text-transform:uppercase;letter-spacing:.06em">カスタム</div>`;
     html += `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:3px">`;
-    state.customSymbols.forEach(s => {
+    state.customSymbols.forEach((s, i) => {
       const img = s.preview ? `<img src="${s.preview}" style="width:64px;height:48px;object-fit:contain;background:#fff;border-radius:2px">` : `<svg width="36" height="28"></svg>`;
       const termCount = (s.terminals||[]).length;
-      html += `<div class="sym-item" onclick="pickSym(this,'${s.type}')" style="flex-direction:column;align-items:center;padding:5px 3px;gap:3px;position:relative">
+      html += `<div class="sym-item" draggable="true" data-symidx="${i}"
+        onclick="pickSym(this,'${s.type}')"
+        ondragstart="symDragStart(event,${i})" ondragover="symDragOver(event)" ondrop="symDrop(event,${i})" ondragend="symDragEnd(event)"
+        onpointerdown="symRowPointerDown(event,${i})"
+        style="flex-direction:column;align-items:center;padding:5px 3px;gap:3px;position:relative;cursor:grab">
         ${img}
         <span style="font-size:9px;text-align:center;line-height:1.2">${s.label||s.type}</span>
         <span onclick="event.stopPropagation();openPinEditor('${s.type}')" title="端子(ピン)編集: ${termCount}点定義済み" style="position:absolute;top:2px;left:2px;font-size:9px;color:${termCount?'#0067c0':'var(--fg3)'};cursor:pointer">📍${termCount||''}</span>
@@ -2478,6 +2486,60 @@ function renderSymFloat() {
     html = `<p style="font-size:11px;color:var(--fg3);padding:4px">登録済みシンボルがありません</p>`;
   }
   body.innerHTML = html;
+}
+
+// ----------------------------------------------------------------
+// 登録シンボル一覧の並べ替え(レイヤー一覧のドラッグ実装と同じ考え方)
+// ----------------------------------------------------------------
+let _symDragFrom = -1;
+function symDragStart(e, i) {
+  _symDragFrom = i;
+  e.dataTransfer.effectAllowed = 'move';
+  e.currentTarget.style.opacity = '0.5';
+}
+function symDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+}
+function symDrop(e, toIdx) {
+  e.preventDefault();
+  if (_symDragFrom < 0 || _symDragFrom === toIdx) return;
+  const moved = state.customSymbols.splice(_symDragFrom, 1)[0];
+  state.customSymbols.splice(toIdx, 0, moved);
+  _symDragFrom = -1;
+  saveSymbolsToStorage();
+  renderSymFloat();
+}
+function symDragEnd(e) {
+  e.currentTarget.style.opacity = '';
+  _symDragFrom = -1;
+}
+function symRowPointerDown(e, i) {
+  if (e.pointerType !== 'touch') return; // マウス/ペンは既存のdraggable DnDに任せる
+  e.preventDefault();
+  let dragIdx = i;
+  let moved = false;
+  const onMove = (ev) => {
+    const el = document.elementFromPoint(ev.clientX, ev.clientY);
+    const item = el && el.closest ? el.closest('[data-symidx]') : null;
+    if (!item) return;
+    const toIdx = parseInt(item.dataset.symidx, 10);
+    if (isNaN(toIdx) || toIdx === dragIdx) return;
+    moved = true;
+    const m = state.customSymbols.splice(dragIdx, 1)[0];
+    state.customSymbols.splice(toIdx, 0, m);
+    dragIdx = toIdx;
+    renderSymFloat();
+  };
+  const onUp = () => {
+    if (moved) saveSymbolsToStorage();
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    document.removeEventListener('pointercancel', onUp);
+  };
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+  document.addEventListener('pointercancel', onUp);
 }
 
 // ----------------------------------------------------------------

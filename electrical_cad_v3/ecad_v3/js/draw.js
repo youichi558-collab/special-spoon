@@ -493,7 +493,6 @@ function drawSymEl(el, sel, lc) {
   if (el.label && !state.pdfSkipText) {
     const d   = getDef(el.type) || { w:64, h:34 };
     const sc  = el.scale || 1;
-    const lox = el.labelOffX || 0;
     const loy = el.labelOffY || (d.h*sc/2 + 15*sc);
     const rot = (el.rot||0) * Math.PI/180;
     const fs  = Math.round((el.labelFs||11) * sc);
@@ -505,9 +504,18 @@ function drawSymEl(el, sel, lc) {
     ctx.rotate(rot);
     ctx.fillStyle = el.labelColor || (state.darkMode ? '#aaa' : '#555');
     ctx.font = `${fs}px sans-serif`;
-    ctx.textAlign = el.labelAlign || 'center';
+    const align = el.labelAlign || 'center';
+    ctx.textAlign = align;
     const lines = String(el.label).split('\n');
     const lh = Math.round(fs * 1.25);
+    // 揃えを変えてもテキストブロック全体の中心位置(=シンボル直下)は動かさず、
+    // そのブロックの中で左詰め/中央/右詰めだけを切り替える。
+    // 以前は基準点(lox)を常に0(シンボル中心)にしていたため、左揃え/右揃えに
+    // すると文章全体がシンボルの片側へ大きくずれて見えていた。
+    let maxW = 0;
+    if (align !== 'center') lines.forEach(ln => { maxW = Math.max(maxW, ctx.measureText(ln).width); });
+    const baseX = align==='left' ? -maxW/2 : align==='right' ? maxW/2 : 0;
+    const lox = baseX + (el.labelOffX || 0);
     lines.forEach((ln, i) => ctx.fillText(ln, lox, loy + i*lh));
     ctx.restore();
   }
