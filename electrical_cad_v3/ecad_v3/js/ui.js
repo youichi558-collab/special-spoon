@@ -938,15 +938,15 @@ function flattenSymbolElToShapes(el, cS) {
   (cS.shapes || []).forEach(s => {
     if (s.t === 'L') {
       const p1 = srXformPt(s.x1, s.y1, el), p2 = srXformPt(s.x2, s.y2, el);
-      out.push({ t:'L', x1:p1.x, y1:p1.y, x2:p2.x, y2:p2.y });
+      out.push({ t:'L', x1:p1.x, y1:p1.y, x2:p2.x, y2:p2.y, lineWidth:s.lineWidth });
     } else if (s.t === 'C') {
       const c = srXformPt(s.cx, s.cy, el);
-      out.push({ t:'C', cx:c.x, cy:c.y, r: s.r * sc });
+      out.push({ t:'C', cx:c.x, cy:c.y, r: s.r * sc, lineWidth:s.lineWidth });
     } else if (s.t === 'A') {
       const c = srXformPt(s.cx, s.cy, el);
       let sa = srXformAngle(s.sa, el), ea = srXformAngle(s.ea, el);
       if (flipped) { const tmp = sa; sa = ea; ea = tmp; }
-      out.push({ t:'A', cx:c.x, cy:c.y, r: s.r * sc, sa, ea });
+      out.push({ t:'A', cx:c.x, cy:c.y, r: s.r * sc, sa, ea, lineWidth:s.lineWidth });
     } else if (s.t === 'P' && s.pts) {
       out.push({ t:'P', pts: s.pts.map(p => { const q = srXformPt(p[0], p[1], el); return [q.x, q.y]; }), cl: s.cl });
     } else if (s.t === 'R') {
@@ -955,9 +955,9 @@ function flattenSymbolElToShapes(el, cS) {
       if ((el.rot||0) % 360 === 0) {
         const minX=Math.min(p1.x,p3.x), maxX=Math.max(p1.x,p3.x);
         const minY=Math.min(p1.y,p3.y), maxY=Math.max(p1.y,p3.y);
-        out.push({ t:'R', x:minX, y:minY, w:maxX-minX, h:maxY-minY });
+        out.push({ t:'R', x:minX, y:minY, w:maxX-minX, h:maxY-minY, lineWidth:s.lineWidth });
       } else {
-        out.push({ t:'P', pts:[[p1.x,p1.y],[p2.x,p2.y],[p3.x,p3.y],[p4.x,p4.y]], cl:true });
+        out.push({ t:'P', pts:[[p1.x,p1.y],[p2.x,p2.y],[p3.x,p3.y],[p4.x,p4.y]], cl:true, lineWidth:s.lineWidth });
       }
     } else if (s.t === 'T') {
       const p = srXformPt(s.x, s.y, el);
@@ -969,15 +969,15 @@ function flattenSymbolElToShapes(el, cS) {
 // クリップボード要素1つを「ワールド座標の生shape配列」(sa/eaは度数法で統一)に変換する。
 // 未対応(標準シンボル・junction・bezier・dim等)はnullを返す。
 function srWorldShapesForEl(el) {
-  if (el.type === 'fline') return [{ t:'L', x1:el.x1, y1:el.y1, x2:el.x2, y2:el.y2 }];
-  if (el.type === 'circle') return [{ t:'C', cx:el.x, cy:el.y, r:el.r||0 }];
-  if (el.type === 'rect') return [{ t:'R', x:el.x, y:el.y, w:el.w||0, h:el.h||0 }];
+  if (el.type === 'fline') return [{ t:'L', x1:el.x1, y1:el.y1, x2:el.x2, y2:el.y2, lineWidth:el.lineWidth }];
+  if (el.type === 'circle') return [{ t:'C', cx:el.x, cy:el.y, r:el.r||0, lineWidth:el.lineWidth }];
+  if (el.type === 'rect') return [{ t:'R', x:el.x, y:el.y, w:el.w||0, h:el.h||0, lineWidth:el.lineWidth }];
   if (el.type === 'triangle') return [
-    { t:'L', x1:el.x1, y1:el.y1, x2:el.x2, y2:el.y2 },
-    { t:'L', x1:el.x2, y1:el.y2, x2:el.x3, y2:el.y3 },
-    { t:'L', x1:el.x3, y1:el.y3, x2:el.x1, y2:el.y1 },
+    { t:'L', x1:el.x1, y1:el.y1, x2:el.x2, y2:el.y2, lineWidth:el.lineWidth },
+    { t:'L', x1:el.x2, y1:el.y2, x2:el.x3, y2:el.y3, lineWidth:el.lineWidth },
+    { t:'L', x1:el.x3, y1:el.y3, x2:el.x1, y2:el.y1, lineWidth:el.lineWidth },
   ];
-  if (el.type === 'arc') return [{ t:'A', cx:el.x, cy:el.y, r:el.r||0, sa:(el.startA||0)*180/Math.PI, ea:(el.endA||0)*180/Math.PI }];
+  if (el.type === 'arc') return [{ t:'A', cx:el.x, cy:el.y, r:el.r||0, sa:(el.startA||0)*180/Math.PI, ea:(el.endA||0)*180/Math.PI, lineWidth:el.lineWidth }];
   if (el.type === 'text') return [{ t:'T', text:el.text||'', x:el.x, y:el.y, fs:el.fs||14 }];
   // 配置済みシンボル(カスタム/ライブラリ)インスタンス → 実際の配置で平坦化
   const cS = state.customSymbols.find(s => s.type === el.type);
@@ -1024,17 +1024,17 @@ function srPasteFromClipboard() {
     const ws = srWorldShapesForEl(el);
     if (!ws) return;
     ws.forEach(s => {
-      if (s.t==='L') shapes.push({t:'L', x1:tx(s.x1),y1:ty(s.y1),x2:tx(s.x2),y2:ty(s.y2)});
-      else if (s.t==='C') shapes.push({t:'C', cx:tx(s.cx),cy:ty(s.cy),r:Math.round(s.r*scale)});
-      else if (s.t==='R') shapes.push({t:'R', x:tx(s.x),y:ty(s.y),w:Math.round(s.w*scale),h:Math.round(s.h*scale)});
-      else if (s.t==='P' && s.pts) shapes.push({t:'P', pts:s.pts.map(p=>[tx(p[0]),ty(p[1])]), cl:s.cl});
+      if (s.t==='L') shapes.push({t:'L', x1:tx(s.x1),y1:ty(s.y1),x2:tx(s.x2),y2:ty(s.y2), lineWidth:s.lineWidth});
+      else if (s.t==='C') shapes.push({t:'C', cx:tx(s.cx),cy:ty(s.cy),r:Math.round(s.r*scale), lineWidth:s.lineWidth});
+      else if (s.t==='R') shapes.push({t:'R', x:tx(s.x),y:ty(s.y),w:Math.round(s.w*scale),h:Math.round(s.h*scale), lineWidth:s.lineWidth});
+      else if (s.t==='P' && s.pts) shapes.push({t:'P', pts:s.pts.map(p=>[tx(p[0]),ty(p[1])]), cl:s.cl, lineWidth:s.lineWidth});
       else if (s.t==='T') shapes.push({t:'T', text:s.text, x:tx(s.x), y:ty(s.y), fs:s.fs});
       else if (s.t==='A') {
         // 以前は弧を8本の直線に分解し、さらに各点を整数へ丸めていた。
         // 半径が小さい弧ほど丸め誤差が相対的に大きくなり、歪んで見える不具合があった。
         // 配置時の描画(symbols.js)は弧をネイティブでサポートしているので、
         // 分解せずそのまま持たせる(座標・半径は丸め、角度sa/eaは丸めない)。
-        shapes.push({t:'A', cx:tx(s.cx), cy:ty(s.cy), r:Math.round(s.r*scale), sa:s.sa, ea:s.ea});
+        shapes.push({t:'A', cx:tx(s.cx), cy:ty(s.cy), r:Math.round(s.r*scale), sa:s.sa, ea:s.ea, lineWidth:s.lineWidth});
       }
     });
   });
