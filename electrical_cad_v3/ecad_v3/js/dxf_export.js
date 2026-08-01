@@ -506,13 +506,20 @@ function exportDXF(){
         p(66,1);
         const lox=el.labelOffX||0,loy=el.labelOffY||(d.h/2+15);
         const rot=(el.rot||0)*Math.PI/180;
-        const lx=el.x+lox*Math.cos(rot)-loy*Math.sin(rot);
-        const ly=el.y+lox*Math.sin(rot)+loy*Math.cos(rot);
-        const u=toUnicodeDXF(el.label);
-        p(0,'ATTRIB',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbText',
-          10,lx.toFixed(3),20,(-ly).toFixed(3),30,'0.0',40,'10',1,u,
-          7,'STANDARD',72,0,11,lx.toFixed(3),21,(-ly).toFixed(3),31,'0.0',
-          100,'AcDbAttribute',280,0,2,'LABEL',70,0);
+        // 仕様は改行可能。1行ごとにATTRIBを出す(DXFのTEXTは改行を持てないため)
+        const lines=String(el.label).split('\n');
+        const lh=Math.round((el.labelFs||11)*1.25);
+        lines.forEach((ln,i)=>{
+          if(!ln) return;
+          const oy=loy+i*lh;
+          const lx=el.x+lox*Math.cos(rot)-oy*Math.sin(rot);
+          const ly=el.y+lox*Math.sin(rot)+oy*Math.cos(rot);
+          const u=toUnicodeDXF(ln);
+          p(0,'ATTRIB',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbText',
+            10,lx.toFixed(3),20,(-ly).toFixed(3),30,'0.0',40,'10',1,u,
+            7,'STANDARD',72,0,11,lx.toFixed(3),21,(-ly).toFixed(3),31,'0.0',
+            100,'AcDbAttribute',280,0,2,`LABEL${i?i+1:''}`,70,0);
+        });
         p(0,'SEQEND',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbSeqend');
       }
     }

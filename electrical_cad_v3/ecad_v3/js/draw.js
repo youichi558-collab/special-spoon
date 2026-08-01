@@ -502,7 +502,13 @@ function drawSymEl(el, sel, lc) {
     ctx.save();
     ctx.fillStyle = el.labelColor || (state.darkMode ? '#aaa' : '#555');
     ctx.font = `${fs}px sans-serif`; ctx.textAlign = 'center';
-    ctx.fillText(el.label, lx, ly);
+    // 改行対応。行送りは文字サイズの1.25倍。回転にも追随させる。
+    const lines = String(el.label).split('\n');
+    const lh = Math.round(fs * 1.25);
+    lines.forEach((ln, i) => {
+      const off = i * lh;
+      ctx.fillText(ln, lx - off*Math.sin(rot), ly + off*Math.cos(rot));
+    });
     ctx.restore();
   }
   // 型式(partModel)の図面表示。要素ごとの el.showModel が真のときだけ描く。
@@ -516,7 +522,11 @@ function drawSymEl(el, sel, lc) {
     // ラベルの位置を基準に「ラベルがあれば1行下、無ければラベルの位置」に置く
     const base = el.labelOffY || (d.h*sc/2 + 15*sc);
     const lox  = el.modelOffX !== undefined ? el.modelOffX : (el.labelOffX || 0);
-    const loy  = el.modelOffY !== undefined ? el.modelOffY : base + (el.label ? fs + 3 : 0);
+    // 仕様が複数行のときは、その行数ぶん下げて重ならないようにする
+    const lblLines = el.label ? String(el.label).split('\n').length : 0;
+    const lblFs    = Math.round((el.labelFs||11) * sc);
+    const loy  = el.modelOffY !== undefined ? el.modelOffY
+               : base + (lblLines ? (lblLines - 1) * Math.round(lblFs*1.25) + fs + 3 : 0);
     const rot  = (el.rot||0) * Math.PI/180;
     const mx   = el.x + lox*Math.cos(rot) - loy*Math.sin(rot);
     const my   = el.y + lox*Math.sin(rot) + loy*Math.cos(rot);
