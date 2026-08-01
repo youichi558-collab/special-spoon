@@ -1005,14 +1005,16 @@ function srPasteFromClipboard() {
   cb.wires.forEach(w => { (w.pts||[]).forEach(p => addPt(p.x, p.y)); });
   if (!isFinite(minX)) { alert('対応していない図形のみが選択されています(標準シンボル・接続点・寸法線等は貼り付け非対応)'); return; }
 
-  const bW = maxX-minX || 1, bH = maxY-minY || 1;
+  // (bW/bH はフィット縮小をやめたため未使用)
   const cx = (minX+maxX)/2, cy = (minY+maxY)/2;
-  // W/H入力値に合わせてスケール
-  const symW = parseFloat(document.getElementById('sr-w')?.value)||80;
-  const symH = parseFloat(document.getElementById('sr-h')?.value)||60;
-  const scale = Math.min(symW/bW, symH/bH) * 0.9;
-  const tx = wx => Math.round((wx - cx) * scale);
-  const ty = wy => Math.round((wy - cy) * scale);
+  // 等倍(1:1)で貼り付ける。
+  // 以前はW/H入力欄(初期値64x40)に収まるよう縮小していたため、
+  // コピー元より大幅に小さいシンボルが登録されてしまっていた。
+  // 配置時の描画(symbols.js)はshapes座標をそのまま使う1:1描画なので、
+  // ここで等倍にすることでコピー元と同じ大きさになる。
+  const tx = wx => Math.round(wx - cx);
+  const ty = wy => Math.round(wy - cy);
+  const scale = 1;
 
   // 変換してSR形式に
   const shapes = [];
@@ -1047,6 +1049,7 @@ function srPasteFromClipboard() {
   });
   srGridAlignShapes(shapes);
   _srShapes = shapes;
+  srFitToContent();
   srRender();
   if (skipped > 0) alert(`${skipped}個の要素は貼り付けに対応していないためスキップされました(標準シンボル・接続点・寸法線・ベジェ曲線等)`);
 }
@@ -1092,6 +1095,22 @@ function srGridAlignShapes(shapes) {
     });
   }
   return { dx, dy, hitX:bx.c, hitY:by.c, total:xs.length };
+}
+
+// 貼り付け後、実際の図形サイズをW/H欄に反映し、
+// キャンバスに収まるようズーム倍率を合わせる。
+function srFitToContent() {
+  const bb = calcCustomSymBBox(_srShapes);
+  const wEl = document.getElementById('sr-w'), hEl = document.getElementById('sr-h');
+  if (wEl) wEl.value = Math.max(10, Math.min(300, Math.round(bb.w)));
+  if (hEl) hEl.value = Math.max(10, Math.min(300, Math.round(bb.h)));
+
+  const cv = document.getElementById('sym-reg-cv');
+  if (!cv) return;
+  // 中心が原点なので、必要な表示半径は幅/高さの半分
+  const needX = (bb.w / 2) || 1, needY = (bb.h / 2) || 1;
+  const z = Math.min((cv.width / 2 - 12) / needX, (cv.height / 2 - 12) / needY);
+  _srZoom = Math.max(0.5, Math.min(10, z));
 }
 
 function srClear() {
@@ -1286,6 +1305,17 @@ function calcCustomSymBBox(shapes) {
     } else if (s.t==='R') {
       minX=Math.min(minX,s.x,s.x+s.w); maxX=Math.max(maxX,s.x,s.x+s.w);
       minY=Math.min(minY,s.y,s.y+s.h); maxY=Math.max(maxY,s.y,s.y+s.h);
+    } else if (s.t==='A') {
+      minX=Math.min(minX,s.cx-s.r); maxX=Math.max(maxX,s.cx+s.r);
+      minY=Math.min(minY,s.cy-s.r); maxY=Math.max(maxY,s.cy+s.r);
+    } else if (s.t==='P' && s.pts) {
+      s.pts.forEach(p => {
+        minX=Math.min(minX,p[0]); maxX=Math.max(maxX,p[0]);
+        minY=Math.min(minY,p[1]); maxY=Math.max(maxY,p[1]);
+      });
+    } else if (s.t==='T') {
+      minX=Math.min(minX,s.x); maxX=Math.max(maxX,s.x);
+      minY=Math.min(minY,s.y); maxY=Math.max(maxY,s.y);
     }
   });
   if (!isFinite(minX)) return { w:80, h:60 };
