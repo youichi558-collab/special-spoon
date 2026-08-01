@@ -1023,9 +1023,53 @@ function srPasteFromClipboard() {
       shapes.push({t:'L', x1:tx(pts[i].x),y1:ty(pts[i].y), x2:tx(pts[i+1].x),y2:ty(pts[i+1].y)});
     }
   });
+  srGridAlignShapes(shapes);
   _srShapes = shapes;
   srRender();
   if (skipped > 0) alert(`${skipped}個の要素は貼り付けに対応していないためスキップされました(標準シンボル・接続点・寸法線・ベジェ曲線等)`);
+}
+
+// 貼り付けた図形群を「形を変えずに」整数平行移動し、
+// 端点・中心がグリッド(SR_GRID)に乗る個数が最大になるオフセットを選ぶ。
+// X/Yは独立に効くので軸ごとに最良を求める。同点なら移動量が小さい方を優先。
+function srGridAlignShapes(shapes) {
+  const xs = [], ys = [];
+  shapes.forEach(s => {
+    if (s.t==='L') { xs.push(s.x1, s.x2); ys.push(s.y1, s.y2); }
+    else if (s.t==='C') { xs.push(s.cx); ys.push(s.cy); }
+    else if (s.t==='R') { xs.push(s.x, s.x+s.w); ys.push(s.y, s.y+s.h); }
+    else if (s.t==='T') { xs.push(s.x); ys.push(s.y); }
+    else if (s.t==='P' && s.pts) s.pts.forEach(p => { xs.push(p[0]); ys.push(p[1]); });
+  });
+  if (!xs.length) return { dx:0, dy:0, hit:0, total:0 };
+
+  // 移動量の小さい順に候補を並べる: 0, 1, -1, 2, -2 ...
+  const cands = [0];
+  for (let k = 1; k <= Math.floor(SR_GRID/2); k++) { cands.push(k); cands.push(-k); }
+  if (SR_GRID % 2 === 0) cands.push(SR_GRID/2);
+
+  const best = vals => {
+    let bd = 0, bc = -1;
+    cands.forEach(d => {
+      let n = 0;
+      vals.forEach(v => { if ((((v + d) % SR_GRID) + SR_GRID) % SR_GRID === 0) n++; });
+      if (n > bc) { bc = n; bd = d; }
+    });
+    return { d: bd, c: bc };
+  };
+  const bx = best(xs), by = best(ys);
+  const dx = bx.d, dy = by.d;
+
+  if (dx || dy) {
+    shapes.forEach(s => {
+      if (s.t==='L') { s.x1+=dx; s.y1+=dy; s.x2+=dx; s.y2+=dy; }
+      else if (s.t==='C') { s.cx+=dx; s.cy+=dy; }
+      else if (s.t==='R') { s.x+=dx; s.y+=dy; }
+      else if (s.t==='T') { s.x+=dx; s.y+=dy; }
+      else if (s.t==='P' && s.pts) s.pts = s.pts.map(p => [p[0]+dx, p[1]+dy]);
+    });
+  }
+  return { dx, dy, hitX:bx.c, hitY:by.c, total:xs.length };
 }
 
 function srClear() {
