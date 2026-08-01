@@ -124,6 +124,7 @@ const wireTool = {
         fromTermIdx:fromSnap?.termIdx ?? '',
         toElId:     toSnap?.elId     || '',
         toTermIdx:  toSnap?.termIdx  ?? '',
+        ...(state.drawLineWidth != null ? { lineWidth: state.drawLineWidth } : {}),
       });
       state.wirePoints = [{ x: sp.x, y: sp.y }];
       state.wireSnapPts = [sp.snapType === 'terminal' ? { elId: sp.elId, termIdx: sp.termIdx } : null];

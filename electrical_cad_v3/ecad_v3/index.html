@@ -131,7 +131,7 @@
           <div class="rb rb-sm" id="rb-bezier" onclick="setMode('bezier')"><svg viewBox="0 0 14 14"><path d="M2 11 C4 2 10 2 12 11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="2" cy="11" r="1.5" fill="currentColor"/><circle cx="12" cy="11" r="1.5" fill="currentColor"/></svg>曲線</div>
           <div class="rb rb-sm" id="rb-fline" onclick="setMode('fline')"><svg viewBox="0 0 14 14"><path d="M2 12L12 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>直線</div>
           <div style="display:flex;align-items:center;gap:2px;padding:0 2px;font-size:10px;color:var(--fg3)">
-            線幅<select id="draw-lw" title="これから描く図形(直線・矩形・円・弧・三角・曲線)の太さ。「レイヤー既定」ならレイヤーごとの設定に従う"
+            線幅<select id="draw-lw" title="これから描く図形(直線・矩形・円・弧・三角・曲線)と配線の太さ。「レイヤー既定」ならレイヤーごとの設定に従う"
               onchange="state.drawLineWidth=this.value?parseFloat(this.value):null"
               style="font-size:11px;padding:1px 2px;border:1px solid var(--bd2);border-radius:3px;background:var(--bg);color:var(--fg)">
               <option value="" selected>レイヤー既定</option>
