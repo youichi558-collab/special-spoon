@@ -223,7 +223,18 @@ const textTool = {
       draw();
     });
 
+    let outsideTimer = null;
+    const onOutside = (e2) => {
+      if (!wrap.contains(e2.target)) {
+        e2.stopPropagation();
+        safeFinish(true);
+      }
+    };
+
     const finish = (confirm) => {
+      clearTimeout(outsideTimer);
+      document.removeEventListener('mousedown', onOutside, true);
+      document.removeEventListener('pointerdown', onOutside, true);
       // プレビュー要素を削除
       const idx = state.elements.indexOf(previewEl);
       if (idx !== -1) state.elements.splice(idx, 1);
@@ -244,17 +255,20 @@ const textTool = {
       if (e2.key === 'Enter')  { e2.preventDefault(); safeFinish(true); }
       if (e2.key === 'Escape') { safeFinish(false); }
     });
-    // 外側クリックで確定（そのクリックをキャンバスに伝播させない）
-    const onOutside = (e2) => {
-      if (!wrap.contains(e2.target)) {
-        document.removeEventListener('mousedown', onOutside, true);
-        document.removeEventListener('pointerdown', onOutside, true);
-        e2.stopPropagation();
-        safeFinish(true);
-      }
-    };
-    document.addEventListener('mousedown', onOutside, true);
-    document.addEventListener('pointerdown', onOutside, true);
+    // 外側クリックで確定（そのクリックをキャンバスに伝播させない）。
+    // 1回の物理クリックは pointerdown → mousedown → pointerup → mouseup と
+    // 複数のイベントに分かれて発生する。ここまでの処理はキャンバスの
+    // pointerdown ハンドラから呼ばれているため、同じタイミングで
+    // mousedown/pointerdown の監視を登録すると、直後に発生する
+    // 「同じクリックのmousedown」を即座に"外側クリック"と誤認して
+    // 入力欄が一瞬で確定・削除されてしまう(文字が打てない不具合の原因)。
+    // 現在のクリックの一連のイベントが終わってから監視を始めるよう、
+    // setTimeoutで次のイベントループまで登録を遅らせる。
+    outsideTimer = setTimeout(() => {
+      if (finished) return;
+      document.addEventListener('mousedown', onOutside, true);
+      document.addEventListener('pointerdown', onOutside, true);
+    }, 0);
   },
   onMove() {}, onUp() {}, onHover() {}
 };
@@ -694,25 +708,36 @@ function showLeaderTextInput(wx, wy, onConfirm) {
   document.body.appendChild(wrap);
   inp.focus();
 
-  const finish = () => { onConfirm(inp.value.trim()); wrap.remove(); };
+  const finish = () => { cleanup(); onConfirm(inp.value.trim()); wrap.remove(); };
   let done = false;
-  const safeDone = (ok) => { if (done) return; done = true; if (ok) finish(); else { wrap.remove(); state.dimState=null; state.preview=null; draw(); } };
+  const safeDone = (ok) => { if (done) return; done = true; if (ok) finish(); else { cleanup(); wrap.remove(); state.dimState=null; state.preview=null; draw(); } };
   btn.addEventListener('click', () => safeDone(true));
   inp.addEventListener('keydown', e => {
     if (e.key === 'Enter')  { e.preventDefault(); safeDone(true); }
     if (e.key === 'Escape') { safeDone(false); }
   });
-  // 外側クリックで確定（そのクリックをキャンバスに伝播させない）
+  // 外側クリックで確定（そのクリックをキャンバスに伝播させない）。
+  // このダイアログは引出線ツールの3クリック目(onDown)から呼ばれるため、
+  // 同じタイミングでmousedown/pointerdownの監視を登録すると、直後に発生する
+  // 「同じクリックのmousedown」を即座に外側クリックと誤認し、文字を打つ前に
+  // 確定・削除されてしまう(テキストツールと同じ不具合)。次のイベントループまで
+  // 登録を遅らせる。
   const onOut = (e) => {
     if (!wrap.contains(e.target)) {
-      document.removeEventListener('mousedown', onOut, true);
-      document.removeEventListener('pointerdown', onOut, true);
       e.stopPropagation();
       safeDone(true);
     }
   };
-  document.addEventListener('mousedown', onOut, true);
-  document.addEventListener('pointerdown', onOut, true);
+  const cleanup = () => {
+    clearTimeout(outTimer);
+    document.removeEventListener('mousedown', onOut, true);
+    document.removeEventListener('pointerdown', onOut, true);
+  };
+  const outTimer = setTimeout(() => {
+    if (done) return;
+    document.addEventListener('mousedown', onOut, true);
+    document.addEventListener('pointerdown', onOut, true);
+  }, 0);
 }
 
 const leaderTool = {
