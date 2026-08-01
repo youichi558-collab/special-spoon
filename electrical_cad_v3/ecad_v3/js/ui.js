@@ -2106,6 +2106,57 @@ function setHint(msg) {
 }
 
 // ----------------------------------------------------------------
+// ラベル → 項目記号(partRef) 一括移行
+// ----------------------------------------------------------------
+// 従来はラベル欄に既定値(CR/SW/M等)が自動で入り、機器記号(MCCB1等)も
+// ラベル欄に書かれていた。機器の識別を項目記号に一本化するための移行。
+//   ・項目記号が空 → ラベルの値を項目記号へ移し、ラベルを空にする
+//   ・項目記号とラベルが同じ値 → ラベルを空にする
+//   ・両方に別々の値が入っている → 触らない(用途メモの可能性があるため)
+function migrateLabelToPartRef() {
+  const SKIP = ['text','rect','circle','fline','dim','leader','angle_dim','wire','junction'];
+  // まず書き換えずに対象を数える
+  const targets = [];
+  state.pages.forEach(pg => {
+    (pg.elements || []).forEach(el => {
+      if (SKIP.includes(el.type)) return;
+      const lb = (el.label || '').trim();
+      if (!lb) return;
+      const pr = (el.partRef || '').trim();
+      if (!pr)            targets.push({ el, lb, act:'move'  });
+      else if (pr === lb) targets.push({ el, lb, act:'clear' });
+      else                targets.push({ el, lb, act:'keep'  });
+    });
+  });
+  const n = a => targets.filter(t => t.act === a).length;
+  const moved = n('move'), cleared = n('clear'), kept = n('keep');
+
+  if (!targets.length) { alert('移行の対象になる要素はありませんでした。'); return; }
+  if (!moved && !cleared) {
+    alert(`ラベルと項目記号に別々の値が入っている要素が ${kept} 個あります。\n`
+        + `用途メモの可能性があるため、自動では変更しません。`);
+    return;
+  }
+  if (!confirm(
+      `ラベルの値を項目記号へ移行します。\n\n`
+    + `　項目記号へ移動: ${moved} 個\n`
+    + `　重複ラベルを消去: ${cleared} 個\n`
+    + `　別々の値のため据え置き: ${kept} 個\n\n`
+    + `実行後、項目記号の表示を自動でONにします。\n`
+    + `取り消しは Ctrl+Z でできます。`)) return;
+
+  pushH();   // Undo できるように履歴へ積む
+  targets.forEach(t => {
+    if      (t.act === 'move')  { t.el.partRef = t.lb; t.el.label = ''; }
+    else if (t.act === 'clear') { t.el.label = ''; }
+  });
+  state.showPartRef = true;
+  syncPartRefBtn();
+  draw();
+  alert(`移行しました（移動 ${moved} 個 / 消去 ${cleared} 個 / 据え置き ${kept} 個）`);
+}
+
+// ----------------------------------------------------------------
 // 部品番号（partRef）表示トグル
 // ----------------------------------------------------------------
 function togglePartRefDisp() {

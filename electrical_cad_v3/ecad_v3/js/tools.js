@@ -156,14 +156,15 @@ const symTool = {
     if (!state.symType) return;
     pushH();
     const sx = snap(wx), sy = snap(wy);
-    const d  = getDef(state.symType) || {};
     state.elements.push({ id: genId('el'),
       type:   state.symType,
       x: sx, y: sy,
       rot:    0,
       flipH:  false,
       flipV:  false,
-      label:  d.label || '',
+      // ラベルは既定値を入れない。機器の識別は項目記号(partRef)に一本化し、
+      // ラベルは用途メモ(例:「冷却ファン用」)を任意で書く欄とする。
+      label:  '',
       partRef: '',
       partModel: state.pendingRef || '',
       terminals: state.pendingTerm || '',
