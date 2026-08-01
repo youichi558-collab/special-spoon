@@ -273,12 +273,15 @@ const shapeTool = {
       if (state.ortho) { const o = applyOrtho(p1.x, p1.y, p.x, p.y); p = {x:o.x, y:o.y}; }
       const p2 = p;
       pushH();
+      // state.drawLineWidth が null なら既存どおり未指定(レイヤー既定に従う)、
+      // 値があれば要素に焼き込んで明示的な太さにする
+      const lw = state.drawLineWidth != null ? { lineWidth: state.drawLineWidth } : {};
       if (state.mode === 'rect') {
-        state.elements.push({ id: genId('el'), type:'rect', x:Math.min(p1.x,p2.x), y:Math.min(p1.y,p2.y), w:Math.abs(p2.x-p1.x), h:Math.abs(p2.y-p1.y), layer:activeLayer() });
+        state.elements.push({ id: genId('el'), type:'rect', x:Math.min(p1.x,p2.x), y:Math.min(p1.y,p2.y), w:Math.abs(p2.x-p1.x), h:Math.abs(p2.y-p1.y), layer:activeLayer(), ...lw });
       } else if (state.mode === 'circle') {
-        state.elements.push({ id: genId('el'), type:'circle', x:p1.x, y:p1.y, r:Math.hypot(p2.x-p1.x,p2.y-p1.y), layer:activeLayer() });
+        state.elements.push({ id: genId('el'), type:'circle', x:p1.x, y:p1.y, r:Math.hypot(p2.x-p1.x,p2.y-p1.y), layer:activeLayer(), ...lw });
       } else if (state.mode === 'fline') {
-        state.elements.push({ id: genId('el'), type:'fline', x1:p1.x, y1:p1.y, x2:p2.x, y2:p2.y, layer:activeLayer() });
+        state.elements.push({ id: genId('el'), type:'fline', x1:p1.x, y1:p1.y, x2:p2.x, y2:p2.y, layer:activeLayer(), ...lw });
       }
       state.mouse.shapeStart = null;
       state.preview = null;
@@ -334,7 +337,7 @@ const arcTool = {
       pushH();
       state.elements.push({ id: genId('el'), type:'arc',
         x:cx, y:cy, r, startA:a1, endA:a2, ccw: side > 0,
-        layer: activeLayer() });
+        layer: activeLayer(), ...(state.drawLineWidth != null ? { lineWidth: state.drawLineWidth } : {}) });
       state.mouse.arcP1 = null; state.mouse.arcP2 = null; state.preview = null;
       updateHint();
     }
@@ -392,7 +395,7 @@ const arc3Tool = {
       const nx=-(p2.y-p1.y), ny=p2.x-p1.x;
       const ccw = nx*(p3.x-(p1.x+p2.x)/2)+ny*(p3.y-(p1.y+p2.y)/2) > 0;
       pushH();
-      state.elements.push({ id:genId('el'), type:'arc', x:cx, y:cy, r, startA:a1, endA:a2, ccw, layer:activeLayer() });
+      state.elements.push({ id:genId('el'), type:'arc', x:cx, y:cy, r, startA:a1, endA:a2, ccw, layer:activeLayer(), ...(state.drawLineWidth != null ? { lineWidth: state.drawLineWidth } : {}) });
       state.mouse.arc3P1=null; state.mouse.arc3P2=null; state.preview=null;
       updateHint();
     }
@@ -454,7 +457,7 @@ const triTool = {
       state.elements.push({ id:genId('el'), type:'triangle',
         x1:state.mouse.triP1.x, y1:state.mouse.triP1.y,
         x2:state.mouse.triP2.x, y2:state.mouse.triP2.y,
-        x3:p3.x, y3:p3.y, layer:activeLayer() });
+        x3:p3.x, y3:p3.y, layer:activeLayer(), ...(state.drawLineWidth != null ? { lineWidth: state.drawLineWidth } : {}) });
       state.mouse.triP1 = null; state.mouse.triP2 = null; state.preview = null;
       updateHint();
     }
@@ -514,7 +517,7 @@ const bezierTool = {
     const pts = state.mouse.bezierPts;
     if (!pts || pts.length < 2) { state.mouse.bezierPts = null; state.preview = null; draw(); return; }
     pushH();
-    state.elements.push({ id: genId('el'), type: 'bezier', pts: [...pts], layer: activeLayer() });
+    state.elements.push({ id: genId('el'), type: 'bezier', pts: [...pts], layer: activeLayer(), ...(state.drawLineWidth != null ? { lineWidth: state.drawLineWidth } : {}) });
     state.mouse.bezierPts = null;
     state.preview = null;
     updateHint();

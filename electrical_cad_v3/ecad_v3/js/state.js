@@ -111,6 +111,7 @@ const state = {
   showSymPins:  false,  // 【検証用/仮】シンボル端子(ピン)位置のマーカー表示（PDF出力には反映されない）
   junctionStyle: 'dot', // 接続点の見た目: 'dot'=塗りつぶし丸(既定・分岐点用) / 'circle'=白丸(端子台の端子) / 'dbl'=二重丸
   junctionR: 2,             // 接続点のサイズ(半径)
+  drawLineWidth: null, // これから描く図形(直線・矩形・円・弧・三角・曲線)の太さ。nullなら「レイヤー既定」に従う(従来動作)
   _junctionRTouched: false, // ユーザーがサイズを手動変更したか(trueならスタイル切替時のデフォルトサイズ変更を抑止)
   showUnconnected: false,   // 未接続端子マーカーの表示ON/OFF
   _unconnectedResults: [],  // runUnconnectedCheck()で計算したキャッシュ(毎フレーム再計算しない)
