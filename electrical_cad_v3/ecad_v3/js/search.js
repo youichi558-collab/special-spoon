@@ -1,6 +1,6 @@
 // ================================================================
 // search.js — 全ページ横断検索（Ctrl+F / クイックバー🔍）
-// 対象: デバイス(partRef)・線番(wireNo)・ラベル・テキスト・
+// 対象: デバイス(partRef)・線番(wireNo)・仕様(label)・テキスト・
 //       指示線/寸法テキスト・端子番号・メモ
 // 依存: state, cv, draw, switchPage, updateRightPanel, _syncCurrentPage
 // ================================================================
@@ -29,7 +29,7 @@
         const cy = (el.y !== undefined) ? el.y : ((el.y1+el.y2)/2 || 0);
         [
           ['デバイス', el.partRef],
-          ['ラベル',   el.label],
+          ['仕様',     el.label],
           ['テキスト', el.text],
           ['指示線',   el.leaderText],
           ['寸法',     el.dimText],

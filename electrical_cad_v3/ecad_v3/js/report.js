@@ -279,10 +279,10 @@ function showRefPanel(){
 }
 function showTerminals(){
   const terms=state.elements.filter(el=>el.type==='terminal');
-  let html=terms.length?`<table class="tbl"><tr><th>No</th><th>ラベル</th><th>端子番号</th><th>線番</th><th>メモ</th></tr>${terms.map((t,i)=>`<tr><td>${i+1}</td><td>${t.label||''}</td><td>${t.terminals||''}</td><td>${t.wireNo||''}</td><td>${t.note||''}</td></tr>`).join('')}</table>`:'<p style="font-size:11px;color:var(--fg3)">端子台がありません</p>';
+  let html=terms.length?`<table class="tbl"><tr><th>No</th><th>仕様</th><th>端子番号</th><th>線番</th><th>メモ</th></tr>${terms.map((t,i)=>`<tr><td>${i+1}</td><td>${t.label||''}</td><td>${t.terminals||''}</td><td>${t.wireNo||''}</td><td>${t.note||''}</td></tr>`).join('')}</table>`:'<p style="font-size:11px;color:var(--fg3)">端子台がありません</p>';
   _reportOpen('term', '端子台一覧', html, exportTermCSV);
 }
-function exportTermCSV(){const terms=state.elements.filter(el=>el.type==='terminal');dl(['No,ラベル,端子番号,線番,メモ',...terms.map((t,i)=>`${i+1},${t.label||''},${t.terminals||''},${t.wireNo||''},${t.note||''}`)].join('\n'),'terminals.csv','text/csv');}
+function exportTermCSV(){const terms=state.elements.filter(el=>el.type==='terminal');dl(['No,仕様,端子番号,線番,メモ',...terms.map((t,i)=>`${i+1},${t.label||''},${t.terminals||''},${t.wireNo||''},${t.note||''}`)].join('\n'),'terminals.csv','text/csv');}
 
 
 // ================================================================
@@ -313,7 +313,7 @@ function showTerminalTable() {
   });
 
   let html = `<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">部品数: ${els.length}</p>`;
-  html += `<table class="tbl"><tr><th>デバイス</th><th>ラベル</th><th>種別</th><th>端子番号</th><th>接続線番</th><th>接続先</th></tr>`;
+  html += `<table class="tbl"><tr><th>デバイス</th><th>仕様</th><th>種別</th><th>端子番号</th><th>接続線番</th><th>接続先</th></tr>`;
   els.forEach(el => {
     const conns = connMap[el.id] || [];
     const termList = (el.terminals || '').split(',').map(t => t.trim()).filter(Boolean);
@@ -333,7 +333,7 @@ function showTerminalTable() {
 function exportTerminalCSV() {
   const skip = ['text','rect','circle','fline','dim','leader','angle_dim'];
   const els = state.elements.filter(el => !skip.includes(el.type));
-  const rows = ['デバイス,ラベル,種別,端子番号,接続線番,接続先'];
+  const rows = ['デバイス,仕様,種別,端子番号,接続線番,接続先'];
   els.forEach(el => {
     const termList = (el.terminals || '').split(',').map(t => t.trim()).filter(Boolean);
     const conns = [];
@@ -418,7 +418,7 @@ function exportAIAnalysis() {
   lines.push(``);
 
   lines.push(`## 部品リスト（${parts.length}件）`);
-  lines.push(`| デバイス | ラベル | 種別 | 端子番号 | メモ |`);
+  lines.push(`| デバイス | 仕様 | 種別 | 端子番号 | メモ |`);
   lines.push(`|---------|--------|------|---------|------|`);
   parts.forEach(p => {
     lines.push(`| ${p.partRef||'-'} | ${p.label||'-'} | ${p.type} | ${p.terminals||'-'} | ${p.note||''} |`);
