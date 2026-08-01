@@ -154,7 +154,7 @@ function buildTerminalBlockRows() {
 
       rows.push({
         page: pname,
-        tbRef: el.partRef || '(項目記号未設定)',
+        tbRef: el.partRef || '(デバイス未設定)',
         tbModel: el.partModel || '',
         termNo: el.label || '-',
         conns: [...conns],

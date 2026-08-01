@@ -421,7 +421,7 @@ function drawJunctionEl(el, sel, lc) {
     ctx.fillText(el.label, el.x + r + 4/state.zoom, el.y + 4/state.zoom);
     ctx.restore();
   }
-  // 項目記号(TB1等、部品番号表示ON時のみ。分岐点(●)には表示しない)
+  // デバイス(TB1等、デバイス表示ON時のみ。分岐点(●)には表示しない)
   if (state.showPartRef && !state.pdfSkipText && el.partRef && style !== 'dot') {
     ctx.save();
     ctx.fillStyle = state.darkMode ? '#4da3ff' : '#1d6fb5';
@@ -505,7 +505,7 @@ function drawSymEl(el, sel, lc) {
     ctx.fillText(el.label, lx, ly);
     ctx.restore();
   }
-  // 部品番号表示（表示ON時。未入力シンボルはオレンジ「?」で明示）
+  // デバイス表示（表示ON時。未入力シンボルはオレンジ「?」で明示）
   if (state.showPartRef && !state.pdfSkipText) {
     const d  = getDef(el.type) || { w:64, h:34 };
     const sc = el.scale || 1;

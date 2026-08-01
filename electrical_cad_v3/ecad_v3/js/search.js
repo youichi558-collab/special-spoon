@@ -1,6 +1,6 @@
 // ================================================================
 // search.js — 全ページ横断検索（Ctrl+F / クイックバー🔍）
-// 対象: 部品番号(partRef)・線番(wireNo)・ラベル・テキスト・
+// 対象: デバイス(partRef)・線番(wireNo)・ラベル・テキスト・
 //       指示線/寸法テキスト・端子番号・メモ
 // 依存: state, cv, draw, switchPage, updateRightPanel, _syncCurrentPage
 // ================================================================
@@ -28,7 +28,7 @@
         const cx = (el.x !== undefined) ? el.x : ((el.x1+el.x2)/2 || 0);
         const cy = (el.y !== undefined) ? el.y : ((el.y1+el.y2)/2 || 0);
         [
-          ['部品番号', el.partRef],
+          ['デバイス', el.partRef],
           ['ラベル',   el.label],
           ['テキスト', el.text],
           ['指示線',   el.leaderText],
@@ -57,7 +57,7 @@
     if (!res) return;
     const query = nrm((q||'').trim());
     if (!query) {
-      res.innerHTML = '<div style="padding:8px;font-size:11px;color:var(--fg3)">部品番号・線番・テキストを入力（全ページ横断）</div>';
+      res.innerHTML = '<div style="padding:8px;font-size:11px;color:var(--fg3)">デバイス・線番・テキストを入力（全ページ横断）</div>';
       return;
     }
     const rows = collectSearchIndex().filter(r => nrm(r.val).includes(query));
@@ -110,7 +110,7 @@
       panel.innerHTML = `
         <div style="display:flex;align-items:center;gap:6px;padding:6px 8px;border-bottom:1px solid var(--bd)">
           <span style="font-size:12px">🔍</span>
-          <input id="search-input" type="text" placeholder="部品番号・線番・テキスト" autocomplete="off"
+          <input id="search-input" type="text" placeholder="デバイス・線番・テキスト" autocomplete="off"
             style="flex:1;font-size:12px;padding:3px 6px;background:var(--bg);color:var(--fg);border:1px solid var(--bd2);border-radius:3px;outline:none">
           <span id="search-close" style="cursor:pointer;color:var(--fg3);font-size:13px;padding:0 2px">✕</span>
         </div>

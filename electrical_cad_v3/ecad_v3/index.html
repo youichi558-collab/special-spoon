@@ -194,7 +194,7 @@
       </div>
       <div class="rg">
         <div class="rg-btns">
-          <div class="rb rb-sm" onclick="migrateLabelToPartRef()" title="ラベル欄に書いた機器記号(MCCB1等)を項目記号へまとめて移します。全ページ対象・Ctrl+Zで取消可"><svg viewBox="0 0 14 14"><path d="M2 4h4M2 7h4M2 10h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M7.5 7h4M10 5l2 2-2 2" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>ラベル→項目記号</div>
+          <div class="rb rb-sm" onclick="migrateLabelToPartRef()" title="ラベル欄に書いた機器記号(MCCB1等)をデバイスへまとめて移します。全ページ対象・Ctrl+Zで取消可"><svg viewBox="0 0 14 14"><path d="M2 4h4M2 7h4M2 10h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M7.5 7h4M10 5l2 2-2 2" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>ラベル→デバイス</div>
         </div>
         <div class="rg-label">整理</div>
       </div>
@@ -279,13 +279,13 @@
     style="font-size:11px;padding:2px 4px;height:24px;min-width:120px;max-width:200px;border:1px solid var(--bd2);background:var(--bg);color:var(--fg);border-radius:3px;font-weight:600;">
   </select>
   <span style="width:1px;height:18px;background:var(--bd2);margin:0 2px"></span>
-  <div onclick="togglePartRefDisp()" id="qb-pref" title="部品番号の表示/非表示（未入力は?表示・PDF出力にも反映）"
+  <div onclick="togglePartRefDisp()" id="qb-pref" title="デバイスの表示/非表示（未入力は?表示・PDF出力にも反映）"
     style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;border:1px solid var(--bd2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--fg);white-space:nowrap;">№表示</div>
-  <div onclick="startPartRefSeq()" title="部品番号を連続採番：シンボルをクリックで順番に割り当て（Pキー）"
+  <div onclick="startPartRefSeq()" title="デバイスを連続採番：シンボルをクリックで順番に割り当て（Pキー）"
     style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;border:1px solid var(--bd2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--fg);white-space:nowrap;">№採番</div>
   <div onclick="startWireNoSeq()" title="線番を連続採番：配線をクリックで順番に割り当て（Nキー）"
     style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;border:1px solid var(--bd2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--fg);white-space:nowrap;">線番採番</div>
-  <div onclick="toggleSearchPanel()" title="検索（Ctrl+F）：部品番号・線番・テキストを全ページ横断検索"
+  <div onclick="toggleSearchPanel()" title="検索（Ctrl+F）：デバイス・線番・テキストを全ページ横断検索"
     style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;border:1px solid var(--bd2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--fg);white-space:nowrap;">🔍検索</div>
   <div onclick="toggleSymPinsDisp()" id="qb-pins" title="【検証用/仮】シンボル端子(ピン)位置を赤丸で表示。設計中のフェーズ0データ確認用（PDF出力には出ません）"
     style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;border:1px solid var(--bd2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--fg);white-space:nowrap;">🔴端子(仮)</div>
@@ -377,7 +377,7 @@
             <tr><td style="white-space:nowrap"><b>S / W / T</b></td><td>選択 / 配線 / テキスト</td></tr>
             <tr><td><b>R</b></td><td>90°回転</td></tr>
             <tr><td><b>H / V</b></td><td>左右反転 / 上下反転</td></tr>
-            <tr><td><b>P</b></td><td>部品番号 採番・編集</td></tr>
+            <tr><td><b>P</b></td><td>デバイス 採番・編集</td></tr>
             <tr><td><b>N</b></td><td>線番 連続採番</td></tr>
             <tr><td><b>Esc</b></td><td>キャンセル→選択モード</td></tr>
             <tr><td><b>Enter / Space</b></td><td>曲線確定／直前ツール再実行</td></tr>

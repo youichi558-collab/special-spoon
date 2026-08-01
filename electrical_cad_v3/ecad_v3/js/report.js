@@ -97,7 +97,7 @@ function exportWireCSV(){
   });
   dl(rows.join('\n'), 'wire_numbers.csv', 'text/csv');
 }
-// 全ページの要素を集計し、種別×型番でグルーピング。項目記号(partRef)は各行に一覧表示する。
+// 全ページの要素を集計し、種別×型番でグルーピング。デバイス(partRef)は各行に一覧表示する。
 function collectBOMRows(){
   const skip=['text','rect','circle','fline','dim','leader'];
   const counts={};
@@ -117,12 +117,12 @@ function collectBOMRows(){
 function showBOM(){
   const rows=collectBOMRows();
   const total=state.pages.reduce((s,pg)=>s+(pg.elements||[]).filter(e=>!['text','rect','circle','fline','dim','leader'].includes(e.type)).length,0);
-  let html=rows.length?`<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">全${state.pages.length}ページ集計・合計 ${total} 個</p><table class="tbl"><tr><th>型番/名称</th><th>種別</th><th>JIS</th><th>項目記号</th><th>数量</th></tr>${rows.map(r=>`<tr><td>${r.label}</td><td>${r.type}</td><td style="color:var(--acc)">${r.jis}</td><td style="font-size:10px;color:var(--fg3)">${r.refs.join(', ')||'-'}</td><td style="font-weight:600">${r.count}</td></tr>`).join('')}</table>`:'<p style="font-size:11px;color:var(--fg3)">配置されたシンボルがありません</p>';
+  let html=rows.length?`<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">全${state.pages.length}ページ集計・合計 ${total} 個</p><table class="tbl"><tr><th>型番/名称</th><th>種別</th><th>JIS</th><th>デバイス</th><th>数量</th></tr>${rows.map(r=>`<tr><td>${r.label}</td><td>${r.type}</td><td style="color:var(--acc)">${r.jis}</td><td style="font-size:10px;color:var(--fg3)">${r.refs.join(', ')||'-'}</td><td style="font-weight:600">${r.count}</td></tr>`).join('')}</table>`:'<p style="font-size:11px;color:var(--fg3)">配置されたシンボルがありません</p>';
   _reportOpen('bom', '部品表 (BOM)', html, exportBOMCSV);
 }
 function exportBOMCSV(){
   const rows=collectBOMRows();
-  dl(['型番/名称,種別,JIS規格,項目記号,数量',...rows.map(r=>`${r.label},${r.type},${r.jis},"${r.refs.join('/')}",${r.count}`)].join('\n'),'bom.csv','text/csv');
+  dl(['型番/名称,種別,JIS規格,デバイス,数量',...rows.map(r=>`${r.label},${r.type},${r.jis},"${r.refs.join('/')}",${r.count}`)].join('\n'),'bom.csv','text/csv');
 }
 function showRefPanel(){
   const coils=state.elements.filter(el=>getDef(el.type)?.isCoil);
@@ -168,7 +168,7 @@ function showTerminalTable() {
   });
 
   let html = `<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">部品数: ${els.length}</p>`;
-  html += `<table class="tbl"><tr><th>部品番号</th><th>ラベル</th><th>種別</th><th>端子番号</th><th>接続線番</th><th>接続先</th></tr>`;
+  html += `<table class="tbl"><tr><th>デバイス</th><th>ラベル</th><th>種別</th><th>端子番号</th><th>接続線番</th><th>接続先</th></tr>`;
   els.forEach(el => {
     const conns = connMap[el.id] || [];
     const termList = (el.terminals || '').split(',').map(t => t.trim()).filter(Boolean);
@@ -188,7 +188,7 @@ function showTerminalTable() {
 function exportTerminalCSV() {
   const skip = ['text','rect','circle','fline','dim','leader','angle_dim'];
   const els = state.elements.filter(el => !skip.includes(el.type));
-  const rows = ['部品番号,ラベル,種別,端子番号,接続線番,接続先'];
+  const rows = ['デバイス,ラベル,種別,端子番号,接続線番,接続先'];
   els.forEach(el => {
     const termList = (el.terminals || '').split(',').map(t => t.trim()).filter(Boolean);
     const conns = [];
@@ -273,7 +273,7 @@ function exportAIAnalysis() {
   lines.push(``);
 
   lines.push(`## 部品リスト（${parts.length}件）`);
-  lines.push(`| 部品番号 | ラベル | 種別 | 端子番号 | メモ |`);
+  lines.push(`| デバイス | ラベル | 種別 | 端子番号 | メモ |`);
   lines.push(`|---------|--------|------|---------|------|`);
   parts.forEach(p => {
     lines.push(`| ${p.partRef||'-'} | ${p.label||'-'} | ${p.type} | ${p.terminals||'-'} | ${p.note||''} |`);

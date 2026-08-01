@@ -810,7 +810,7 @@ function explodeSelected() {
 // キーボードショートカット
 // ----------------------------------------------------------------
 // ================================================================
-// partRef入力UI（部品番号の一括入力）
+// partRef入力UI（デバイスの一括入力）
 // ================================================================
 // 末尾の数字をインクリメント（ゼロ埋め維持: MC01→MC02）。数字なしはそのまま返す
 function incRef(s) {
@@ -830,7 +830,7 @@ function showPartRefInput(wx, wy, prefill, onConfirm, onCancel) {
   const wrap = document.createElement('div');
   wrap.style.cssText = `position:fixed;left:${sx - 70}px;top:${sy - 34}px;z-index:9999;display:flex;gap:4px;align-items:center;background:var(--bg2,#2a2a2a);border:1px solid var(--acc,#1d6fb5);border-radius:4px;padding:3px 5px;box-shadow:0 2px 8px rgba(0,0,0,.5)`;
   const inp = document.createElement('input');
-  inp.type = 'text'; inp.placeholder = '部品番号'; inp.value = prefill || '';
+  inp.type = 'text'; inp.placeholder = 'デバイス'; inp.value = prefill || '';
   inp.style.cssText = 'width:110px;background:transparent;border:none;outline:none;color:inherit;font-size:12px;';
   wrap.appendChild(inp);
   document.body.appendChild(wrap);
@@ -886,7 +886,7 @@ function quickPartRefEdit() {
 
 // 連続採番モード：開始番号を指定→シンボルをクリックするたびに自動採番
 function startPartRefSeq() {
-  const start = prompt('開始部品番号を入力（例: MC1）\nクリックしたシンボルに順番に割り当てます', state.partRefNext || 'MC1');
+  const start = prompt('開始デバイスを入力（例: MC1）\nクリックしたシンボルに順番に割り当てます', state.partRefNext || 'MC1');
   if (!start || !start.trim()) return;
   state.partRefNext = start.trim();
   state.mode = 'partref'; state.symType = null;

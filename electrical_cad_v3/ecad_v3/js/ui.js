@@ -1542,7 +1542,7 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>見た目</label><select id="pp-jstyle"><option value="dot"${(el.style||'dot')==='dot'?' selected':''}>●塗りつぶし</option><option value="circle"${el.style==='circle'?' selected':''}>○白丸</option><option value="dbl"${el.style==='dbl'?' selected':''}>◎二重丸</option></select></div>`;
     if (isTerm) {
       html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-jlabel" value="${el.label||''}" placeholder="例: A, 1"></div>`;
-      html += `<div class="pp-row"><label>項目記号</label><input type="text" id="pp-jref" value="${el.partRef||''}" placeholder="例: TB1"></div>`;
+      html += `<div class="pp-row"><label>デバイス</label><input type="text" id="pp-jref" value="${el.partRef||''}" placeholder="例: TB1"></div>`;
       html += `<div class="pp-row"><label>型式(BOM用)</label><input type="text" id="pp-jmodel" value="${el.partModel||''}" placeholder="例: 端子台 M4"></div>`;
     }
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
@@ -1655,7 +1655,7 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>ラベルサイズ</label><input type="number" id="pp-lfs" value="${el.labelFs||11}" step="1" min="6" max="32" oninput="previewLabelStyle()"></div>`;
     if (def.isCoil)    html += `<div class="pp-row"><label>コイル名</label><input type="text" id="pp-coilname" value="${el.coilName||el.label||''}"></div>`;
     if (def.isContact) html += `<div class="pp-row"><label>参照コイル名</label><input type="text" id="pp-refcoil" value="${el.refCoil||''}"></div>`;
-    html += `<div class="pp-row"><label>項目記号</label><input type="text" id="pp-partref" value="${el.partRef||''}" placeholder="例: MC1, NFB1"></div>`;
+    html += `<div class="pp-row"><label>デバイス</label><input type="text" id="pp-partref" value="${el.partRef||''}" placeholder="例: MC1, NFB1"></div>`;
     html += `<div class="pp-row"><label>型番</label><input type="text" id="pp-partmodel" value="${el.partModel||''}" placeholder="例: S-T10（メーカー型番）"></div>`;
     html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-term" value="${el.terminals||''}" placeholder="例: A1,A2,13,14"></div>`;
     html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${el.wireNo||''}"></div>`;
@@ -2081,7 +2081,7 @@ function updateHint() {
     circle: '中心クリック → 半径クリック',
     fline:  '1点目クリック → 2点目クリック',
     sym:    'クリックで配置 | Escでキャンセル',
-    partref:'シンボルをクリックで部品番号を割り当て（自動採番） | ESC終了',
+    partref:'シンボルをクリックでデバイスを割り当て（自動採番） | ESC終了',
     arc:      '半円: 端点1 → 端点2 → 膨らむ側 の順にクリック',
     arc3:     '弧: 始点 → 終点 → 通過点 の順にクリック',
     triangle: '三角形: 3点を順にクリック（3点目でShift＝正三角形）',
@@ -2106,12 +2106,12 @@ function setHint(msg) {
 }
 
 // ----------------------------------------------------------------
-// ラベル → 項目記号(partRef) 一括移行
+// ラベル → デバイス(partRef) 一括移行
 // ----------------------------------------------------------------
 // 従来はラベル欄に既定値(CR/SW/M等)が自動で入り、機器記号(MCCB1等)も
-// ラベル欄に書かれていた。機器の識別を項目記号に一本化するための移行。
-//   ・項目記号が空 → ラベルの値を項目記号へ移し、ラベルを空にする
-//   ・項目記号とラベルが同じ値 → ラベルを空にする
+// ラベル欄に書かれていた。機器の識別をデバイスに一本化するための移行。
+//   ・デバイスが空 → ラベルの値をデバイスへ移し、ラベルを空にする
+//   ・デバイスとラベルが同じ値 → ラベルを空にする
 //   ・両方に別々の値が入っている → 触らない(用途メモの可能性があるため)
 function migrateLabelToPartRef() {
   const SKIP = ['text','rect','circle','fline','dim','leader','angle_dim','wire','junction'];
@@ -2133,16 +2133,16 @@ function migrateLabelToPartRef() {
 
   if (!targets.length) { alert('移行の対象になる要素はありませんでした。'); return; }
   if (!moved && !cleared) {
-    alert(`ラベルと項目記号に別々の値が入っている要素が ${kept} 個あります。\n`
+    alert(`ラベルとデバイスに別々の値が入っている要素が ${kept} 個あります。\n`
         + `用途メモの可能性があるため、自動では変更しません。`);
     return;
   }
   if (!confirm(
-      `ラベルの値を項目記号へ移行します。\n\n`
-    + `　項目記号へ移動: ${moved} 個\n`
+      `ラベルの値をデバイスへ移行します。\n\n`
+    + `　デバイスへ移動: ${moved} 個\n`
     + `　重複ラベルを消去: ${cleared} 個\n`
     + `　別々の値のため据え置き: ${kept} 個\n\n`
-    + `実行後、項目記号の表示を自動でONにします。\n`
+    + `実行後、デバイスの表示を自動でONにします。\n`
     + `取り消しは Ctrl+Z でできます。`)) return;
 
   pushH();   // Undo できるように履歴へ積む
@@ -2157,7 +2157,7 @@ function migrateLabelToPartRef() {
 }
 
 // ----------------------------------------------------------------
-// 部品番号（partRef）表示トグル
+// デバイス（partRef）表示トグル
 // ----------------------------------------------------------------
 function togglePartRefDisp() {
   state.showPartRef = !state.showPartRef;
