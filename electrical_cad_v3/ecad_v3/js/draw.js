@@ -506,18 +506,15 @@ function drawSymEl(el, sel, lc) {
     ctx.rotate(rot);
     ctx.fillStyle = el.labelColor || (state.darkMode ? '#aaa' : '#555');
     ctx.font = `${fs}px sans-serif`;
-    const align = el.labelAlign || 'center';
-    ctx.textAlign = align;
+    // 基準点(lox)は内容の長さに関わらず常に固定(labelOffXのみ)。
+    // 以前は最長行の幅から基準点を計算し「揃えを変えても文章全体の中心が動かない」
+    // ようにしていたが、これだと仕様文字列の長さが違う機器同士で左揃えの
+    // 開始位置がズレてしまっていた(同じ書き方でも装置ごとに位置が変わる不具合)。
+    // 「左揃え=決まった位置から書き始める」という素直な期待に合わせ、固定点+揃えのみにする。
+    ctx.textAlign = el.labelAlign || 'center';
     const lines = String(el.label).split('\n');
     const lh = Math.round(fs * 1.25);
-    // 揃えを変えてもテキストブロック全体の中心位置(=シンボル直下)は動かさず、
-    // そのブロックの中で左詰め/中央/右詰めだけを切り替える。
-    // 以前は基準点(lox)を常に0(シンボル中心)にしていたため、左揃え/右揃えに
-    // すると文章全体がシンボルの片側へ大きくずれて見えていた。
-    let maxW = 0;
-    if (align !== 'center') lines.forEach(ln => { maxW = Math.max(maxW, ctx.measureText(ln).width); });
-    const baseX = align==='left' ? -maxW/2 : align==='right' ? maxW/2 : 0;
-    const lox = baseX + (el.labelOffX || 0);
+    const lox = el.labelOffX || 0;
     lines.forEach((ln, i) => ctx.fillText(ln, lox, loy + i*lh));
     ctx.restore();
   }

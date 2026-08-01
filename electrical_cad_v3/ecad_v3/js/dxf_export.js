@@ -8,17 +8,6 @@ const DXF_LAYER_MAP = {
   "回路":"CIRCUIT","配線":"WIRE","注記":"NOTE",
   "外形":"OUTLINE","図面枠":"FRAME","寸法":"DIM","寸法_vis":"DIM_VIS"
 };
-
-// 仕様の左揃え/右揃え基準計算用。キャンバス側(draw.js)と同じ考え方で、
-// 揃えを変えても文章全体の中心位置が動かないようにするため、
-// 最長行の幅を計測する。DOM操作不要な一時canvasを使い回す。
-let _dxfMeasureCv = null;
-function dxfMeasureTextWidth(text, fontPx) {
-  if (!_dxfMeasureCv) _dxfMeasureCv = document.createElement('canvas');
-  const mctx = _dxfMeasureCv.getContext('2d');
-  mctx.font = `${fontPx}px sans-serif`;
-  return mctx.measureText(text).width;
-}
 function dxfLayer(name){ return DXF_LAYER_MAP[name] || name || '0'; }
 // 【警告】\U+XXXX変換は試済み・失敗済み（AC1015でリテラル表示される）。再実装禁止。
 // 日本語対応は実装済み(2026-07-21): sjis.jsのencodeSJISでShift-JIS(cp932)バイト出力 + $DWGCODEPAGE=ANSI_932。
@@ -522,12 +511,8 @@ function exportDXF(){
         const fs=el.labelFs||11;
         const lh=Math.round(fs*1.25);
         const align=el.labelAlign||'center';
-        // 揃えを変えても文章全体の中心位置(=キャンバス側と同じ)が動かないよう、
-        // 最長行の幅から基準x(lox)を計算する。手動のX補正はその上に追加で乗る。
-        let maxW=0;
-        if(align!=='center') lines.forEach(ln=>{maxW=Math.max(maxW, dxfMeasureTextWidth(ln,fs));});
-        const baseX = align==='left' ? -maxW/2 : align==='right' ? maxW/2 : 0;
-        const lox = baseX + (el.labelOffX||0);
+        // 基準点(lox)は内容の長さに関わらず固定(labelOffXのみ)。キャンバス側と同じ考え方。
+        const lox = el.labelOffX||0;
         // 文字揃え: DXFの水平揃えコード(72グループ) 0=左 1=中央 2=右
         const alignCode={left:0,center:1,right:2}[align];
         lines.forEach((ln,i)=>{
