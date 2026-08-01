@@ -968,16 +968,28 @@ function flattenSymbolElToShapes(el, cS) {
 }
 // クリップボード要素1つを「ワールド座標の生shape配列」(sa/eaは度数法で統一)に変換する。
 // 未対応(標準シンボル・junction・bezier・dim等)はnullを返す。
+// 要素の実効的な太さを解決する。
+// 要素自身がlineWidthを持っていればそれを、無ければ描かれているレイヤーの
+// 既定太さ(LAYERSのlineWidth)を使う(draw.js各所の `el.lineWidth || lay?.lineWidth || 1.0` と同じ考え方)。
+// カスタムシンボルの内部shapesにはレイヤーという概念が無いため、
+// ここで解決して数値として焼き込んでおかないと、登録した瞬間にレイヤー既定の
+// 太さの情報が失われ、配置後は既定値1.0に戻ってしまう。
+function srEffectiveLW(el) {
+  if (el.lineWidth) return el.lineWidth;
+  const lay = (typeof LAYERS !== 'undefined') ? LAYERS.find(l => l.name === el.layer) : null;
+  return lay?.lineWidth || 1.0;
+}
+
 function srWorldShapesForEl(el) {
-  if (el.type === 'fline') return [{ t:'L', x1:el.x1, y1:el.y1, x2:el.x2, y2:el.y2, lineWidth:el.lineWidth }];
-  if (el.type === 'circle') return [{ t:'C', cx:el.x, cy:el.y, r:el.r||0, lineWidth:el.lineWidth }];
-  if (el.type === 'rect') return [{ t:'R', x:el.x, y:el.y, w:el.w||0, h:el.h||0, lineWidth:el.lineWidth }];
+  if (el.type === 'fline') return [{ t:'L', x1:el.x1, y1:el.y1, x2:el.x2, y2:el.y2, lineWidth:srEffectiveLW(el) }];
+  if (el.type === 'circle') return [{ t:'C', cx:el.x, cy:el.y, r:el.r||0, lineWidth:srEffectiveLW(el) }];
+  if (el.type === 'rect') return [{ t:'R', x:el.x, y:el.y, w:el.w||0, h:el.h||0, lineWidth:srEffectiveLW(el) }];
   if (el.type === 'triangle') return [
-    { t:'L', x1:el.x1, y1:el.y1, x2:el.x2, y2:el.y2, lineWidth:el.lineWidth },
-    { t:'L', x1:el.x2, y1:el.y2, x2:el.x3, y2:el.y3, lineWidth:el.lineWidth },
-    { t:'L', x1:el.x3, y1:el.y3, x2:el.x1, y2:el.y1, lineWidth:el.lineWidth },
+    { t:'L', x1:el.x1, y1:el.y1, x2:el.x2, y2:el.y2, lineWidth:srEffectiveLW(el) },
+    { t:'L', x1:el.x2, y1:el.y2, x2:el.x3, y2:el.y3, lineWidth:srEffectiveLW(el) },
+    { t:'L', x1:el.x3, y1:el.y3, x2:el.x1, y2:el.y1, lineWidth:srEffectiveLW(el) },
   ];
-  if (el.type === 'arc') return [{ t:'A', cx:el.x, cy:el.y, r:el.r||0, sa:(el.startA||0)*180/Math.PI, ea:(el.endA||0)*180/Math.PI, lineWidth:el.lineWidth }];
+  if (el.type === 'arc') return [{ t:'A', cx:el.x, cy:el.y, r:el.r||0, sa:(el.startA||0)*180/Math.PI, ea:(el.endA||0)*180/Math.PI, lineWidth:srEffectiveLW(el) }];
   if (el.type === 'text') return [{ t:'T', text:el.text||'', x:el.x, y:el.y, fs:el.fs||14 }];
   // 配置済みシンボル(カスタム/ライブラリ)インスタンス → 実際の配置で平坦化
   const cS = state.customSymbols.find(s => s.type === el.type);
