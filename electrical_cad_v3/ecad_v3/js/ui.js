@@ -1671,6 +1671,11 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>型式位置Y補正</label><input type="number" id="pp-moy" value="${el.modelOffY!==undefined?el.modelOffY:''}" placeholder="自動" step="5" oninput="previewModelOff()"></div>`;
     html += `<div class="pp-row"><button onclick="resetModelOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">型式位置リセット</button></div>`;
     html += `<div class="pp-row"><label>仕様</label><textarea rows="2" id="pp-label" placeholder="例: AC200V 3.7kW&#10;冷却ファン用（改行可）">${el.label||''}</textarea></div>`;
+    html += `<div class="pp-row"><label>仕様の文字揃え</label><select id="pp-lalign" onchange="previewLabelStyle()">
+      <option value="left"  ${el.labelAlign==='left'  ?'selected':''}>左揃え</option>
+      <option value="center"${!el.labelAlign||el.labelAlign==='center'?'selected':''}>中央揃え</option>
+      <option value="right" ${el.labelAlign==='right' ?'selected':''}>右揃え</option>
+    </select></div>`;
     html += `<div class="pp-row"><label>仕様の色</label><div style="display:flex;gap:4px;align-items:center"><input type="color" id="pp-lcolor" value="${el.labelColor||'#555555'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer" oninput="syncColorCode('pp-lcolor','pp-lcolorcode');previewLabelStyle()"><input type="text" id="pp-lcolorcode" value="${el.labelColor||'#555555'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-lcolorcode','pp-lcolor');previewLabelStyle()">${colorCodeBtns('pp-lcolorcode','pp-lcolor')}</div></div>`;
     html += `<div class="pp-row"><label>仕様サイズ</label><input type="number" id="pp-lfs" value="${el.labelFs||11}" step="1" min="6" max="32" oninput="previewLabelStyle()"></div>`;
     html += `<div class="pp-row"><label>仕様位置X補正</label><input type="number" id="pp-lox" value="${el.labelOffX||0}" step="5" oninput="previewLabelOff()"></div>`;
@@ -1805,8 +1810,10 @@ function previewLabelStyle() {
   if (!el) return;
   const lcolor = document.getElementById('pp-lcolor');
   const lfs    = document.getElementById('pp-lfs');
+  const lalign = document.getElementById('pp-lalign');
   if (lcolor) el.labelColor = lcolor.value || undefined;
   if (lfs)    el.labelFs    = parseInt(lfs.value) || 11;
+  if (lalign) el.labelAlign = lalign.value || undefined;
   drawWithoutSel();
 }
 
@@ -2024,6 +2031,7 @@ function applyRightPanel() {
     el.note      = v('pp-note');
   } else if (el) {
     el.label     = v('pp-label');
+    el.labelAlign = v('pp-lalign') || undefined;
     el.partRef   = v('pp-partref');
     el.devHide   = !document.getElementById('pp-devhide')?.checked;
     el.partModel = v('pp-partmodel');

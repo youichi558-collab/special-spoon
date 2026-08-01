@@ -496,19 +496,19 @@ function drawSymEl(el, sel, lc) {
     const lox = el.labelOffX || 0;
     const loy = el.labelOffY || (d.h*sc/2 + 15*sc);
     const rot = (el.rot||0) * Math.PI/180;
-    const lx  = el.x + lox*Math.cos(rot) - loy*Math.sin(rot);
-    const ly  = el.y + lox*Math.sin(rot) + loy*Math.cos(rot);
     const fs  = Math.round((el.labelFs||11) * sc);
     ctx.save();
+    // translate+rotateしたローカル座標系で描くと、文字揃えの基準x(lox)が
+    // 全行共通のまま保てる。textAlignをleft/center/rightに切り替えるだけで
+    // 各行の長さが違っても自然に左揃え/中央揃え/右揃えになる。
+    ctx.translate(el.x, el.y);
+    ctx.rotate(rot);
     ctx.fillStyle = el.labelColor || (state.darkMode ? '#aaa' : '#555');
-    ctx.font = `${fs}px sans-serif`; ctx.textAlign = 'center';
-    // 改行対応。行送りは文字サイズの1.25倍。回転にも追随させる。
+    ctx.font = `${fs}px sans-serif`;
+    ctx.textAlign = el.labelAlign || 'center';
     const lines = String(el.label).split('\n');
     const lh = Math.round(fs * 1.25);
-    lines.forEach((ln, i) => {
-      const off = i * lh;
-      ctx.fillText(ln, lx - off*Math.sin(rot), ly + off*Math.cos(rot));
-    });
+    lines.forEach((ln, i) => ctx.fillText(ln, lox, loy + i*lh));
     ctx.restore();
   }
   // 型式(partModel)の図面表示。要素ごとの el.showModel が真のときだけ描く。

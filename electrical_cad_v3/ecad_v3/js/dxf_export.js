@@ -509,6 +509,8 @@ function exportDXF(){
         // 仕様は改行可能。1行ごとにATTRIBを出す(DXFのTEXTは改行を持てないため)
         const lines=String(el.label).split('\n');
         const lh=Math.round((el.labelFs||11)*1.25);
+        // 文字揃え: DXFの水平揃えコード(72グループ) 0=左 1=中央 2=右
+        const alignCode={left:0,center:1,right:2}[el.labelAlign||'center'];
         lines.forEach((ln,i)=>{
           if(!ln) return;
           const oy=loy+i*lh;
@@ -517,7 +519,7 @@ function exportDXF(){
           const u=toUnicodeDXF(ln);
           p(0,'ATTRIB',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbText',
             10,lx.toFixed(3),20,(-ly).toFixed(3),30,'0.0',40,'10',1,u,
-            7,'STANDARD',72,0,11,lx.toFixed(3),21,(-ly).toFixed(3),31,'0.0',
+            7,'STANDARD',72,alignCode,11,lx.toFixed(3),21,(-ly).toFixed(3),31,'0.0',
             100,'AcDbAttribute',280,0,2,`LABEL${i?i+1:''}`,70,0);
         });
         p(0,'SEQEND',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbSeqend');
