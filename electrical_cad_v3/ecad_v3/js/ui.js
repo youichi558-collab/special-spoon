@@ -1543,9 +1543,9 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>半径</label><input type="number" id="pp-jr" value="${el.r||2}" min="1" max="30" step="1"></div>`;
     html += `<div class="pp-row"><label>見た目</label><select id="pp-jstyle"><option value="dot"${(el.style||'dot')==='dot'?' selected':''}>●塗りつぶし</option><option value="circle"${el.style==='circle'?' selected':''}>○白丸</option><option value="dbl"${el.style==='dbl'?' selected':''}>◎二重丸</option></select></div>`;
     if (isTerm) {
-      html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-jlabel" value="${el.label||''}" placeholder="例: A, 1"></div>`;
       html += `<div class="pp-row"><label>デバイス</label><input type="text" id="pp-jref" value="${el.partRef||''}" placeholder="例: TB1"></div>`;
       html += `<div class="pp-row"><label>型式(BOM用)</label><input type="text" id="pp-jmodel" value="${el.partModel||''}" placeholder="例: 端子台 M4"></div>`;
+      html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-jlabel" value="${el.label||''}" placeholder="例: A, 1"></div>`;
     }
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
   } else if (el && el.type === 'text') {
@@ -1652,9 +1652,7 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>メモ</label><textarea rows="2" id="pp-note">${el.note||''}</textarea></div>`;
   } else if (el) {
     const def = getDef(el.type) || {};
-    html += `<div class="pp-row"><label>ラベル</label><input type="text" id="pp-label" value="${el.label||''}"></div>`;
-    html += `<div class="pp-row"><label>ラベル色</label><div style="display:flex;gap:4px;align-items:center"><input type="color" id="pp-lcolor" value="${el.labelColor||'#555555'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer" oninput="syncColorCode('pp-lcolor','pp-lcolorcode');previewLabelStyle()"><input type="text" id="pp-lcolorcode" value="${el.labelColor||'#555555'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-lcolorcode','pp-lcolor');previewLabelStyle()">${colorCodeBtns('pp-lcolorcode','pp-lcolor')}</div></div>`;
-    html += `<div class="pp-row"><label>ラベルサイズ</label><input type="number" id="pp-lfs" value="${el.labelFs||11}" step="1" min="6" max="32" oninput="previewLabelStyle()"></div>`;
+    // 識別情報を先頭に置く。デバイス→型番→型式表示→ラベル(仕様)の順。
     // コイル名/参照コイル名は廃止。接点とコイルの紐づけはデバイス(partRef)で行う。
     html += `<div class="pp-row"><label>デバイス</label><input type="text" id="pp-partref" value="${el.partRef||''}" placeholder="例: MC1, NFB1"></div>`;
     html += `<div class="pp-row"><label>型番</label><input type="text" id="pp-partmodel" value="${el.partModel||''}" placeholder="例: S-T10（メーカー型番）"></div>`;
@@ -1663,6 +1661,9 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>型式位置X補正</label><input type="number" id="pp-mox" value="${el.modelOffX!==undefined?el.modelOffX:''}" placeholder="自動" step="5" oninput="previewModelOff()"></div>`;
     html += `<div class="pp-row"><label>型式位置Y補正</label><input type="number" id="pp-moy" value="${el.modelOffY!==undefined?el.modelOffY:''}" placeholder="自動" step="5" oninput="previewModelOff()"></div>`;
     html += `<div class="pp-row"><button onclick="resetModelOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">型式位置リセット</button></div>`;
+    html += `<div class="pp-row"><label>ラベル</label><input type="text" id="pp-label" value="${el.label||''}"></div>`;
+    html += `<div class="pp-row"><label>ラベル色</label><div style="display:flex;gap:4px;align-items:center"><input type="color" id="pp-lcolor" value="${el.labelColor||'#555555'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer" oninput="syncColorCode('pp-lcolor','pp-lcolorcode');previewLabelStyle()"><input type="text" id="pp-lcolorcode" value="${el.labelColor||'#555555'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-lcolorcode','pp-lcolor');previewLabelStyle()">${colorCodeBtns('pp-lcolorcode','pp-lcolor')}</div></div>`;
+    html += `<div class="pp-row"><label>ラベルサイズ</label><input type="number" id="pp-lfs" value="${el.labelFs||11}" step="1" min="6" max="32" oninput="previewLabelStyle()"></div>`;
     html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-term" value="${el.terminals||''}" placeholder="例: A1,A2,13,14"></div>`;
     html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${el.wireNo||''}"></div>`;
     html += `<div class="pp-row"><label>回転(°)</label><input type="number" id="pp-rot" value="${el.rot||0}" step="90"></div>`;
