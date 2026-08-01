@@ -97,8 +97,56 @@ function exportWireCSV(){
   });
   dl(rows.join('\n'), 'wire_numbers.csv', 'text/csv');
 }
-// 全ページの要素を集計し、種別×型番でグルーピング。デバイス(partRef)は各行に一覧表示する。
+// 全ページの要素をデバイス(partRef)単位で1台にまとめ、型番ごとに台数を数える。
+// 従来は要素を1個ずつ数えていたため、同じデバイスの接点が独立した部品として
+// 計上されていた(コイル1+接点4 → 5個)。発注上は1台なのでデバイスで束ねる。
+// デバイス未設定の要素は従来どおり 種別×型番 でまとめ、別枠として出す。
 function collectBOMRows(){
+  const skip=['text','rect','circle','fline','dim','leader','angle_dim','wire'];
+  const devices={};   // partRef -> { ref, models:Set, types:Set, parts:0 }
+  const noRef={};     // 種別|名称 -> 従来形式の行
+  state.pages.forEach(pg=>{
+    (pg.elements||[]).forEach(el=>{
+      if(skip.includes(el.type))return;
+      const ref=(el.partRef||'').trim();
+      if(ref){
+        if(!devices[ref])devices[ref]={ref,models:new Set(),types:new Set(),parts:0};
+        const dv=devices[ref];
+        dv.parts++;
+        dv.types.add(el.type);
+        const m=(el.partModel||'').trim();
+        if(m)dv.models.add(m);
+      }else{
+        const name=(el.partModel||'').trim()||el.label||el.type;
+        const k=`${el.type}|${name}`;
+        if(!noRef[k])noRef[k]={type:el.type,model:(el.partModel||'').trim(),label:name,
+                               refs:[],count:0,parts:0,jis:getDef(el.type)?.jis||'',noRef:true,warn:''};
+        noRef[k].count++; noRef[k].parts++;
+      }
+    });
+  });
+
+  // 型番(無ければ種別)ごとにデバイスを束ねて台数を出す
+  const byModel={};
+  Object.values(devices).forEach(dv=>{
+    const models=[...dv.models];
+    const model=models[0]||'';
+    const primary=[...dv.types][0]||'';
+    const k=model||`(型番未設定)|${primary}`;
+    if(!byModel[k])byModel[k]={type:primary,model,label:model||'(型番未設定)',
+                               refs:[],count:0,parts:0,jis:getDef(primary)?.jis||'',noRef:false,warn:''};
+    const row=byModel[k];
+    row.refs.push(dv.ref);
+    row.count++;                 // 台数 = デバイス数
+    row.parts+=dv.parts;         // 構成要素数(接点・端子の個数)
+    if(models.length>1)row.warn=`${dv.ref}に型番が複数(${models.join(' / ')})`;
+    if(!model)row.warn=row.warn||'型番未設定';
+  });
+
+  return [...Object.values(byModel),...Object.values(noRef)];
+}
+// 旧仕様(要素を1個ずつ数える)の集計。比較用に残す。
+function collectBOMRowsLegacy(){
   const skip=['text','rect','circle','fline','dim','leader'];
   const counts={};
   state.pages.forEach(pg=>{
@@ -116,13 +164,27 @@ function collectBOMRows(){
 }
 function showBOM(){
   const rows=collectBOMRows();
-  const total=state.pages.reduce((s,pg)=>s+(pg.elements||[]).filter(e=>!['text','rect','circle','fline','dim','leader'].includes(e.type)).length,0);
-  let html=rows.length?`<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">全${state.pages.length}ページ集計・合計 ${total} 個</p><table class="tbl"><tr><th>型番/名称</th><th>種別</th><th>JIS</th><th>デバイス</th><th>数量</th></tr>${rows.map(r=>`<tr><td>${r.label}</td><td>${r.type}</td><td style="color:var(--acc)">${r.jis}</td><td style="font-size:10px;color:var(--fg3)">${r.refs.join(', ')||'-'}</td><td style="font-weight:600">${r.count}</td></tr>`).join('')}</table>`:'<p style="font-size:11px;color:var(--fg3)">配置されたシンボルがありません</p>';
+  const devTotal=rows.filter(r=>!r.noRef).reduce((s,r)=>s+r.count,0);
+  const noRefTotal=rows.filter(r=>r.noRef).reduce((s,r)=>s+r.count,0);
+  const head=`<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">全${state.pages.length}ページ集計・${devTotal} 台`
+    +(noRefTotal?`　<span style="color:var(--red)">デバイス未設定 ${noRefTotal} 個</span>`:'')
+    +`<br>数量はデバイス単位の台数です。構成数は接点・端子を含む図形の個数です。</p>`;
+  let html=rows.length
+    ?head+`<table class="tbl"><tr><th>型番/名称</th><th>種別</th><th>JIS</th><th>デバイス</th><th>数量(台)</th><th>構成数</th></tr>`
+      +rows.map(r=>`<tr${r.noRef?' style="background:var(--rbg)"':''}>`
+        +`<td>${r.label}${r.warn?` <span style="color:var(--red);font-size:10px">⚠${r.warn}</span>`:''}</td>`
+        +`<td>${r.type}</td><td style="color:var(--acc)">${r.jis}</td>`
+        +`<td style="font-size:10px;color:var(--fg3)">${r.noRef?'<span style="color:var(--red)">未設定</span>':(r.refs.join(', ')||'-')}</td>`
+        +`<td style="font-weight:600">${r.count}</td><td style="color:var(--fg3)">${r.parts}</td></tr>`).join('')
+      +`</table>`
+    :'<p style="font-size:11px;color:var(--fg3)">配置されたシンボルがありません</p>';
   _reportOpen('bom', '部品表 (BOM)', html, exportBOMCSV);
 }
 function exportBOMCSV(){
   const rows=collectBOMRows();
-  dl(['型番/名称,種別,JIS規格,デバイス,数量',...rows.map(r=>`${r.label},${r.type},${r.jis},"${r.refs.join('/')}",${r.count}`)].join('\n'),'bom.csv','text/csv');
+  dl(['型番/名称,種別,JIS規格,デバイス,数量(台),構成数,備考',
+      ...rows.map(r=>`${r.label},${r.type},${r.jis},"${r.noRef?'未設定':r.refs.join('/')}",${r.count},${r.parts},${r.warn||''}`)
+     ].join('\n'),'bom.csv','text/csv');
 }
 function showRefPanel(){
   const coils=state.elements.filter(el=>getDef(el.type)?.isCoil);
