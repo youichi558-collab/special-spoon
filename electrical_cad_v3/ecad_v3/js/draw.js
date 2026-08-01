@@ -526,16 +526,18 @@ function drawSymEl(el, sel, lc) {
     ctx.fillText(el.partModel, mx, my);
     ctx.restore();
   }
-  // デバイス表示（表示ON時。未入力シンボルはオレンジ「?」で明示）
-  if (state.showPartRef && !state.pdfSkipText) {
+  // デバイス表示（表示ON時）。
+  // 以前は未入力シンボルにオレンジの「?」を描いていたが、デバイスを持たない
+  // シンボルすべてに出て図面が読めなくなるため廃止した。
+  if (state.showPartRef && !state.pdfSkipText && el.partRef) {
     const d  = getDef(el.type) || { w:64, h:34 };
     const sc = el.scale || 1;
     const py = el.y - (d.h*sc/2 + 6);
     ctx.save();
     ctx.textAlign = 'center';
     ctx.font = 'bold 11px sans-serif';
-    if (el.partRef) { ctx.fillStyle = state.darkMode ? '#4da3ff' : '#1d6fb5'; ctx.fillText(el.partRef, el.x, py); }
-    else            { ctx.fillStyle = '#e8a33d'; ctx.fillText('?', el.x, py); }
+    ctx.fillStyle = state.darkMode ? '#4da3ff' : '#1d6fb5';
+    ctx.fillText(el.partRef, el.x, py);
     ctx.restore();
   }
   if (el.refLabel) {
