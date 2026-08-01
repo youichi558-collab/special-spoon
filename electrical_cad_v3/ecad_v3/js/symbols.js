@@ -4,7 +4,7 @@
 // state.zoom / state.customSymbols を参照
 // ================================================================
 
-function drawSym(type, x, y, isSel, rot, fH, fV, lc, lineStyle) {
+function drawSym(type, x, y, isSel, rot, fH, fV, lc, lineStyle, lwOverride) {
   const zoom = state.zoom;
   ctx.save();
   ctx.translate(x, y);
@@ -15,19 +15,22 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc, lineStyle) {
   const c = lc || fgC(); // 選択状態に関わらず設定色を使用
   ctx.strokeStyle = c; ctx.fillStyle = c;
   if (lineStyle) applyLineStyle(ctx, lineStyle, zoom);
-  const lw = (isSel ? 1.5 : 1.0); // 選択時は線幅のみ太くする
+  const lw = lwOverride || (isSel ? 1.5 : 1.0); // 選択時は線幅のみ太くする
   ctx.lineWidth = lw;
-  const ln = w => { ctx.lineWidth = w; };
+  // シンボル線幅で上書き指定がある場合、標準シンボル内の部分的な太さ変更(ln)を無効化し、
+  // シンボル全体を同じ太さで統一する。
+  const ln = w => { ctx.lineWidth = lwOverride || w; };
 
   // カスタムシンボル
   const cS = state.customSymbols.find(s => s.type === type);
   if (cS) {
-    ctx.lineWidth = (isSel ? 1.5 : 1.0);
+    ctx.lineWidth = lwOverride || (isSel ? 1.5 : 1.0);
     if (cS.shapes && cS.shapes.length) {
       cS.shapes.forEach(s => {
         // 図形ごとに太さを持っていればそれを使う(貼り付け元の太さを保持するため)。
         // 持っていない(手描き・旧データ)場合は従来どおりの既定値。
-        ctx.lineWidth = s.lineWidth || (isSel ? 1.5 : 1.0);
+        // ただしシンボル線幅の上書き指定があれば、それを最優先する。
+        ctx.lineWidth = lwOverride || s.lineWidth || (isSel ? 1.5 : 1.0);
         if (s.t==='L') { ctx.beginPath(); ctx.moveTo(s.x1,s.y1); ctx.lineTo(s.x2,s.y2); ctx.stroke(); }
         else if (s.t==='C') { ctx.beginPath(); ctx.arc(s.cx,s.cy,s.r,0,Math.PI*2); ctx.stroke(); }
         else if (s.t==='A') { ctx.beginPath(); ctx.arc(s.cx,s.cy,s.r, s.sa*Math.PI/180, s.ea*Math.PI/180, false); ctx.stroke(); }

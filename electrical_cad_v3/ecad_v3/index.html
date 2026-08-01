@@ -204,6 +204,23 @@
         </div>
         <div class="rg-label">プロジェクト</div>
       </div>
+      <div class="rg">
+        <div class="rg-btns">
+          <div style="display:flex;align-items:center;gap:4px;padding:0 2px;font-size:10px;color:var(--fg3)">
+            選択範囲の線幅
+            <select id="bulk-lw" title="現在選択中の図形・配線・シンボルの太さを一括で変更します。シンボルは登録時の太さを上書きします" onchange="bulkSetLineWidth(this.value);this.value='__'">
+              <option value="__" selected disabled hidden>一括変更…</option>
+              <option value="">個別/レイヤー既定に戻す</option>
+              <option value="0.5">極細(0.5)</option>
+              <option value="1">標準(1)</option>
+              <option value="1.5">やや太(1.5)</option>
+              <option value="2">太(2)</option>
+              <option value="3">極太(3)</option>
+            </select>
+          </div>
+        </div>
+        <div class="rg-label">整理</div>
+      </div>
     </div>
 
     <!-- 帳票タブ -->

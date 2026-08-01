@@ -1756,6 +1756,14 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>スケール</label><input type="number" id="pp-scale" value="${el.scale||1}" step="0.1" min="0.1" max="5" oninput="previewScale()"></div>`;
     html += `<div class="pp-row"><label>シンボル色</label><div style="display:flex;gap:4px;align-items:center"><input type="color" id="pp-symcolor" value="${el.color||'#1d6fb5'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer" oninput="syncColorCode('pp-symcolor','pp-symcolorcode');previewSymColor()"><input type="text" id="pp-symcolorcode" value="${el.color||'#1d6fb5'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-symcolorcode','pp-symcolor');previewSymColor()">${colorCodeBtns('pp-symcolorcode','pp-symcolor')}</div></div>`;
     html += `<div class="pp-row"><label>シンボル線種</label><select id="pp-symls"><option value=""${!el.lineStyle?' selected':''}>実線</option><option value="dash"${el.lineStyle==='dash'?' selected':''}>破線</option><option value="dot"${el.lineStyle==='dot'?' selected':''}>点線</option><option value="dashdot"${el.lineStyle==='dashdot'?' selected':''}>一点鎖線</option></select></div>`;
+    html += `<div class="pp-row"><label>シンボル線幅</label><select id="pp-symlw" title="登録時の太さや標準シンボルの既定太さを、このシンボル1個だけ上書きします">
+      <option value=""${!el.lineWidth?' selected':''}>個別（変更なし）</option>
+      <option value="0.5"${el.lineWidth==0.5?' selected':''}>極細(0.5)</option>
+      <option value="1"${el.lineWidth==1?' selected':''}>標準(1)</option>
+      <option value="1.5"${el.lineWidth==1.5?' selected':''}>やや太(1.5)</option>
+      <option value="2"${el.lineWidth==2?' selected':''}>太(2)</option>
+      <option value="3"${el.lineWidth==3?' selected':''}>極太(3)</option>
+    </select></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
     if (def.jis) html += `<div class="pp-row"><label style="color:var(--fg4)">JIS規格</label><p style="font-size:10px;color:var(--fg3);padding:2px 5px">${def.jis}</p></div>`;
     html += `<div class="pp-row"><label>メモ</label><textarea rows="2" id="pp-note">${el.note||''}</textarea></div>`;
@@ -2124,6 +2132,7 @@ function applyRightPanel() {
     el.scale      = Math.max(0.1, Math.min(5, parseFloat(v('pp-scale'))||1));
     el.color      = v('pp-symcolorcode') || v('pp-symcolor') || undefined;
     el.lineStyle  = v('pp-symls') || undefined;
+    el.lineWidth  = v('pp-symlw') ? parseFloat(v('pp-symlw')) : undefined;
     el.labelColor = v('pp-lcolorcode') || v('pp-lcolor') || undefined;
     el.labelFs    = parseInt(v('pp-lfs'))||11;
     el.labelOffX  = parseInt(v('pp-lox'))||0;
@@ -2267,6 +2276,26 @@ function setHint(msg) {
 }
 
 // ----------------------------------------------------------------
+// ----------------------------------------------------------------
+// 選択した図形・配線・シンボルの線幅を一括変更
+// ----------------------------------------------------------------
+// 図形・配線は el.lineWidth / wire.lineWidth に直接反映。
+// シンボルは el.lineWidth を「シンボル線幅」の個別上書きとして使う
+// (symbols.jsのdrawSymがこれを最優先で見る)ため、同じフィールド名で統一できる。
+// 「レイヤー既定に戻す」を選んだ場合は el.lineWidth を削除し、
+// シンボルは上書きなし(登録時の太さ)、図形・配線はレイヤー既定太さに戻る。
+function bulkSetLineWidth(lwStr) {
+  const lw = lwStr === '' ? undefined : parseFloat(lwStr);
+  const els   = state.elements.filter(e => state.sel.els.has(e.id));
+  const wires = state.wires.filter(w => state.sel.wires.has(w.id));
+  if (!els.length && !wires.length) { alert('図形・配線・シンボルを選択してから実行してください。'); return; }
+  pushH();
+  els.forEach(e => { if (lw === undefined) delete e.lineWidth; else e.lineWidth = lw; });
+  wires.forEach(w => { if (lw === undefined) delete w.lineWidth; else w.lineWidth = lw; });
+  draw();
+  alert(`${els.length + wires.length} 個の太さを変更しました。`);
+}
+
 // デバイス（partRef）表示トグル
 // ----------------------------------------------------------------
 function togglePartRefDisp() {

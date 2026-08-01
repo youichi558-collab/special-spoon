@@ -485,10 +485,10 @@ function drawSymEl(el, sel, lc) {
     ctx.save();
     ctx.translate(el.x, el.y);
     ctx.scale(sc, sc);
-    drawSym(el.type, 0, 0, sel, el.rot||0, el.flipH, el.flipV, lc, el.lineStyle);
+    drawSym(el.type, 0, 0, sel, el.rot||0, el.flipH, el.flipV, lc, el.lineStyle, el.lineWidth);
     ctx.restore();
   } else {
-    drawSym(el.type, el.x, el.y, sel, el.rot||0, el.flipH, el.flipV, lc, el.lineStyle);
+    drawSym(el.type, el.x, el.y, sel, el.rot||0, el.flipH, el.flipV, lc, el.lineStyle, el.lineWidth);
   }
   if (el.label && !state.pdfSkipText) {
     const d   = getDef(el.type) || { w:64, h:34 };
