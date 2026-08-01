@@ -529,15 +529,19 @@ function drawSymEl(el, sel, lc) {
   // デバイス表示（表示ON時）。
   // 以前は未入力シンボルにオレンジの「?」を描いていたが、デバイスを持たない
   // シンボルすべてに出て図面が読めなくなるため廃止した。
+  // 位置・サイズは devOffX / devOffY / devFs で個別に調整できる。
+  // 既定は従来どおりシンボル上端の少し上。回転には追随しない（従来の見た目を維持）。
   if (state.showPartRef && !state.pdfSkipText && el.partRef) {
     const d  = getDef(el.type) || { w:64, h:34 };
     const sc = el.scale || 1;
-    const py = el.y - (d.h*sc/2 + 6);
+    const fs = Math.round((el.devFs || 11) * sc);
+    const dx = el.devOffX || 0;
+    const dy = el.devOffY !== undefined ? el.devOffY : -(d.h*sc/2 + 6);
     ctx.save();
     ctx.textAlign = 'center';
-    ctx.font = 'bold 11px sans-serif';
-    ctx.fillStyle = state.darkMode ? '#4da3ff' : '#1d6fb5';
-    ctx.fillText(el.partRef, el.x, py);
+    ctx.font = `bold ${fs}px sans-serif`;
+    ctx.fillStyle = el.devColor || (state.darkMode ? '#4da3ff' : '#1d6fb5');
+    ctx.fillText(el.partRef, el.x + dx, el.y + dy);
     ctx.restore();
   }
   if (el.refLabel) {

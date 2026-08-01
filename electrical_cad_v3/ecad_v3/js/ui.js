@@ -1655,6 +1655,10 @@ function updateRightPanel() {
     // 識別情報を先頭に置く。デバイス→型番→型式表示→ラベル(仕様)の順。
     // コイル名/参照コイル名は廃止。接点とコイルの紐づけはデバイス(partRef)で行う。
     html += `<div class="pp-row"><label>デバイス</label><input type="text" id="pp-partref" value="${el.partRef||''}" placeholder="例: MC1, NFB1"></div>`;
+    html += `<div class="pp-row"><label>デバイスサイズ</label><input type="number" id="pp-dfs" value="${el.devFs||11}" step="1" min="6" max="32" oninput="previewDeviceOff()"></div>`;
+    html += `<div class="pp-row"><label>デバイス位置X補正</label><input type="number" id="pp-dox" value="${el.devOffX!==undefined?el.devOffX:''}" placeholder="自動" step="5" oninput="previewDeviceOff()"></div>`;
+    html += `<div class="pp-row"><label>デバイス位置Y補正</label><input type="number" id="pp-doy" value="${el.devOffY!==undefined?el.devOffY:''}" placeholder="自動" step="5" oninput="previewDeviceOff()"></div>`;
+    html += `<div class="pp-row"><button onclick="resetDeviceOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">デバイス位置リセット</button></div>`;
     html += `<div class="pp-row"><label>型番</label><input type="text" id="pp-partmodel" value="${el.partModel||''}" placeholder="例: S-T10（メーカー型番）"></div>`;
     html += `<div class="pp-row"><label>型式を図面に表示</label><input type="checkbox" id="pp-showmodel"${el.showModel?' checked':''} title="チェックしたシンボルにだけ型番が描画されます。接点側はOFFのままにしてください"></div>`;
     html += `<div class="pp-row"><label>型式サイズ</label><input type="number" id="pp-mfs" value="${el.modelFs||el.labelFs||11}" step="1" min="6" max="32" oninput="previewModelOff()"></div>`;
@@ -1818,6 +1822,32 @@ function previewScale() {
   if (sc) el.scale = Math.max(0.1, Math.min(5, parseFloat(sc.value)||1));
   draw();
   updateResizeHandles();
+}
+
+// デバイスの位置・サイズをその場でプレビューする
+function previewDeviceOff() {
+  const rp = document.getElementById('rp-body');
+  const el = rp?._el;
+  if (!el) return;
+  const g = id => document.getElementById(id);
+  const dox = g('pp-dox'), doy = g('pp-doy'), dfs = g('pp-dfs');
+  if (dox) el.devOffX = dox.value !== '' ? parseInt(dox.value) : undefined;
+  if (doy) el.devOffY = doy.value !== '' ? parseInt(doy.value) : undefined;
+  if (dfs) el.devFs   = parseInt(dfs.value) || undefined;
+  drawWithoutSel();
+}
+
+// デバイスの位置補正を解除し、既定位置(シンボル上)へ戻す
+function resetDeviceOff() {
+  const rp = document.getElementById('rp-body');
+  const el = rp?._el;
+  if (!el) return;
+  el.devOffX = undefined;
+  el.devOffY = undefined;
+  const dox = document.getElementById('pp-dox'), doy = document.getElementById('pp-doy');
+  if (dox) dox.value = '';
+  if (doy) doy.value = '';
+  drawWithoutSel();
 }
 
 // 型式の位置・サイズをその場でプレビューする
@@ -1988,6 +2018,9 @@ function applyRightPanel() {
     el.label     = v('pp-label');
     el.partRef   = v('pp-partref');
     el.partModel = v('pp-partmodel');
+    el.devFs     = parseInt(v('pp-dfs')) || undefined;
+    el.devOffX   = v('pp-dox') !== '' ? parseInt(v('pp-dox')) : undefined;
+    el.devOffY   = v('pp-doy') !== '' ? parseInt(v('pp-doy')) : undefined;
     el.showModel = !!document.getElementById('pp-showmodel')?.checked;
     el.modelFs   = parseInt(v('pp-mfs')) || undefined;
     el.modelOffX = v('pp-mox') !== '' ? parseInt(v('pp-mox')) : undefined;
