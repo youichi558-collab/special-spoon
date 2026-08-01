@@ -1659,6 +1659,10 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>デバイス</label><input type="text" id="pp-partref" value="${el.partRef||''}" placeholder="例: MC1, NFB1"></div>`;
     html += `<div class="pp-row"><label>型番</label><input type="text" id="pp-partmodel" value="${el.partModel||''}" placeholder="例: S-T10（メーカー型番）"></div>`;
     html += `<div class="pp-row"><label>型式を図面に表示</label><input type="checkbox" id="pp-showmodel"${el.showModel?' checked':''} title="チェックしたシンボルにだけ型番が描画されます。接点側はOFFのままにしてください"></div>`;
+    html += `<div class="pp-row"><label>型式サイズ</label><input type="number" id="pp-mfs" value="${el.modelFs||el.labelFs||11}" step="1" min="6" max="32" oninput="previewModelOff()"></div>`;
+    html += `<div class="pp-row"><label>型式位置X補正</label><input type="number" id="pp-mox" value="${el.modelOffX!==undefined?el.modelOffX:''}" placeholder="自動" step="5" oninput="previewModelOff()"></div>`;
+    html += `<div class="pp-row"><label>型式位置Y補正</label><input type="number" id="pp-moy" value="${el.modelOffY!==undefined?el.modelOffY:''}" placeholder="自動" step="5" oninput="previewModelOff()"></div>`;
+    html += `<div class="pp-row"><button onclick="resetModelOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">型式位置リセット</button></div>`;
     html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-term" value="${el.terminals||''}" placeholder="例: A1,A2,13,14"></div>`;
     html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${el.wireNo||''}"></div>`;
     html += `<div class="pp-row"><label>回転(°)</label><input type="number" id="pp-rot" value="${el.rot||0}" step="90"></div>`;
@@ -1815,6 +1819,32 @@ function previewScale() {
   updateResizeHandles();
 }
 
+// 型式の位置・サイズをその場でプレビューする
+function previewModelOff() {
+  const rp = document.getElementById('rp-body');
+  const el = rp?._el;
+  if (!el) return;
+  const g = id => document.getElementById(id);
+  const mox = g('pp-mox'), moy = g('pp-moy'), mfs = g('pp-mfs');
+  if (mox) el.modelOffX = mox.value !== '' ? parseInt(mox.value) : undefined;
+  if (moy) el.modelOffY = moy.value !== '' ? parseInt(moy.value) : undefined;
+  if (mfs) el.modelFs   = parseInt(mfs.value) || undefined;
+  drawWithoutSel();
+}
+
+// 型式の位置補正を解除し、ラベル基準の自動配置へ戻す
+function resetModelOff() {
+  const rp = document.getElementById('rp-body');
+  const el = rp?._el;
+  if (!el) return;
+  el.modelOffX = undefined;
+  el.modelOffY = undefined;
+  const mox = document.getElementById('pp-mox'), moy = document.getElementById('pp-moy');
+  if (mox) mox.value = '';
+  if (moy) moy.value = '';
+  drawWithoutSel();
+}
+
 function previewLabelOff() {
   const rp = document.getElementById('rp-body');
   const el = rp?._el;
@@ -1958,6 +1988,9 @@ function applyRightPanel() {
     el.partRef   = v('pp-partref');
     el.partModel = v('pp-partmodel');
     el.showModel = !!document.getElementById('pp-showmodel')?.checked;
+    el.modelFs   = parseInt(v('pp-mfs')) || undefined;
+    el.modelOffX = v('pp-mox') !== '' ? parseInt(v('pp-mox')) : undefined;
+    el.modelOffY = v('pp-moy') !== '' ? parseInt(v('pp-moy')) : undefined;
     el.terminals = v('pp-term');
     el.wireNo    = v('pp-wireno');
     el.rot       = parseInt(v('pp-rot'))||0;

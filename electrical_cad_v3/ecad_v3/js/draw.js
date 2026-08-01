@@ -511,16 +511,17 @@ function drawSymEl(el, sel, lc) {
   if (el.showModel && el.partModel && !state.pdfSkipText) {
     const d   = getDef(el.type) || { w:64, h:34 };
     const sc  = el.scale || 1;
-    const fs  = Math.round((el.labelFs||11) * sc);
-    const lox = el.labelOffX || 0;
-    // ラベルがある場合はその1行下、無い場合はラベルの位置に描く
+    const fs  = Math.round((el.modelFs || el.labelFs || 11) * sc);
+    // 型式専用の補正(modelOffX/Y)があればそれを使い、無ければ
+    // ラベルの位置を基準に「ラベルがあれば1行下、無ければラベルの位置」に置く
     const base = el.labelOffY || (d.h*sc/2 + 15*sc);
-    const loy  = base + (el.label ? fs + 3 : 0);
+    const lox  = el.modelOffX !== undefined ? el.modelOffX : (el.labelOffX || 0);
+    const loy  = el.modelOffY !== undefined ? el.modelOffY : base + (el.label ? fs + 3 : 0);
     const rot  = (el.rot||0) * Math.PI/180;
     const mx   = el.x + lox*Math.cos(rot) - loy*Math.sin(rot);
     const my   = el.y + lox*Math.sin(rot) + loy*Math.cos(rot);
     ctx.save();
-    ctx.fillStyle = el.labelColor || (state.darkMode ? '#aaa' : '#555');
+    ctx.fillStyle = el.modelColor || el.labelColor || (state.darkMode ? '#aaa' : '#555');
     ctx.font = `${fs}px sans-serif`; ctx.textAlign = 'center';
     ctx.fillText(el.partModel, mx, my);
     ctx.restore();
