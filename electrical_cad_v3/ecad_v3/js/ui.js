@@ -1029,14 +1029,11 @@ function srPasteFromClipboard() {
       else if (s.t==='P' && s.pts) shapes.push({t:'P', pts:s.pts.map(p=>[tx(p[0]),ty(p[1])]), cl:s.cl});
       else if (s.t==='T') shapes.push({t:'T', text:s.text, x:tx(s.x), y:ty(s.y), fs:s.fs});
       else if (s.t==='A') {
-        // 弧を複数の直線に近似(sa/eaは度数法)
-        const steps=8, r=Math.round(s.r*scale), ccx=tx(s.cx), ccy=ty(s.cy);
-        for (let i=0;i<steps;i++) {
-          const a0=(s.sa+(s.ea-s.sa)*i/steps)*Math.PI/180;
-          const a1=(s.sa+(s.ea-s.sa)*(i+1)/steps)*Math.PI/180;
-          shapes.push({t:'L',x1:Math.round(ccx+Math.cos(a0)*r),y1:Math.round(ccy+Math.sin(a0)*r),
-                           x2:Math.round(ccx+Math.cos(a1)*r),y2:Math.round(ccy+Math.sin(a1)*r)});
-        }
+        // 以前は弧を8本の直線に分解し、さらに各点を整数へ丸めていた。
+        // 半径が小さい弧ほど丸め誤差が相対的に大きくなり、歪んで見える不具合があった。
+        // 配置時の描画(symbols.js)は弧をネイティブでサポートしているので、
+        // 分解せずそのまま持たせる(座標・半径は丸め、角度sa/eaは丸めない)。
+        shapes.push({t:'A', cx:tx(s.cx), cy:ty(s.cy), r:Math.round(s.r*scale), sa:s.sa, ea:s.ea});
       }
     });
   });
@@ -1066,6 +1063,7 @@ function srGridAlignShapes(shapes) {
     else if (s.t==='R') { xs.push(s.x, s.x+s.w); ys.push(s.y, s.y+s.h); }
     else if (s.t==='T') { xs.push(s.x); ys.push(s.y); }
     else if (s.t==='P' && s.pts) s.pts.forEach(p => { xs.push(p[0]); ys.push(p[1]); });
+    else if (s.t==='A') { xs.push(s.cx); ys.push(s.cy); }
   });
   if (!xs.length) return { dx:0, dy:0, hit:0, total:0 };
 
@@ -1093,6 +1091,7 @@ function srGridAlignShapes(shapes) {
       else if (s.t==='R') { s.x+=dx; s.y+=dy; }
       else if (s.t==='T') { s.x+=dx; s.y+=dy; }
       else if (s.t==='P' && s.pts) s.pts = s.pts.map(p => [p[0]+dx, p[1]+dy]);
+      else if (s.t==='A') { s.cx+=dx; s.cy+=dy; }
     });
   }
   return { dx, dy, hitX:bx.c, hitY:by.c, total:xs.length };
@@ -1210,6 +1209,16 @@ function srDrawShape(c, s, color) {
   } else if (s.t==='T') {
     c.font = `${Math.max(4,(s.fs||14)*_srZoom/2)}px sans-serif`; c.textAlign = 'center';
     c.fillText(s.text, T(s.x), TY(s.y));
+  } else if (s.t==='A') {
+    c.lineWidth = 1.5; c.beginPath();
+    c.arc(T(s.cx),TY(s.cy),Math.max(1,s.r*_srZoom), (s.sa||0)*Math.PI/180, (s.ea||0)*Math.PI/180, false);
+    c.stroke();
+  } else if (s.t==='P' && s.pts && s.pts.length) {
+    c.lineWidth = 1.5; c.beginPath();
+    c.moveTo(T(s.pts[0][0]),TY(s.pts[0][1]));
+    for (let k=1;k<s.pts.length;k++) c.lineTo(T(s.pts[k][0]),TY(s.pts[k][1]));
+    if (s.cl) c.closePath();
+    c.stroke();
   }
   c.restore();
 }
@@ -1225,6 +1234,24 @@ function srOnDown(e) {
       else if (s.t==='C') d = Math.abs(Math.hypot(x-s.cx,y-s.cy)-s.r);
       else if (s.t==='R') { const cx=(s.x+s.w/2), cy=(s.y+s.h/2); d=Math.hypot(x-cx,y-cy); }
       else if (s.t==='T') d = Math.hypot(x-s.x, y-s.y);
+      else if (s.t==='A') {
+        // 弧の中心からの距離が半径付近にあり、かつ角度が弧の範囲内なら当たりとする。
+        // 範囲外なら弧の両端点までの距離を使う(端をクリックしても消せるように)。
+        let ang = Math.atan2(y-s.cy, x-s.cx)*180/Math.PI;
+        const norm = a => ((a%360)+360)%360;
+        let sa=norm(s.sa), ea=norm(s.ea), an=norm(ang);
+        const inRange = sa<=ea ? (an>=sa && an<=ea) : (an>=sa || an<=ea);
+        if (inRange) {
+          d = Math.abs(Math.hypot(x-s.cx,y-s.cy)-s.r);
+        } else {
+          const p0x=s.cx+Math.cos(s.sa*Math.PI/180)*s.r, p0y=s.cy+Math.sin(s.sa*Math.PI/180)*s.r;
+          const p1x=s.cx+Math.cos(s.ea*Math.PI/180)*s.r, p1y=s.cy+Math.sin(s.ea*Math.PI/180)*s.r;
+          d = Math.min(Math.hypot(x-p0x,y-p0y), Math.hypot(x-p1x,y-p1y));
+        }
+      }
+      else if (s.t==='P' && s.pts) {
+        for (let k=0;k<s.pts.length-1;k++) d = Math.min(d, distToSeg(x,y,s.pts[k][0],s.pts[k][1],s.pts[k+1][0],s.pts[k+1][1]));
+      }
       if (d < minD) { minD = d; minI = i; }
     });
     let minTD = 8, minTI = -1;
