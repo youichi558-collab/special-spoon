@@ -533,7 +533,8 @@ function exportDXF(){
       if(!d||el.x==null) return;
       const sc=el.scale||1;
       const hasAttrib=!!el.label;
-      p(0,'INSERT',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbBlockReference');
+      const insH=nh();
+      p(0,'INSERT',5,insH,100,'AcDbEntity',8,layer,100,'AcDbBlockReference');
       p(2,el.type,10,el.x.toFixed(3),20,(-el.y).toFixed(3),30,'0.0');
       p(50,String(el.rot||0),41,String(sc),42,String(sc),43,'1.0');
       if(hasAttrib){
@@ -556,11 +557,14 @@ function exportDXF(){
         // AC1015(AutoCAD2000)には存在しない。しかもタグ名(2)より前に来ており、
         // 正しい順序(2→70→73→74)にも反していた。TrueViewが読めなくなる原因と判断し、
         // 280を削除して正しい順序に修正(2026-08-02)。
-        p(0,'ATTRIB',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbText',
+        // さらに、実例には(0,ATTRIB)の直後に330(親INSERTのオーナーハンドル)が
+        // 存在するのに、このコードには一切無かった。ATTRIB/SEQENDは単独の実体ではなく
+        // INSERTの子(sub-entity)なので、親を指す330が必須と判断し追加(2026-08-02)。
+        p(0,'ATTRIB',5,nh(),330,insH,100,'AcDbEntity',8,layer,100,'AcDbText',
           10,lx.toFixed(3),20,(-ly).toFixed(3),30,'0.0',40,'10',1,u,
           7,'STANDARD',72,0,11,lx.toFixed(3),21,(-ly).toFixed(3),31,'0.0',
           100,'AcDbAttribute',2,'LABEL',70,0,73,0,74,0);
-        p(0,'SEQEND',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbSeqend');
+        p(0,'SEQEND',5,nh(),330,insH,100,'AcDbEntity',8,layer,100,'AcDbSeqend');
       }
     }
   });
