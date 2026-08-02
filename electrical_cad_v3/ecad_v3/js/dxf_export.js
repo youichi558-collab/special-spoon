@@ -510,11 +510,14 @@ function exportDXF(){
         const lines=String(el.label).split('\n');
         const fs=el.labelFs||11;
         const lh=Math.round(fs*1.25);
-        const align=el.labelAlign||'center';
         // 基準点(lox)は内容の長さに関わらず固定(labelOffXのみ)。キャンバス側と同じ考え方。
         const lox = el.labelOffX||0;
-        // 文字揃え: DXFの水平揃えコード(72グループ) 0=左 1=中央 2=右
-        const alignCode={left:0,center:1,right:2}[align];
+        // 文字揃え(左/中央/右)の見た目はloxの計算に既に反映されている。
+        // DXF側の水平揃えコード(72グループ)は、以前から実績のある0(左/挿入点基準)に
+        // 常に固定する。72を1(中央)や2(右)にすると、TrueViewが実機でこの形式を
+        // 開けなくなる不具合が確認されたため([要:第2アラインメント点(11/21)や
+        // 追加のサブクラス表記が必要な可能性があり、そこまで作り込めていない]。
+        // 72=0の場合11/21は読まれないため省略してよい。
         lines.forEach((ln,i)=>{
           if(!ln) return;
           const oy=loy+i*lh;
@@ -523,7 +526,7 @@ function exportDXF(){
           const u=toUnicodeDXF(ln);
           p(0,'ATTRIB',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbText',
             10,lx.toFixed(3),20,(-ly).toFixed(3),30,'0.0',40,'10',1,u,
-            7,'STANDARD',72,alignCode,11,lx.toFixed(3),21,(-ly).toFixed(3),31,'0.0',
+            7,'STANDARD',72,0,11,lx.toFixed(3),21,(-ly).toFixed(3),31,'0.0',
             100,'AcDbAttribute',280,0,2,`LABEL${i?i+1:''}`,70,0);
         });
         p(0,'SEQEND',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbSeqend');
