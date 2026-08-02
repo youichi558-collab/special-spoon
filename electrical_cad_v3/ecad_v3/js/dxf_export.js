@@ -336,19 +336,9 @@ function exportDXF(){
     ['transformer',()=>{bL(-32,0,-22,0);bA(-16,0,7,0,180);bA(-8,0,7,0,180);bA(0,0,7,0,180);bL(0,-16,0,16);bA(2,0,7,180,0);bA(10,0,7,180,0);bA(18,0,7,180,0);bL(26,0,32,0);}],
     ['terminal',   ()=>{bL(-20,0,20,0);bR(-10,-8,10,8);bL(-4,-4,4,4);bL(4,-4,-4,4);}],
   ];
-  // 属性(LABEL)の雛形(ATTDEF)。INSERT側のATTRIBは本来、ブロック定義側に
-  // 対応するATTDEFが無いと正規の属性として扱われない可能性がある(2026-08-02)。
-  // 位置・高さは実際の配置(el.labelOffX/Y等)で上書きされるため、ここでは仮の値でよい。
-  function bAttdef(){
-    p(0,'ATTDEF',5,nh(),100,'AcDbEntity',8,'0',100,'AcDbText',
-      10,'0.0',20,'-20.0',30,'0.0',40,'10',1,'',
-      7,'STANDARD',72,0,
-      100,'AcDbAttributeDefinition',3,'LABEL',2,'LABEL',70,0,73,0,74,0);
-  }
   symDefs.forEach(([name,fn],i)=>{
     p(0,'BLOCK', 5,symBlkH[i].b, 100,'AcDbEntity', 8,'0', 100,'AcDbBlockBegin', 2,name, 70,0, 10,'0.0', 20,'0.0', 30,'0.0', 3,name, 1,'');
     fn();
-    bAttdef();
     p(0,'ENDBLK', 5,symBlkH[i].e, 100,'AcDbEntity', 8,'0', 100,'AcDbBlockEnd');
   });
 
@@ -368,7 +358,6 @@ function exportDXF(){
       else if(sh.t==='P' && sh.pts && sh.pts.length>1) bP(sh.pts, sh.cl);
       else if(sh.t==='T') bT(sh.x,sh.y,sh.fs||14,sh.text||'');
     });
-    bAttdef();
     p(0,'ENDBLK', 5,custBlkH[i].e, 100,'AcDbEntity', 8,'0', 100,'AcDbBlockEnd');
   });
 
@@ -543,39 +532,24 @@ function exportDXF(){
       const d=getDef(el.type);
       if(!d||el.x==null) return;
       const sc=el.scale||1;
-      const hasAttrib=!!el.label;
-      const insH=nh();
-      p(0,'INSERT',5,insH,100,'AcDbEntity',8,layer,100,'AcDbBlockReference');
+      p(0,'INSERT',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbBlockReference');
       p(2,el.type,10,el.x.toFixed(3),20,(-el.y).toFixed(3),30,'0.0');
       p(50,String(el.rot||0),41,String(sc),42,String(sc),43,'1.0');
-      if(hasAttrib){
-        p(66,1);
+      // 仕様(ラベル)はINSERTのATTRIB(ブロック属性)としてではなく、
+      // 独立したTEXT実体(eText、寸法文字・線番と同じ実績のある形式)として出力する。
+      // ATTRIB+ATTDEF+SEQEND+オーナー参照(330)という一式の組み合わせを何度整えても
+      // TrueViewで「SEQENDの開始でオブジェクトの作成が終了していない」というエラーが
+      // 解消しなかったため(2026-08-02)、ATTRIB機構自体の使用をやめた。
+      // 位置はキャンバス描画(draw.js)と同じ計算式で求める。
+      if(el.label){
         const lox=el.labelOffX||0, loy=el.labelOffY||(d.h/2+15);
         const rot=(el.rot||0)*Math.PI/180;
         const lx=el.x+lox*Math.cos(rot)-loy*Math.sin(rot);
         const ly=el.y+lox*Math.sin(rot)+loy*Math.cos(rot);
-        // DXFのTEXT/ATTRIBは1つの実体の中に改行を持てない。
-        // 以前は1行ごとに別のATTRIBを追加する(1つのINSERTに複数ATTRIB)方式を
-        // 試したが、TrueViewの実機で開けなくなる不具合が発生した(2026-08-02)。
-        // 実績があるのは「1つのINSERTに1つのATTRIB」の構造のみなので、
-        // 複数行の場合はDXF出力時だけ1行にまとめる(半角スペースで連結)。
-        // CAD画面上の複数行表示(draw.js)はこの制限を受けず、そのまま複数行で見える。
+        // 複数行の仕様はDXF出力時だけ半角スペースで1行にまとめる
+        // (CAD画面上の複数行表示はこの制限を受けず、そのまま複数行で見える)。
         const joined = String(el.label).split('\n').filter(s=>s).join(' ');
-        const u=toUnicodeDXF(joined);
-        // AcDbAttributeサブクラスのフィールド順を実例(実際にAutoCADが出力するATTRIB)と
-        // 突き合わせて修正。以前は 280,0,2,'LABEL',70,0 という順序だったが、
-        // 280(バージョン番号)はR2010以降の拡張フィールドで、この図面が名乗っている
-        // AC1015(AutoCAD2000)には存在しない。しかもタグ名(2)より前に来ており、
-        // 正しい順序(2→70→73→74)にも反していた。TrueViewが読めなくなる原因と判断し、
-        // 280を削除して正しい順序に修正(2026-08-02)。
-        // さらに、実例には(0,ATTRIB)の直後に330(親INSERTのオーナーハンドル)が
-        // 存在するのに、このコードには一切無かった。ATTRIB/SEQENDは単独の実体ではなく
-        // INSERTの子(sub-entity)なので、親を指す330が必須と判断し追加(2026-08-02)。
-        p(0,'ATTRIB',5,nh(),330,insH,100,'AcDbEntity',8,layer,100,'AcDbText',
-          10,lx.toFixed(3),20,(-ly).toFixed(3),30,'0.0',40,'10',1,u,
-          7,'STANDARD',72,0,
-          100,'AcDbAttribute',2,'LABEL',70,0,73,0,74,0);
-        p(0,'SEQEND',5,nh(),330,insH,100,'AcDbEntity',8,layer,100,'AcDbSeqend');
+        eText(layer, lx, ly, el.labelFs||11, joined, el.rot||0);
       }
     }
   });
