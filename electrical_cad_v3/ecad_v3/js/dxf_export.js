@@ -509,31 +509,22 @@ function exportDXF(){
       p(50,String(el.rot||0),41,String(sc),42,String(sc),43,'1.0');
       if(hasAttrib){
         p(66,1);
-        const loy=el.labelOffY||(d.h/2+15);
+        const lox=el.labelOffX||0, loy=el.labelOffY||(d.h/2+15);
         const rot=(el.rot||0)*Math.PI/180;
-        // 仕様は改行可能。1行ごとにATTRIBを出す(DXFのTEXTは改行を持てないため)
-        const lines=String(el.label).split('\n');
-        const fs=el.labelFs||11;
-        const lh=Math.round(fs*1.25);
-        // 基準点(lox)は内容の長さに関わらず固定(labelOffXのみ)。キャンバス側と同じ考え方。
-        const lox = el.labelOffX||0;
-        // 文字揃え(左/中央/右)の見た目はloxの計算に既に反映されている。
-        // DXF側の水平揃えコード(72グループ)は、以前から実績のある0(左/挿入点基準)に
-        // 常に固定する。72を1(中央)や2(右)にすると、TrueViewが実機でこの形式を
-        // 開けなくなる不具合が確認されたため([要:第2アラインメント点(11/21)や
-        // 追加のサブクラス表記が必要な可能性があり、そこまで作り込めていない]。
-        // 72=0の場合11/21は読まれないため省略してよい。
-        lines.forEach((ln,i)=>{
-          if(!ln) return;
-          const oy=loy+i*lh;
-          const lx=el.x+lox*Math.cos(rot)-oy*Math.sin(rot);
-          const ly=el.y+lox*Math.sin(rot)+oy*Math.cos(rot);
-          const u=toUnicodeDXF(ln);
-          p(0,'ATTRIB',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbText',
-            10,lx.toFixed(3),20,(-ly).toFixed(3),30,'0.0',40,'10',1,u,
-            7,'STANDARD',72,0,11,lx.toFixed(3),21,(-ly).toFixed(3),31,'0.0',
-            100,'AcDbAttribute',280,0,2,`LABEL${i?i+1:''}`,70,0);
-        });
+        const lx=el.x+lox*Math.cos(rot)-loy*Math.sin(rot);
+        const ly=el.y+lox*Math.sin(rot)+loy*Math.cos(rot);
+        // DXFのTEXT/ATTRIBは1つの実体の中に改行を持てない。
+        // 以前は1行ごとに別のATTRIBを追加する(1つのINSERTに複数ATTRIB)方式を
+        // 試したが、TrueViewの実機で開けなくなる不具合が発生した(2026-08-02)。
+        // 実績があるのは「1つのINSERTに1つのATTRIB」の構造のみなので、
+        // 複数行の場合はDXF出力時だけ1行にまとめる(半角スペースで連結)。
+        // CAD画面上の複数行表示(draw.js)はこの制限を受けず、そのまま複数行で見える。
+        const joined = String(el.label).split('\n').filter(s=>s).join(' ');
+        const u=toUnicodeDXF(joined);
+        p(0,'ATTRIB',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbText',
+          10,lx.toFixed(3),20,(-ly).toFixed(3),30,'0.0',40,'10',1,u,
+          7,'STANDARD',72,0,11,lx.toFixed(3),21,(-ly).toFixed(3),31,'0.0',
+          100,'AcDbAttribute',280,0,2,'LABEL',70,0);
         p(0,'SEQEND',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbSeqend');
       }
     }
