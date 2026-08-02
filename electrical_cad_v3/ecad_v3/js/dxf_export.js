@@ -85,9 +85,16 @@ function exportDXF(){
   const H_SCALELIST_DICT = nh(), H_TABLESTYLE_DICT = nh(), H_VISUALSTYLE_DICT = nh();
   const H_LAYOUT_MODEL = nh(), H_LAYOUT_PAPER = nh();
   const symBlkRecH     = SYM_NAMES.map(()=>nh());
+  // カスタムシンボル(登録済みシンボル)用。BLOCKS/BLOCK_RECORDの定義が
+  // 標準(JIS)シンボルにしか無く、INSERTが存在しないブロックを参照していた
+  // (実体のないブロック参照でTrueViewが構造を追えなくなる致命的な不具合)。
+  // 標準シンボルと同じ方式でカスタムシンボルにも定義を追加する(2026-08-02)。
+  const customSyms = (typeof state !== 'undefined' && state.customSymbols) ? state.customSymbols : [];
+  const custBlkRecH = customSyms.map(()=>nh());
   const H_MDL_BLK      = nh(), H_MDL_EBLK  = nh();
   const H_PPR_BLK      = nh(), H_PPR_EBLK  = nh();
   const symBlkH        = SYM_NAMES.map(()=>({b:nh(),e:nh()}));
+  const custBlkH       = customSyms.map(()=>({b:nh(),e:nh()}));
 
   // ================================================================
   // HEADER
@@ -275,11 +282,14 @@ function exportDXF(){
   p(0,'ENDTAB');
 
   // BLOCK_RECORD
-  p(0,'TABLE', 2,'BLOCK_RECORD', 5,H_BLKREC_TBL, 100,'AcDbSymbolTable', 70, 2+SYM_NAMES.length);
+  p(0,'TABLE', 2,'BLOCK_RECORD', 5,H_BLKREC_TBL, 100,'AcDbSymbolTable', 70, 2+SYM_NAMES.length+customSyms.length);
   p(0,'BLOCK_RECORD', 5,H_BLKREC_MDL, 100,'AcDbSymbolTableRecord', 100,'AcDbBlockTableRecord', 2,'*MODEL_SPACE',  70,0);
   p(0,'BLOCK_RECORD', 5,H_BLKREC_PPR, 100,'AcDbSymbolTableRecord', 100,'AcDbBlockTableRecord', 2,'*PAPER_SPACE', 70,0);
   SYM_NAMES.forEach((name,i)=>{
     p(0,'BLOCK_RECORD', 5,symBlkRecH[i], 100,'AcDbSymbolTableRecord', 100,'AcDbBlockTableRecord', 2,name, 70,0);
+  });
+  customSyms.forEach((s,i)=>{
+    p(0,'BLOCK_RECORD', 5,custBlkRecH[i], 100,'AcDbSymbolTableRecord', 100,'AcDbBlockTableRecord', 2,s.type, 70,0);
   });
   p(0,'ENDTAB');
 
@@ -330,6 +340,25 @@ function exportDXF(){
     p(0,'BLOCK', 5,symBlkH[i].b, 100,'AcDbEntity', 8,'0', 100,'AcDbBlockBegin', 2,name, 70,0, 10,'0.0', 20,'0.0', 30,'0.0', 3,name, 1,'');
     fn();
     p(0,'ENDBLK', 5,symBlkH[i].e, 100,'AcDbEntity', 8,'0', 100,'AcDbBlockEnd');
+  });
+
+  // カスタムシンボル(登録済みシンボル)のBLOCK定義。
+  // cS.shapes(L/C/A/R/P/T)を、標準シンボルと同じbL/bC/bA/bR/bTヘルパーで描画する。
+  function bP(pts,closed){
+    for(let k=0;k<pts.length-1;k++) bL(pts[k][0],pts[k][1],pts[k+1][0],pts[k+1][1]);
+    if(closed && pts.length>2) bL(pts[pts.length-1][0],pts[pts.length-1][1],pts[0][0],pts[0][1]);
+  }
+  customSyms.forEach((s,i)=>{
+    p(0,'BLOCK', 5,custBlkH[i].b, 100,'AcDbEntity', 8,'0', 100,'AcDbBlockBegin', 2,s.type, 70,0, 10,'0.0', 20,'0.0', 30,'0.0', 3,s.type, 1,'');
+    (s.shapes||[]).forEach(sh=>{
+      if(sh.t==='L') bL(sh.x1,sh.y1,sh.x2,sh.y2);
+      else if(sh.t==='C') bC(sh.cx,sh.cy,sh.r);
+      else if(sh.t==='A') bA(sh.cx,sh.cy,sh.r,sh.sa,sh.ea);
+      else if(sh.t==='R') bR(sh.x,sh.y,sh.x+sh.w,sh.y+sh.h);
+      else if(sh.t==='P' && sh.pts && sh.pts.length>1) bP(sh.pts, sh.cl);
+      else if(sh.t==='T') bT(sh.x,sh.y,sh.fs||14,sh.text||'');
+    });
+    p(0,'ENDBLK', 5,custBlkH[i].e, 100,'AcDbEntity', 8,'0', 100,'AcDbBlockEnd');
   });
 
   p(0,'ENDSEC'); // BLOCKS end
