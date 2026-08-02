@@ -442,16 +442,41 @@ function exportDXF(){
     L(MGpx,MGpx,MGpx+iW,MGpx);L(MGpx+iW,MGpx,MGpx+iW,MGpx+iH);
     L(MGpx+iW,MGpx+iH,MGpx,MGpx+iH);L(MGpx,MGpx+iH,MGpx,MGpx);
     L(MGpx,MGpx+dH,MGpx+iW,MGpx+dH);
-    const tw=iW/4;
-    L(MGpx+tw,MGpx+dH,MGpx+tw,MGpx+iH);
-    L(MGpx+tw*2,MGpx+dH,MGpx+tw*2,MGpx+iH);
-    L(MGpx+tw*3,MGpx+dH,MGpx+tw*3,MGpx+iH);
-    const ty=MGpx+dH+TH*0.6,fs=Math.max(4,TH*0.3);
-    T(MGpx+tw*0.1,ty,fs,fr.drawno);
-    T(MGpx+tw*0.1,ty-TH*0.35,fs,fr.title||'');
-    T(MGpx+tw*1.1,ty,fs,fr.author);
-    T(MGpx+tw*2.1,ty,fs,fr.company);
-    T(MGpx+tw*3.1,ty,fs,fr.scale2||'');
+    // 【本命修正】表題欄(タイトルブロック)は従来drawno/title/author/company/scale2の5項目だけを
+    // 4等分の列に押し込み、フォントサイズもTH*0.3(物理寸法の30%、TH=30mmなら9mm)という、
+    // 画面(frame.js)側の固定10px/8pxとは無関係な式を使っていた。「盛田」だけ異様に大きく見えたのはこれが原因。
+    // frame.js側のcells[]配列(11項目・相対座標)と全く同じ定義に置き換え、
+    // 設備名/承認/日付/Rev/変更履歴/ページも出力されていなかったのであわせて追加する(2026-08-03)。
+    const tbY=MGpx+dH;
+    const cells=[
+      {x:0,   y:0,  w:.25,h:.5,key:'drawno', lbl:'図面番号'},
+      {x:.25, y:0,  w:.35,h:.5,key:'title',  lbl:'図面名称'},
+      {x:.6,  y:0,  w:.2, h:.5,key:'company',lbl:'会社名'},
+      {x:.8,  y:0,  w:.2, h:.5,key:'equip',  lbl:'設備名'},
+      {x:0,   y:.5, w:.12,h:.5,key:'author', lbl:'作成'},
+      {x:.12, y:.5, w:.12,h:.5,key:'approve',lbl:'承認'},
+      {x:.24, y:.5, w:.2, h:.5,key:'date',   lbl:'日付'},
+      {x:.44, y:.5, w:.1, h:.5,key:'scale2', lbl:'縮尺'},
+      {x:.54, y:.5, w:.06,h:.5,key:'rev',    lbl:'Rev'},
+      {x:.6,  y:.5, w:.35,h:.5,key:'chghist',lbl:'変更履歴'},
+      {x:.95, y:.5, w:.05,h:.5,key:'_page',  lbl:'ページ'},
+    ];
+    cells.forEach(c=>{
+      const cx=MGpx+c.x*iW, cy=tbY+c.y*TH, cw=c.w*iW, ch=c.h*TH;
+      L(cx,cy,cx+cw,cy);L(cx+cw,cy,cx+cw,cy+ch);L(cx+cw,cy+ch,cx,cy+ch);L(cx,cy+ch,cx,cy);
+      T(cx+2,cy+9,8,c.lbl);
+      const val = c.key==='_page' ? (fr.page || `${state.currentPage+1} / ${state.pages.length}`) : (fr[c.key]||'');
+      if(!val) return;
+      // frame.js側は実測(ctx.measureText)でセル幅に収まるよう縮小するが、DXF側は文字幅を
+      // 実測できないため文字数からの概算で代用する(変更履歴のみ長文になりうる)。
+      let fs=10;
+      if(c.key==='chghist'){
+        const maxW=cw-6;
+        const approx=val.length*fs*0.6;
+        if(approx>maxW) fs=Math.max(4, maxW/(val.length*0.6));
+      }
+      T(cx+3, cy+ch-5, fs, val);
+    });
     if(cols>0){const cw=iW/cols;for(let c=1;c<cols;c++){L(MGpx+c*cw,0,MGpx+c*cw,MGpx);L(MGpx+c*cw,MGpx+dH,MGpx+c*cw,H);}
       for(let c=0;c<cols;c++)T(MGpx+c*(iW/cols)+(iW/cols)/2,MGpx*0.6,6,String.fromCharCode(65+c));}
     if(rows>0){const rh=dH/rows;for(let r=1;r<rows;r++){L(0,MGpx+r*rh,MGpx,MGpx+r*rh);L(MGpx+iW,MGpx+r*rh,W,MGpx+r*rh);}
@@ -463,7 +488,27 @@ function exportDXF(){
     const layer=dxfLayer(w.layer||'配線');
     const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
     for(let i=0;i<pts.length-1;i++) eLine(layer,pts[i].x,pts[i].y,pts[i+1].x,pts[i+1].y);
-    if(w.wireNo){const mp=pts[Math.floor(pts.length/2)];eText(layer,mp.x,mp.y-8,w.wireNoFs||8,w.wireNo);}
+    // 【本命修正】線番号の位置式が画面(draw.js)と全く別物だった。従来は単純にmp.y-8という、
+    // 配線の向きを一切考慮しない固定オフセットで、縦方向の配線(今回のラダー図のような回路)では
+    // 線番号が隣接する接点のデバイス名と同じY方向にずれるため重なって表示されていた
+    // (盛田さんのスクリーンショットで「01PB2」等の重なりとして発覚、2026-08-03)。
+    // draw.js同様、配線に垂直な方向(常に画面上側)へfs+6だけオフセットする式に合わせる。
+    if(w.wireNo){
+      const n=pts.length;
+      const i=Math.floor((n-1)/2), j=Math.ceil((n-1)/2);
+      const mp = n>=2 ? {x:(pts[i].x+pts[j].x)/2, y:(pts[i].y+pts[j].y)/2} : pts[0];
+      let nx=0, ny=-1;
+      if(n>=2){
+        const dx=pts[j].x-pts[i].x, dy=pts[j].y-pts[i].y;
+        const len=Math.hypot(dx,dy);
+        if(len>0.1){ nx=-dy/len; ny=dx/len; if(ny>0){nx=-nx;ny=-ny;} }
+      }
+      const fs=w.wireNoFs||10; // 画面側のデフォルト値(10)に合わせる(旧DXF側は8でずれていた)
+      const off=fs+6;
+      const tx=mp.x+nx*off+(w.wireNoOffX||0);
+      const ty=mp.y+ny*off+(w.wireNoOffY||0);
+      eText(layer,tx,ty,fs,w.wireNo);
+    }
   });
 
   // 要素
