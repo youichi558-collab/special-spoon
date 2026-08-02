@@ -342,7 +342,7 @@ function exportDXF(){
   function bAttdef(){
     p(0,'ATTDEF',5,nh(),100,'AcDbEntity',8,'0',100,'AcDbText',
       10,'0.0',20,'-20.0',30,'0.0',40,'10',1,'',
-      7,'STANDARD',72,0,11,'0.0',21,'-20.0',31,'0.0',
+      7,'STANDARD',72,0,
       100,'AcDbAttributeDefinition',3,'LABEL',2,'LABEL',70,0,73,0,74,0);
   }
   symDefs.forEach(([name,fn],i)=>{
@@ -573,7 +573,7 @@ function exportDXF(){
         // INSERTの子(sub-entity)なので、親を指す330が必須と判断し追加(2026-08-02)。
         p(0,'ATTRIB',5,nh(),330,insH,100,'AcDbEntity',8,layer,100,'AcDbText',
           10,lx.toFixed(3),20,(-ly).toFixed(3),30,'0.0',40,'10',1,u,
-          7,'STANDARD',72,0,11,lx.toFixed(3),21,(-ly).toFixed(3),31,'0.0',
+          7,'STANDARD',72,0,
           100,'AcDbAttribute',2,'LABEL',70,0,73,0,74,0);
         p(0,'SEQEND',5,nh(),330,insH,100,'AcDbEntity',8,layer,100,'AcDbSeqend');
       }
