@@ -488,6 +488,12 @@ function exportDXF(){
       eCircle(layer,el.x,el.y,el.r||5);
       if(el.style==='dbl') eCircle(layer,el.x,el.y,(el.r||5)*0.55);
       if(el.label && el.style!=='dot') eText(layer,el.x+(el.r||5)+4,el.y,11,el.label);
+      // デバイス表示(端子台のTB1等)。draw.jsのdrawJunctionElと同じ条件・位置式
+      // (state.showPartRef && !dot)。従来DXF出力に一切存在せず、画面には出るのに
+      // DXFに出ないというギャップの一因だった(2026-08-03)。
+      if(state.showPartRef && el.partRef && el.style!=='dot'){
+        eText(layer, el.x, el.y-(el.r||5)-6, 10, el.partRef);
+      }
     } else if(el.type==='triangle'){
       eLine(layer,el.x1,el.y1,el.x2,el.y2);
       eLine(layer,el.x2,el.y2,el.x3,el.y3);
@@ -541,8 +547,11 @@ function exportDXF(){
       // TrueViewで「SEQENDの開始でオブジェクトの作成が終了していない」というエラーが
       // 解消しなかったため(2026-08-02)、ATTRIB機構自体の使用をやめた。
       // 位置はキャンバス描画(draw.js)と同じ計算式で求める。
+      // 【本命修正】labelのデフォルト縦位置はdraw.js側ではsc(シンボル倍率)を掛けているのに
+      // ここでは掛けていなかった(d.h/2+15)。等倍以外(カスタムシンボルは0.3倍等が多い)で
+      // 画面とDXFの位置がズレる原因だったため、draw.jsと同じ式(d.h*sc/2+15*sc)に合わせる(2026-08-03)。
       if(el.label){
-        const lox=el.labelOffX||0, loy=el.labelOffY||(d.h/2+15);
+        const lox=el.labelOffX||0, loy=el.labelOffY||(d.h*sc/2+15*sc);
         const rot=(el.rot||0)*Math.PI/180;
         const lx=el.x+lox*Math.cos(rot)-loy*Math.sin(rot);
         const ly=el.y+lox*Math.sin(rot)+loy*Math.cos(rot);
@@ -550,6 +559,32 @@ function exportDXF(){
         // (CAD画面上の複数行表示はこの制限を受けず、そのまま複数行で見える)。
         const joined = String(el.label).split('\n').filter(s=>s).join(' ');
         eText(layer, lx, ly, el.labelFs||11, joined, el.rot||0);
+      }
+      // 【新規】型式(partModel)。draw.jsのdrawSymEl内の型式表示ブロックと同じ位置式。
+      // el.showModelがtrueの要素だけ描く(3極品等で同じデバイスの表示重複を避けるため)。
+      // 画面同様、文字自体は回転させない(位置のみel.rotに追随)。
+      if(el.showModel && el.partModel){
+        const mfs = el.modelFs || el.labelFs || 11;
+        const base = el.labelOffY!=null ? el.labelOffY : (d.h*sc/2 + 15*sc);
+        const mlox = el.modelOffX!==undefined ? el.modelOffX : (el.labelOffX||0);
+        const lblLines = el.label ? String(el.label).split('\n').length : 0;
+        const lblFs = el.labelFs||11;
+        const mloy = el.modelOffY!==undefined ? el.modelOffY
+                   : base + (lblLines ? (lblLines-1)*Math.round(lblFs*1.25) + mfs + 3 : 0);
+        const rot=(el.rot||0)*Math.PI/180;
+        const mx=el.x+mlox*Math.cos(rot)-mloy*Math.sin(rot);
+        const my=el.y+mlox*Math.sin(rot)+mloy*Math.cos(rot);
+        eText(layer, mx, my, mfs, el.partModel);
+      }
+      // 【新規】デバイス表示(partRef、例: MCCB1/MC1/TH1/PB1等)。従来DXF出力に
+      // 一切存在せず、画面には常に見えているのにDXFに変換すると消える最大の原因だった
+      // (2026-08-03、盛田さんのスクリーンショットで判明)。draw.jsのdrawSymEl/drawJunctionElと
+      // 同条件(state.showPartRef && !devHide)・同位置式(回転には追随しない)で出力する。
+      if(state.showPartRef && el.partRef && !el.devHide){
+        const dfs = el.devFs || 11;
+        const dx = el.devOffX || 0;
+        const dy = el.devOffY!==undefined ? el.devOffY : -(d.h*sc/2 + 6);
+        eText(layer, el.x+dx, el.y+dy, dfs, el.partRef);
       }
     }
   });
