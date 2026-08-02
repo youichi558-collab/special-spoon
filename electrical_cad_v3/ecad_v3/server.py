@@ -79,6 +79,15 @@ class Handler(SimpleHTTPRequestHandler):
             return
         super().do_GET()
 
+    def end_headers(self):
+        # JS/CSS/HTML等の静的ファイルにキャッシュ無効化ヘッダーを付与。
+        # 以前はAPI(JSON)応答にだけno-storeが付いていて、静的ファイルには
+        # 何も付いていなかったため、ブラウザがJSファイルを古いまま
+        # 使い続けてしまう(pull後にCtrl+Shift+Rしても反映されない)ことがあった。
+        self.send_header('Cache-Control', 'no-store, must-revalidate')
+        self.send_header('Pragma', 'no-cache')
+        super().end_headers()
+
     def do_POST(self):
         parsed = urllib.parse.urlparse(self.path)
         if parsed.path == '/api/save_catalog':
