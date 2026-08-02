@@ -521,10 +521,16 @@ function exportDXF(){
         // CAD画面上の複数行表示(draw.js)はこの制限を受けず、そのまま複数行で見える。
         const joined = String(el.label).split('\n').filter(s=>s).join(' ');
         const u=toUnicodeDXF(joined);
+        // AcDbAttributeサブクラスのフィールド順を実例(実際にAutoCADが出力するATTRIB)と
+        // 突き合わせて修正。以前は 280,0,2,'LABEL',70,0 という順序だったが、
+        // 280(バージョン番号)はR2010以降の拡張フィールドで、この図面が名乗っている
+        // AC1015(AutoCAD2000)には存在しない。しかもタグ名(2)より前に来ており、
+        // 正しい順序(2→70→73→74)にも反していた。TrueViewが読めなくなる原因と判断し、
+        // 280を削除して正しい順序に修正(2026-08-02)。
         p(0,'ATTRIB',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbText',
           10,lx.toFixed(3),20,(-ly).toFixed(3),30,'0.0',40,'10',1,u,
           7,'STANDARD',72,0,11,lx.toFixed(3),21,(-ly).toFixed(3),31,'0.0',
-          100,'AcDbAttribute',280,0,2,'LABEL',70,0);
+          100,'AcDbAttribute',2,'LABEL',70,0,73,0,74,0);
         p(0,'SEQEND',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbSeqend');
       }
     }
