@@ -336,9 +336,19 @@ function exportDXF(){
     ['transformer',()=>{bL(-32,0,-22,0);bA(-16,0,7,0,180);bA(-8,0,7,0,180);bA(0,0,7,0,180);bL(0,-16,0,16);bA(2,0,7,180,0);bA(10,0,7,180,0);bA(18,0,7,180,0);bL(26,0,32,0);}],
     ['terminal',   ()=>{bL(-20,0,20,0);bR(-10,-8,10,8);bL(-4,-4,4,4);bL(4,-4,-4,4);}],
   ];
+  // 属性(LABEL)の雛形(ATTDEF)。INSERT側のATTRIBは本来、ブロック定義側に
+  // 対応するATTDEFが無いと正規の属性として扱われない可能性がある(2026-08-02)。
+  // 位置・高さは実際の配置(el.labelOffX/Y等)で上書きされるため、ここでは仮の値でよい。
+  function bAttdef(){
+    p(0,'ATTDEF',5,nh(),100,'AcDbEntity',8,'0',100,'AcDbText',
+      10,'0.0',20,'-20.0',30,'0.0',40,'10',1,'',
+      7,'STANDARD',72,0,11,'0.0',21,'-20.0',31,'0.0',
+      100,'AcDbAttributeDefinition',3,'LABEL',2,'LABEL',70,0,73,0,74,0);
+  }
   symDefs.forEach(([name,fn],i)=>{
     p(0,'BLOCK', 5,symBlkH[i].b, 100,'AcDbEntity', 8,'0', 100,'AcDbBlockBegin', 2,name, 70,0, 10,'0.0', 20,'0.0', 30,'0.0', 3,name, 1,'');
     fn();
+    bAttdef();
     p(0,'ENDBLK', 5,symBlkH[i].e, 100,'AcDbEntity', 8,'0', 100,'AcDbBlockEnd');
   });
 
@@ -358,6 +368,7 @@ function exportDXF(){
       else if(sh.t==='P' && sh.pts && sh.pts.length>1) bP(sh.pts, sh.cl);
       else if(sh.t==='T') bT(sh.x,sh.y,sh.fs||14,sh.text||'');
     });
+    bAttdef();
     p(0,'ENDBLK', 5,custBlkH[i].e, 100,'AcDbEntity', 8,'0', 100,'AcDbBlockEnd');
   });
 
