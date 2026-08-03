@@ -630,15 +630,6 @@ const symLib = (() => {
 
     const symType = 'lib_' + entry.path.replace(/[^a-zA-Z0-9_\-]/g, '_');
 
-    // 【2026-08-03追加】従来はterminals:[]固定で、電磁接触器・モーター等の主回路シンボルの
-    // 端子情報が最初から空のまま登録され、接続表・端子台表が正しい端子位置を掴めない
-    // 原因になっていた。pin_editor.jsの開放端検出(peCollectCandidatePoints)を使って
-    // ベストエフォートで端子候補を仮登録する(装飾線が多い形では誤検出も混ざるため、
-    // 盛田さんには📍アイコンから端子(ピン)編集パネルを開いて確認・修正してもらう前提)。
-    const termCandidates = (typeof peCollectCandidatePoints === 'function')
-      ? peCollectCandidatePoints(canvasShapes).map(p => ({ x: Math.round(p.x), y: Math.round(p.y) }))
-      : [];
-
     // プレビュー画像生成
     let preview='';
     try {
@@ -664,13 +655,13 @@ const symLib = (() => {
 
     const symDef={type:symType, name:entry.label, label:entry.label,
       cat:entry.type3||'ライブラリ', w:dxfW*SCALE, h:dxfH*SCALE,
-      shapes:canvasShapes, terminals:termCandidates, preview};
+      shapes:canvasShapes, terminals:[], preview};
     const existing=state.customSymbols.findIndex(s=>s.type===symType);
     if(existing>=0) state.customSymbols[existing]=symDef;
     else state.customSymbols.push(symDef);
 
     if(typeof DEFS!=='undefined')
-      DEFS[symType]={w:dxfW*SCALE,h:dxfH*SCALE,cat:symDef.cat,name:entry.label,label:entry.label,jis:'',terminals:termCandidates};
+      DEFS[symType]={w:dxfW*SCALE,h:dxfH*SCALE,cat:symDef.cat,name:entry.label,label:entry.label,jis:'',terminals:[]};
 
     pushH();
     const cx=(window.innerWidth/2-state.pan.x)/state.zoom;
@@ -689,9 +680,7 @@ const symLib = (() => {
     pushRecent(entry);
     if(typeof renderSymFloat==='function') renderSymFloat();
     draw();
-    toast(termCandidates.length
-      ? `「${entry.label}」を追加しました(端子候補${termCandidates.length}件を仮登録。📍アイコンから確認してください)`
-      : `「${entry.label}」を追加しました(端子候補が見つからず未登録。📍アイコンから手動で追加してください)`);
+    toast(`「${entry.label}」を追加しました`);
   }
 
   // ── FileSystemFileHandle をIndexedDBに保存・復元 ──────────────
