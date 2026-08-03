@@ -137,6 +137,27 @@ function hitTestWire(wx, wy) {
     for (let j = 0; j < pts.length-1; j++) {
       if (distToSeg(wx,wy,pts[j].x,pts[j].y,pts[j+1].x,pts[j+1].y) < R) return w;
     }
+    // 【追加】線番号(wireNo)の文字表示もクリック判定の対象にする(2026-08-03、盛田さんの指摘)。
+    // 線番号は配線の中点から法線方向(常に画面上側)へオフセットした位置に表示されるが
+    // (draw.js参照)、従来は配線そのもの(細い線)しかヒット対象になっておらず、
+    // 少し離れた線番号の文字をクリックしても選択できなかった。
+    if (w.wireNo && !state.pdfSkipText) {
+      const n = pts.length;
+      const wi = Math.floor((n-1)/2), wj = Math.ceil((n-1)/2);
+      const mp = n >= 2 ? { x:(pts[wi].x+pts[wj].x)/2, y:(pts[wi].y+pts[wj].y)/2 } : pts[0];
+      let nx = 0, ny = -1;
+      if (n >= 2) {
+        const dx = pts[wj].x - pts[wi].x, dy = pts[wj].y - pts[wi].y;
+        const len = Math.hypot(dx, dy);
+        if (len > 0.1) { nx = -dy/len; ny = dx/len; if (ny > 0) { nx=-nx; ny=-ny; } }
+      }
+      const fs  = w.wireNoFs || 10;
+      const off = fs + 6;
+      const tx = mp.x + nx*off + (w.wireNoOffX||0);
+      const ty = mp.y + ny*off + (w.wireNoOffY||0);
+      const tw = Math.max(10, String(w.wireNo).length*fs*0.55);
+      if (Math.abs(wx-tx)<=tw/2+R && wy>=ty-fs-R && wy<=ty+R) return w;
+    }
   }
   return null;
 }
