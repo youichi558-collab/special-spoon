@@ -1345,6 +1345,27 @@ function srUpdateTermList() {
   ).join('');
 }
 
+// 【2026-08-03追加】盛田さんの指摘: 「登録時に自動検出を走らせて選ぶようにした方が良い」
+// 登録済み後に別パネル(pin_editor.js)で直す2度手間ではなく、登録画面のその場で
+// 開放端候補を検出→プレビューで見ながら要らないものをクリックで消す、という流れにする。
+// 検出ロジック自体はpin_editor.jsのpeCollectCandidatePoints()をそのまま再利用する
+// (電磁接触器やモーター等、装飾線が多い形では誤検出も混ざるため、全自動で確定はせず
+// 必ずプレビューで見て選べるようにする。単純な2本足の接点シンボルなら候補=正解になることが多い)。
+function srAutoDetectTerms() {
+  if (!_srShapes.length) { alert('先に図形を描いてください'); return; }
+  if (typeof peCollectCandidatePoints !== 'function') return;
+  const candidates = peCollectCandidatePoints(_srShapes);
+  if (!candidates.length) { alert('開放端(未接続の線端)が見つかりませんでした。手動でクリックして端子を追加してください。'); return; }
+  let added = 0;
+  candidates.forEach(cand => {
+    const dup = _srTerms.some(t => Math.hypot(t.x-cand.x, t.y-cand.y) < 3);
+    if (!dup) { _srTerms.push({ x: Math.round(cand.x), y: Math.round(cand.y) }); added++; }
+  });
+  srUpdateTermList(); srRender();
+  if (added === 0) alert('候補はすべて既存の端子と重複していました。');
+  else alert(`候補を${added}件追加しました。違うものがあればプレビュー上でクリックして削除してください。`);
+}
+
 function calcCustomSymBBox(shapes) {
   let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
   shapes.forEach(s => {
