@@ -386,13 +386,16 @@ function exportDXF(){
       10,fx(cx),20,fy(cy),30,'0.0',40,r.toFixed(3),
       100,'AcDbArc',50,sa.toFixed(3),51,ea.toFixed(3));
   }
-  function eText(layer,x,y,h,str,rot){
+  function eText(layer,x,y,h,str,rot,align){
     if(!str) return;
     const u=toUnicodeDXF(str);
+    // alignは水平方向の揃え(DXFグループコード72): 0=左,1=中央,2=右。
+    // 省略時は従来通り中央(1)のまま(他の呼び出し元の見た目を変えないため)。
+    const hj = align===undefined ? 1 : ({left:0,center:1,right:2}[align] ?? 1);
     p(0,'TEXT',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbText',
       10,fx(x),20,fy(y),30,'0.0',40,String(h),1,u);
     if(rot) p(50,String(rot));
-    p(7,'STANDARD',72,1,11,fx(x),21,fy(y),31,'0.0',100,'AcDbText',73,0);
+    p(7,'STANDARD',72,hj,11,fx(x),21,fy(y),31,'0.0',100,'AcDbText',73,0);
   }
   function eSolid(layer,x,y,ux,uy,a){
     // 寸法矢印（SOLID→AcDbTrace）
@@ -603,15 +606,24 @@ function exportDXF(){
       // 【本命修正】labelのデフォルト縦位置はdraw.js側ではsc(シンボル倍率)を掛けているのに
       // ここでは掛けていなかった(d.h/2+15)。等倍以外(カスタムシンボルは0.3倍等が多い)で
       // 画面とDXFの位置がズレる原因だったため、draw.jsと同じ式(d.h*sc/2+15*sc)に合わせる(2026-08-03)。
+      // 【本命修正】複数行の仕様(例: "NV32-SV 3P\n30AF/30AT 30mA")は、従来DXF出力時だけ
+      // 半角スペースで1行に強制結合していた。画面(draw.js)では各行を等間隔(fs*1.25)で
+      // 縦に並べ、揃え(labelAlign)もそのまま反映しているのに、DXFだけ1行に潰れて詰まった
+      // 見た目になっていた(盛田さんのスクリーンショットでMCCB1/MCCB2/MC1の仕様が
+      // 1行化しているのを確認、2026-08-03)。draw.jsと同じ行分割・行間・揃えに合わせる。
       if(el.label){
         const lox=el.labelOffX||0, loy=el.labelOffY||(d.h*sc/2+15*sc);
         const rot=(el.rot||0)*Math.PI/180;
-        const lx=el.x+lox*Math.cos(rot)-loy*Math.sin(rot);
-        const ly=el.y+lox*Math.sin(rot)+loy*Math.cos(rot);
-        // 複数行の仕様はDXF出力時だけ半角スペースで1行にまとめる
-        // (CAD画面上の複数行表示はこの制限を受けず、そのまま複数行で見える)。
-        const joined = String(el.label).split('\n').filter(s=>s).join(' ');
-        eText(layer, lx, ly, el.labelFs||11, joined, el.rot||0);
+        const fs = el.labelFs||11;
+        const lh = Math.round(fs*1.25);
+        const lines = String(el.label).split('\n');
+        lines.forEach((ln,i)=>{
+          if(!ln) return;
+          const ly0 = loy + i*lh;
+          const lx=el.x+lox*Math.cos(rot)-ly0*Math.sin(rot);
+          const ly=el.y+lox*Math.sin(rot)+ly0*Math.cos(rot);
+          eText(layer, lx, ly, fs, ln, el.rot||0, el.labelAlign||'center');
+        });
       }
       // 【新規】型式(partModel)。draw.jsのdrawSymEl内の型式表示ブロックと同じ位置式。
       // el.showModelがtrueの要素だけ描く(3極品等で同じデバイスの表示重複を避けるため)。
