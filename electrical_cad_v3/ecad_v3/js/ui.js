@@ -1399,13 +1399,19 @@ function saveCustomSymbol() {
   const name = document.getElementById('sr-name').value.trim();
   if (!name) { alert('シンボル名を入力してください'); return; }
   if (!_srShapes.length) { alert('図形を少なくとも1つ描いてください'); return; }
-  // 【2026-08-03追加】盛田さんの提案: 「登録するときに決まってない場合は自動検出を
-  // 自動で走らせる」。端子点を1つも置かないまま登録しようとした場合、ボタンを押す
-  // 手間なしにその場で開放端検出を自動実行して仮登録する(候補が無ければ何もしない)。
-  // 既に手動で端子点を置いている場合は上書きしない(意図した配置を尊重する)。
-  if (!_srTerms.length && typeof peCollectCandidatePoints === 'function') {
+  // 【2026-08-03再修正】盛田さんのイメージ:「登録ボタンを押すと、自動検出ボタンも
+  // 押されたのと同じことが起きてから登録される」。前回は端子が1つも無い時だけ実行
+  // していたが、それだと「登録ボタンを押せば毎回自動検出される」という感覚と合わない
+  // ため、既存端子の有無に関わらず、登録の直前に必ず自動検出(重複はスキップ)を
+  // 実行するようにした。既存の🔍自動検出ボタンの処理(srAutoDetectTerms)と全く同じ
+  // マージロジックを使う。
+  if (typeof peCollectCandidatePoints === 'function') {
     const candidates = peCollectCandidatePoints(_srShapes);
-    candidates.forEach(cand => _srTerms.push({ x: Math.round(cand.x), y: Math.round(cand.y) }));
+    candidates.forEach(cand => {
+      const dup = _srTerms.some(t => Math.hypot(t.x-cand.x, t.y-cand.y) < 3);
+      if (!dup) _srTerms.push({ x: Math.round(cand.x), y: Math.round(cand.y) });
+    });
+    srUpdateTermList();
   }
   const cat = document.getElementById('sr-cat').value.trim() || 'カスタム';
   const bbox = calcCustomSymBBox(_srShapes);
