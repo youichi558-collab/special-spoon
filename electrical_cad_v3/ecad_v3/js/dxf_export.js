@@ -44,6 +44,17 @@ function exportDXF(){
     if(el.x1!=null){ext(el.x1,-el.y1);ext(el.x2,-el.y2);}
     else if(el.x!=null) ext(el.x,-el.y);
   });
+  // 【本命修正】原点シフトの基準を回路要素(elements/wires)のバウンディングボックスだけで
+  // 計算していたため、回路が用紙全体を使い切っていない図面では、シフト後の原点(0,0)が
+  // 用紙の隅ではなく行3付近など中途半端な位置に来てしまい、TrueViewのUCS原点マーカーが
+  // 図面の中に浮いて見えていた(盛田さんの「原点位置がおかしい」指摘、2026-08-03)。
+  // 図面枠(用紙)が存在する場合は、その四隅も基準に含めることで、原点が必ず用紙の
+  // 左下隅に来るようにする(AutoCADの一般的な図面枠配置の流儀により合致する)。
+  if(state.frameObj){
+    const fr=state.frameObj;
+    const W=fr.wMM*fr.sc, H=fr.hMM*fr.sc;
+    ext(0,0); ext(W,-H);
+  }
   if(minX>maxX){minX=0;minY=-297;maxX=420;maxY=0;}
   // 【原点シフト】インポート図面はページ中央付近が座標原点(0,0)になっていることが多く、
   // TrueViewで開くとUCS原点マーカーが図面の真ん中に重なって見づらい(AutoCAD本体なら
@@ -372,18 +383,29 @@ function exportDXF(){
   // 原点シフト用ヘルパー(X: 生値+offX、Y: 反転後の値+offY)
   const fx = v => (v+offX).toFixed(3);
   const fy = v => (-v+offY).toFixed(3);
-  function eLine(layer,x1,y1,x2,y2){
-    p(0,'LINE',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbLine',
-      10,fx(x1),20,fy(y1),30,'0.0',
+  // 【本命修正】画面(draw.js)ではel.lineStyle/w.lineStyle('dash'/'dot'/'dashdot')で
+  // 個々の線を破線・点線・一点鎖線にできる(applyLineStyle)のに、DXF出力はこれを一切
+  // 参照しておらず、全ての線がBYLAYER(実質CONTINUOUS)で出力されていた。盛田さんの図面では
+  // fline要素(配線エリアを囲む一点鎖線の枠など)がdashdot/dotで10本あり、これらが
+  // 全部実線に化けていた(2026-08-03)。element/wireのlineStyleをDXF線種名に変換して
+  // 各エンティティに明示的に付与する。
+  const LT_MAP = {dash:'DASHED',dashed:'DASHED',dot:'DOT',dotted:'DOT',dashdot:'DASHDOT'};
+  function resolveLT(styleVal){ return styleVal ? (LT_MAP[styleVal]||null) : null; }
+  function eLine(layer,x1,y1,x2,y2,lt){
+    p(0,'LINE',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbLine');
+    if(lt) p(6,lt);
+    p(10,fx(x1),20,fy(y1),30,'0.0',
       11,fx(x2),21,fy(y2),31,'0.0');
   }
-  function eCircle(layer,cx,cy,r){
-    p(0,'CIRCLE',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbCircle',
-      10,fx(cx),20,fy(cy),30,'0.0',40,r.toFixed(3));
+  function eCircle(layer,cx,cy,r,lt){
+    p(0,'CIRCLE',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbCircle');
+    if(lt) p(6,lt);
+    p(10,fx(cx),20,fy(cy),30,'0.0',40,r.toFixed(3));
   }
-  function eArc(layer,cx,cy,r,sa,ea){
-    p(0,'ARC',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbCircle',
-      10,fx(cx),20,fy(cy),30,'0.0',40,r.toFixed(3),
+  function eArc(layer,cx,cy,r,sa,ea,lt){
+    p(0,'ARC',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbCircle');
+    if(lt) p(6,lt);
+    p(10,fx(cx),20,fy(cy),30,'0.0',40,r.toFixed(3),
       100,'AcDbArc',50,sa.toFixed(3),51,ea.toFixed(3));
   }
   function eText(layer,x,y,h,str,rot,align){
@@ -407,9 +429,9 @@ function exportDXF(){
       12,fx(x+ax*a-nx ),22,fy(y+ay*a-ny ),32,'0.0',
       13,fx(x+ax*a    ),23,fy(y+ay*a    ),33,'0.0');
   }
-  function eRect(layer,x,y,w,h){
-    eLine(layer,x,y,x+w,y);eLine(layer,x+w,y,x+w,y+h);
-    eLine(layer,x+w,y+h,x,y+h);eLine(layer,x,y+h,x,y);
+  function eRect(layer,x,y,w,h,lt){
+    eLine(layer,x,y,x+w,y,lt);eLine(layer,x+w,y,x+w,y+h,lt);
+    eLine(layer,x+w,y+h,x,y+h,lt);eLine(layer,x,y+h,x,y,lt);
   }
 
   const dxfAng = a => ((-a*180/Math.PI)%360+360)%360;
@@ -480,7 +502,12 @@ function exportDXF(){
       }
       T(cx+3, cy+ch-5, fs, val);
     });
-    if(cols>0){const cw=iW/cols;for(let c=1;c<cols;c++){L(MGpx+c*cw,0,MGpx+c*cw,MGpx);L(MGpx+c*cw,MGpx+dH,MGpx+c*cw,H);}
+    // 【本命修正】列の目盛り線(下側)がMGpx+dH(表題欄の"上端")を起点にしていたため、
+    // 表題欄の高さ全体を貫通する余計な縦線になり、11セットのタイトル欄が線で
+    // ズタズタに分断されて見えていた(盛田さんの「表題欄がほぼ壊れている」指摘、2026-08-03)。
+    // 画面(frame.js)はMGpx+innerH(内枠の下端=表題欄の"下端")を起点にしており、
+    // 表題欄の外(下余白のみ)にしか引かれない。同じ基準点(iH)に合わせる。
+    if(cols>0){const cw=iW/cols;for(let c=1;c<cols;c++){L(MGpx+c*cw,0,MGpx+c*cw,MGpx);L(MGpx+c*cw,MGpx+iH,MGpx+c*cw,H);}
       for(let c=0;c<cols;c++)T(MGpx+c*(iW/cols)+(iW/cols)/2,MGpx*0.6,6,String.fromCharCode(65+c));}
     if(rows>0){const rh=dH/rows;for(let r=1;r<rows;r++){L(0,MGpx+r*rh,MGpx,MGpx+r*rh);L(MGpx+iW,MGpx+r*rh,W,MGpx+r*rh);}
       for(let r=0;r<rows;r++){T(MGpx/2,MGpx+r*(dH/rows)+(dH/rows)/2,6,String(r+1));T(MGpx+iW+MGpx/2,MGpx+r*(dH/rows)+(dH/rows)/2,6,String(r+1));}}
@@ -489,8 +516,9 @@ function exportDXF(){
   // 配線
   wires.forEach(w=>{
     const layer=dxfLayer(w.layer||'配線');
+    const lt=resolveLT(w.lineStyle);
     const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
-    for(let i=0;i<pts.length-1;i++) eLine(layer,pts[i].x,pts[i].y,pts[i+1].x,pts[i+1].y);
+    for(let i=0;i<pts.length-1;i++) eLine(layer,pts[i].x,pts[i].y,pts[i+1].x,pts[i+1].y,lt);
     // 【本命修正】線番号の位置式が画面(draw.js)と全く別物だった。従来は単純にmp.y-8という、
     // 配線の向きを一切考慮しない固定オフセットで、縦方向の配線(今回のラダー図のような回路)では
     // 線番号が隣接する接点のデバイス名と同じY方向にずれるため重なって表示されていた
@@ -517,13 +545,14 @@ function exportDXF(){
   // 要素
   elements.forEach(el=>{
     const layer=dxfLayer(el.layer||'回路');
+    const lt=resolveLT(el.lineStyle);
     if(el.type==='dim') return;
     if(el.type==='fline'){
-      eLine(layer,el.x1,el.y1,el.x2,el.y2);
+      eLine(layer,el.x1,el.y1,el.x2,el.y2,lt);
     } else if(el.type==='rect'){
-      eRect(layer,el.x,el.y,el.w||0,el.h||0);
+      eRect(layer,el.x,el.y,el.w||0,el.h||0,lt);
     } else if(el.type==='circle'){
-      eCircle(layer,el.x,el.y,el.r||0);
+      eCircle(layer,el.x,el.y,el.r||0,lt);
     } else if(el.type==='arc'){
       // 【弧の向き】Canvas(Y下向き)のccw=false=角度増加スイープは、Y反転後のDXF空間(Y上向き)
       // では時計回りになる。DXF ARCは常にCCW(50→51)なので ccw=false のとき start/end を入れ替える。
@@ -531,7 +560,7 @@ function exportDXF(){
       //   matplotlib数値検証(8ケース: 1/4円・半円・0°跨ぎ・優弧・狭角×ccw両値)で修正版の一致を確認済み(2026-07-21)。
       let sa=dxfAng(el.startA||0),ea=dxfAng(el.endA||0);
       if(!el.ccw){const t=sa;sa=ea;ea=t;}
-      eArc(layer,el.x,el.y,el.r||0,sa,ea);
+      eArc(layer,el.x,el.y,el.r||0,sa,ea,lt);
     } else if(el.type==='junction'){
       eCircle(layer,el.x,el.y,el.r||5);
       if(el.style==='dbl') eCircle(layer,el.x,el.y,(el.r||5)*0.55);
@@ -547,7 +576,14 @@ function exportDXF(){
       eLine(layer,el.x2,el.y2,el.x3,el.y3);
       eLine(layer,el.x3,el.y3,el.x1,el.y1);
     } else if(el.type==='text'){
-      eText(layer,el.x,el.y,el.fs||14,el.text);
+      // 【本命修正】draw.jsのdrawTextEl()はctx.fillText(line,el.x,...)で左揃え(canvas既定)
+      // で描画しているのに、DXF側は引数省略でeText()の既定値である中央揃え(72=1)のまま
+      // 出力していた。文字幅の半分だけ左にズレる形になり、「3相 AC200V」等の見出しで
+      // ズレが目立っていた(2026-08-03)。左揃え指定+複数行対応(fs*1.4間隔)をdraw.jsに合わせる。
+      const fs=el.fs||14, lineH=fs*1.4;
+      String(el.text||'').split('\n').forEach((ln,i)=>{
+        eText(layer, el.x, el.y+i*lineH, fs, ln, 0, 'left');
+      });
     } else if(el.type==='leader'){
       const bx=el.bx??el.x2,by=el.by??el.y2;
       eLine(layer,el.x1,el.y1,bx,by);
