@@ -843,6 +843,7 @@ function bulkImportParts() {
 // ----------------------------------------------------------------
 let _srShapes = [];
 let _srTerms  = [];
+let _srDetected = false; // メインボタンが「自動検出」→「登録」のどちらの状態か
 let _srTool   = null;
 let _srDraw   = null;
 let _srFirst  = null;
@@ -1135,6 +1136,8 @@ function srFitToContent() {
 function srClear() {
   _srShapes = []; _srTerms = []; _srTool = null; _srDraw = null; _srFirst = null;
   _srZoom = SR_SCALE;
+  _srDetected = false;
+  const mainBtn = document.getElementById('sr-main-btn'); if (mainBtn) mainBtn.textContent = '🔍 自動検出';
   const roleEl = document.getElementById('sr-role'); if (roleEl) roleEl.value = '';
   document.querySelectorAll('.sr-tool').forEach(b => b.classList.remove('active'));
   const n = document.getElementById('sr-name'); if (n) n.value = '';
@@ -1351,6 +1354,20 @@ function srUpdateTermList() {
 // 検出ロジック自体はpin_editor.jsのpeCollectCandidatePoints()をそのまま再利用する
 // (電磁接触器やモーター等、装飾線が多い形では誤検出も混ざるため、全自動で確定はせず
 // 必ずプレビューで見て選べるようにする。単純な2本足の接点シンボルなら候補=正解になることが多い)。
+// 【2026-08-03再修正】メインボタンの状態管理: 最初は🔍自動検出として動作し、
+// 押すと候補検出→ボタン自体が「登録」に変わる(盛田さんの要望通りの2段階)。
+function srMainBtnClick() {
+  const btn = document.getElementById('sr-main-btn');
+  if (!_srDetected) {
+    if (!_srShapes.length) { alert('先に図形を描いてください'); return; }
+    srAutoDetectTerms();
+    _srDetected = true;
+    if (btn) btn.textContent = '登録';
+  } else {
+    saveCustomSymbol();
+  }
+}
+
 function srAutoDetectTerms() {
   if (!_srShapes.length) { alert('先に図形を描いてください'); return; }
   if (typeof peCollectCandidatePoints !== 'function') return;
@@ -1399,11 +1416,6 @@ function saveCustomSymbol() {
   const name = document.getElementById('sr-name').value.trim();
   if (!name) { alert('シンボル名を入力してください'); return; }
   if (!_srShapes.length) { alert('図形を少なくとも1つ描いてください'); return; }
-  // 【2026-08-03再修正】盛田さんのイメージ:「登録ボタンを押すと、自動検出ボタンを
-  // 押したのと同じことが起きてから登録される」。前回は_srTermsを埋めるだけで見た目に
-  // 何も起きず分かりにくかったので、手動の「🔍自動検出」ボタンと全く同じ関数
-  // (プレビューへの反映+件数のアラート表示)をそのまま呼んでから登録を続行する。
-  srAutoDetectTerms();
   const cat = document.getElementById('sr-cat').value.trim() || 'カスタム';
   const bbox = calcCustomSymBBox(_srShapes);
   const w = bbox.w;

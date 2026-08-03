@@ -662,10 +662,7 @@
             <div class="fr" style="flex:1"><label>高さ (H)</label><input type="number" id="sr-h" value="40" min="10" max="300" oninput="srRender()"></div>
           </div>
           <div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-              <div style="font-size:11px;font-weight:600">端子点</div>
-              <button class="fp-btn" style="font-size:10px;padding:2px 6px;color:#0067c0;border-color:#0067c0" onclick="srAutoDetectTerms()" title="他の線とつながっていない線端(開放端)を自動で候補提示します">🔍 自動検出</button>
-            </div>
+            <div style="font-size:11px;font-weight:600;margin-bottom:4px">端子点</div>
             <div id="sr-term-list" style="font-size:10px;color:var(--fg3);max-height:100px;overflow-y:auto"></div>
           </div>
           <div style="font-size:10px;color:var(--fg3);line-height:1.5">
@@ -675,7 +672,10 @@
         </div>
       </div>
       <div style="display:flex;gap:6px;margin-top:10px">
-        <button class="fp-btn primary" onclick="saveCustomSymbol()">登録</button>
+        <!-- 【2026-08-03再修正】盛田さんの要望:「登録ボタンを自動検出ボタンに変えて、
+             自動検出が終わったら登録ボタンを出す」。1つのボタンが最初は🔍自動検出として
+             動作し、押すと候補検出→ボタン自体が「登録」に変わる、という2段階にする。 -->
+        <button class="fp-btn primary" id="sr-main-btn" onclick="srMainBtnClick()">🔍 自動検出</button>
         <button class="fp-btn" onclick="srClear()">クリア</button>
         <button class="fp-btn" onclick="closeFP('sym-reg-p')">キャンセル</button>
       </div>
