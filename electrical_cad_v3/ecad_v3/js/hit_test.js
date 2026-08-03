@@ -75,6 +75,54 @@ function hitTest(wx, wy) {
     if (!d) continue;
     const sc = el.scale || 1;
     if (Math.abs(wx-el.x)<(d.w*sc/2+R) && Math.abs(wy-el.y)<(d.h*sc/2+R)) return el;
+    // 【追加】デバイス名・型式・仕様の文字表示もクリック判定の対象にする(2026-08-03)。
+    // 従来はシンボル本体の小さな図形だけがヒット対象で、devOffX/Y等で離れた位置に
+    // 表示されている文字をクリックしても選択できず、狭い本体をピンポイントで
+    // 狙わないと選択できなかった(盛田さんの指摘)。draw.jsの各テキスト描画と
+    // 同じ位置式・同じ揃えでヒット領域を計算する(文字幅は実測できないため、
+    // 既存の'text'型ヒット判定と同じ概算式(文字数×フォントサイズ×0.55)で代用)。
+    const rot = (el.rot||0) * Math.PI/180, cosr = Math.cos(rot), sinr = Math.sin(rot);
+    const ddx = wx-el.x, ddy = wy-el.y;
+    // クリック点をシンボルのローカル座標系(回転前)に変換(仕様・型式は回転に追随するため)
+    const lx =  ddx*cosr + ddy*sinr, ly = -ddx*sinr + ddy*cosr;
+    if (el.label && !state.pdfSkipText) {
+      const loy  = el.labelOffY || (d.h*sc/2 + 15*sc);
+      const fs   = Math.round(el.labelFs||11);
+      const lh   = Math.round(fs*1.25);
+      const lox  = el.labelOffX || 0;
+      const align = el.labelAlign || 'center';
+      const lines = String(el.label).split('\n');
+      for (let li=0; li<lines.length; li++) {
+        const ln = lines[li]; if (!ln) continue;
+        const w = Math.max(10, ln.length*fs*0.55);
+        let left,right;
+        if (align==='left') { left=lox; right=lox+w; }
+        else if (align==='right') { left=lox-w; right=lox; }
+        else { left=lox-w/2; right=lox+w/2; }
+        const cy = loy + li*lh;
+        if (lx>=left-R && lx<=right+R && ly>=cy-fs-R && ly<=cy+R) return el;
+      }
+    }
+    if (el.showModel && el.partModel && !state.pdfSkipText) {
+      const fs    = Math.round(el.modelFs||el.labelFs||11);
+      const base  = el.labelOffY || (d.h*sc/2 + 15*sc);
+      const mlox  = el.modelOffX !== undefined ? el.modelOffX : (el.labelOffX||0);
+      const lblLines = el.label ? String(el.label).split('\n').length : 0;
+      const lblFs = Math.round(el.labelFs||11);
+      const mloy  = el.modelOffY !== undefined ? el.modelOffY
+                  : base + (lblLines ? (lblLines-1)*Math.round(lblFs*1.25) + fs + 3 : 0);
+      const w = Math.max(10, String(el.partModel).length*fs*0.55);
+      if (lx>=mlox-w/2-R && lx<=mlox+w/2+R && ly>=mloy-fs-R && ly<=mloy+R) return el;
+    }
+    if (state.showPartRef && !state.pdfSkipText && el.partRef && !el.devHide) {
+      // デバイス名は回転に追随しない(draw.js同様、el.x+dx/el.y+dyそのまま)
+      const fs = Math.round(el.devFs||11);
+      const dx = el.devOffX||0;
+      const dy = el.devOffY !== undefined ? el.devOffY : -(d.h*sc/2 + 6);
+      const cx = el.x+dx, cy = el.y+dy;
+      const w  = Math.max(10, String(el.partRef).length*fs*0.55);
+      if (Math.abs(wx-cx)<=w/2+R && wy>=cy-fs-R && wy<=cy+R) return el;
+    }
   }
   return null;
 }
