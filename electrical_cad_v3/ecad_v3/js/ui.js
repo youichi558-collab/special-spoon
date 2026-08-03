@@ -2,6 +2,12 @@
 // ui.js — UI操作（state参照版）
 // ================================================================
 
+// デバイス/型式/仕様の「書式コピー」用クリップボード(2026-08-03追加)。
+// 同じ役割の機器(例:CR1)を、形の違う複数のシンボル(a接点/b接点等)に配置し直すたびに
+// デバイス名・型番・文字サイズ/位置を全部手打ちし直すのが非効率、という指摘への対応。
+// シンボルの種類(type)に関係なく、この一式だけをコピー→他のシンボルへまとめて貼り付けできる。
+let deviceClipboard = null;
+
 // ----------------------------------------------------------------
 // リボンタブ
 // ----------------------------------------------------------------
@@ -1559,6 +1565,7 @@ function updateRightPanel() {
       <div class="pp-row"><label>ΔY</label><input type="number" id="gp-dy" value="0" step="any"></div>
       <button class="pp-apply" onclick="applyGroupMove()">移動適用</button>
       ${groupBtn}
+      ${deviceClipboard ? `<button class="pp-apply" onclick="pasteDeviceProps()" title="コピー済みのデバイス名・型番・仕様・文字設定を、選択中の全シンボルへまとめて貼り付けます(形が違うシンボル同士でもOK)">選択中の${state.sel.els.size}個へデバイス/型式/仕様を貼り付け</button>` : ''}
     `;
     document.getElementById('gp-x').addEventListener('change', function() {
       document.getElementById('gp-dx').value = +this.value - gx;
@@ -1710,6 +1717,12 @@ function updateRightPanel() {
     // 「仕様」の内部フィールド名は label のまま(既存データ互換)。
     // 端子台(junction)では同じ label を端子番号として使っているので注意。
     // コイル名/参照コイル名は廃止。接点とコイルの紐づけはデバイス(partRef)で行う。
+    // 【2026-08-03追加】形の違うシンボル間でもデバイス名/型番/文字設定をまとめて
+    // 複製できるよう、コピー・貼り付けボタンを先頭に置く(複数選択への一括貼り付けも可)。
+    html += `<div class="pp-row" style="gap:6px">
+      <button onclick="copyDeviceProps()" title="このシンボルのデバイス名・型番・仕様・文字設定を丸ごとコピーします" style="flex:1;font-size:11px;padding:3px 6px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">デバイス/型式/仕様をコピー</button>
+      <button onclick="pasteDeviceProps()" title="コピーした内容を、選択中のシンボル(複数可・形が違ってもOK)へまとめて貼り付けます" style="flex:1;font-size:11px;padding:3px 6px;background:${deviceClipboard?'var(--accent,#1d6fb5)':'var(--bg3)'};border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:${deviceClipboard?'#fff':'var(--fg)'}"${deviceClipboard?'':' disabled'}>貼り付け</button>
+    </div>`;
     { const devC = el.devColor||(state.darkMode?'#4da3ff':'#1d6fb5');
     html += `<div class="pp-group" style="border-left:4px solid ${devC}"><div class="pp-group-cap" style="color:${devC}">◆ デバイス</div>`;
     html += `<div class="pp-row"><label>デバイス</label><input type="text" id="pp-partref" value="${el.partRef||''}" placeholder="例: MC1, NFB1"></div>`;
@@ -2141,6 +2154,39 @@ function applyRightPanel() {
     el.note      = v('pp-note');
   }
   draw();
+}
+
+// デバイス/型式/仕様の書式コピー・貼り付け(2026-08-03追加)。
+// シンボルの種類(type)が変わっても、デバイス名・型番・文字サイズ/色/位置一式を
+// まとめて他のシンボルへ複製できるようにする。1個コピー→複数選択へまとめて貼り付け、も可能。
+const DEVICE_PROP_KEYS = [
+  'label','labelAlign','labelColor','labelFs','labelOffX','labelOffY',
+  'partRef','devHide','devFs','devColor','devOffX','devOffY',
+  'partModel','showModel','modelFs','modelColor','modelOffX','modelOffY',
+];
+function copyDeviceProps() {
+  const rp = document.getElementById('rp-body');
+  const el = rp._el;
+  if (!el || el.type === 'junction') { alert('コピー元のシンボルを1つ選択してください'); return; }
+  applyRightPanel(); // パネルの未確定編集を先に反映してからコピーする
+  deviceClipboard = {};
+  DEVICE_PROP_KEYS.forEach(k => { if (el[k] !== undefined) deviceClipboard[k] = el[k]; });
+  updateRightPanel();
+}
+function pasteDeviceProps() {
+  if (!deviceClipboard) { alert('先に「コピー」でデバイス/型式/仕様をコピーしてください'); return; }
+  const targets = state.sel.els.size
+    ? state.elements.filter(e => state.sel.els.has(e.id) && e.type !== 'junction')
+    : (document.getElementById('rp-body')._el ? [document.getElementById('rp-body')._el] : []);
+  if (!targets.length) { alert('貼り付け先のシンボルを選択してください'); return; }
+  pushH();
+  targets.forEach(el => {
+    DEVICE_PROP_KEYS.forEach(k => {
+      if (deviceClipboard[k] === undefined) delete el[k]; else el[k] = deviceClipboard[k];
+    });
+  });
+  draw();
+  updateRightPanel();
 }
 
 // 全寸法線に現在の設定を適用
