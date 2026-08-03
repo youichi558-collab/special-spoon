@@ -1399,6 +1399,14 @@ function saveCustomSymbol() {
   const name = document.getElementById('sr-name').value.trim();
   if (!name) { alert('シンボル名を入力してください'); return; }
   if (!_srShapes.length) { alert('図形を少なくとも1つ描いてください'); return; }
+  // 【2026-08-03追加】盛田さんの提案: 「登録するときに決まってない場合は自動検出を
+  // 自動で走らせる」。端子点を1つも置かないまま登録しようとした場合、ボタンを押す
+  // 手間なしにその場で開放端検出を自動実行して仮登録する(候補が無ければ何もしない)。
+  // 既に手動で端子点を置いている場合は上書きしない(意図した配置を尊重する)。
+  if (!_srTerms.length && typeof peCollectCandidatePoints === 'function') {
+    const candidates = peCollectCandidatePoints(_srShapes);
+    candidates.forEach(cand => _srTerms.push({ x: Math.round(cand.x), y: Math.round(cand.y) }));
+  }
   const cat = document.getElementById('sr-cat').value.trim() || 'カスタム';
   const bbox = calcCustomSymBBox(_srShapes);
   const w = bbox.w;
