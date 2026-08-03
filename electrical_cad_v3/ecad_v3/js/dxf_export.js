@@ -408,14 +408,23 @@ function exportDXF(){
     p(10,fx(cx),20,fy(cy),30,'0.0',40,r.toFixed(3),
       100,'AcDbArc',50,sa.toFixed(3),51,ea.toFixed(3));
   }
+  // 【本命修正】DXFのTEXT高さ(グループコード40)はAutoCAD等では「大文字の高さ(cap height)」
+  // として解釈される(DXFリファレンス/ezdxf公式ドキュメントで明記)。一方、画面(draw.js/frame.js)の
+  // ctx.font="11px sans-serif"のような指定はCSSのフォントサイズ=em(全角の高さ)であり、
+  // 一般的なフォント(Arial等)ではcap heightはemの7割程度しかない。この差を補正せずDXF側の
+  // 高さにそのまま画面のフォントサイズ値を使っていたため、TrueView等で開くと画面より
+  // 文字が一回り大きく見えていた(盛田さんの「全体的に文字が大きめ」指摘、2026-08-03)。
+  // Arial相当のcap-height/em比(約0.72)を全テキスト共通で掛けて補正する。
+  const CAP_RATIO = 0.72;
   function eText(layer,x,y,h,str,rot,align){
     if(!str) return;
     const u=toUnicodeDXF(str);
     // alignは水平方向の揃え(DXFグループコード72): 0=左,1=中央,2=右。
     // 省略時は従来通り中央(1)のまま(他の呼び出し元の見た目を変えないため)。
     const hj = align===undefined ? 1 : ({left:0,center:1,right:2}[align] ?? 1);
+    const dh = (Number(h)||0) * CAP_RATIO;
     p(0,'TEXT',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbText',
-      10,fx(x),20,fy(y),30,'0.0',40,String(h),1,u);
+      10,fx(x),20,fy(y),30,'0.0',40,String(dh),1,u);
     if(rot) p(50,String(rot));
     p(7,'STANDARD',72,hj,11,fx(x),21,fy(y),31,'0.0',100,'AcDbText',73,0);
   }
