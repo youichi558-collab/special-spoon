@@ -1399,20 +1399,11 @@ function saveCustomSymbol() {
   const name = document.getElementById('sr-name').value.trim();
   if (!name) { alert('シンボル名を入力してください'); return; }
   if (!_srShapes.length) { alert('図形を少なくとも1つ描いてください'); return; }
-  // 【2026-08-03再修正】盛田さんのイメージ:「登録ボタンを押すと、自動検出ボタンも
-  // 押されたのと同じことが起きてから登録される」。前回は端子が1つも無い時だけ実行
-  // していたが、それだと「登録ボタンを押せば毎回自動検出される」という感覚と合わない
-  // ため、既存端子の有無に関わらず、登録の直前に必ず自動検出(重複はスキップ)を
-  // 実行するようにした。既存の🔍自動検出ボタンの処理(srAutoDetectTerms)と全く同じ
-  // マージロジックを使う。
-  if (typeof peCollectCandidatePoints === 'function') {
-    const candidates = peCollectCandidatePoints(_srShapes);
-    candidates.forEach(cand => {
-      const dup = _srTerms.some(t => Math.hypot(t.x-cand.x, t.y-cand.y) < 3);
-      if (!dup) _srTerms.push({ x: Math.round(cand.x), y: Math.round(cand.y) });
-    });
-    srUpdateTermList();
-  }
+  // 【2026-08-03再修正】盛田さんのイメージ:「登録ボタンを押すと、自動検出ボタンを
+  // 押したのと同じことが起きてから登録される」。前回は_srTermsを埋めるだけで見た目に
+  // 何も起きず分かりにくかったので、手動の「🔍自動検出」ボタンと全く同じ関数
+  // (プレビューへの反映+件数のアラート表示)をそのまま呼んでから登録を続行する。
+  srAutoDetectTerms();
   const cat = document.getElementById('sr-cat').value.trim() || 'カスタム';
   const bbox = calcCustomSymBBox(_srShapes);
   const w = bbox.w;
