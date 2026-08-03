@@ -462,7 +462,7 @@ function exportDXF(){
     const W=wMM*sc,H=hMM*sc,MGpx=mg*sc,TH=thMM*sc;
     const iW=W-MGpx*2,iH=H-MGpx*2,dH=iH-TH;
     const L=(x1,y1,x2,y2)=>eLine('FRAME',x1,y1,x2,y2);
-    const T=(x,y,h,s)=>eText('FRAME',x,y,h,s);
+    const T=(x,y,h,s,align)=>eText('FRAME',x,y,h,s,0,align);
     L(0,0,W,0);L(W,0,W,H);L(W,H,0,H);L(0,H,0,0);
     L(MGpx,MGpx,MGpx+iW,MGpx);L(MGpx+iW,MGpx,MGpx+iW,MGpx+iH);
     L(MGpx+iW,MGpx+iH,MGpx,MGpx+iH);L(MGpx,MGpx+iH,MGpx,MGpx);
@@ -489,7 +489,10 @@ function exportDXF(){
     cells.forEach(c=>{
       const cx=MGpx+c.x*iW, cy=tbY+c.y*TH, cw=c.w*iW, ch=c.h*TH;
       L(cx,cy,cx+cw,cy);L(cx+cw,cy,cx+cw,cy+ch);L(cx+cw,cy+ch,cx,cy+ch);L(cx,cy+ch,cx,cy);
-      T(cx+2,cy+9,8,c.lbl);
+      // 【本命修正】T()がeText()既定の中央揃えのまま呼ばれていたため、画面(frame.js、
+      // textAlign='left')と違い、ラベル・値が「セル左端+2〜3」を中心に左右へ広がって見えていた
+      // (「図面名称」等がセル中央寄りにズレて見える不具合、盛田さんのスクリーンショットで確認、2026-08-03)。
+      T(cx+2,cy+9,8,c.lbl,'left');
       const val = c.key==='_page' ? (fr.page || `${state.currentPage+1} / ${state.pages.length}`) : (fr[c.key]||'');
       if(!val) return;
       // frame.js側は実測(ctx.measureText)でセル幅に収まるよう縮小するが、DXF側は文字幅を
@@ -500,7 +503,7 @@ function exportDXF(){
         const approx=val.length*fs*0.6;
         if(approx>maxW) fs=Math.max(4, maxW/(val.length*0.6));
       }
-      T(cx+3, cy+ch-5, fs, val);
+      T(cx+3, cy+ch-5, fs, val, 'left');
     });
     // 【本命修正】列の目盛り線(下側)がMGpx+dH(表題欄の"上端")を起点にしていたため、
     // 表題欄の高さ全体を貫通する余計な縦線になり、11セットのタイトル欄が線で
