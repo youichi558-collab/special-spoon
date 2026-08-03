@@ -1249,6 +1249,15 @@ function srDrawShape(c, s, color) {
 function srOnDown(e) {
   if (e.button !== 0) return;
   const { x, y } = srSnap(e.clientX, e.clientY);
+  // 【2026-08-03修正】盛田さんの指摘: 自動検出で出た端子点を消すのに「✕消去」ツールへの
+  // 切り替えが必要で分かりにくかった(📍アイコン側の端子編集パネルはツール切り替え不要で
+  // クリックだけで足し引きできるため、動きが違って混乱した)。ツールが何であっても、
+  // 端子点の近くをクリックしたら最優先で削除するようにする(erase専用の判定より前に置く)。
+  {
+    let minTD = 8, minTI = -1;
+    _srTerms.forEach((t, i) => { const d = Math.hypot(x-t.x, y-t.y); if (d < minTD) { minTD = d; minTI = i; } });
+    if (minTI >= 0) { _srTerms.splice(minTI, 1); srUpdateTermList(); srRender(); return; }
+  }
   if (_srTool === 'erase') {
     let minD = 12, minI = -1;
     _srShapes.forEach((s, i) => {
