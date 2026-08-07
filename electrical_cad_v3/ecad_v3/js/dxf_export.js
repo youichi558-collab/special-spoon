@@ -402,6 +402,19 @@ function exportDXF(){
     if(lt) p(6,lt);
     p(10,fx(cx),20,fy(cy),30,'0.0',40,r.toFixed(3));
   }
+  // 塗りつぶし円(配線分岐点のjunction用)。CIRCLEエンティティは輪郭のみで塗り潰されない
+  // ため、画面(drawJunctionEl)の「塗りつぶし丸」を再現するにはHATCH(単色塗り)が必要。
+  // HATCH自体に色コードは持たせずBYLAYERのまま(他エンティティと同じ扱い)。
+  // node.js+ezdxfでHATCH(ArcEdge境界・solid_fill)がエラーなくパースされることを検証済み(2026-08-07)。
+  function eFilledCircle(layer,cx,cy,r){
+    p(0,'HATCH',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbHatch');
+    p(10,'0.0',20,'0.0',30,'0.0');
+    p(210,'0.0',220,'0.0',230,'1.0');
+    p(2,'SOLID');
+    p(70,1,71,0,91,1,92,1,93,1,72,2);
+    p(10,fx(cx),20,fy(cy),40,r.toFixed(3),50,'0',51,'360');
+    p(73,1,97,0,75,1,76,1,98,0);
+  }
   function eArc(layer,cx,cy,r,sa,ea,lt){
     p(0,'ARC',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbCircle');
     if(lt) p(6,lt);
@@ -574,8 +587,15 @@ function exportDXF(){
       if(!el.ccw){const t=sa;sa=ea;ea=t;}
       eArc(layer,el.x,el.y,el.r||0,sa,ea,lt);
     } else if(el.type==='junction'){
-      eCircle(layer,el.x,el.y,el.r||5);
-      if(el.style==='dbl') eCircle(layer,el.x,el.y,(el.r||5)*0.55);
+      // 画面(drawJunctionEl)と同じ区別: 既定(dot=配線分岐点)は塗りつぶし丸、
+      // circle/dbl(端子台の端子)は背景色塗り+輪郭のみ(=見た目は白丸のまま、DXFでも輪郭のみでよい)。
+      const jStyle = el.style || 'dot';
+      if (jStyle === 'dot') {
+        eFilledCircle(layer,el.x,el.y,el.r||5);
+      } else {
+        eCircle(layer,el.x,el.y,el.r||5);
+        if(jStyle==='dbl') eCircle(layer,el.x,el.y,(el.r||5)*0.55);
+      }
       if(el.label && el.style!=='dot') eText(layer,el.x+(el.r||5)+4,el.y,11,el.label);
       // デバイス表示(端子台のTB1等)。draw.jsのdrawJunctionElと同じ条件・位置式
       // (state.showPartRef && !dot)。従来DXF出力に一切存在せず、画面には出るのに
