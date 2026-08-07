@@ -4,8 +4,12 @@
 // state.zoom / state.customSymbols を参照
 // ================================================================
 
-function drawSym(type, x, y, isSel, rot, fH, fV, lc, lineStyle, lwOverride) {
+function drawSym(type, x, y, isSel, rot, fH, fV, lc, lineStyle, lwOverride, symScale) {
   const zoom = state.zoom;
+  // symScale: 呼び出し側(drawSymEl)でシンボルにel.scaleがかかっている場合、
+  // ctx.scale(sc,sc)後にctx.lineWidthを設定すると太さも一緒に縮小されてしまう
+  // (Canvasの仕様)。指定した太さのまま見せるため、ここで逆数を掛けて相殺する。
+  const sInv = 1 / (symScale || 1);
   ctx.save();
   ctx.translate(x, y);
   if (rot) ctx.rotate(rot * Math.PI / 180);
@@ -16,21 +20,21 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc, lineStyle, lwOverride) {
   ctx.strokeStyle = c; ctx.fillStyle = c;
   if (lineStyle) applyLineStyle(ctx, lineStyle, zoom);
   const lw = lwOverride || (isSel ? 1.5 : 1.0); // 選択時は線幅のみ太くする
-  ctx.lineWidth = lw;
+  ctx.lineWidth = lw * sInv;
   // シンボル線幅で上書き指定がある場合、標準シンボル内の部分的な太さ変更(ln)を無効化し、
   // シンボル全体を同じ太さで統一する。
-  const ln = w => { ctx.lineWidth = lwOverride || w; };
+  const ln = w => { ctx.lineWidth = (lwOverride || w) * sInv; };
 
   // カスタムシンボル
   const cS = state.customSymbols.find(s => s.type === type);
   if (cS) {
-    ctx.lineWidth = lwOverride || (isSel ? 1.5 : 1.0);
+    ctx.lineWidth = (lwOverride || (isSel ? 1.5 : 1.0)) * sInv;
     if (cS.shapes && cS.shapes.length) {
       cS.shapes.forEach(s => {
         // 図形ごとに太さを持っていればそれを使う(貼り付け元の太さを保持するため)。
         // 持っていない(手描き・旧データ)場合は従来どおりの既定値。
         // ただしシンボル線幅の上書き指定があれば、それを最優先する。
-        ctx.lineWidth = lwOverride || s.lineWidth || (isSel ? 1.5 : 1.0);
+        ctx.lineWidth = (lwOverride || s.lineWidth || (isSel ? 1.5 : 1.0)) * sInv;
         if (s.t==='L') { ctx.beginPath(); ctx.moveTo(s.x1,s.y1); ctx.lineTo(s.x2,s.y2); ctx.stroke(); }
         else if (s.t==='C') { ctx.beginPath(); ctx.arc(s.cx,s.cy,s.r,0,Math.PI*2); ctx.stroke(); }
         else if (s.t==='A') { ctx.beginPath(); ctx.arc(s.cx,s.cy,s.r, s.sa*Math.PI/180, s.ea*Math.PI/180, false); ctx.stroke(); }
@@ -59,8 +63,8 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc, lineStyle, lwOverride) {
         else if (s.t==='R') { mnX=Math.min(mnX,s.x,s.x+s.w);mxX=Math.max(mxX,s.x,s.x+s.w);mnY=Math.min(mnY,s.y,s.y+s.h);mxY=Math.max(mxY,s.y,s.y+s.h); }
       });
       if (!isFinite(mnX)) { mnX=-cS.w/2; mxX=cS.w/2; mnY=-cS.h/2; mxY=cS.h/2; }
-      ctx.strokeStyle='#0067c0'; ctx.lineWidth=1/zoom;
-      ctx.setLineDash([4/zoom,3/zoom]);
+      ctx.strokeStyle='#0067c0'; ctx.lineWidth=(1/zoom)*sInv;
+      ctx.setLineDash([(4/zoom)*sInv,(3/zoom)*sInv]);
       ctx.strokeRect(mnX-8, mnY-8, (mxX-mnX)+16, (mxY-mnY)+16);
       ctx.setLineDash([]);
     }
@@ -230,8 +234,8 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc, lineStyle, lwOverride) {
 
   if (isSel) {
     const d = getDef(type) || { w:64, h:34 };
-    ctx.strokeStyle = '#0067c0'; ctx.lineWidth = 1/zoom;
-    ctx.setLineDash([4/zoom, 3/zoom]);
+    ctx.strokeStyle = '#0067c0'; ctx.lineWidth = (1/zoom)*sInv;
+    ctx.setLineDash([(4/zoom)*sInv, (3/zoom)*sInv]);
     ctx.strokeRect(-d.w/2-8, -d.h/2-8, d.w+16, d.h+16);
     ctx.setLineDash([]);
   }

@@ -485,10 +485,11 @@ function drawSymEl(el, sel, lc) {
     ctx.save();
     ctx.translate(el.x, el.y);
     ctx.scale(sc, sc);
-    drawSym(el.type, 0, 0, sel, el.rot||0, el.flipH, el.flipV, lc, el.lineStyle, el.lineWidth);
+    // symScale(=sc)を渡し、scale後も線幅が指定どおりの太さで見えるよう補正する。
+    drawSym(el.type, 0, 0, sel, el.rot||0, el.flipH, el.flipV, lc, el.lineStyle, el.lineWidth, sc);
     ctx.restore();
   } else {
-    drawSym(el.type, el.x, el.y, sel, el.rot||0, el.flipH, el.flipV, lc, el.lineStyle, el.lineWidth);
+    drawSym(el.type, el.x, el.y, sel, el.rot||0, el.flipH, el.flipV, lc, el.lineStyle, el.lineWidth, 1);
   }
   if (el.label && !state.pdfSkipText) {
     const d   = getDef(el.type) || { w:64, h:34 };
