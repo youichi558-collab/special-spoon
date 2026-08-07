@@ -402,12 +402,17 @@ function exportDXF(){
     if(lt) p(6,lt);
     p(10,fx(cx),20,fy(cy),30,'0.0',40,r.toFixed(3));
   }
-  // 塗りつぶし円(配線分岐点のjunction用)。CIRCLEエンティティは輪郭のみで塗り潰されない
-  // ため、画面(drawJunctionEl)の「塗りつぶし丸」を再現するにはHATCH(単色塗り)が必要。
-  // HATCH自体に色コードは持たせずBYLAYERのまま(他エンティティと同じ扱い)。
+  // 塗りつぶし円(配線分岐点のjunction用、および端子台の背景マスク用)。CIRCLEエンティティは
+  // 輪郭のみで塗り潰されないため、画面(drawJunctionEl)の「塗りつぶし丸」「白丸(背景色で塗って
+  // 輪郭のみ描く)」を再現するにはHATCH(単色塗り)が必要。
+  // colorCode省略時はBYLAYER(他エンティティと同じ)、指定時はgroup62で個別色を出す
+  // (端子台の背景マスクは常に白= ACI7 固定。ACI7は表示背景の白/黒を自動反転するため、
+  //  通常の白紙面(印刷/TrueView既定)では白マスクとして機能し、下を通る配線を隠す)。
   // node.js+ezdxfでHATCH(ArcEdge境界・solid_fill)がエラーなくパースされることを検証済み(2026-08-07)。
-  function eFilledCircle(layer,cx,cy,r){
-    p(0,'HATCH',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbHatch');
+  function eFilledCircle(layer,cx,cy,r,colorCode){
+    p(0,'HATCH',5,nh(),100,'AcDbEntity',8,layer);
+    if(colorCode!==undefined) p(62,colorCode);
+    p(100,'AcDbHatch');
     p(10,'0.0',20,'0.0',30,'0.0');
     p(210,'0.0',220,'0.0',230,'1.0');
     p(2,'SOLID');
@@ -593,6 +598,11 @@ function exportDXF(){
       if (jStyle === 'dot') {
         eFilledCircle(layer,el.x,el.y,el.r||5);
       } else {
+        // 端子台の端子: 画面(drawJunctionEl)は背景色で塗ってから輪郭を描くことで、
+        // 下を通る配線を隠して「白丸」に見せている。DXF側もHATCH(白=ACI7)で
+        // 同じマスクを先に描いてから輪郭(eCircle)を重ねる。これが無いと配線が
+        // 円の中に透けて見えてしまう(2026-08-07 盛田さん報告)。
+        eFilledCircle(layer,el.x,el.y,el.r||5,7);
         eCircle(layer,el.x,el.y,el.r||5);
         if(jStyle==='dbl') eCircle(layer,el.x,el.y,(el.r||5)*0.55);
       }
