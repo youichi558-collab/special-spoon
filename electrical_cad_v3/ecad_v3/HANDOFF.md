@@ -327,3 +327,21 @@ ACI7を選んだ理由: 通常の白紙面(印刷/TrueView既定背景)では白
 node.js+ezdxfで実プロジェクトJSON(教育①)を使い検証: HATCH合計22件(白マスク10件+
 分岐点塗り12件)、ezdxf audit エラー0件を確認済み。実機(TrueView)での見た目確認は
 盛田さん側でのpull後のテスト待ち。
+
+## デバイス表示トグル(№表示ボタン)を廃止、常時表示化(2026-08-07)
+
+**経緯:** 「№表示」ボタンのラベルが紛らわしい(実際はデバイス名のトグルなのに№=端子番号
+に見える)という指摘から、そもそもこのトグルの存在意義を確認。当初の目的(未入力シンボルへの
+?マーク対策)は既に解消済みで、「デバイス名を隠したい」という積極的な需要も無かったため、
+盛田さんの判断でトグル自体を廃止・常時表示にすることに決定。
+
+**変更内容:**
+- `state.js`: `showPartRef`の既定値を`false`→`true`
+- `index.html`: 「№表示」ボタン(`id="qb-pref"`)を削除
+- `ui.js`: `togglePartRefDisp()`/`syncPartRefBtn()`を削除
+- `autosave.js`: `showPartRef`の保存・復元を削除(旧自動保存データにfalseが残っていても
+  復元して再びOFFに戻ることが無いようにするため)
+
+`edit.js`の`startPartRefSeq()`等は元々`state.showPartRef = true`を明示的にセットしていた箇所
+なので変更不要。プロジェクトファイル(saveProject/loadProject)は元々`showPartRef`を保存して
+いないため対応不要。

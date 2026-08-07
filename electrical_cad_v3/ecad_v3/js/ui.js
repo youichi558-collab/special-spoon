@@ -2381,19 +2381,8 @@ function bulkSetLineWidth(lwStr) {
   alert(`${els.length + wires.length} 個の太さを変更しました。`);
 }
 
-// デバイス（partRef）表示トグル
-// ----------------------------------------------------------------
-function togglePartRefDisp() {
-  state.showPartRef = !state.showPartRef;
-  syncPartRefBtn(); draw();
-}
-function syncPartRefBtn() {
-  const b = document.getElementById('qb-pref');
-  if (!b) return;
-  b.style.background = state.showPartRef ? 'var(--acc)' : 'var(--bg)';
-  b.style.color      = state.showPartRef ? '#fff' : 'var(--fg)';
-  b.style.fontWeight = state.showPartRef ? '600' : '400';
-}
+// デバイス（partRef）表示は2026-08-07にトグル廃止・常時表示化(state.showPartRef=trueで固定)。
+// togglePartRefDisp()/syncPartRefBtn()は削除。呼び出し元(edit.js)はtypeof関数チェック済みのため安全。
 
 // 接続点の見た目(分岐点/端子○/端子◎)を選ぶと同時に配置モードに入る
 function setJunctionStyle(style) {

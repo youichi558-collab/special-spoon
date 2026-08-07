@@ -36,7 +36,8 @@ function doAutosave() {
       zoom:          state.zoom,
       pan:           state.pan,
       darkMode:      state.darkMode,
-      showPartRef:   state.showPartRef,
+      // showPartRefは2026-08-07にトグル廃止・常時表示化したため保存しない
+      // (保存しても読込側で無視するので実害はないが、混乱防止のため削除)
     };
     localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
   } catch (e) {
@@ -71,7 +72,8 @@ function restoreAutosave() {
     if (typeof d.zoom === 'number' && d.zoom > 0) state.zoom = d.zoom;
     if (d.pan && typeof d.pan.x === 'number')     state.pan  = { x: d.pan.x, y: d.pan.y };
     if (typeof d.darkMode === 'boolean')          state.darkMode = d.darkMode;
-    if (typeof d.showPartRef === 'boolean')       state.showPartRef = d.showPartRef;
+    // showPartRefは2026-08-07にトグル廃止・常時表示化したため、旧保存データに
+    // false が入っていても復元しない(state.jsの既定値true のまま維持する)。
 
     const t = d.savedAt ? new Date(d.savedAt) : null;
     const ts = t ? ` (${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}保存)` : '';
