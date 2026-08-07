@@ -1634,8 +1634,12 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>見た目</label><select id="pp-jstyle"><option value="dot"${(el.style||'dot')==='dot'?' selected':''}>●塗りつぶし</option><option value="circle"${el.style==='circle'?' selected':''}>○白丸</option><option value="dbl"${el.style==='dbl'?' selected':''}>◎二重丸</option></select></div>`;
     if (isTerm) {
       html += `<div class="pp-row"><label>デバイス</label><input type="text" id="pp-jref" value="${el.partRef||''}" placeholder="例: TB1"></div>`;
+      html += `<div class="pp-row"><label>デバイス位置X補正</label><input type="number" id="pp-jdox" value="${el.devOffX!==undefined?el.devOffX:''}" placeholder="自動" step="1"></div>`;
+      html += `<div class="pp-row"><label>デバイス位置Y補正</label><input type="number" id="pp-jdoy" value="${el.devOffY!==undefined?el.devOffY:''}" placeholder="自動" step="1"></div>`;
       html += `<div class="pp-row"><label>型式(BOM用)</label><input type="text" id="pp-jmodel" value="${el.partModel||''}" placeholder="例: 端子台 M4"></div>`;
       html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-jlabel" value="${el.label||''}" placeholder="例: A, 1"></div>`;
+      html += `<div class="pp-row"><label>端子番号位置X補正</label><input type="number" id="pp-jlox" value="${el.labelOffX!==undefined?el.labelOffX:''}" placeholder="自動" step="1"></div>`;
+      html += `<div class="pp-row"><label>端子番号位置Y補正</label><input type="number" id="pp-jloy" value="${el.labelOffY!==undefined?el.labelOffY:''}" placeholder="自動" step="1"></div>`;
     }
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
   } else if (el && el.type === 'text') {
@@ -2065,9 +2069,14 @@ function applyRightPanel() {
       el.label     = v('pp-jlabel');
       el.partRef   = v('pp-jref');
       el.partModel = v('pp-jmodel');
+      if (v('pp-jdox')!=='') el.devOffX = parseFloat(v('pp-jdox')); else delete el.devOffX;
+      if (v('pp-jdoy')!=='') el.devOffY = parseFloat(v('pp-jdoy')); else delete el.devOffY;
+      if (v('pp-jlox')!=='') el.labelOffX = parseFloat(v('pp-jlox')); else delete el.labelOffX;
+      if (v('pp-jloy')!=='') el.labelOffY = parseFloat(v('pp-jloy')); else delete el.labelOffY;
     } else {
       // 分岐点(●)には端子情報は不要
       delete el.label; delete el.partRef; delete el.partModel;
+      delete el.devOffX; delete el.devOffY; delete el.labelOffX; delete el.labelOffY;
     }
     el.layer = v('pp-layer');
   } else if (el && el.type === 'text') {

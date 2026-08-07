@@ -418,7 +418,9 @@ function drawJunctionEl(el, sel, lc) {
     ctx.fillStyle = c;
     ctx.font = `${11/state.zoom}px sans-serif`;
     ctx.textAlign = 'left';
-    ctx.fillText(el.label, el.x + r + 4/state.zoom, el.y + 4/state.zoom);
+    const lx = el.x + r + 4/state.zoom + (el.labelOffX||0);
+    const ly = el.y + 4/state.zoom + (el.labelOffY||0);
+    ctx.fillText(el.label, lx, ly);
     ctx.restore();
   }
   // デバイス(TB1等、デバイス表示ON時のみ。分岐点(●)には表示しない)
@@ -427,7 +429,9 @@ function drawJunctionEl(el, sel, lc) {
     ctx.fillStyle = state.darkMode ? '#4da3ff' : '#1d6fb5';
     ctx.font = `bold ${10/state.zoom}px sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText(el.partRef, el.x, el.y - r - 6/state.zoom);
+    const dx = el.x + (el.devOffX||0);
+    const dy = el.y - r - 6/state.zoom + (el.devOffY||0);
+    ctx.fillText(el.partRef, dx, dy);
     ctx.restore();
   }
 }

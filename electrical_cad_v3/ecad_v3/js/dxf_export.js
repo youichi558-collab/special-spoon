@@ -596,12 +596,12 @@ function exportDXF(){
         eCircle(layer,el.x,el.y,el.r||5);
         if(jStyle==='dbl') eCircle(layer,el.x,el.y,(el.r||5)*0.55);
       }
-      if(el.label && el.style!=='dot') eText(layer,el.x+(el.r||5)+4,el.y,11,el.label);
+      if(el.label && el.style!=='dot') eText(layer,el.x+(el.r||5)+4+(el.labelOffX||0),el.y+(el.labelOffY||0),11,el.label);
       // デバイス表示(端子台のTB1等)。draw.jsのdrawJunctionElと同じ条件・位置式
       // (state.showPartRef && !dot)。従来DXF出力に一切存在せず、画面には出るのに
       // DXFに出ないというギャップの一因だった(2026-08-03)。
       if(state.showPartRef && el.partRef && el.style!=='dot'){
-        eText(layer, el.x, el.y-(el.r||5)-6, 10, el.partRef);
+        eText(layer, el.x+(el.devOffX||0), el.y-(el.r||5)-6+(el.devOffY||0), 10, el.partRef);
       }
     } else if(el.type==='triangle'){
       eLine(layer,el.x1,el.y1,el.x2,el.y2);

@@ -298,3 +298,16 @@ DXF出力(dxf_export.js)のどちらにも壊れうる導線は複数あるた�
 'dot'スタイルのみこちらを使うよう分岐。'circle'/'dbl'は従来どおりeCircle(輪郭のみ)を維持。
 node.js+ezdxfで実プロジェクトJSON(教育①)を使い検証: HATCH 12件生成、ezdxf audit エラー0件、
 solid_fill=1を確認済み。実機(TrueView)での見た目確認はpull後にお願いします。
+
+## 端子台(junction: circle/dblスタイル)の文字位置調整を追加(2026-08-07)
+
+**要望:** 端子番号・デバイス名(TB1等)の表示位置を個別に補正したい(従来は固定位置のみ)。
+
+**実装:** シンボル(el.labelOffX/Y, el.devOffX/Y)と同じ考え方で、junction要素にも
+- `labelOffX`/`labelOffY`: 端子番号の位置補正
+- `devOffX`/`devOffY`: デバイス名(TB1等)の位置補正
+を追加。プロパティパネル(端子台の端子のときのみ表示)・画面描画(draw.js)・DXF出力
+(dxf_export.js)の3箇所に反映。分岐点(●/dotスタイル)には従来通り出さない。
+
+node.js+ezdxfでオフセット付きプロジェクトデータを使い検証: audit エラー0件。
+実機での見た目確認はpull後にお願いします。
