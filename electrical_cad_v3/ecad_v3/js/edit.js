@@ -1005,7 +1005,7 @@ document.addEventListener('keydown', e => {
     case 'F8': e.preventDefault(); toggleOrtho(); break;
   }
 
-  if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key) && state.sel.els.size) {
+  if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key) && (state.sel.els.size || state.sel.wires.size)) {
     e.preventDefault();
     // Ctrl+矢印: 0.001刻み / Alt+矢印: 0.1刻み / Shift+矢印: グリッド / 普通: 2
     const step = e.ctrlKey ? 0.1 : e.shiftKey ? state.G : 1;
