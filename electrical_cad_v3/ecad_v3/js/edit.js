@@ -230,10 +230,13 @@ function snapNearGrid(tolerance) {
   const snP = (o, k) => { if (o[k] != null) o[k] = sn(o[k]); };
 
   pushH();
-  const targets = (state.sel.els.size > 0)
+  // 何か選択されている場合は選択物のみ、無選択なら全体を対象にする
+  // (旧: els/wiresを別々に判定していたため、シンボルだけ選択しても全配線が動いていた)
+  const hasSel = state.sel.els.size > 0 || state.sel.wires.size > 0;
+  const targets = hasSel
     ? state.elements.filter(e => state.sel.els.has(e.id))
     : state.elements;
-  const wTargets = (state.sel.wires.size > 0)
+  const wTargets = hasSel
     ? state.wires.filter(w => state.sel.wires.has(w.id))
     : state.wires;
 
@@ -255,6 +258,8 @@ function snapNearGrid(tolerance) {
       w.pts = w.pts.map(p => ({ x: sn(p.x), y: sn(p.y) }));
       w.x1 = w.pts[0]?.x; w.y1 = w.pts[0]?.y;
       w.x2 = w.pts[w.pts.length-1]?.x; w.y2 = w.pts[w.pts.length-1]?.y;
+    } else {
+      snP(w,'x1'); snP(w,'y1'); snP(w,'x2'); snP(w,'y2');
     }
   });
   draw(); updateRightPanel();
