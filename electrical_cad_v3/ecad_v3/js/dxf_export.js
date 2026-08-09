@@ -674,7 +674,19 @@ function exportDXF(){
       // 盛田さんが提供したJSONの実データ(el.x:380,el.y:181)とDXF出力座標(-181、シフト前)を
       // 突き合わせて特定)。
       p(2,el.type,10,fx(el.x),20,fy(el.y),30,'0.0');
-      p(50,String(el.rot||0),41,String(sc),42,String(sc),43,'1.0');
+      // 【バグ修正 2026-08-09】回転角と反転がDXFに正しく出ていなかった。
+      // (1) 回転角: BLOCK内容・INSERT位置ともyを反転(fy=-y)して出力しているため、
+      //     y反転座標系では回転の向きも逆になる。数式では M∘R(θ)∘M⁻¹ = R(-θ)。
+      //     従来は+θのまま書いていたため、90/270度回転のシンボルは正解から180度
+      //     ズレた向きで出ていた(左右対称な接点記号では見た目が同じになるため
+      //     長期間気付かれなかった。ブロック内に文字や非対称形状があると分かる)。
+      // (2) 反転: el.flipH/flipVを一切出力していなかった。DXFではxscale(41)/yscale(42)を
+      //     負にすることでミラーを表現する(flipHはブロックローカルx反転=41を負に、
+      //     flipVは同様に42を負に。yはBLOCK定義時に既に反転済みなので追加の符号操作は不要)。
+      // 画面描画(drawSym: translate→rotate→flip)との一致は全rot×flip組み合わせで数値検証済み。
+      const rotD=((360-(el.rot||0))%360);
+      const sxI=el.flipH?-sc:sc, syI=el.flipV?-sc:sc;
+      p(50,String(rotD),41,String(sxI),42,String(syI),43,'1.0');
       // 仕様(ラベル)はINSERTのATTRIB(ブロック属性)としてではなく、
       // 独立したTEXT実体(eText、寸法文字・線番と同じ実績のある形式)として出力する。
       // ATTRIB+ATTDEF+SEQEND+オーナー参照(330)という一式の組み合わせを何度整えても
