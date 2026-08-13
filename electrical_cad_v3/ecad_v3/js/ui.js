@@ -1465,6 +1465,72 @@ function saveCustomSymbol() {
   alert(`「${name}」を登録しました。シンボルパレットのカスタムタブから配置できます。`);
 }
 
+// 任意のshapes配列からプレビュー画像(64x48 PNG dataURL)を生成する。
+// saveCustomSymbol()内の生成ロジックを、登録済みシンボルの再スケール後にも
+// 使い回せるよう独立させたもの(元のコードは_srShapes/_srZoom前提で使い回せなかった)。
+function generateSymPreview(shapes, bbox) {
+  const thumbCv = document.createElement('canvas');
+  thumbCv.width = 64; thumbCv.height = 48;
+  const tctx = thumbCv.getContext('2d');
+  tctx.fillStyle = '#fff';
+  tctx.fillRect(0, 0, 64, 48);
+  const bw = Math.max(bbox.w, 1), bh = Math.max(bbox.h, 1);
+  const scale = Math.min(56/bw, 40/bh) || 1;
+  const cx = 32 - (bbox.cx||0) * scale, cy = 24 - (bbox.cy||0) * scale;
+  tctx.save();
+  tctx.translate(cx, cy);
+  tctx.scale(scale, scale);
+  tctx.strokeStyle = '#222'; tctx.lineWidth = 1.5 / scale;
+  shapes.forEach(s => {
+    if (s.t==='L') { tctx.beginPath(); tctx.moveTo(s.x1,s.y1); tctx.lineTo(s.x2,s.y2); tctx.stroke(); }
+    else if (s.t==='C') { tctx.beginPath(); tctx.arc(s.cx,s.cy,s.r,0,Math.PI*2); tctx.stroke(); }
+    else if (s.t==='A') { tctx.beginPath(); tctx.arc(s.cx,s.cy,s.r,(s.sa||0)*Math.PI/180,(s.ea||0)*Math.PI/180,false); tctx.stroke(); }
+    else if (s.t==='R') { tctx.strokeRect(s.x,s.y,s.w,s.h); }
+    else if (s.t==='P' && s.pts && s.pts.length) {
+      tctx.beginPath(); tctx.moveTo(s.pts[0][0],s.pts[0][1]);
+      for (let k=1;k<s.pts.length;k++) tctx.lineTo(s.pts[k][0],s.pts[k][1]);
+      if (s.cl) tctx.closePath();
+      tctx.stroke();
+    }
+    else if (s.t==='T') { tctx.font=`${(s.fs||14)/2}px sans-serif`; tctx.textAlign='center'; tctx.fillText(s.text,s.x,s.y); }
+  });
+  tctx.restore();
+  return thumbCv.toDataURL('image/png');
+}
+
+// 登録済みカスタムシンボルを、比率を保ったまま指定の幅(または高さ)に
+// 一括拡大縮小する。「異なるシンボルを同じスケール1.0で配置しても実際の
+// 大きさが揃わない」問題(登録時の図形自体の大きさがバラバラ)への対応。
+// 登録済み一覧でw×hを見比べ、ズレているものだけ個別に直す運用を想定。
+function rescaleCustomSym(type) {
+  const sym = state.customSymbols.find(s => s.type === type);
+  if (!sym) return;
+  const curW = Math.round(sym.w * 10) / 10, curH = Math.round(sym.h * 10) / 10;
+  const input = prompt(`「${sym.name||sym.type}」現在のサイズ: 幅${curW} × 高さ${curH}\n新しい幅を入力してください(高さは比率を保って自動計算されます):`, curW);
+  if (input === null) return;
+  const newW = parseFloat(input);
+  if (!newW || newW <= 0) { alert('正の数値を入力してください'); return; }
+  const factor = newW / sym.w;
+  if (Math.abs(factor - 1) < 1e-6) return;
+  sym.shapes.forEach(s => {
+    if (s.t === 'L') { s.x1*=factor; s.y1*=factor; s.x2*=factor; s.y2*=factor; }
+    else if (s.t === 'C' || s.t === 'A') { s.cx*=factor; s.cy*=factor; s.r*=factor; }
+    else if (s.t === 'R') { s.x*=factor; s.y*=factor; s.w*=factor; s.h*=factor; }
+    else if (s.t === 'P' && s.pts) { s.pts = s.pts.map(p => [p[0]*factor, p[1]*factor]); }
+    else if (s.t === 'T') { s.x*=factor; s.y*=factor; if (s.fs) s.fs*=factor; }
+  });
+  (sym.terminals||[]).forEach(t => { t.x*=factor; t.y*=factor; });
+  sym.w *= factor; sym.h *= factor;
+  const bbox = calcCustomSymBBox(sym.shapes);
+  sym.preview = generateSymPreview(sym.shapes, bbox);
+  if (typeof DEFS !== 'undefined' && DEFS[type]) {
+    DEFS[type].w = sym.w; DEFS[type].h = sym.h;
+    DEFS[type].terminals = (sym.terminals||[]).map((t,i) => ({ id:`t${i}`, x:t.x, y:t.y }));
+  }
+  saveSymbolsToStorage();
+  renderSymFloat();
+}
+
 function delCusSym(type) {
   if (!confirm('削除しますか？')) return;
   state.customSymbols = state.customSymbols.filter(s => s.type !== type);
@@ -2592,14 +2658,17 @@ function renderSymFloat() {
     state.customSymbols.forEach((s, i) => {
       const img = s.preview ? `<img src="${s.preview}" style="width:64px;height:48px;object-fit:contain;background:#fff;border-radius:2px">` : `<svg width="36" height="28"></svg>`;
       const termCount = (s.terminals||[]).length;
+      const wDisp = Math.round((s.w||0) * 10) / 10, hDisp = Math.round((s.h||0) * 10) / 10;
       html += `<div class="sym-item" draggable="true" data-symidx="${i}"
         onclick="pickSym(this,'${s.type}')"
         ondragstart="symDragStart(event,${i})" ondragover="symDragOver(event)" ondrop="symDrop(event,${i})" ondragend="symDragEnd(event)"
         onpointerdown="symRowPointerDown(event,${i})"
-        style="flex-direction:column;align-items:center;padding:5px 3px;gap:3px;position:relative;cursor:grab">
+        style="flex-direction:column;align-items:center;padding:5px 3px;gap:2px;position:relative;cursor:grab">
         ${img}
         <span style="font-size:9px;text-align:center;line-height:1.2">${s.label||s.type}</span>
+        <span style="font-size:8px;color:var(--fg3);line-height:1">${wDisp}×${hDisp}</span>
         <span onclick="event.stopPropagation();openPinEditor('${s.type}')" title="端子(ピン)編集: ${termCount}点定義済み" style="position:absolute;top:2px;left:2px;font-size:9px;color:${termCount?'#0067c0':'var(--fg3)'};cursor:pointer">📍${termCount||''}</span>
+        <span onclick="event.stopPropagation();rescaleCustomSym('${s.type}')" title="サイズ調整: 比率を保って幅×高さを変更" style="position:absolute;top:2px;right:14px;font-size:9px;color:var(--fg3);cursor:pointer">⇔</span>
         <span onclick="event.stopPropagation();delCusSym('${s.type}')" style="position:absolute;top:2px;right:2px;font-size:9px;color:var(--red);cursor:pointer">×</span>
       </div>`;
     });
