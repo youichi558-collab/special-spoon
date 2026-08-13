@@ -31,21 +31,29 @@ function syncRibbonHeight() {
 window.addEventListener('resize', syncRibbonHeight);
 
 function switchLTab(name, el) {
-  document.querySelectorAll('.lt').forEach(e => e.classList.remove('on'));
-  el.classList.add('on');
   const panelMap = { sym:'sym-float', lay:'lay-float', prt:'prt-float' };
   const fp = document.getElementById(panelMap[name]);
   if (!fp) return;
   const hidden = fp.style.display === 'none' || fp.style.display === '';
-  // 全パネルを閉じてから対象を開閉
+
+  // 他のパネルは常に閉じる(排他表示)
+  Object.entries(panelMap).forEach(([n, id]) => {
+    if (n === name) return;
+    const other = document.getElementById(id);
+    if (other) other.style.display = 'none';
+  });
+  document.querySelectorAll('.lt').forEach(e => e.classList.remove('on'));
+
   if (hidden) {
+    // 対象パネルを開く
     fp.style.display = 'flex';
+    el.classList.add('on');
     if (name === 'sym') renderSymFloat();
     if (name === 'lay') { renderLayers(); }
     if (name === 'prt') renderPartsFloat();
   } else {
+    // 既に開いていたタブを再クリック → 閉じる
     fp.style.display = 'none';
-    el.classList.remove('on');
   }
 }
 // closeLayFloat は下で定義
