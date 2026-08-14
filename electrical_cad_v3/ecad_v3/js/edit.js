@@ -487,15 +487,9 @@ function commitPaste(dx, dy) {
 function delSel() {
   if (!state.sel.els.size && !state.sel.wires.size) return;
   pushH();
-  // 削除される配線の線番を先に控えておく(削除後にネットが完全に無くなった番号だけ
-  // 詰める判定に使う。1本だけ消えても同じネットの他区間が残っていれば詰めない)
-  const delNos = state.wires.filter(w => state.sel.wires.has(w.id)).map(w => w.wireNo).filter(Boolean);
   state.page.elements = state.elements.filter(e => !state.sel.els.has(e.id));
   state.page.wires    = state.wires.filter(w    => !state.sel.wires.has(w.id));
   state.sel.els.clear(); state.sel.wires.clear();
-  if (delNos.length && typeof compactWireNumbersAfterRemoval === 'function') {
-    compactWireNumbersAfterRemoval(delNos);
-  }
   draw(); updateRightPanel();
 }
 

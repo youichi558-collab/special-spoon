@@ -46,9 +46,12 @@ function parseWireNo(no) {
 
 // 配線削除後、削除によって完全に無くなった線番があれば、同じprefixで
 // それより大きい番号を1つずつ繰り下げて欠番を詰める(配列のsplice相当)。
-// 【2026-08-14】盛田さんより「配線削除時は自動で番号を詰めたい」との要望を受けて実装。
-// ※同じネットの一部区間だけを削除して他の区間が残っている場合は、その線番は
-// まだ使われているので詰め対象にしない(呼び出し側のdelSel()で判定済み)。
+// 【2026-08-14】当初delSel()から自動発動する形で実装したが、盛田さんより
+// 「編集中に勝手に番号が動くと訳が分からなくなる」との指摘を受け、自動発動は
+// 撤回。代わりに線番表(wireNoTable)に手動の「欠番を詰める」ボタンを設置し、
+// 盛田さんが確認しながら明示的に実行するcompactAllWireNumbers()に一本化した。
+// この関数自体は将来また使う可能性を考え残してあるが、現状どこからも自動では
+// 呼ばれない。
 function compactWireNumbersAfterRemoval(deletedNos) {
   if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
   const stillUsed = new Set();
@@ -78,6 +81,50 @@ function compactWireNumbersAfterRemoval(deletedNos) {
     });
   });
   return shifted;
+}
+
+// 線番表の「欠番を詰める」ボタン: 現在使われている線番(ネット単位)の欠番を、
+// prefixごとに一括で詰める(例: W001,W003,W005 → W001,W002,W003)。
+// 削除のたびに自動発動すると「編集中に勝手に番号が変わって訳が分からなくなる」
+// ため自動化はせず、盛田さんが線番表を開いて任意のタイミングで押した時だけ
+// 動く手動操作とした。実行前に確認ダイアログを出す(Ctrl+Zで戻せる旨も表示)。
+function compactAllWireNumbers() {
+  if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
+  if (!confirm('現在使われている線番の欠番を詰めます(例: W001,W003,W005 → W001,W002,W003)。\n元に戻す場合はCtrl+Zで戻せます。実行しますか？')) return;
+  pushH();
+  const netsByPage = state.pages.map(pg => groupWiresByNet(pg.wires||[]));
+  const usedByPrefix = new Map(); // prefix -> Map(num -> digits)
+  state.pages.forEach((pg,pi) => {
+    netsByPage[pi].forEach(idxs => {
+      const wires = pg.wires;
+      const no = idxs.map(i=>wires[i].wireNo).find(Boolean);
+      if (!no) return;
+      const p = parseWireNo(no);
+      if (!p) return;
+      if (!usedByPrefix.has(p.prefix)) usedByPrefix.set(p.prefix, new Map());
+      usedByPrefix.get(p.prefix).set(p.num, p.digits);
+    });
+  });
+  const remap = new Map(); // prefix -> Map(oldNum -> newNum)
+  usedByPrefix.forEach((numMap, prefix) => {
+    const nums = [...numMap.keys()].sort((a,b)=>a-b);
+    const m = new Map();
+    nums.forEach((n,i) => m.set(n, nums[0] + i));
+    remap.set(prefix, m);
+  });
+  let changed = 0;
+  state.pages.forEach(pg => (pg.wires||[]).forEach(w => {
+    if (!w.wireNo) return;
+    const p = parseWireNo(w.wireNo);
+    if (!p) return;
+    const m = remap.get(p.prefix);
+    const newNum = m && m.get(p.num);
+    if (newNum === undefined || newNum === p.num) return;
+    w.wireNo = p.prefix + String(newNum).padStart(p.digits, '0');
+    changed++;
+  }));
+  draw();
+  wireNoTable(changed ? `欠番を詰めました(${changed}本の線番を更新)` : '欠番はありませんでした');
 }
 
 // ページ内の配線を、端点が重なっているもの同士(=同一ネット)でグループ化する。
@@ -204,7 +251,9 @@ function wireNoTable(msg){
   html += `配線 全${total}本 / ネット ${rows.length}件`;
   if (unnumbered) html += ` / <span style="color:var(--red);font-weight:600">未採番 ${unnumbered}本</span>`;
   html += `<br>線番欄を直接編集すると、そのネット(繋がっている配線群)全体に即反映されます。`;
-  html += `<br>配線を追加/削除した後は、この一覧を開き直して未採番(赤)や分断(橙)がないか確認してください。</p>`;
+  html += `<br>配線を追加/削除した後は、この一覧を開き直して未採番(赤)や分断(橙)がないか確認してください。`;
+  html += `<br><button onclick="compactAllWireNumbers()" title="削除等で欠番になった線番を詰めます(例: W001,W003,W005 → W001,W002,W003)。編集中に自動では動きません、このボタンを押した時だけ実行されます" style="margin-top:4px;font-size:10px;padding:2px 8px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)">欠番を詰める</button>`;
+  html += `</p>`;
   html += `<table class="tbl"><tr><th>線番</th><th>ページ</th><th>本数</th></tr>`;
   rows.forEach(r => {
     const badgeCls = r.conflict ? 'badge-o' : 'badge-b';
