@@ -33,6 +33,49 @@ function _reportOpen(tabKey, title, bodyHtml, csvFn) {
 }
 
 
+const WIRE_NET_TOL = 5; // 接続表・未接続チェックと同じ許容誤差
+
+// ページ内の配線を、端点が重なっているもの同士(=同一ネット)でグループ化する。
+// autoWireNumber()と編集可能な線番表(wireNoTable)の両方で共通利用する。
+// 戻り値: [[wireIdx, wireIdx, ...], ...]  (1グループ=1ネット)
+function groupWiresByNet(wires, tol) {
+  tol = tol || WIRE_NET_TOL;
+  if (!wires.length) return [];
+  const bx = x => Math.round(x / tol);
+  const parent = wires.map((_,i)=>i);
+  function find(i){ while(parent[i]!==i){ parent[i]=parent[parent[i]]; i=parent[i]; } return i; }
+  function union(a,b){ a=find(a); b=find(b); if(a!==b) parent[a]=b; }
+
+  const endpoints = wires.map(w => {
+    const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
+    return [pts[0], pts[pts.length-1]];
+  });
+  const idx = new Map();
+  endpoints.forEach((eps, i) => eps.forEach(p => {
+    const key = `${bx(p.x)},${bx(p.y)}`;
+    if (!idx.has(key)) idx.set(key, []);
+    idx.get(key).push({ i, p });
+  }));
+  endpoints.forEach((eps, i) => eps.forEach(p => {
+    for (let dx=-1; dx<=1; dx++) for (let dy=-1; dy<=1; dy++) {
+      const bucket = idx.get(`${bx(p.x)+dx},${bx(p.y)+dy}`);
+      if (!bucket) continue;
+      bucket.forEach(({i:j, p:q}) => {
+        if (j===i) return;
+        if (Math.hypot(q.x-p.x, q.y-p.y) <= tol) union(i,j);
+      });
+    }
+  }));
+
+  const groups = new Map();
+  wires.forEach((_,i) => {
+    const r = find(i);
+    if (!groups.has(r)) groups.set(r, []);
+    groups.get(r).push(i);
+  });
+  return [...groups.values()];
+}
+
 // 一括割付: 全ページ通しで未採番の配線のみに連番を割り付け(既存線番との衝突は自動回避)。
 // 【修正 2026-08-14】以前は配線オブジェクト1本ごとに別番号を振っていたため、
 // ジャンクションを挟んで複数オブジェクトに分かれて描かれた同一ネット(電気的に
@@ -42,13 +85,18 @@ function _reportOpen(tabKey, title, bodyHtml, csvFn) {
 // Union-Findでグループ化し、ネット単位で1つの番号を振るよう変更。
 // ネット内に既に線番が入っている配線があれば、その番号を未採番側にも継承する
 // (異なる番号が混在している場合は上書きせず、件数のみ報告する)。
+//
+// 【2026-08-14 追記】盛田さんより「途中で配線を追加/削除すると自動検知は無理、
+// 一覧を直接編集してそれを配線に反映する形の方がよい」との方針決定。
+// この一括割付ボタンは「まだ何も番号が振られていない配線に初期値を素早く入れる」
+// 用途として残し、細かい調整・分断時の直しは編集可能な線番表(wireNoTable)側で行う
+// 想定(自動検知はしない・一覧を見て手で直す運用)。
 function autoWireNumber(){
   const start = prompt('一括割付の開始線番（例: W001）\n未採番の配線のみ、全ページ通しで割り付けます。\n接続されている配線群(同一ネット)は自動でまとめて同じ番号になります', state.wireNoRule || 'W001');
   if (!start || !start.trim()) return;
   state.wireNoRule = start.trim();
   if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
   pushH();
-  const TOL = 5; // 接続表・未接続チェックと同じ許容誤差
   const used = new Set();
   state.pages.forEach(pg => (pg.wires||[]).forEach(w => { if (w.wireNo) used.add(w.wireNo); }));
   let next = start.trim(), wireCnt = 0, netCnt = 0, conflictCnt = 0;
@@ -56,40 +104,7 @@ function autoWireNumber(){
   state.pages.forEach(pg => {
     const wires = pg.wires || [];
     if (!wires.length) return;
-    const bx = x => Math.round(x / TOL);
-    const parent = wires.map((_,i)=>i);
-    function find(i){ while(parent[i]!==i){ parent[i]=parent[parent[i]]; i=parent[i]; } return i; }
-    function union(a,b){ a=find(a); b=find(b); if(a!==b) parent[a]=b; }
-
-    // 端点バケット索引を作ってから、近傍バケットを見て同一ネットをUnion
-    const endpoints = wires.map(w => {
-      const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
-      return [pts[0], pts[pts.length-1]];
-    });
-    const idx = new Map();
-    endpoints.forEach((eps, i) => eps.forEach(p => {
-      const key = `${bx(p.x)},${bx(p.y)}`;
-      if (!idx.has(key)) idx.set(key, []);
-      idx.get(key).push({ i, p });
-    }));
-    endpoints.forEach((eps, i) => eps.forEach(p => {
-      for (let dx=-1; dx<=1; dx++) for (let dy=-1; dy<=1; dy++) {
-        const bucket = idx.get(`${bx(p.x)+dx},${bx(p.y)+dy}`);
-        if (!bucket) continue;
-        bucket.forEach(({i:j, p:q}) => {
-          if (j===i) return;
-          if (Math.hypot(q.x-p.x, q.y-p.y) <= TOL) union(i,j);
-        });
-      }
-    }));
-
-    // ネットごとにグループ化 → 番号を確定 → 未採番のみに適用
-    const groups = new Map();
-    wires.forEach((_,i) => {
-      const r = find(i);
-      if (!groups.has(r)) groups.set(r, []);
-      groups.get(r).push(i);
-    });
+    const groups = groupWiresByNet(wires);
     groups.forEach(idxs => {
       const existingNums = new Set(idxs.map(i => wires[i].wireNo).filter(Boolean));
       if (existingNums.size > 1) conflictCnt++; // 同一ネット内に異なる既存線番が混在(上書きはしない)
@@ -104,40 +119,72 @@ function autoWireNumber(){
   });
 
   let msg = `${wireCnt}本(${netCnt}ネット新規)に線番を割付しました（全ページ・未採番のみ、接続されている配線群は同じ番号）`;
-  if (conflictCnt) msg += `\n⚠同一ネット内に異なる既存線番が混在している箇所が${conflictCnt}件ありました(上書きしていません。接続表で確認してください)`;
+  if (conflictCnt) msg += `\n⚠同一ネット内に異なる既存線番が混在している箇所が${conflictCnt}件ありました(上書きしていません。線番表で確認・修正してください)`;
   wireNoTable(msg);
   draw();
 }
 
-// 線番表: 全ページ集計。同一線番の複数使用は箇所数と橙バッジで表示
+// 線番表: 全ページ・ネット単位(接続されている配線群=1行)で表示。
+// 【2026-08-14 変更】以前は既存のwireNo文字列でグループ化する読み取り専用の表だったが、
+// 「配線の追加/削除で番号がズレたことは自動検知できないので、一覧を直接編集して
+// 配線に反映する形にしたい」との方針決定を受け、ネット単位(groupWiresByNet)の
+// 行を出し、線番の入力欄をその場で編集→即座に配線プロパティへ反映する方式に変更。
+// 配線を追加すれば新しい未採番ネットの行が増え、削除すれば該当ネットの行(または
+// 分断されて2行)が変わるので、一覧を見るだけで最新状態を把握できる。
 function wireNoTable(msg){
   if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
-  const map = new Map(); let unnumbered = 0, total = 0;
+  const rows = []; // { pageIdx, pname, idxs, wireNo, conflict }
+  let total = 0, unnumbered = 0;
   state.pages.forEach((pg, pi) => {
     const pname = pg.name || ('Sheet'+(pi+1));
-    (pg.wires||[]).forEach(w => {
-      total++;
-      if (!w.wireNo) { unnumbered++; return; }
-      if (!map.has(w.wireNo)) map.set(w.wireNo, {});
-      const rec = map.get(w.wireNo);
-      rec[pname] = (rec[pname]||0) + 1;
+    const wires = pg.wires || [];
+    total += wires.length;
+    const groups = groupWiresByNet(wires);
+    groups.forEach(idxs => {
+      const existingNums = [...new Set(idxs.map(i => wires[i].wireNo).filter(Boolean))];
+      const wireNo = existingNums[0] || '';
+      if (!wireNo) unnumbered += idxs.length;
+      rows.push({ pageIdx: pi, pname, idxs, wireNo, conflict: existingNums.length > 1 });
     });
   });
-  const keys = [...map.keys()].sort((a,b)=>String(a).localeCompare(String(b),'ja',{numeric:true}));
+  // 未採番のネットを先頭に、それ以降は線番の自然順ソート
+  rows.sort((a,b) => {
+    if (!a.wireNo && b.wireNo) return -1;
+    if (a.wireNo && !b.wireNo) return 1;
+    return String(a.wireNo).localeCompare(String(b.wireNo),'ja',{numeric:true}) || a.pageIdx-b.pageIdx;
+  });
+
   let html = `<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">`;
-  if (msg) html += msg + '<br>';
-  html += `配線 全${total}本 / 線番 ${keys.length}種`;
+  if (msg) html += msg.replace(/\n/g,'<br>') + '<br>';
+  html += `配線 全${total}本 / ネット ${rows.length}件`;
   if (unnumbered) html += ` / <span style="color:var(--red);font-weight:600">未採番 ${unnumbered}本</span>`;
-  html += `<br>※箇所数2以上（橙）は同一線番の複数使用。同一ネットの継続なら正常です</p>`;
-  html += `<table class="tbl"><tr><th>線番</th><th>ページ</th><th>箇所数</th></tr>`;
-  keys.forEach(no => {
-    const rec = map.get(no);
-    const pages = Object.entries(rec).map(([p,c]) => c>1 ? `${p}(${c})` : p).join(', ');
-    const cnt = Object.values(rec).reduce((a,b)=>a+b,0);
-    html += `<tr><td><span class="badge ${cnt>1?'badge-o':'badge-b'}">${no}</span></td><td>${pages}</td><td>${cnt}</td></tr>`;
+  html += `<br>線番欄を直接編集すると、そのネット(繋がっている配線群)全体に即反映されます。`;
+  html += `<br>配線を追加/削除した後は、この一覧を開き直して未採番(赤)や分断(橙)がないか確認してください。</p>`;
+  html += `<table class="tbl"><tr><th>線番</th><th>ページ</th><th>本数</th></tr>`;
+  rows.forEach(r => {
+    const badgeCls = r.conflict ? 'badge-o' : 'badge-b';
+    const title = r.conflict ? 'title="⚠このネット内に異なる既存線番が混在しています。編集すると統一されます"' : '';
+    html += `<tr ${title}>` +
+      `<td><input type="text" value="${r.wireNo}" placeholder="未採番" ` +
+      `onchange="applyNetWireNo(${r.pageIdx},[${r.idxs.join(',')}],this.value)" ` +
+      `style="width:80px;font-size:11px;padding:2px 4px;border:1px solid ${r.conflict?'#f59e0b':'var(--bd2)'};border-radius:3px;background:var(--bg2);color:var(--fg)"></td>` +
+      `<td>${r.pname}</td>` +
+      `<td><span class="badge ${badgeCls}">${r.idxs.length}</span></td>` +
+      `</tr>`;
   });
   html += `</table>`;
-  _reportOpen('wire', '線番 割付結果', html, exportWireCSV);
+  _reportOpen('wire', '線番 一覧(編集可)', html, exportWireCSV);
+}
+
+// 線番表の入力欄編集→即座にネット内全配線のwireNoへ反映する
+function applyNetWireNo(pageIdx, wireIdxs, value) {
+  const pg = state.pages[pageIdx];
+  if (!pg || !pg.wires) return;
+  pushH();
+  const v = (value||'').trim();
+  wireIdxs.forEach(i => { if (pg.wires[i]) pg.wires[i].wireNo = v; });
+  draw();
+  wireNoTable();
 }
 
 // CSV: 全ページ分を出力
