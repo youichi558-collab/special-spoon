@@ -33,22 +33,79 @@ function _reportOpen(tabKey, title, bodyHtml, csvFn) {
 }
 
 
-// 一括割付: 全ページ通しで未採番の配線のみに連番を割り付け(既存線番との衝突は自動回避)
+// 一括割付: 全ページ通しで未採番の配線のみに連番を割り付け(既存線番との衝突は自動回避)。
+// 【修正 2026-08-14】以前は配線オブジェクト1本ごとに別番号を振っていたため、
+// ジャンクションを挟んで複数オブジェクトに分かれて描かれた同一ネット(電気的に
+// 繋がった配線群)が別々の番号になってしまう問題があった(接続表の「同一ネットの
+// 継続なら正常」という前提と矛盾)。conn_check.jsと同じ端点許容誤差(5)による
+// バケット索引方式で、配線どうしの端点が重なっているものを同一ネットとして
+// Union-Findでグループ化し、ネット単位で1つの番号を振るよう変更。
+// ネット内に既に線番が入っている配線があれば、その番号を未採番側にも継承する
+// (異なる番号が混在している場合は上書きせず、件数のみ報告する)。
 function autoWireNumber(){
-  const start = prompt('一括割付の開始線番（例: W001）\n未採番の配線のみ、全ページ通しで割り付けます', state.wireNoRule || 'W001');
+  const start = prompt('一括割付の開始線番（例: W001）\n未採番の配線のみ、全ページ通しで割り付けます。\n接続されている配線群(同一ネット)は自動でまとめて同じ番号になります', state.wireNoRule || 'W001');
   if (!start || !start.trim()) return;
   state.wireNoRule = start.trim();
   if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
   pushH();
+  const TOL = 5; // 接続表・未接続チェックと同じ許容誤差
   const used = new Set();
   state.pages.forEach(pg => (pg.wires||[]).forEach(w => { if (w.wireNo) used.add(w.wireNo); }));
-  let next = start.trim(), cnt = 0;
-  state.pages.forEach(pg => (pg.wires||[]).forEach(w => {
-    if (w.wireNo) return;
-    while (used.has(next)) next = incRef(next);
-    w.wireNo = next; used.add(next); next = incRef(next); cnt++;
-  }));
-  wireNoTable(`${cnt}本に線番を割付しました（全ページ・未採番のみ）`);
+  let next = start.trim(), wireCnt = 0, netCnt = 0, conflictCnt = 0;
+
+  state.pages.forEach(pg => {
+    const wires = pg.wires || [];
+    if (!wires.length) return;
+    const bx = x => Math.round(x / TOL);
+    const parent = wires.map((_,i)=>i);
+    function find(i){ while(parent[i]!==i){ parent[i]=parent[parent[i]]; i=parent[i]; } return i; }
+    function union(a,b){ a=find(a); b=find(b); if(a!==b) parent[a]=b; }
+
+    // 端点バケット索引を作ってから、近傍バケットを見て同一ネットをUnion
+    const endpoints = wires.map(w => {
+      const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
+      return [pts[0], pts[pts.length-1]];
+    });
+    const idx = new Map();
+    endpoints.forEach((eps, i) => eps.forEach(p => {
+      const key = `${bx(p.x)},${bx(p.y)}`;
+      if (!idx.has(key)) idx.set(key, []);
+      idx.get(key).push({ i, p });
+    }));
+    endpoints.forEach((eps, i) => eps.forEach(p => {
+      for (let dx=-1; dx<=1; dx++) for (let dy=-1; dy<=1; dy++) {
+        const bucket = idx.get(`${bx(p.x)+dx},${bx(p.y)+dy}`);
+        if (!bucket) continue;
+        bucket.forEach(({i:j, p:q}) => {
+          if (j===i) return;
+          if (Math.hypot(q.x-p.x, q.y-p.y) <= TOL) union(i,j);
+        });
+      }
+    }));
+
+    // ネットごとにグループ化 → 番号を確定 → 未採番のみに適用
+    const groups = new Map();
+    wires.forEach((_,i) => {
+      const r = find(i);
+      if (!groups.has(r)) groups.set(r, []);
+      groups.get(r).push(i);
+    });
+    groups.forEach(idxs => {
+      const existingNums = new Set(idxs.map(i => wires[i].wireNo).filter(Boolean));
+      if (existingNums.size > 1) conflictCnt++; // 同一ネット内に異なる既存線番が混在(上書きはしない)
+      let num = existingNums.size ? [...existingNums][0] : null;
+      if (!num) {
+        while (used.has(next)) next = incRef(next);
+        num = next; used.add(next); next = incRef(next);
+        netCnt++;
+      }
+      idxs.forEach(i => { if (!wires[i].wireNo) { wires[i].wireNo = num; wireCnt++; } });
+    });
+  });
+
+  let msg = `${wireCnt}本(${netCnt}ネット新規)に線番を割付しました（全ページ・未採番のみ、接続されている配線群は同じ番号）`;
+  if (conflictCnt) msg += `\n⚠同一ネット内に異なる既存線番が混在している箇所が${conflictCnt}件ありました(上書きしていません。接続表で確認してください)`;
+  wireNoTable(msg);
   draw();
 }
 
