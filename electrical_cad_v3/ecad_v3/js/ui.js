@@ -224,8 +224,17 @@ function renameLayer(i) {
   const newName = prompt('レイヤー名:', oldName);
   if (!newName || newName === oldName) return;
   if (LAYERS.find((l,j)=>j!==i&&l.name===newName)) { alert('同じ名前のレイヤーが既にあります'); return; }
-  state.elements.forEach(el=>{ if(el.layer===oldName) el.layer=newName; });
-  state.wires.forEach(w=>{ if(w.layer===oldName) w.layer=newName; });
+  // 【バグ④修正 2026-08-14】旧実装は現在ページのstate.elements/wires(getter経由で
+  // this.page.elementsのみ)しか付け替えておらず、複数ページで同じレイヤーを使って
+  // いる場合、他ページの要素が旧レイヤー名のまま孤立していた。孤立するとLAYERS参照が
+  // 引けず色・線幅がfgC()等のフォールバックになり、「シンボル/配線が1個だけ突然
+  // 壊れたように灰色/白っぽくなる」症状として現れる。deleteLayer()と同じ全ページ
+  // 付け替え方式に統一。
+  if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
+  state.pages.forEach(pg => {
+    (pg.elements||[]).forEach(el=>{ if(el.layer===oldName) el.layer=newName; });
+    (pg.wires||[]).forEach(w=>{ if(w.layer===oldName) w.layer=newName; });
+  });
   LAYERS[i].name = newName;
   renderLayers();
   draw();
