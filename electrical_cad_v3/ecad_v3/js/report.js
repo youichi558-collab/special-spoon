@@ -315,11 +315,28 @@ function swapNetWireNo(pageA, idxsA, noA, pageB, idxsB, noB) {
 }
 
 // 線番表の入力欄編集→即座にネット内全配線のwireNoへ反映する
+// 線番表の入力欄編集→即座にネット内全配線のwireNoへ反映する。
+// 【2026-08-14】盛田さんより「追加配線が既存の番号と被る可能性を考慮しているか」
+// との指摘を受け、手入力時のみ重複チェックが無かった穴を修正。自動割付
+// (autoWireNumber)は既存番号を避けて発番するため元々問題なかったが、この
+// 手入力の経路だけ無防備だった。繋がっていない別ネットに同じ番号を入れようと
+// した場合は確認を挟む(ページをまたいで同じ物理配線を意図的に同番にする
+// 実務上のケースもあるため、完全ブロックはせず警告のみ)。
 function applyNetWireNo(pageIdx, wireIdxs, value) {
   const pg = state.pages[pageIdx];
   if (!pg || !pg.wires) return;
-  pushH();
   const v = (value||'').trim();
+  if (v) {
+    const idsInThisNet = new Set(wireIdxs.map(i => pg.wires[i] && pg.wires[i].id).filter(Boolean));
+    let usedElsewhere = false;
+    state.pages.forEach(p => (p.wires||[]).forEach(w => {
+      if (w.wireNo === v && !idsInThisNet.has(w.id)) usedElsewhere = true;
+    }));
+    if (usedElsewhere) {
+      if (!confirm(`線番「${v}」は既に別の(繋がっていない)配線で使われています。\n同じ番号のまま登録しますか？\n※別ページなどで意図的に同じ物理配線として使う場合はOK、\n単なる番号の被りなら「キャンセル」して別の番号にしてください。`)) return;
+    }
+  }
+  pushH();
   wireIdxs.forEach(i => { if (pg.wires[i]) pg.wires[i].wireNo = v; });
   draw();
   wireNoTable();
