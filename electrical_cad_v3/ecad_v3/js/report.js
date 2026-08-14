@@ -35,6 +35,51 @@ function _reportOpen(tabKey, title, bodyHtml, csvFn) {
 
 const WIRE_NET_TOL = 5; // 接続表・未接続チェックと同じ許容誤差
 
+// 線番文字列を「英字等のprefix」「数値部分」「桁数(0埋め幅)」に分解する。
+// 例: "W001" → {prefix:'W', num:1, digits:3}。数値末尾を持たない線番(手打ちの
+// 自由記述など)はnullを返し、詰め処理の対象外にする。
+function parseWireNo(no) {
+  const m = String(no||'').match(/^(.*?)(\d+)$/);
+  if (!m) return null;
+  return { prefix: m[1], num: parseInt(m[2],10), digits: m[2].length };
+}
+
+// 配線削除後、削除によって完全に無くなった線番があれば、同じprefixで
+// それより大きい番号を1つずつ繰り下げて欠番を詰める(配列のsplice相当)。
+// 【2026-08-14】盛田さんより「配線削除時は自動で番号を詰めたい」との要望を受けて実装。
+// ※同じネットの一部区間だけを削除して他の区間が残っている場合は、その線番は
+// まだ使われているので詰め対象にしない(呼び出し側のdelSel()で判定済み)。
+function compactWireNumbersAfterRemoval(deletedNos) {
+  if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
+  const stillUsed = new Set();
+  state.pages.forEach(pg => (pg.wires||[]).forEach(w => { if (w.wireNo) stillUsed.add(w.wireNo); }));
+  const removedNos = [...new Set(deletedNos)].filter(no => no && !stillUsed.has(no));
+  if (!removedNos.length) return 0;
+
+  const byPrefix = new Map();
+  removedNos.forEach(no => {
+    const p = parseWireNo(no);
+    if (!p) return;
+    if (!byPrefix.has(p.prefix)) byPrefix.set(p.prefix, []);
+    byPrefix.get(p.prefix).push(p.num);
+  });
+
+  let shifted = 0;
+  byPrefix.forEach((nums, prefix) => {
+    nums.sort((a,b) => b - a); // 大きい番号から順に詰める(番号のズレを重複させないため)
+    nums.forEach(delNum => {
+      state.pages.forEach(pg => (pg.wires||[]).forEach(w => {
+        if (!w.wireNo) return;
+        const q = parseWireNo(w.wireNo);
+        if (!q || q.prefix !== prefix || q.num <= delNum) return;
+        w.wireNo = prefix + String(q.num - 1).padStart(q.digits, '0');
+        shifted++;
+      }));
+    });
+  });
+  return shifted;
+}
+
 // ページ内の配線を、端点が重なっているもの同士(=同一ネット)でグループ化する。
 // autoWireNumber()と編集可能な線番表(wireNoTable)の両方で共通利用する。
 // 戻り値: [[wireIdx, wireIdx, ...], ...]  (1グループ=1ネット)
