@@ -254,7 +254,7 @@ function wireNoTable(msg){
   html += `<br>配線を追加/削除した後は、この一覧を開き直して未採番(赤)や分断(橙)がないか確認してください。`;
   html += `<br><button onclick="compactAllWireNumbers()" title="削除等で欠番になった線番を詰めます(例: W001,W003,W005 → W001,W002,W003)。編集中に自動では動きません、このボタンを押した時だけ実行されます" style="margin-top:4px;font-size:10px;padding:2px 8px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)">欠番を詰める</button>`;
   html += `</p>`;
-  html += `<table class="tbl"><tr><th></th><th>線番</th><th>ページ</th><th>本数</th></tr>`;
+  html += `<table class="tbl"><tr><th></th><th>線番</th><th>ページ</th><th>本数</th><th></th></tr>`;
   // 線番文字列をonclick内のJS文字列リテラルに安全に埋め込むための簡易エスケープ
   const esc = s => String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
   rows.forEach((r, ri) => {
@@ -268,6 +268,7 @@ function wireNoTable(msg){
     const downBtn = next
       ? `<button title="ひとつ下の行と線番を入れ替え" onclick="swapNetWireNo(${r.pageIdx},[${r.idxs.join(',')}],'${esc(r.wireNo)}',${next.pageIdx},[${next.idxs.join(',')}],'${esc(next.wireNo)}')" style="${btnStyle}">▼</button>`
       : `<button disabled style="${btnStyle};opacity:.3">▼</button>`;
+    const delBtn = `<button title="このネットの配線ごと削除し、欠番を自動で詰めます" onclick="deleteNetFromList(${r.pageIdx},[${r.idxs.join(',')}])" style="${btnStyle};color:var(--red)">×</button>`;
     html += `<tr ${title}>` +
       `<td style="white-space:nowrap">${upBtn}${downBtn}</td>` +
       `<td><input type="text" value="${r.wireNo}" placeholder="未採番" ` +
@@ -275,10 +276,31 @@ function wireNoTable(msg){
       `style="width:80px;font-size:11px;padding:2px 4px;border:1px solid ${r.conflict?'#f59e0b':'var(--bd2)'};border-radius:3px;background:var(--bg2);color:var(--fg)"></td>` +
       `<td>${r.pname}</td>` +
       `<td><span class="badge ${badgeCls}">${r.idxs.length}</span></td>` +
+      `<td>${delBtn}</td>` +
       `</tr>`;
   });
   html += `</table>`;
   _reportOpen('wire', '線番 一覧(編集可)', html, exportWireCSV);
+}
+
+// 線番表の×ボタン: そのネットの配線を実際に削除し、続けて欠番を自動で詰める。
+// 【設計方針】キャンバス上でのDelete削除は「編集中に勝手に番号が動くと訳が
+// 分からなくなる」ため自動詰めをやめて手動ボタン(compactAllWireNumbers)にしたが、
+// この一覧からの削除は盛田さんが線番表を見ながら意図して行う操作なので、
+// 削除と同時に自動で詰めてよい、という区別。
+function deleteNetFromList(pageIdx, idxs) {
+  const pg = state.pages[pageIdx];
+  if (!pg || !pg.wires) return;
+  const targetIds = idxs.map(i => pg.wires[i] && pg.wires[i].id).filter(Boolean);
+  if (!targetIds.length) return;
+  const delNo = idxs.map(i => pg.wires[i] && pg.wires[i].wireNo).find(Boolean);
+  if (!confirm(`このネット(配線${targetIds.length}本${delNo?'、線番'+delNo:'(未採番)'})を削除しますか？\n削除後、欠番があれば自動で詰めます。元に戻す場合はCtrl+Zで戻せます。`)) return;
+  pushH();
+  const idSet = new Set(targetIds);
+  pg.wires = pg.wires.filter(w => !idSet.has(w.id));
+  if (delNo) compactWireNumbersAfterRemoval([delNo]);
+  draw();
+  wireNoTable();
 }
 
 // 線番表の▲▼ボタン: 隣り合う2つのネットの線番を入れ替える
