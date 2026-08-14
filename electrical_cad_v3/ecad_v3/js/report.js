@@ -254,11 +254,22 @@ function wireNoTable(msg){
   html += `<br>配線を追加/削除した後は、この一覧を開き直して未採番(赤)や分断(橙)がないか確認してください。`;
   html += `<br><button onclick="compactAllWireNumbers()" title="削除等で欠番になった線番を詰めます(例: W001,W003,W005 → W001,W002,W003)。編集中に自動では動きません、このボタンを押した時だけ実行されます" style="margin-top:4px;font-size:10px;padding:2px 8px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)">欠番を詰める</button>`;
   html += `</p>`;
-  html += `<table class="tbl"><tr><th>線番</th><th>ページ</th><th>本数</th></tr>`;
-  rows.forEach(r => {
+  html += `<table class="tbl"><tr><th></th><th>線番</th><th>ページ</th><th>本数</th></tr>`;
+  // 線番文字列をonclick内のJS文字列リテラルに安全に埋め込むための簡易エスケープ
+  const esc = s => String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  rows.forEach((r, ri) => {
     const badgeCls = r.conflict ? 'badge-o' : 'badge-b';
     const title = r.conflict ? 'title="⚠このネット内に異なる既存線番が混在しています。編集すると統一されます"' : '';
+    const prev = rows[ri-1], next = rows[ri+1];
+    const btnStyle = 'font-size:9px;line-height:1;padding:1px 3px;cursor:pointer;border:1px solid var(--bd2);border-radius:2px;background:var(--bg2);color:var(--fg)';
+    const upBtn = prev
+      ? `<button title="ひとつ上の行と線番を入れ替え" onclick="swapNetWireNo(${r.pageIdx},[${r.idxs.join(',')}],'${esc(r.wireNo)}',${prev.pageIdx},[${prev.idxs.join(',')}],'${esc(prev.wireNo)}')" style="${btnStyle}">▲</button>`
+      : `<button disabled style="${btnStyle};opacity:.3">▲</button>`;
+    const downBtn = next
+      ? `<button title="ひとつ下の行と線番を入れ替え" onclick="swapNetWireNo(${r.pageIdx},[${r.idxs.join(',')}],'${esc(r.wireNo)}',${next.pageIdx},[${next.idxs.join(',')}],'${esc(next.wireNo)}')" style="${btnStyle}">▼</button>`
+      : `<button disabled style="${btnStyle};opacity:.3">▼</button>`;
     html += `<tr ${title}>` +
+      `<td style="white-space:nowrap">${upBtn}${downBtn}</td>` +
       `<td><input type="text" value="${r.wireNo}" placeholder="未採番" ` +
       `onchange="applyNetWireNo(${r.pageIdx},[${r.idxs.join(',')}],this.value)" ` +
       `style="width:80px;font-size:11px;padding:2px 4px;border:1px solid ${r.conflict?'#f59e0b':'var(--bd2)'};border-radius:3px;background:var(--bg2);color:var(--fg)"></td>` +
@@ -268,6 +279,17 @@ function wireNoTable(msg){
   });
   html += `</table>`;
   _reportOpen('wire', '線番 一覧(編集可)', html, exportWireCSV);
+}
+
+// 線番表の▲▼ボタン: 隣り合う2つのネットの線番を入れ替える
+function swapNetWireNo(pageA, idxsA, noA, pageB, idxsB, noB) {
+  const pgA = state.pages[pageA], pgB = state.pages[pageB];
+  if (!pgA || !pgB) return;
+  pushH();
+  idxsA.forEach(i => { if (pgA.wires[i]) pgA.wires[i].wireNo = noB; });
+  idxsB.forEach(i => { if (pgB.wires[i]) pgB.wires[i].wireNo = noA; });
+  draw();
+  wireNoTable();
 }
 
 // 線番表の入力欄編集→即座にネット内全配線のwireNoへ反映する
