@@ -333,7 +333,32 @@ function applyNetWireNo(pageIdx, wireIdxs, value) {
       if (w.wireNo === v && !idsInThisNet.has(w.id)) usedElsewhere = true;
     }));
     if (usedElsewhere) {
-      if (!confirm(`線番「${v}」は既に別の(繋がっていない)配線で使われています。\n同じ番号のまま登録しますか？\n※別ページなどで意図的に同じ物理配線として使う場合はOK、\n単なる番号の被りなら「キャンセル」して別の番号にしてください。`)) return;
+      const p = parseWireNo(v);
+      const doShift = confirm(
+        p
+        ? `線番「${v}」は既に別の配線で使われています。\n[OK] ここに割り込ませて、「${v}」以降の番号を1つずつ繰り上げます(例: 1,2,3の間に割り込み→1,2,3,4)\n[キャンセル] 何もしません`
+        : `線番「${v}」は既に別の配線で使われています。同じ番号のまま登録しますか？\n(数字を含まない線番は自動繰り上げができないため、意図的な重複として扱われます)`
+      );
+      if (!doShift) return;
+      pushH();
+      if (p) {
+        // v以上の番号(このネット自身は除く)を、大きい方から順に1つずつ繰り上げて場所を空ける
+        const toShift = [];
+        state.pages.forEach(pg2 => (pg2.wires||[]).forEach(w => {
+          if (!w.wireNo || idsInThisNet.has(w.id)) return;
+          const q = parseWireNo(w.wireNo);
+          if (q && q.prefix === p.prefix && q.num >= p.num) toShift.push(w);
+        }));
+        toShift.sort((a,b) => parseWireNo(b.wireNo).num - parseWireNo(a.wireNo).num);
+        toShift.forEach(w => {
+          const q = parseWireNo(w.wireNo);
+          w.wireNo = q.prefix + String(q.num + 1).padStart(q.digits, '0');
+        });
+      }
+      wireIdxs.forEach(i => { if (pg.wires[i]) pg.wires[i].wireNo = v; });
+      draw();
+      wireNoTable();
+      return;
     }
   }
   pushH();
