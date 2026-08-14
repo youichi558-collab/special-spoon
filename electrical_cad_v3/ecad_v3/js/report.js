@@ -184,20 +184,22 @@ function groupWiresByNet(wires, tol) {
 // 用途として残し、細かい調整・分断時の直しは編集可能な線番表(wireNoTable)側で行う
 // 想定(自動検知はしない・一覧を見て手で直す運用)。
 function autoWireNumber(){
-  const start = prompt('一括割付の開始線番（例: W001）\n未採番の配線のみ、全ページ通しで割り付けます。\n接続されている配線群(同一ネット)は自動でまとめて同じ番号になります', state.wireNoRule || 'W001');
+  const start = prompt('一括割付の開始線番（例: W001）\n未採番の配線のみ、全ページ通しで割り付けます。\n接続されている配線群(同一ネット)は自動でまとめて同じ番号になります。\n(線番表でチェックを外したネットは対象外になります)', state.wireNoRule || 'W001');
   if (!start || !start.trim()) return;
   state.wireNoRule = start.trim();
   if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
   pushH();
   const used = new Set();
   state.pages.forEach(pg => (pg.wires||[]).forEach(w => { if (w.wireNo) used.add(w.wireNo); }));
-  let next = start.trim(), wireCnt = 0, netCnt = 0, conflictCnt = 0;
+  let next = start.trim(), wireCnt = 0, netCnt = 0, conflictCnt = 0, excludedCnt = 0;
 
   state.pages.forEach(pg => {
     const wires = pg.wires || [];
     if (!wires.length) return;
     const groups = groupWiresByNet(wires);
     groups.forEach(idxs => {
+      // 線番表でチェックを外した(noAutoNum)ネットは自動割付の対象外
+      if (idxs.some(i => wires[i].noAutoNum)) { excludedCnt++; return; }
       const existingNums = new Set(idxs.map(i => wires[i].wireNo).filter(Boolean));
       if (existingNums.size > 1) conflictCnt++; // 同一ネット内に異なる既存線番が混在(上書きはしない)
       let num = existingNums.size ? [...existingNums][0] : null;
@@ -212,6 +214,7 @@ function autoWireNumber(){
 
   let msg = `${wireCnt}本(${netCnt}ネット新規)に線番を割付しました（全ページ・未採番のみ、接続されている配線群は同じ番号）`;
   if (conflictCnt) msg += `\n⚠同一ネット内に異なる既存線番が混在している箇所が${conflictCnt}件ありました(上書きしていません。線番表で確認・修正してください)`;
+  if (excludedCnt) msg += `\nチェックを外したネット${excludedCnt}件は対象外にしました`;
   wireNoTable(msg);
   draw();
 }
@@ -225,7 +228,7 @@ function autoWireNumber(){
 // 分断されて2行)が変わるので、一覧を見るだけで最新状態を把握できる。
 function wireNoTable(msg){
   if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
-  const rows = []; // { pageIdx, pname, idxs, wireNo, conflict }
+  const rows = []; // { pageIdx, pname, idxs, wireNo, conflict, autoNum }
   let total = 0, unnumbered = 0;
   state.pages.forEach((pg, pi) => {
     const pname = pg.name || ('Sheet'+(pi+1));
@@ -236,7 +239,8 @@ function wireNoTable(msg){
       const existingNums = [...new Set(idxs.map(i => wires[i].wireNo).filter(Boolean))];
       const wireNo = existingNums[0] || '';
       if (!wireNo) unnumbered += idxs.length;
-      rows.push({ pageIdx: pi, pname, idxs, wireNo, conflict: existingNums.length > 1 });
+      const autoNum = !idxs.some(i => wires[i].noAutoNum); // 1つでも対象外フラグがあればチェック外
+      rows.push({ pageIdx: pi, pname, idxs, wireNo, conflict: existingNums.length > 1, autoNum });
     });
   });
   // 未採番のネットを先頭に、それ以降は線番の自然順ソート
@@ -251,10 +255,11 @@ function wireNoTable(msg){
   html += `配線 全${total}本 / ネット ${rows.length}件`;
   if (unnumbered) html += ` / <span style="color:var(--red);font-weight:600">未採番 ${unnumbered}本</span>`;
   html += `<br>線番欄を直接編集すると、そのネット(繋がっている配線群)全体に即反映されます。`;
+  html += `<br>チェックを外すと「線番割付」ボタンでの自動採番の対象外になります(手入力は可能なまま)。`;
   html += `<br>配線を追加/削除した後は、この一覧を開き直して未採番(赤)や分断(橙)がないか確認してください。`;
   html += `<br><button onclick="compactAllWireNumbers()" title="削除等で欠番になった線番を詰めます(例: W001,W003,W005 → W001,W002,W003)。編集中に自動では動きません、このボタンを押した時だけ実行されます" style="margin-top:4px;font-size:10px;padding:2px 8px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)">欠番を詰める</button>`;
   html += `</p>`;
-  html += `<table class="tbl"><tr><th></th><th>線番</th><th>ページ</th><th>本数</th><th></th></tr>`;
+  html += `<table class="tbl"><tr><th></th><th></th><th>線番</th><th>ページ</th><th>本数</th><th></th></tr>`;
   // 線番文字列をonclick内のJS文字列リテラルに安全に埋め込むための簡易エスケープ
   const esc = s => String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
   rows.forEach((r, ri) => {
@@ -269,7 +274,9 @@ function wireNoTable(msg){
       ? `<button title="ひとつ下の行と線番を入れ替え" onclick="swapNetWireNo(${r.pageIdx},[${r.idxs.join(',')}],'${esc(r.wireNo)}',${next.pageIdx},[${next.idxs.join(',')}],'${esc(next.wireNo)}')" style="${btnStyle}">▼</button>`
       : `<button disabled style="${btnStyle};opacity:.3">▼</button>`;
     const delBtn = `<button title="このネットの配線ごと削除し、欠番を自動で詰めます" onclick="deleteNetFromList(${r.pageIdx},[${r.idxs.join(',')}])" style="${btnStyle};color:var(--red)">×</button>`;
+    const chk = `<input type="checkbox" ${r.autoNum?'checked':''} title="チェックを外すと「線番割付」ボタンでの自動採番の対象外になります" onchange="toggleNetAutoNum(${r.pageIdx},[${r.idxs.join(',')}],this.checked)">`;
     html += `<tr ${title}>` +
+      `<td>${chk}</td>` +
       `<td style="white-space:nowrap">${upBtn}${downBtn}</td>` +
       `<td><input type="text" value="${r.wireNo}" placeholder="未採番" ` +
       `onchange="applyNetWireNo(${r.pageIdx},[${r.idxs.join(',')}],this.value)" ` +
@@ -281,6 +288,18 @@ function wireNoTable(msg){
   });
   html += `</table>`;
   _reportOpen('wire', '線番 一覧(編集可)', html, exportWireCSV);
+}
+
+// 線番表のチェックボックス: ネット単位で「線番割付(自動採番)」の対象外にする。
+// デフォルトは全チェック(=対象)。外すとwires[].noAutoNum=trueが立ち、
+// autoWireNumber()の一括割付でスキップされる(手動でこの一覧に直接入力するのは
+// 引き続き可能)。
+function toggleNetAutoNum(pageIdx, idxs, checked) {
+  const pg = state.pages[pageIdx];
+  if (!pg || !pg.wires) return;
+  pushH();
+  idxs.forEach(i => { if (pg.wires[i]) pg.wires[i].noAutoNum = !checked; });
+  draw();
 }
 
 // 線番表の×ボタン: そのネットの配線を実際に削除し、続けて欠番を自動で詰める。
