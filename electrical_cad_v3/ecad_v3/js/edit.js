@@ -368,6 +368,80 @@ function snapNearGrid(tolerance) {
       : ''));
 }
 
+// 独立テキストの「揃え」機能（AutoCAD TEXTALIGNに準拠した方式）
+// 選択したテキストのうち、最初に選んだもの(=Set挿入順の先頭)を基準にし、
+// 左揃え/右揃え/上揃え/下揃え/中央揃え(横)/中央揃え(縦)のいずれかで他のテキストを移動する。
+// 手順: ①基準・対象数を確認 → ②揃え方向を選択 → ③実行(Undo対応)＋結果を数秒ハイライト
+function alignTexts() {
+  const texts = state.elements.filter(el => state.sel.els.has(el.id) && el.type === 'text');
+  if (texts.length < 2) {
+    alert('テキストを2つ以上選択してください（独立テキストのみが対象です）。\n最初に選んだテキストが基準になります。');
+    return;
+  }
+  // 選択順(Set挿入順)の先頭を基準とする
+  const selOrder = [...state.sel.els];
+  const refId = selOrder.find(id => texts.some(t => t.id === id));
+  const ref = texts.find(t => t.id === refId) || texts[0];
+
+  const refPreview = (ref.text || '').split('\n')[0].slice(0, 20) || '(空)';
+  const mode = prompt(
+    `基準テキスト: 「${refPreview}」\n対象: 他${texts.length - 1}個\n\n` +
+    `揃え方向を番号で入力してください:\n` +
+    `1: 左揃え\n2: 右揃え\n3: 上揃え\n4: 下揃え\n5: 中央揃え(横)\n6: 中央揃え(縦)`,
+    '1');
+  if (mode == null) return;
+  const modeNum = parseInt(mode, 10);
+  if (![1, 2, 3, 4, 5, 6].includes(modeNum)) { alert('1〜6の番号を入力してください。'); return; }
+
+  // テキストのバウンディングボックスを計算（drawTextEl()と同じロジック）
+  const bbox = (el) => {
+    const fs = el.fs || 14;
+    ctx.font = `${fs}px sans-serif`;
+    const lines = (el.text || '').split('\n');
+    const lineH = fs * 1.4;
+    const w = Math.max(...lines.map(l => ctx.measureText(l).width));
+    const top = el.y - fs * 0.85;
+    const bottom = top + lines.length * lineH + (el.textBoxPad ?? 4) * 0.5;
+    return { left: el.x, right: el.x + w, top, bottom, centerX: el.x + w / 2, centerY: (top + bottom) / 2 };
+  };
+
+  const refB = bbox(ref);
+  const targets = texts.filter(t => t.id !== ref.id);
+
+  const modeLabel = { 1: '左揃え', 2: '右揃え', 3: '上揃え', 4: '下揃え', 5: '中央揃え(横)', 6: '中央揃え(縦)' }[modeNum];
+  const ok = confirm(
+    `${targets.length}個のテキストを基準「${refPreview}」に${modeLabel}します。\nよろしいですか？（実行後はCtrl+Zで戻せます）`);
+  if (!ok) return;
+
+  pushH();
+  const fixPts = [];
+  targets.forEach(t => {
+    const b = bbox(t);
+    switch (modeNum) {
+      case 1: t.x += (refB.left - b.left); break;
+      case 2: t.x += (refB.right - b.right); break;
+      case 3: t.y += (refB.top - b.top); break;
+      case 4: t.y += (refB.bottom - b.bottom); break;
+      case 5: t.x += (refB.centerX - b.centerX); break;
+      case 6: t.y += (refB.centerY - b.centerY); break;
+    }
+    fixPts.push({ x: t.x, y: t.y });
+  });
+
+  // 補正箇所を数秒間オレンジでハイライト（snapNearGridと同じ仕組み）
+  state.snapFlash = { pts: fixPts, t0: Date.now() };
+  const anim = () => {
+    if (!state.snapFlash) return;
+    if (Date.now() - state.snapFlash.t0 > 3000) { state.snapFlash = null; draw(); return; }
+    draw();
+    requestAnimationFrame(anim);
+  };
+  requestAnimationFrame(anim);
+
+  draw(); updateRightPanel();
+  alert(`${targets.length}個のテキストを${modeLabel}しました。（Ctrl+Zで元に戻せます）`);
+}
+
 function moveEntity(el, dx, dy) {
   if (el.cx != null) el.cx += dx;
   if (el.cy != null) el.cy += dy;
