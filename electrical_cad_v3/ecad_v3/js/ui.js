@@ -1792,7 +1792,6 @@ function updateRightPanel() {
     if (lay?.attr) html += `<div class="pp-row"><label>属性（レイヤー）</label><p style="font-size:11px;color:var(--fg3);padding:2px 5px">${lay.attr}</p></div>`;
   } else if (el && ['fline','rect','circle','arc','triangle'].includes(el.type)) {
     // 図形専用プロパティ
-    const defColor = el.color || layColor(el.layer) || '#1d6fb5';
     if (el.type === 'fline') {
       const fAng = Math.round(Math.atan2(el.y2-el.y1, el.x2-el.x1)*180/Math.PI*10)/10;
       const fLen = Math.round(Math.hypot(el.x2-el.x1, el.y2-el.y1)*10)/10;
@@ -1884,7 +1883,11 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${el.wireNo||''}"></div>`;
     html += `<div class="pp-row"><label>回転(°)</label><input type="number" id="pp-rot" value="${el.rot||0}" step="90"></div>`;
     html += `<div class="pp-row"><label>スケール</label><input type="number" id="pp-scale" value="${el.scale||1}" step="0.1" min="0.1" max="5" oninput="previewScale()"></div>`;
-    html += `<div class="pp-row"><label>シンボル色</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="color" id="pp-symcolor" value="${el.color||'#1d6fb5'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('pp-symcolor','pp-symcolorcode');previewSymColor()"><input type="text" id="pp-symcolorcode" value="${el.color||'#1d6fb5'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-symcolorcode','pp-symcolor');previewSymColor()">${colorCodeBtns('pp-symcolorcode','pp-symcolor')}</div></div>`;
+    // シンボル色ピッカーは撤去（2026-08-16）。62c94f0で完全BYLAYER化した際に
+    // 描画側(draw.js)の el.color 参照を消したがUIだけ残っており、押しても画面に
+    // 何も反映されない状態だった。さらに初期値が el.color||'#1d6fb5' だったため、
+    // レイヤーに関係なく青が el.color へ焼き込まれる副作用もあった。
+    // 色はレイヤーで分ける方針で確定（盛田さん判断）。
     html += `<div class="pp-row"><label>シンボル線種</label><select id="pp-symls"><option value=""${!el.lineStyle?' selected':''}>実線</option><option value="dash"${el.lineStyle==='dash'?' selected':''}>破線</option><option value="dot"${el.lineStyle==='dot'?' selected':''}>点線</option><option value="dashdot"${el.lineStyle==='dashdot'?' selected':''}>一点鎖線</option></select></div>`;
     html += `<div class="pp-row"><label>シンボル線幅</label><select id="pp-symlw" title="登録時の太さや標準シンボルの既定太さを、このシンボル1個だけ上書きします">
       <option value=""${!el.lineWidth?' selected':''}>個別（変更なし）</option>
@@ -1957,7 +1960,7 @@ async function pasteColorCode(codeId, pickerId) {
     const pick = document.getElementById(pickerId);
     if (code) code.value = v;
     if (pick) pick.value = v;
-    // previewLabelStyleまたはpreviewSymColorを呼ぶ
+    // 文字色(仕様/型式/デバイス)のみプレビュー反映。シンボル本体色は廃止済み
     if (codeId === 'pp-lcolorcode') previewLabelStyle();
   } catch(e) {}
 }
@@ -1984,32 +1987,9 @@ function drawWithoutSel() {
   state.sel.els = savedEls; state.sel.wires = savedWires;
 }
 
-function previewJunctionColor() {
-  const rp = document.getElementById('rp-body');
-  const el = rp?._el;
-  if (!el || el.type !== 'junction') return;
-  const c = document.getElementById('pp-jcolorcode');
-  
-  drawWithoutSel();
-}
-
-function previewWireColor() {
-  const rp = document.getElementById('rp-body');
-  const wire = rp?._wire;
-  if (!wire) return;
-  const c = document.getElementById('pp-wcolorcode');
-  if (c && /^#[0-9a-fA-F]{6}$/.test(c.value)) wire.color = c.value;
-  drawWithoutSel();
-}
-
-function previewElColor() {
-  const rp = document.getElementById('rp-body');
-  const el = rp?._el;
-  if (!el) return;
-  const c = document.getElementById('pp-colorcode') || document.getElementById('pp-textcolorcode');
-  
-  drawWithoutSel();
-}
+// 注: previewSymColor/previewWireColor/previewElColor/previewJunctionColor は
+// 個別色の廃止(62c94f0・完全BYLAYER化)で中身が空になったまま残っていたため
+// 2026-08-16に撤去した。呼び出し元は全ファイルgrepでゼロ件を確認済み。
 
 function previewLabelStyle() {
   const rp = document.getElementById('rp-body');
@@ -2025,15 +2005,6 @@ function previewLabelStyle() {
     const ta = document.getElementById('pp-label');
     if (ta) ta.style.textAlign = lalign.value || 'center';
   }
-  drawWithoutSel();
-}
-
-function previewSymColor() {
-  const rp = document.getElementById('rp-body');
-  const el = rp?._el;
-  if (!el) return;
-  const c = document.getElementById('pp-symcolorcode');
-  
   drawWithoutSel();
 }
 
@@ -2207,7 +2178,7 @@ function applyRightPanel() {
     if (v('pp-lw')) wire.lineWidth = parseFloat(v('pp-lw'));
     if (v('pp-ls') !== undefined) wire.lineStyle = v('pp-ls') || undefined;
   } else if (el && ['fline','rect','circle','arc','triangle'].includes(el.type)) {
-    el.color     = v('pp-symcolorcode') || v('pp-symcolor') || undefined;
+    delete el.color;  // 個別色は廃止（完全BYLAYER）。旧データの残骸をここで掃除する
     if (v('pp-lw')) el.lineWidth = parseFloat(v('pp-lw'));
     el.lineStyle = v('pp-ls') || undefined;
     if (el.type === 'fline') {
@@ -2265,7 +2236,7 @@ function applyRightPanel() {
     el.wireNo    = v('pp-wireno');
     el.rot       = parseInt(v('pp-rot'))||0;
     el.scale      = Math.max(0.1, Math.min(5, parseFloat(v('pp-scale'))||1));
-    el.color      = v('pp-symcolorcode') || v('pp-symcolor') || undefined;
+    delete el.color;  // 個別色は廃止（完全BYLAYER）。旧データの残骸をここで掃除する
     el.lineStyle  = v('pp-symls') || undefined;
     el.lineWidth  = v('pp-symlw') ? parseFloat(v('pp-symlw')) : undefined;
     el.labelColor = v('pp-lcolorcode') || v('pp-lcolor') || undefined;

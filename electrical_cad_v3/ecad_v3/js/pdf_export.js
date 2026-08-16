@@ -164,73 +164,11 @@ function _pageFileBase(pg, idx) {
   return `${base}_${name}`;
 }
 
-// シンボル要素をオフスクリーンキャンバスでラスタライズ → dataURL
-function rasterizeSymEl(el, s) {
-  const dpi = 200;
-  const def = getDef(el.type) || { w:40, h:40 };
-  const sc  = el.scale || 1;
-  const pad = 8;
-  // 回転を考慮して正方形ベースで確保（90°/270°でw/hが入れ替わるため）
-  const rot = el.rot || 0;
-  const isSwapped = (rot === 90 || rot === 270 || rot === -90);
-  const rawW = (def.w * sc || 40);
-  const rawH = (def.h * sc || 40);
-  const boxW = isSwapped ? rawH : rawW;
-  const boxH = isSwapped ? rawW : rawH;
-  const wW = boxW + pad*2;
-  const hW = boxH + pad*2;
-  const zoom = s * dpi / 25.4;
-  const pxW = Math.max(4, Math.round(wW * zoom));
-  const pxH = Math.max(4, Math.round(hW * zoom));
-  const dispW = wW * s;
-  const dispH = hW * s;
-
-  const oc = document.createElement('canvas');
-  oc.width = pxW; oc.height = pxH;
-  const octx = oc.getContext('2d');
-  octx.clearRect(0, 0, pxW, pxH);
-
-  const origCv = cv, origCtx = ctx, origZoom = state.zoom;
-  cv = oc; ctx = octx;
-  state.zoom = 1;
-
-  octx.save();
-  octx.translate(pxW/2, pxH/2);
-  octx.scale(zoom * sc, zoom * sc);
-  drawSym(el.type, 0, 0, false, el.rot||0, el.flipH, el.flipV, '#000000');
-  octx.restore();
-
-  cv = origCv; ctx = origCtx; state.zoom = origZoom;
-  return { dataURL: oc.toDataURL('image/png'), dispW, dispH };
-}
-
-// テキスト要素をオフスクリーンキャンバスでラスタライズ（日本語対応）
-// fsMM: フォントサイズ(mm)。el.fsはスクリーンpx単位なので呼び出し側で変換すること
-function rasterizeTextEl(el, fsMM) {
-  const dpi = 200;
-  const text = el.text || '';
-  if (!text) return null;
-  const pxPerMM = dpi / 25.4;
-  const fsPx = fsMM * pxPerMM;
-  const fontStr = `${el.bold ? 'bold ' : ''}${fsPx}px sans-serif`;
-
-  const tmpCv = document.createElement('canvas');
-  tmpCv.width = 1; tmpCv.height = 1;
-  const tmpCtx = tmpCv.getContext('2d');
-  tmpCtx.font = fontStr;
-  const pxW = Math.max(4, Math.ceil(tmpCtx.measureText(text).width + 4));
-  const pxH = Math.max(4, Math.ceil(fsPx * 1.5));
-
-  const oc = document.createElement('canvas');
-  oc.width = pxW; oc.height = pxH;
-  const octx = oc.getContext('2d');
-  // 背景は透明（白塗りしない）
-  octx.fillStyle = el.color || '#000000';
-  octx.font = fontStr;
-  octx.textBaseline = 'middle';
-  octx.fillText(text, 2, pxH / 2);
-  return { dataURL: oc.toDataURL('image/png'), wMM: pxW / pxPerMM, hMM: pxH / pxPerMM };
-}
+// 注: 旧ベクター方式のラスタライズ関数(rasterizeSymEl / rasterizeTextEl)は
+// 2026-08-16に削除した。現在のPDF出力は _exportPDFPages() でキャンバス全体を
+// JPEG画像として1枚埋め込む方式に変わっており、これらは定義だけが残って
+// どこからも呼ばれていなかった(全ファイルgrepで呼び出し0件を確認)。
+// 将来PDFをベクター化する際は git show で復元できる。
 
 function runExportPDF() {
   // 現在ページのみ

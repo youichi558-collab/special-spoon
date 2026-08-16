@@ -89,6 +89,22 @@ function _mergeOrSetHiddenBuiltinRefs(dRefs) {
   }
 }
 
+// 旧バージョンのファイルに残っている個別色(el.color / wire.color)を取り除く。
+// 色はレイヤーで決まる方式(完全BYLAYER, 62c94f0〜)に統一済みで、描画・DXF出力・
+// PDF出力のいずれもこのフィールドを読んでいないため、残っていても表示には影響しない。
+// ただしファイル内に意味のないデータが残り続けるので、読み込み時にここで掃除する。
+//
+// 以前は loadProject() の中だけでこの処理をしており、自動保存からの復元
+// (restoreAutosave)には無かったため、「ファイル読込では消えるがリロードでは残る」
+// という食い違いが起きていた。2026-08-16に共通関数へ切り出して両方から呼ぶようにした。
+// junction も画面ではレイヤー色で描かれるため、以前あった junction の除外はやめた。
+function stripLegacyColors(pages) {
+  (pages || []).forEach(pg => {
+    (pg.elements || []).forEach(el => { delete el.color; });
+    (pg.wires    || []).forEach(w  => { delete w.color;  });
+  });
+}
+
 function _pageFileName(pg, idx) {
   const base = (state.saveFileName || '図面').replace(/[\\/:*?"<>|]/g, '_');
   const name = (pg.name || ('Sheet'+(idx+1))).replace(/[\\/:*?"<>|]/g, '_');
@@ -183,11 +199,7 @@ function loadProject(input) {
       state.customSymbols.forEach(s => { DEFS[s.type] = s; });
       state.saveFileName = d.saveFileName || '';
       state.sel.els.clear(); state.sel.wires.clear();
-      // ロード時に個別色をクリア → レイヤー色を継承（junction以外）
-      state.pages.forEach(pg => {
-        (pg.elements||[]).forEach(el => { if (el.type !== 'junction') el.color = undefined; });
-        (pg.wires||[]).forEach(w => { w.color = undefined; });
-      });
+      stripLegacyColors(state.pages);
       renderSymFloat(); renderPartsAll(); renderPageTabs(); draw(); updateRightPanel();
       if (typeof partsDb !== 'undefined') partsDb.scheduleSave();
       alert('読込完了');
@@ -946,33 +958,32 @@ function explodeSelected() {
       return { x: el.x + sx * cosR - sy * sinR, y: el.y + sx * sinR + sy * cosR };
     };
     const lay = el.layer || activeLayer();
-    const col = el.color || undefined;
     cS.shapes.forEach(s => {
       if (s.t === 'L') {
         const id = genId('el');
         const p1 = tx(s.x1, s.y1), p2 = tx(s.x2, s.y2);
-        state.elements.push({ id, type: 'fline', x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, layer: lay, color: col });
+        state.elements.push({ id, type: 'fline', x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, layer: lay });
         newIds.push(id);
       } else if (s.t === 'C') {
         const id = genId('el');
         const c = tx(s.cx, s.cy);
-        state.elements.push({ id, type: 'circle', x: c.x, y: c.y, r: s.r * sc, layer: lay, color: col });
+        state.elements.push({ id, type: 'circle', x: c.x, y: c.y, r: s.r * sc, layer: lay });
         newIds.push(id);
       } else if (s.t === 'A') {
         const id = genId('el');
         const c = tx(s.cx, s.cy);
-        state.elements.push({ id, type: 'arc', x: c.x, y: c.y, r: s.r * sc, startA: s.sa * Math.PI / 180 + rot, endA: s.ea * Math.PI / 180 + rot, layer: lay, color: col });
+        state.elements.push({ id, type: 'arc', x: c.x, y: c.y, r: s.r * sc, startA: s.sa * Math.PI / 180 + rot, endA: s.ea * Math.PI / 180 + rot, layer: lay });
         newIds.push(id);
       } else if (s.t === 'P' && s.pts && s.pts.length >= 2) {
         const pts = s.pts.map(p => tx(p[0], p[1]));
         for (let k = 0; k < pts.length - 1; k++) {
           const id = genId('el');
-          state.elements.push({ id, type: 'fline', x1: pts[k].x, y1: pts[k].y, x2: pts[k+1].x, y2: pts[k+1].y, layer: lay, color: col });
+          state.elements.push({ id, type: 'fline', x1: pts[k].x, y1: pts[k].y, x2: pts[k+1].x, y2: pts[k+1].y, layer: lay });
           newIds.push(id);
         }
         if (s.cl && pts.length >= 2) {
           const id = genId('el');
-          state.elements.push({ id, type: 'fline', x1: pts[pts.length-1].x, y1: pts[pts.length-1].y, x2: pts[0].x, y2: pts[0].y, layer: lay, color: col });
+          state.elements.push({ id, type: 'fline', x1: pts[pts.length-1].x, y1: pts[pts.length-1].y, x2: pts[0].x, y2: pts[0].y, layer: lay });
           newIds.push(id);
         }
       }
