@@ -105,6 +105,66 @@ function stripLegacyColors(pages) {
   });
 }
 
+// 図面ファイル内で重複してしまっている要素ID・配線IDを検出し、後から出てきた方に
+// 新しいIDを振り直す。
+//
+// 旧 genId() は同じミリ秒内に大量生成すると高確率でIDが重複していた（state.jsの
+// コメント参照）。IDが重複すると、選択・移動・削除がどれも id 照合で対象を集めて
+// いるため、1個だけ操作したつもりが図面の別の場所にある図形まで巻き込まれる。
+// genId()側は修正済みだが、それ以前に作られた図面には既に重複が埋まっている
+// 可能性があるため、読み込み時にここで修復する。
+//
+// グループ(groups)は elIds / wireIds で要素IDを参照しているので、振り直しに
+// あわせてこちらも更新する。これを忘れると、グループから図形が抜け落ちる。
+// IDは内部的な識別子で画面には出ないため、振り直しても図面の見た目は変わらない。
+function dedupeIds(pages) {
+  const seenEl = new Set();
+  const seenWire = new Set();
+  let fixed = 0;
+
+  (pages || []).forEach(pg => {
+    const remap = {};      // 旧ID → 新ID（このページのグループ参照を直すため）
+    const remapWire = {};
+
+    (pg.elements || []).forEach(el => {
+      if (!el.id) { el.id = genId('el'); fixed++; return; }
+      if (seenEl.has(el.id)) {
+        const newId = genId('el');
+        remap[el.id] = newId;
+        el.id = newId;
+        fixed++;
+      }
+      seenEl.add(el.id);
+    });
+
+    (pg.wires || []).forEach(w => {
+      if (!w.id) { w.id = genId('w'); fixed++; return; }
+      if (seenWire.has(w.id)) {
+        const newId = genId('w');
+        remapWire[w.id] = newId;
+        w.id = newId;
+        fixed++;
+      }
+      seenWire.add(w.id);
+    });
+
+    // グループの参照を追随させる。
+    // 注意: 同一ページ内で同じ旧IDが3個以上重複していた場合、remapは最後の1件しか
+    // 覚えていない。ただしその状況では元々どの要素を指していたか判別不可能なので、
+    // グループには最初の1個が残る形になる（実害は「グループから漏れる」程度）。
+    (pg.groups || []).forEach(g => {
+      if (g.elIds)   g.elIds   = g.elIds.map(id => remap[id] || id);
+      if (g.wireIds) g.wireIds = g.wireIds.map(id => remapWire[id] || id);
+    });
+  });
+
+  if (fixed > 0) {
+    console.warn(`[dedupeIds] 重複していたIDを ${fixed} 件修復しました。`
+      + `図形が勝手に一緒に動く・消えるといった不具合の原因になっていた可能性があります。`);
+  }
+  return fixed;
+}
+
 function _pageFileName(pg, idx) {
   const base = (state.saveFileName || '図面').replace(/[\\/:*?"<>|]/g, '_');
   const name = (pg.name || ('Sheet'+(idx+1))).replace(/[\\/:*?"<>|]/g, '_');
@@ -200,9 +260,14 @@ function loadProject(input) {
       state.saveFileName = d.saveFileName || '';
       state.sel.els.clear(); state.sel.wires.clear();
       stripLegacyColors(state.pages);
+      const fixedIds = dedupeIds(state.pages);
       renderSymFloat(); renderPartsAll(); renderPageTabs(); draw(); updateRightPanel();
       if (typeof partsDb !== 'undefined') partsDb.scheduleSave();
-      alert('読込完了');
+      alert(fixedIds > 0
+        ? `読込完了\n\n重複していた図形IDを ${fixedIds} 件修復しました。\n`
+          + `(このファイルは、図形が勝手に一緒に動く・消える不具合が起きうる状態でした)\n`
+          + `上書き保存すると修復後の状態になります。`
+        : '読込完了');
     } catch(err) {
       alert('読込失敗: ' + err.message);
     }

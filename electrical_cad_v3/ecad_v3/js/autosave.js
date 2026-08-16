@@ -64,6 +64,8 @@ function restoreAutosave() {
     // 旧個別色の掃除（loadProjectと同じ処理。以前はファイル読込側にしか無く、
     // 「読込では消えるがリロードでは残る」という食い違いになっていた）
     if (typeof stripLegacyColors === 'function') stripLegacyColors(state.pages);
+    // 重複IDの修復（旧genIdの衝突対策。詳細はedit.jsのdedupeIds参照）
+    if (typeof dedupeIds === 'function') dedupeIds(state.pages);
     state.currentPage  = Math.min(d.currentPage || 0, state.pages.length - 1);
     state.saveFileName = d.saveFileName || '';
     state.wireNoRule   = d.wireNoRule || state.wireNoRule;
