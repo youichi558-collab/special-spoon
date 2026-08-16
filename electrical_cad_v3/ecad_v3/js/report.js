@@ -564,12 +564,14 @@ function elAnchor(el) {
 }
 
 // 要素が何ページの何区画にあるかを「2/B3」形式で返す。
-// 図面枠が無いページや区画割りが無い場合はページ番号のみ返す。
+// 作図領域の外(余白・表題欄の中・用紙の外)にある要素は「2/枠外」と返す。
+// 図面枠そのものが無いページはページ番号だけを返す。
+// 「枠が無い」のか「枠の外にはみ出している」のかを区別できるようにしてある。
 function elLocation(el, pageIdx) {
   const pg = state.pages[pageIdx];
   const p = elAnchor(el);
   const z = (p && pg) ? zoneOf(p.x, p.y, pg.frameObj) : '';
-  return z && z !== '枠外' ? `${pageIdx + 1}/${z}` : String(pageIdx + 1);
+  return z ? `${pageIdx + 1}/${z}` : String(pageIdx + 1);
 }
 
 function symRole(el){
