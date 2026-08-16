@@ -516,6 +516,62 @@ function exportBOMCSV(){
 // 要素の役割を判定する。
 // カスタムシンボルはシンボル登録/端子編集で指定した role を使う。
 // 標準シンボルは DEFS の isCoil / isContact + contactType から導く。
+// ================================================================
+// 図面区画（ゾーン）の算出
+//
+// 図面枠には列ラベル(A,B,C...)と行ラベル(1,2,3...)が振られている。
+// 「このシンボルは2ページのB3区画にある」という形で位置を示すために、
+// ワールド座標から区画名を求める。
+//
+// 座標計算は frame.js の drawFrame() と必ず一致させること。図面枠は
+// ワールド座標の原点(0,0)を左上として描かれる(draw()内でpan/zoomを
+// かけた後、オフセット無しでdrawFrameを呼んでいる)。
+// drawFrame側の区画割りを変更したときは、この関数も合わせて直すこと。
+// ================================================================
+function zoneOf(x, y, fr) {
+  if (!fr || fr.isCover) return '';
+  const sc = fr.sc || 2;
+  const cols = fr.cols || 0, rows = fr.rows || 0;
+  if (!cols || !rows) return '';
+
+  const W = (fr.wMM || 297) * sc;
+  const H = (fr.hMM || 210) * sc;
+  const MGpx = (fr.mg || 10) * sc;
+  const TH = (fr.thMM || 30) * sc;
+  const innerW = W - MGpx * 2;
+  const innerH = H - MGpx * 2;
+  const drawH = innerH - TH;            // 表題欄を除いた作図領域の高さ
+  if (innerW <= 0 || drawH <= 0) return '';
+
+  const colW = innerW / cols;
+  const rowH = drawH / rows;
+
+  // 作図領域の外（表題欄の上や用紙外）にある要素は区画を持たない
+  if (x < MGpx || x > MGpx + innerW) return '枠外';
+  if (y < MGpx || y > MGpx + drawH)  return '枠外';
+
+  const c = Math.min(cols - 1, Math.max(0, Math.floor((x - MGpx) / colW)));
+  const r = Math.min(rows - 1, Math.max(0, Math.floor((y - MGpx) / rowH)));
+  // 列ラベルはdrawFrame()と同じくA〜Zを循環させる
+  return String.fromCharCode(65 + c % 26) + (r + 1);
+}
+
+// 要素の代表座標を返す。シンボルは(x,y)を持つが、線分系は始点しか持たない。
+function elAnchor(el) {
+  if (el.x != null && el.y != null) return { x: el.x, y: el.y };
+  if (el.x1 != null && el.y1 != null) return { x: el.x1, y: el.y1 };
+  return null;
+}
+
+// 要素が何ページの何区画にあるかを「2/B3」形式で返す。
+// 図面枠が無いページや区画割りが無い場合はページ番号のみ返す。
+function elLocation(el, pageIdx) {
+  const pg = state.pages[pageIdx];
+  const p = elAnchor(el);
+  const z = (p && pg) ? zoneOf(p.x, p.y, pg.frameObj) : '';
+  return z && z !== '枠外' ? `${pageIdx + 1}/${z}` : String(pageIdx + 1);
+}
+
 function symRole(el){
   const d=getDef(el.type)||{};
   if(d.role)return d.role;                       // 'coil' | 'contact_a' | 'contact_b'
@@ -542,7 +598,7 @@ function showRefPanel(){
       if(!devs[key])devs[key]={spellings:new Map(),coils:[],contacts:[],noRef:!raw};
       const dv=devs[key];
       if(raw)dv.spellings.set(raw,(dv.spellings.get(raw)||0)+1);
-      const rec={el,page:pi+1,role};
+      const rec={el,page:pi+1,role,loc:elLocation(el,pi)};
       if(role==='coil')dv.coils.push(rec); else dv.contacts.push(rec);
     });
   });
@@ -565,10 +621,11 @@ function showRefPanel(){
     if(!dv.coils.length)warns.push('コイル未配置');
     if(dv.coils.length>1)warns.push(`コイルが${dv.coils.length}個`);
     if(dv.noRef)warns.push('デバイス未設定');
+    // locは「2/B3」(ページ/区画)形式。図面枠が無いページはページ番号だけになる
     const badge=c=>`<span class="badge badge-${c.role==='contact_a'?'g':'b'}">`
-      +`${c.role==='contact_a'?'a':'b'}接点 P${c.page}</span>`;
+      +`${c.role==='contact_a'?'a':'b'} ${c.loc}</span>`;
     const coilTxt=dv.coils.length
-      ? dv.coils.map(c=>`<span class="badge badge-p">P${c.page}</span>`).join(' ')
+      ? dv.coils.map(c=>`<span class="badge badge-p">${c.loc}</span>`).join(' ')
       : '<span class="badge" style="background:var(--rbg);color:var(--red)">未配置</span>';
     return `<tr><td><b>${name}</b>${warns.length
         ?`<br><span style="color:var(--red);font-size:10px">⚠ ${warns.join(' / ')}</span>`:''}</td>`
@@ -577,10 +634,33 @@ function showRefPanel(){
       +`<td>${dv.contacts.length}</td></tr>`;
   }).join('');
 
+  const noFrame=state.pages.some(pg=>!pg.frameObj||!pg.frameObj.cols);
   const html=`<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">`
-    +`全${state.pages.length}ページ集計。Pの数字は配置ページです。</p>`
+    +`全${state.pages.length}ページ集計。位置は「ページ/区画」で表示します(例: 2/B3)。`
+    +(noFrame?`<br><span style="color:var(--red)">図面枠が未設定のページは区画が出せないため、ページ番号のみ表示しています。</span>`:'')
+    +`</p>`
     +`<table class="tbl"><tr><th>デバイス</th><th>コイル</th><th>接点</th><th>接点数</th></tr>${rows}</table>`;
-  _reportOpen('ref', '接点・コイル リファレンス', html, null);
+  _reportOpen('ref', '接点・コイル リファレンス', html, () => exportRefCSV(devs));
+}
+
+// 接点・コイルリファレンスをCSVで書き出す
+function exportRefCSV(devs){
+  const esc=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
+  const lines=['デバイス,コイル位置,接点種別,接点位置'];
+  Object.keys(devs).sort().forEach(k=>{
+    const dv=devs[k];
+    const spells=[...dv.spellings.entries()].sort((a,b)=>b[1]-a[1]);
+    const name=spells.length?spells[0][0]:'(デバイス未設定)';
+    const coilLoc=dv.coils.map(c=>c.loc).join(' ');
+    if(!dv.contacts.length){
+      lines.push([name,coilLoc,'',''].map(esc).join(','));
+      return;
+    }
+    dv.contacts.forEach(c=>{
+      lines.push([name,coilLoc,c.role==='contact_a'?'a接点':'b接点',c.loc].map(esc).join(','));
+    });
+  });
+  dl(lines.join('\n'),'cross_reference.csv','text/csv');
 }
 function showTerminals(){
   const terms=state.elements.filter(el=>el.type==='terminal');
