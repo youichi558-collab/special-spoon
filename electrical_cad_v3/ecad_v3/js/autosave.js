@@ -66,6 +66,8 @@ function restoreAutosave() {
     if (typeof stripLegacyColors === 'function') stripLegacyColors(state.pages);
     // 重複IDの修復（旧genIdの衝突対策。詳細はedit.jsのdedupeIds参照）
     if (typeof dedupeIds === 'function') dedupeIds(state.pages);
+    // グループの幽霊参照（削除済み要素のID）を掃除
+    if (typeof pruneGroups === 'function') state.pages.forEach(pg => pruneGroups(pg));
     state.currentPage  = Math.min(d.currentPage || 0, state.pages.length - 1);
     state.saveFileName = d.saveFileName || '';
     state.wireNoRule   = d.wireNoRule || state.wireNoRule;

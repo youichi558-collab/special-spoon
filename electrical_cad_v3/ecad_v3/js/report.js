@@ -317,6 +317,8 @@ function deleteNetFromList(pageIdx, idxs) {
   pushH();
   const idSet = new Set(targetIds);
   pg.wires = pg.wires.filter(w => !idSet.has(w.id));
+  // 消した配線がグループに入っていた場合の参照を掃除する
+  if (typeof pruneGroups === 'function') pruneGroups(pg);
   if (delNo) compactWireNumbersAfterRemoval([delNo]);
   draw();
   wireNoTable();

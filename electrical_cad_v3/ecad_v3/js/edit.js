@@ -261,6 +261,7 @@ function loadProject(input) {
       state.sel.els.clear(); state.sel.wires.clear();
       stripLegacyColors(state.pages);
       const fixedIds = dedupeIds(state.pages);
+      state.pages.forEach(pg => pruneGroups(pg));
       renderSymFloat(); renderPartsAll(); renderPageTabs(); draw(); updateRightPanel();
       if (typeof partsDb !== 'undefined') partsDb.scheduleSave();
       alert(fixedIds > 0
@@ -640,8 +641,31 @@ function delSel() {
   pushH();
   state.page.elements = state.elements.filter(e => !state.sel.els.has(e.id));
   state.page.wires    = state.wires.filter(w    => !state.sel.wires.has(w.id));
+  // 消した要素をグループの参照からも取り除く。これをやらないと groups に
+  // 存在しない要素のIDが残り続け(幽霊参照)、ファイルに不要なデータが溜まる。
+  // 中身が空になったグループはグループごと削除する。
+  pruneGroups(state.page);
   state.sel.els.clear(); state.sel.wires.clear();
   draw(); updateRightPanel();
+}
+
+// グループ(groups)が持つ要素ID・配線IDのうち、実際にはもう存在しないものを取り除く。
+// 中身が空になったグループはグループごと捨てる。
+// 要素を削除する処理の後に呼ぶこと。
+function pruneGroups(pg) {
+  if (!pg || !pg.groups || !pg.groups.length) return 0;
+  const elIdSet   = new Set((pg.elements || []).map(e => e.id));
+  const wireIdSet = new Set((pg.wires    || []).map(w => w.id));
+  const before = pg.groups.length;
+  pg.groups = pg.groups
+    .map(g => ({
+      ...g,
+      elIds:   (g.elIds   || []).filter(id => elIdSet.has(id)),
+      wireIds: (g.wireIds || []).filter(id => wireIdSet.has(id)),
+    }))
+    // 1個だけになったグループも意味を成さないので捨てる
+    .filter(g => g.elIds.length + g.wireIds.length >= 2);
+  return before - pg.groups.length;
 }
 
 function selectAll() {
@@ -1056,6 +1080,8 @@ function explodeSelected() {
     // 元のシンボル要素を削除
     state.page.elements = state.elements.filter(e => e.id !== el.id);
   });
+  // 分解で消えたシンボルがグループに入っていた場合の参照を掃除する
+  pruneGroups(state.page);
   // 分解後の要素を選択状態にする
   state.sel.els.clear();
   newIds.forEach(id => state.sel.els.add(id));

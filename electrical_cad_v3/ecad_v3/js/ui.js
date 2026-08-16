@@ -1600,7 +1600,7 @@ function addPage() {
   state.pages[state.currentPage].elements = state.elements;
   state.pages[state.currentPage].wires    = state.wires;
   state.pages[state.currentPage].frameObj = state.frameObj;
-  state.pages.push({ name:'Sheet'+(state.pages.length+1), elements:[], wires:[], groups:[], frameObj:null });
+  state.pages.push({ name:'Sheet'+(state.pages.length+1), elements:[], wires:[], groups:[], guides:[], frameObj:null });
   switchPage(state.pages.length - 1);
 }
 
