@@ -170,7 +170,7 @@ function showFramePanel(){
 // 描画と区画表示の両方に反映される。
 // 例) 表題欄を下ではなく右side に置く → drawH ではなく innerW を削る形に直す
 //     区画を余白ではなく内枠の中に振る   → MGpx のオフセットを変える
-//     列ラベルをAA,ABまで伸ばす          → zoneColLabel() を直す
+//     行ラベルをAA,ABまで伸ばす          → zoneRowLabel() を直す
 // ================================================================
 function frameGeom(fr){
   if(!fr) return null;
@@ -190,10 +190,10 @@ function frameGeom(fr){
   };
 }
 
-// 列ラベル(A,B,C...)。26列を超えたらAに戻る。
-function zoneColLabel(c){ return String.fromCharCode(65 + c % 26); }
-// 行ラベル(1,2,3...)。
-function zoneRowLabel(r){ return String(r + 1); }
+// 列ラベル(1,2,3...)。
+function zoneColLabel(c){ return String(c + 1); }
+// 行ラベル(A,B,C...)。26行を超えたらAに戻る。
+function zoneRowLabel(r){ return String.fromCharCode(65 + r % 26); }
 
 function drawFrame(fr){
   if (fr.isCover) return; // 表紙ページは図面枠を描画しない
@@ -240,11 +240,11 @@ function drawFrame(fr){
       ctx.beginPath();ctx.moveTo(0,MGpx+r*rowH);ctx.lineTo(MGpx,MGpx+r*rowH);ctx.stroke();
       ctx.beginPath();ctx.moveTo(MGpx+innerW,MGpx+r*rowH);ctx.lineTo(W,MGpx+r*rowH);ctx.stroke();
     }
-    // 列ラベル (A,B,C...)
+    // 列ラベル (1,2,3...)
     for(let c=0;c<cols;c++){
       ctx.fillText(zoneColLabel(c),MGpx+c*colW+colW/2,MGpx-3);
     }
-    // 行ラベル (1,2,3...)
+    // 行ラベル (A,B,C...)
     ctx.textAlign='center';
     for(let r=0;r<rows;r++){
       ctx.fillText(zoneRowLabel(r),MGpx-8,MGpx+r*rowH+rowH/2+4);
