@@ -545,11 +545,15 @@
       <div class="fr" style="margin-bottom:4px"><label>様式</label>
         <select id="frame-tbtpl"></select>
       </div>
-      <div style="display:flex;gap:4px;margin-bottom:6px">
+      <div style="display:flex;gap:4px;margin-bottom:4px">
         <input type="file" id="tbtpl-in" accept=".json" style="display:none" onchange="loadTitleBlockTpl(this)">
         <button class="btn" style="flex:1" onclick="document.getElementById('tbtpl-in').click()">様式を読込</button>
         <button class="btn" style="flex:1" onclick="exportTitleBlockTpl()">書出</button>
         <button class="btn" onclick="deleteTitleBlockTpl()">削除</button>
+      </div>
+      <div style="margin-bottom:6px">
+        <input type="file" id="dfp-in" accept=".dxf,.DXF" style="display:none" onchange="probeDxfFrame(this)">
+        <button class="btn" style="width:100%" onclick="document.getElementById('dfp-in').click()">DXFの枠を調べる（図面は変更しません）</button>
       </div>
       <div class="g2">
         <div class="fr"><label>図面番号</label><input type="text" id="f-drawno" placeholder="DWG-001"></div>
@@ -575,6 +579,17 @@
         <button class="fp-btn" onclick="saveFrameTplUser()">テンプレ保存</button>
         <button class="fp-btn danger" onclick="removeFrame()">枠を削除</button>
         <button class="fp-btn" onclick="closeFP('frame-p')">閉じる</button>
+      </div>
+    </div>
+
+    <div class="fp" id="dfp-p">
+      <h3>DXFの枠 調査結果</h3>
+      <div style="font-size:11px;color:var(--fg3);margin-bottom:6px">
+        読み込んだDXFはこのPCの中だけで解析しています。図面には手を加えていません。
+      </div>
+      <div id="dfp-body" style="max-height:52vh;overflow:auto"></div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button class="fp-btn" onclick="closeFP('dfp-p')">閉じる</button>
       </div>
     </div>
 
@@ -824,6 +839,7 @@
 <script src="js/sjis.js"></script>
 <script src="js/dxf_export.js"></script>
 <script src="js/dxf_import.js"></script>
+<script src="js/dxf_frame_probe.js"></script>
 <script src="js/report.js"></script>
 <script src="js/search.js"></script>
 <script src="js/pdf_export.js"></script>
