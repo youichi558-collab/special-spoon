@@ -707,12 +707,15 @@ function exportDXF(){
         const fs = el.labelFs||11;
         const lh = Math.round(fs*1.25);
         const lines = String(el.label).split('\n');
+        // labelFollowRot(既定OFF): 位置は回転に追随するが文字自体は水平のまま(画面と同じ)。
+        // ONのときだけ従来どおり文字自体も回転させる。
+        const textRot = el.labelFollowRot ? (el.rot||0) : 0;
         lines.forEach((ln,i)=>{
           if(!ln) return;
           const ly0 = loy + i*lh;
           const lx=el.x+lox*Math.cos(rot)-ly0*Math.sin(rot);
           const ly=el.y+lox*Math.sin(rot)+ly0*Math.cos(rot);
-          eText(layer, lx, ly, fs, ln, el.rot||0, el.labelAlign||'center');
+          eText(layer, lx, ly, fs, ln, textRot, el.labelAlign||'center');
         });
       }
       // 【新規】型式(partModel)。draw.jsのdrawSymEl内の型式表示ブロックと同じ位置式。

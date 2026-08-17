@@ -520,12 +520,10 @@ function drawSymEl(el, sel, lc) {
     // 文字サイズはシンボルのスケールに追随させない(印字上の実サイズとして固定)。
     // 位置(loy等)はシンボルに対する相対配置なのでスケールに追随させたまま。
     const fs  = Math.round(el.labelFs||11);
+    const lines = String(el.label).split('\n');
+    const lh = Math.round(fs * 1.25);
+    const lox = el.labelOffX || 0;
     ctx.save();
-    // translate+rotateしたローカル座標系で描くと、文字揃えの基準x(lox)が
-    // 全行共通のまま保てる。textAlignをleft/center/rightに切り替えるだけで
-    // 各行の長さが違っても自然に左揃え/中央揃え/右揃えになる。
-    ctx.translate(el.x, el.y);
-    ctx.rotate(rot);
     ctx.fillStyle = el.labelColor || (state.darkMode ? '#aaa' : '#555');
     ctx.font = `${fs}px sans-serif`;
     // 基準点(lox)は内容の長さに関わらず常に固定(labelOffXのみ)。
@@ -534,10 +532,25 @@ function drawSymEl(el, sel, lc) {
     // 開始位置がズレてしまっていた(同じ書き方でも装置ごとに位置が変わる不具合)。
     // 「左揃え=決まった位置から書き始める」という素直な期待に合わせ、固定点+揃えのみにする。
     ctx.textAlign = el.labelAlign || 'center';
-    const lines = String(el.label).split('\n');
-    const lh = Math.round(fs * 1.25);
-    const lox = el.labelOffX || 0;
-    lines.forEach((ln, i) => ctx.fillText(ln, lox, loy + i*lh));
+    if (el.labelFollowRot) {
+      // オプションON: 位置も文字の向きもシンボルの回転に追随(従来の挙動)。
+      // translate+rotateしたローカル座標系で描くと、文字揃えの基準x(lox)が
+      // 全行共通のまま保てる。textAlignをleft/center/rightに切り替えるだけで
+      // 各行の長さが違っても自然に左揃え/中央揃え/右揃えになる。
+      ctx.translate(el.x, el.y);
+      ctx.rotate(rot);
+      lines.forEach((ln, i) => ctx.fillText(ln, lox, loy + i*lh));
+    } else {
+      // 既定(OFF): 位置はシンボルの回転に追随するが、文字自体は常に水平のまま。
+      // 型式(partModel)と同じ考え方(電気CADの一般的な挙動)。回転前後で同じ
+      // 相対位置(lox, loy+i*lh)を回転させ、そこへ水平な文字を置く。
+      lines.forEach((ln, i) => {
+        const ly = loy + i*lh;
+        const px = el.x + lox*Math.cos(rot) - ly*Math.sin(rot);
+        const py = el.y + lox*Math.sin(rot) + ly*Math.cos(rot);
+        ctx.fillText(ln, px, py);
+      });
+    }
     ctx.restore();
   }
   // 型式(partModel)の図面表示。要素ごとの el.showModel が真のときだけ描く。

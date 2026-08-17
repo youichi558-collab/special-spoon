@@ -1876,6 +1876,7 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-lfs" value="${el.labelFs||11}" step="1" min="6" max="32" oninput="previewLabelStyle()"></div>`;
     html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-lox" value="${el.labelOffX||0}" step="5" oninput="previewLabelOff()"></div>`;
     html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-loy" value="${el.labelOffY||''}" placeholder="自動" step="5" oninput="previewLabelOff()"></div>`;
+    html += `<div class="pp-row"><label>回転時に文字も傾ける</label><input type="checkbox" id="pp-lrot"${el.labelFollowRot?' checked':''} title="既定はOFF: シンボルを回転しても文字は常に水平のまま(位置だけ回転に追随)。ONにすると文字自体もシンボルと一緒に傾きます"></div>`;
     html += `<div class="pp-row"><button onclick="cancelLabelOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button></div>`;
     html += `</details>`;
     html += `</div>`; }
@@ -2243,6 +2244,7 @@ function applyRightPanel() {
     el.labelFs    = parseInt(v('pp-lfs'))||11;
     el.labelOffX  = parseInt(v('pp-lox'))||0;
     el.labelOffY  = v('pp-loy') ? parseInt(v('pp-loy')) : undefined;
+    el.labelFollowRot = !!document.getElementById('pp-lrot')?.checked;
     el.layer     = v('pp-layer');
     el.note      = v('pp-note');
   }
