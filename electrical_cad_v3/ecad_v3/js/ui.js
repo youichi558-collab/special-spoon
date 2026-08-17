@@ -403,7 +403,6 @@ function placePart(type, ref, terminals) {
 }
 function showPartReg() {
   openFP('part-reg-p');
-  loadCatalogList().then(() => refreshIndexStatus());
 }
 
 // カタログ登録を一覧から削除する(catalog_config.jsonの登録名を消すだけ。
@@ -2550,6 +2549,82 @@ function sendAI() {
   if (!input?.value?.trim()) return;
   alert('AI機能は現在準備中です');
   input.value = '';
+}
+
+// ----------------------------------------------------------------
+// AIでカタログページを読み取る(2026-08-17)。
+// pdfplumberの自動抽出+マッピング設定という手法も、ローカルPDF全文検索
+// (find_spec.py)も実務で使われなかった(盛田さん「カタログ検索は実用的じゃない」
+// 「全部」)。代わりに、カタログページ(PDFそのもの、または画像)をAnthropic APIへ
+// 直接渡して読み取らせ、部品DB CSV形式でCSV一括登録欄に流し込む方式にする。
+// PDFはbase64のままdocumentブロックとして送れる(Claudeが直接解析する)。
+// 画像(スクリーンショット等)も同様にimageブロックで送れる。
+// 結果は必ず目視確認してから「CSVから一括登録」を押してもらう運用(既存の注意書きを踏襲)。
+async function aiCatalogRead() {
+  const fileInput = document.getElementById('ai-cat-file');
+  const statusEl  = document.getElementById('ai-cat-status');
+  const file = fileInput?.files?.[0];
+  if (!file) { if (statusEl) statusEl.textContent = 'ファイルを選択してください'; return; }
+  if (!state.apiKey) {
+    if (statusEl) statusEl.textContent = 'APIキーが未設定です。画面右下の「AIアシスト」パネルで設定してください';
+    return;
+  }
+  if (statusEl) statusEl.textContent = '読み取り中...(ページ数が多いと時間がかかります)';
+
+  try {
+    const dataUrl = await new Promise((resolve, reject) => {
+      const rd = new FileReader();
+      rd.onload = () => resolve(rd.result);
+      rd.onerror = () => reject(rd.error);
+      rd.readAsDataURL(file);
+    });
+    const base64 = dataUrl.split(',')[1];
+    const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+    const mediaType = isPdf ? 'application/pdf' : (file.type || 'image/png');
+
+    const prompt =
+      'このカタログページから電気部品の情報を抽出し、次のCSV形式で出力してください。\n' +
+      '形式: メーカー,型番,種別,定格電圧,定格電流,端子番号,接点構成,備考\n' +
+      '種別は次のいずれか: coil(リレーコイル) / sw_no(a接点) / sw_nc(b接点) / breaker(ブレーカ) / motor(モーター) / terminal(端子台) / lamp(ランプ) / fuse(ヒューズ) / transformer(トランス)\n' +
+      '端子番号や接点構成にカンマが含まれる場合はダブルクォートで囲んでください。\n' +
+      '読み取れない/該当しない項目は空欄にしてください。読み取れる部品が複数あれば1行ずつ出力してください。\n' +
+      'CSVの行以外(説明文・見出し・コードフェンス等)は一切出力しないでください。';
+
+    const fileBlock = isPdf
+      ? { type: 'document', source: { type: 'base64', media_type: mediaType, data: base64 } }
+      : { type: 'image',    source: { type: 'base64', media_type: mediaType, data: base64 } };
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': state.apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 4096,
+        messages: [{ role: 'user', content: [fileBlock, { type: 'text', text: prompt }] }],
+      }),
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      throw new Error(`API応答エラー(${res.status}): ${errText.slice(0, 300)}`);
+    }
+    const data = await res.json();
+    let text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+    // コードフェンス(```csv ... ```)で返ってきた場合に備えて除去
+    text = text.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '').trim();
+
+    const csvEl = document.getElementById('pr-csv');
+    if (csvEl) {
+      csvEl.value = csvEl.value.trim() ? (csvEl.value.trim() + '\n' + text) : text;
+    }
+    if (statusEl) statusEl.textContent = `読み取り完了。CSV一括登録欄に追記しました。内容を確認してから登録してください(${text.split('\n').filter(l=>l.trim()).length}行)`;
+  } catch (e) {
+    if (statusEl) statusEl.textContent = '読み取りに失敗しました: ' + (e.message || e);
+  }
 }
 
 // ----------------------------------------------------------------

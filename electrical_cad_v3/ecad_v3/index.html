@@ -629,40 +629,19 @@
         <button class="fp-btn" onclick="closeFP('part-reg-p')">閉じる</button>
       </div>
       <hr style="margin:12px 0;border-color:var(--bd2)">
-      <h3 style="font-size:13px">カタログ型式検索（ローカルPDF）</h3>
-      <p style="font-size:10px;color:var(--fg3);margin-bottom:4px">catalog_config.json に登録したカタログPDF/フォルダから型式を検索します。表の形式はカタログによって「フレームが列（三菱タイプ）」と「フレームが行のかたまり（富士タイプ）」の2種類あるので、見た目に合わせて選んでください。</p>
-      <div class="g2">
-        <div class="fr"><label>カタログ</label>
-          <div style="display:flex;gap:4px;align-items:center">
-            <select id="cs-catalog" onchange="refreshIndexStatus()" style="flex:1"><option value="">(読込中...)</option></select>
-            <span onclick="deleteCatalog()" title="選択中のカタログ登録を削除(フォルダ本体・索引ファイルは削除されません)" style="cursor:pointer;color:var(--red);font-size:14px;padding:0 4px">🗑</span>
-          </div>
-        </div>
-        <div class="fr"><label>表の形式</label>
-          <select id="cs-mode">
-            <option value="pivot">フレームが列（三菱タイプ）</option>
-            <option value="list">フレームが行のかたまり（富士タイプ）</option>
-          </select>
-        </div>
-      </div>
-      <div style="margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="openFolderBrowser()">📁 フォルダを選択して追加</button>
-        <span id="cs-index-status" style="font-size:10px;color:var(--fg3)"></span>
-      </div>
-      <p style="font-size:9px;color:var(--fg3);margin:-4px 0 6px">
-        索引(インデックス)はCADの画面からではなく、ecad_v3フォルダ内の「インデックス作成.bat」を
-        ダブルクリックして作成・更新してください(登録済みの全カタログをまとめて処理します)。
-        作っておくと検索が大幅に速くなります。
+      <h3 style="font-size:13px">AIでカタログページを読み取る</h3>
+      <p style="font-size:10px;color:var(--fg3);margin-bottom:4px">
+        カタログPDFのページ（またはページのスクリーンショット画像）をそのままAIに読ませて、
+        型式・定格・端子番号などを下の「CSV一括登録」欄へ自動で書き出します。
+        PDFはそのまま送れます（ページ数が多いと重いので、該当ページだけ切り出したものを推奨）。
+        <b>結果は登録前に必ず目視で確認してください。</b>
+        APIキーは画面右下の「AIアシスト」パネルで設定したものを使います。
       </p>
-      <div class="fr"><label>型式</label><input type="text" id="cs-model" placeholder="例: S-T20 または SC20XA-□10"></div>
-      <label style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--fg3);margin:2px 0 6px">
-        <input type="checkbox" id="cs-stop-first">最初に見つかった時点で中断する（高速。同じ型式が複数ファイルにある場合は最初の1件しか出ません）
-      </label>
+      <div class="fr"><label>カタログページ (PDF/画像)</label><input type="file" id="ai-cat-file" accept=".pdf,.png,.jpg,.jpeg"></div>
       <div style="display:flex;gap:6px;margin:6px 0">
-        <button class="fp-btn primary" onclick="catalogSearch()">検索</button>
-        <button class="fp-btn" style="font-size:10px" onclick="verifyIndexSearch()" title="今回の型式検索を、索引ありと索引なし(全件スキャン)の両方で実行し、結果が一致するか確認します">索引を検証</button>
+        <button class="fp-btn primary" onclick="aiCatalogRead()">AIで読み取る</button>
       </div>
-      <div id="cs-result" style="max-height:220px;overflow-y:auto;font-size:11px;background:var(--bg3);border-radius:4px;padding:6px;display:none"></div>
+      <p id="ai-cat-status" style="font-size:10px;color:var(--fg3)"></p>
       <hr style="margin:12px 0;border-color:var(--bd2)">
       <h3 style="font-size:13px">CSV一括登録</h3>
       <p style="font-size:10px;color:var(--fg3);margin-bottom:4px">1行1部品、カンマ区切り。ヘッダー行は任意（maker等の文字を含む行は自動でスキップ）。<br>形式: メーカー,型番,種別,定格電圧,定格電流,端子番号,接点構成,備考<br>種別は次のいずれか: coil(リレーコイル) / sw_no(a接点) / sw_nc(b接点) / breaker(ブレーカ) / motor(モーター) / terminal(端子台) / lamp(ランプ) / fuse(ヒューズ) / transformer(トランス)<br>例: 三菱電機,S-T21,coil,AC200V,21A,"A1,A2,1,3,5,2,4,6",a3b1,</p>
