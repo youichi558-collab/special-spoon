@@ -860,7 +860,7 @@ function parseCSVLine(line) {
   out.push(cur);
   return out.map(s => s.trim());
 }
-const PART_TYPE_CODES = ['coil','sw_no','sw_nc','breaker','motor','terminal','lamp','fuse','transformer','option'];
+const PART_TYPE_CODES = ['coil','sw_no','sw_nc','breaker','motor','terminal','lamp','fuse','transformer','option','thermal'];
 function bulkImportParts() {
   const raw = document.getElementById('pr-csv').value;
   const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -2622,7 +2622,7 @@ async function aiCatalogRead() {
     const prompt =
       'このカタログページから電気部品の情報を抽出し、次のCSV形式で出力してください。\n' +
       '形式: メーカー,型番,種別,定格電圧,定格電流,端子番号,接点構成,備考\n' +
-      '種別は次のいずれか: coil(リレーコイル) / sw_no(a接点) / sw_nc(b接点) / breaker(ブレーカ) / motor(モーター) / terminal(端子台) / lamp(ランプ) / fuse(ヒューズ) / transformer(トランス) / option(増設ユニット等の付属品)\n' +
+      '種別は次のいずれか: coil(リレーコイル) / sw_no(a接点) / sw_nc(b接点) / breaker(ブレーカ) / motor(モーター) / terminal(端子台) / lamp(ランプ) / fuse(ヒューズ) / transformer(トランス) / option(増設ユニット等の付属品) / thermal(サーマルリレー)\n' +
       '端子番号や接点構成にカンマが含まれる場合はダブルクォートで囲んでください。\n' +
       '読み取れない/該当しない項目は空欄にしてください。読み取れる部品が複数あれば1行ずつ出力してください。\n' +
       'CSVの行以外(説明文・見出し・コードフェンス等)は一切出力しないでください。';
@@ -2842,9 +2842,9 @@ function symRowPointerDown(e, i) {
 const PART_TYPE_LABELS = {
   coil: 'リレーコイル・コンタクタ', sw_no: 'a接点', sw_nc: 'b接点', breaker: 'ブレーカ',
   motor: 'モーター', terminal: '端子台', lamp: 'ランプ', fuse: 'ヒューズ',
-  transformer: 'トランス', option: '増設ユニット等(付属品)',
+  transformer: 'トランス', option: '増設ユニット等(付属品)', thermal: 'サーマルリレー',
 };
-const PART_TYPE_ORDER = ['breaker','coil','sw_no','sw_nc','motor','option','terminal','lamp','fuse','transformer'];
+const PART_TYPE_ORDER = ['breaker','coil','thermal','sw_no','sw_nc','motor','option','terminal','lamp','fuse','transformer'];
 // カテゴリの折りたたみ状態(既定は全部開いた状態)。検索中は無視して全部展開する。
 state.partsCollapsed = state.partsCollapsed || {};
 function togglePartsCategory(type) {
