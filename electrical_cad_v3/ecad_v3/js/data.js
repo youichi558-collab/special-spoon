@@ -62,6 +62,63 @@ const FRAME_TPLS = {
   B3H: { w:515, h:364, mg:10, th:30, cols:14, rows:6  },
 };
 
+// ================================================================
+// 表題欄の様式テンプレート
+//
+// 自社様式と客先様式を切り替えられるようにするためのもの。
+// 図面枠パネルの「表題欄」セレクタで選び、frameObj.tbTpl に保存される。
+//
+// 【新しい様式の追加方法】
+// 客先の図面に合わせた様式を足す場合は、このオブジェクトにキーを1つ増やす。
+//   cells の各項目:
+//     x,y,w,h : 表題欄の中での位置と大きさ。0〜1の割合で指定する
+//               (x,w は表題欄の幅に対する割合、y,h は高さに対する割合)
+//     key     : 値を入れる項目名。frameObj[key] が中身として描かれる
+//               '_page' は特別扱いで、現在ページ/総ページ数が自動で入る
+//     lbl     : セルの左上に小さく表示される見出し
+//   同じ y の行で w の合計が 1 になるようにすると隙間なく埋まる。
+//
+// 入力欄(図面枠パネルの各テキストボックス)は index.html 側にあり、
+// key がそれと対応している。既存の key を使う限り入力欄はそのまま使える。
+// 新しい key を使いたい場合は入力欄の追加も必要になる。
+// ================================================================
+const TITLE_BLOCK_TPLS = {
+  standard: {
+    label: '標準',
+    cells: [
+      {x:0,   y:0,  w:.25, h:.5, key:'drawno',  lbl:'図面番号'},
+      {x:.25, y:0,  w:.35, h:.5, key:'title',   lbl:'図面名称'},
+      {x:.6,  y:0,  w:.2,  h:.5, key:'company', lbl:'会社名'},
+      {x:.8,  y:0,  w:.2,  h:.5, key:'equip',   lbl:'設備名'},
+      {x:0,   y:.5, w:.12, h:.5, key:'author',  lbl:'作成'},
+      {x:.12, y:.5, w:.12, h:.5, key:'approve', lbl:'承認'},
+      {x:.24, y:.5, w:.2,  h:.5, key:'date',    lbl:'日付'},
+      {x:.44, y:.5, w:.1,  h:.5, key:'scale2',  lbl:'縮尺'},
+      {x:.54, y:.5, w:.06, h:.5, key:'rev',     lbl:'Rev'},
+      {x:.6,  y:.5, w:.35, h:.5, key:'chghist', lbl:'変更履歴'},
+      {x:.95, y:.5, w:.05, h:.5, key:'_page',   lbl:'ページ'},
+    ],
+  },
+  simple: {
+    label: '簡易（項目を絞った様式）',
+    cells: [
+      {x:0,   y:0,  w:.55, h:.5, key:'title',   lbl:'図面名称'},
+      {x:.55, y:0,  w:.45, h:.5, key:'drawno',  lbl:'図面番号'},
+      {x:0,   y:.5, w:.35, h:.5, key:'company', lbl:'会社名'},
+      {x:.35, y:.5, w:.25, h:.5, key:'author',  lbl:'作成'},
+      {x:.6,  y:.5, w:.25, h:.5, key:'date',    lbl:'日付'},
+      {x:.85, y:.5, w:.15, h:.5, key:'_page',   lbl:'ページ'},
+    ],
+  },
+};
+
+// 表題欄テンプレートを取り出す。未指定・未知のキーなら標準様式にフォールバックする
+// (客先様式で作った図面を、その様式が無い環境で開いても表題欄が消えないようにするため)
+function titleBlockCells(fr) {
+  const t = TITLE_BLOCK_TPLS[(fr && fr.tbTpl) || 'standard'] || TITLE_BLOCK_TPLS.standard;
+  return t.cells;
+}
+
 // カスタムシンボルをDEFSに追加
 function loadCustomSymbolDefs() {
   state.customSymbols.forEach(s => { DEFS[s.type] = s; });

@@ -29,6 +29,8 @@ function applyFrame(){
     thMM:parseFloat(document.getElementById('frame-th').value)||30,
     cols:parseInt(document.getElementById('frame-cols').value)||8,
     rows:parseInt(document.getElementById('frame-rows').value)||4,
+    // 表題欄の様式（data.jsのTITLE_BLOCK_TPLSのキー）。図面と一緒に保存される
+    tbTpl:document.getElementById('frame-tbtpl')?.value || 'standard',
     drawno:document.getElementById('f-drawno').value,
     title:document.getElementById('f-title').value,
     company:document.getElementById('f-company').value,
@@ -63,8 +65,20 @@ function refreshFrameTplSel(){
     sel.appendChild(grp);
   }
 }
+// 表題欄の様式セレクタの選択肢を作る。
+// TITLE_BLOCK_TPLS に様式を足せば、ここは何も直さなくても選べるようになる。
+function refreshTitleBlockSel(){
+  const sel=document.getElementById('frame-tbtpl');
+  if(!sel) return;
+  const cur=(state.frameObj&&state.frameObj.tbTpl)||'standard';
+  sel.innerHTML=Object.entries(TITLE_BLOCK_TPLS)
+    .map(([k,v])=>`<option value="${k}">${v.label||k}</option>`).join('');
+  sel.value=TITLE_BLOCK_TPLS[cur]?cur:'standard';
+}
+
 function showFramePanel(){
   refreshFrameTplSel();
+  refreshTitleBlockSel();
   if(state.frameObj){
     document.getElementById('frame-scale').value=state.frameObj.sc;
     document.getElementById('frame-w').value=state.frameObj.wMM;
@@ -176,20 +190,8 @@ function drawFrame(fr){
   ctx.strokeStyle=state.darkMode?'#ccc':'#000';ctx.lineWidth=1/state.zoom;
   ctx.strokeRect(MGpx,tbY,innerW,TH);
 
-  // 表題欄内セル
-  const cells=[
-    {x:0,y:0,w:.25,h:.5,key:'drawno',lbl:'図面番号'},
-    {x:.25,y:0,w:.35,h:.5,key:'title',lbl:'図面名称'},
-    {x:.6,y:0,w:.2,h:.5,key:'company',lbl:'会社名'},
-    {x:.8,y:0,w:.2,h:.5,key:'equip',lbl:'設備名'},
-    {x:0,y:.5,w:.12,h:.5,key:'author',lbl:'作成'},
-    {x:.12,y:.5,w:.12,h:.5,key:'approve',lbl:'承認'},
-    {x:.24,y:.5,w:.2,h:.5,key:'date',lbl:'日付'},
-    {x:.44,y:.5,w:.1,h:.5,key:'scale2',lbl:'縮尺'},
-    {x:.54,y:.5,w:.06,h:.5,key:'rev',lbl:'Rev'},
-    {x:.6,y:.5,w:.35,h:.5,key:'chghist',lbl:'変更履歴'},
-    {x:.95,y:.5,w:.05,h:.5,key:'_page',lbl:'ページ'},
-  ];
+  // 表題欄内セル（様式は data.js の TITLE_BLOCK_TPLS で定義。frameObj.tbTpl で選択）
+  const cells=titleBlockCells(fr);
   ctx.lineWidth=0.5/state.zoom;ctx.strokeStyle=state.darkMode?'#888':'#888';
   cells.forEach(c=>{
     const cx=MGpx+c.x*innerW,cy=tbY+c.y*TH,cw=c.w*innerW,ch=c.h*TH;
