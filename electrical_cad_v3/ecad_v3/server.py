@@ -77,6 +77,9 @@ class Handler(SimpleHTTPRequestHandler):
         if parsed.path == '/api/verify_search':
             self.handle_verify_search(parsed)
             return
+        if parsed.path == '/api/pending_csv':
+            self.handle_pending_csv_list()
+            return
         super().do_GET()
 
     def end_headers(self):
@@ -166,6 +169,19 @@ class Handler(SimpleHTTPRequestHandler):
         """設定済みのカタログ名一覧を返す（プルダウン用）"""
         cfg = load_config()
         self._send_json({"catalogs": list(cfg.get("catalog_paths", {}).keys())})
+
+    def handle_pending_csv_list(self):
+        """catalog_pending/ フォルダ内のCSVファイル一覧を返す。
+        Claudeがgit push経由で置いた「登録待ちCSV」を、部品登録パネルから
+        ボタン一つで読み込めるようにするため(2026-08-17、コピペの手間を省く目的)。
+        実ファイルの取得は静的配信(catalog_pending/<name>)をそのまま使う。"""
+        base = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'catalog_pending')
+        files = []
+        if os.path.isdir(base):
+            for name in sorted(os.listdir(base)):
+                if name.lower().endswith('.csv'):
+                    files.append(name)
+        self._send_json({"files": files})
 
     def handle_delete_catalog(self):
         """catalog_config.jsonから登録名を削除する(あくまで登録の解除。

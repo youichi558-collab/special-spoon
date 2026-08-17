@@ -403,6 +403,41 @@ function placePart(type, ref, terminals) {
 }
 function showPartReg() {
   openFP('part-reg-p');
+  refreshPendingCsvList();
+}
+
+// 保留CSV(catalog_pending/)の一覧を取得してプルダウンに反映
+async function refreshPendingCsvList() {
+  const sel = document.getElementById('pc-file');
+  if (!sel) return;
+  try {
+    const res = await fetch('/api/pending_csv');
+    const data = await res.json();
+    const files = data.files || [];
+    sel.innerHTML = files.length
+      ? files.map(f => `<option value="${f}">${f}</option>`).join('')
+      : '<option value="">(登録待ちCSVはありません)</option>';
+  } catch (e) {
+    sel.innerHTML = '<option value="">(サーバー未対応・start.batを最新版で起動してください)</option>';
+  }
+}
+
+// 選択した保留CSVを取得し、CSV一括登録欄に追記する(登録自体はボタンを押すまで実行しない)
+async function loadPendingCsv() {
+  const sel = document.getElementById('pc-file');
+  const statusEl = document.getElementById('pc-status');
+  const name = sel?.value;
+  if (!name) { if (statusEl) statusEl.textContent = 'ファイルを選択してください'; return; }
+  try {
+    const res = await fetch('catalog_pending/' + encodeURIComponent(name));
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = (await res.text()).trim();
+    const csvEl = document.getElementById('pr-csv');
+    if (csvEl) csvEl.value = csvEl.value.trim() ? (csvEl.value.trim() + '\n' + text) : text;
+    if (statusEl) statusEl.textContent = `読み込みました(${text.split('\n').filter(l=>l.trim()).length}行)。内容を確認して「CSVから一括登録」を押してください`;
+  } catch (e) {
+    if (statusEl) statusEl.textContent = '読み込みに失敗しました: ' + (e.message || e);
+  }
 }
 
 // カタログ登録を一覧から削除する(catalog_config.jsonの登録名を消すだけ。
