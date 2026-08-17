@@ -77,12 +77,48 @@ function showFramePanel(){
   }
   openFP('frame-p');
 }
+// ================================================================
+// 図面枠のジオメトリ（区画割りの単一の情報源）
+//
+// 図面枠の描画(drawFrame)と、クロスリファレンスの区画算出(report.jsのzoneOf)は
+// 同じ区画割りを見ている必要がある。以前は両者が別々に同じ計算を書いていたため、
+// 枠のデザインを変えると片方だけズレる二重管理になっていた。
+// 寸法計算とラベル生成はここに集約し、双方がこれを呼ぶこと。
+//
+// 枠のデザインを変更する場合、区画割りに関わる部分はこの関数だけを直せば
+// 描画と区画表示の両方に反映される。
+// 例) 表題欄を下ではなく右side に置く → drawH ではなく innerW を削る形に直す
+//     区画を余白ではなく内枠の中に振る   → MGpx のオフセットを変える
+//     列ラベルをAA,ABまで伸ばす          → zoneColLabel() を直す
+// ================================================================
+function frameGeom(fr){
+  if(!fr) return null;
+  const sc=fr.sc||2;
+  const cols=fr.cols||0, rows=fr.rows||0;
+  const W=(fr.wMM||297)*sc, H=(fr.hMM||210)*sc;
+  const MGpx=(fr.mg||0)*sc, TH=(fr.thMM||0)*sc;
+  const innerW=W-MGpx*2, innerH=H-MGpx*2;
+  const drawH=innerH-TH;              // 表題欄を除いた作図領域の高さ
+  return {
+    sc, cols, rows, W, H, MGpx, TH, innerW, innerH, drawH,
+    // 区画1マスの大きさ。cols/rowsが0のときは0（呼び出し側で除算しないこと）
+    colW: cols? innerW/cols : 0,
+    rowH: rows? drawH/rows  : 0,
+    // 作図領域(区画が振られている範囲)の左上と右下
+    x0: MGpx, y0: MGpx, x1: MGpx+innerW, y1: MGpx+drawH,
+  };
+}
+
+// 列ラベル(A,B,C...)。26列を超えたらAに戻る。
+function zoneColLabel(c){ return String.fromCharCode(65 + c % 26); }
+// 行ラベル(1,2,3...)。
+function zoneRowLabel(r){ return String(r + 1); }
+
 function drawFrame(fr){
   if (fr.isCover) return; // 表紙ページは図面枠を描画しない
-  const {sc,wMM,hMM,mg,thMM,cols,rows}=fr;
-  const W=wMM*sc,H=hMM*sc,MGpx=mg*sc,TH=thMM*sc;
-  const innerW=W-MGpx*2,innerH=H-MGpx*2;
-  const drawH=innerH-TH;
+  const g=frameGeom(fr);
+  const {cols,rows}=fr;
+  const {W,H,MGpx,TH,innerW,innerH,drawH,colW,rowH}=g;
 
   ctx.save();
   // 用紙
@@ -109,8 +145,7 @@ function drawFrame(fr){
   ctx.strokeRect(MGpx,MGpx,innerW,innerH);
 
   // 区域分割・ラベル
-  const colW=innerW/cols,rowH=drawH/rows;
-  if (true) { // PDF出力時も描画
+  if (cols && rows) { // PDF出力時も描画
     ctx.strokeStyle=state.darkMode?'#555':'#999';ctx.lineWidth=0.5/state.zoom;
     ctx.fillStyle=state.darkMode?'#aaa':'#666';
     ctx.font=`${9}px sans-serif`;ctx.textAlign='center';
@@ -126,14 +161,13 @@ function drawFrame(fr){
     }
     // 列ラベル (A,B,C...)
     for(let c=0;c<cols;c++){
-      const lbl=String.fromCharCode(65+c%26);
-      ctx.fillText(lbl,MGpx+c*colW+colW/2,MGpx-3);
+      ctx.fillText(zoneColLabel(c),MGpx+c*colW+colW/2,MGpx-3);
     }
     // 行ラベル (1,2,3...)
     ctx.textAlign='center';
     for(let r=0;r<rows;r++){
-      ctx.fillText(String(r+1),MGpx-8,MGpx+r*rowH+rowH/2+4);
-      ctx.fillText(String(r+1),MGpx+innerW+8,MGpx+r*rowH+rowH/2+4);
+      ctx.fillText(zoneRowLabel(r),MGpx-8,MGpx+r*rowH+rowH/2+4);
+      ctx.fillText(zoneRowLabel(r),MGpx+innerW+8,MGpx+r*rowH+rowH/2+4);
     }
   }
 

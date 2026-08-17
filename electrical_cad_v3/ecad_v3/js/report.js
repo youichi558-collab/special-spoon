@@ -519,41 +519,29 @@ function exportBOMCSV(){
 // ================================================================
 // 図面区画（ゾーン）の算出
 //
-// 図面枠には列ラベル(A,B,C...)と行ラベル(1,2,3...)が振られている。
 // 「このシンボルは2ページのB3区画にある」という形で位置を示すために、
 // ワールド座標から区画名を求める。
 //
-// 座標計算は frame.js の drawFrame() と必ず一致させること。図面枠は
-// ワールド座標の原点(0,0)を左上として描かれる(draw()内でpan/zoomを
-// かけた後、オフセット無しでdrawFrameを呼んでいる)。
-// drawFrame側の区画割りを変更したときは、この関数も合わせて直すこと。
+// 区画割りの寸法計算とラベル生成は frame.js の frameGeom() / zoneColLabel() /
+// zoneRowLabel() に集約してあり、図面枠の描画(drawFrame)と同じものを使っている。
+// そのため枠のデザインを変えても、frame.js側を直せば区画表示も自動で追随する。
+// ここで独自に寸法計算を書き直さないこと（以前それをやって二重管理になっていた）。
+//
+// 図面枠はワールド座標の原点(0,0)を左上として描かれる。
 // ================================================================
 function zoneOf(x, y, fr) {
   if (!fr || fr.isCover) return '';
-  const sc = fr.sc || 2;
-  const cols = fr.cols || 0, rows = fr.rows || 0;
-  if (!cols || !rows) return '';
+  if (typeof frameGeom !== 'function') return '';
+  const g = frameGeom(fr);
+  if (!g || !g.cols || !g.rows) return '';
+  if (g.innerW <= 0 || g.drawH <= 0) return '';
 
-  const W = (fr.wMM || 297) * sc;
-  const H = (fr.hMM || 210) * sc;
-  const MGpx = (fr.mg || 10) * sc;
-  const TH = (fr.thMM || 30) * sc;
-  const innerW = W - MGpx * 2;
-  const innerH = H - MGpx * 2;
-  const drawH = innerH - TH;            // 表題欄を除いた作図領域の高さ
-  if (innerW <= 0 || drawH <= 0) return '';
+  // 区画が振られている範囲（作図領域）の外にある要素
+  if (x < g.x0 || x > g.x1 || y < g.y0 || y > g.y1) return '枠外';
 
-  const colW = innerW / cols;
-  const rowH = drawH / rows;
-
-  // 作図領域の外（表題欄の上や用紙外）にある要素は区画を持たない
-  if (x < MGpx || x > MGpx + innerW) return '枠外';
-  if (y < MGpx || y > MGpx + drawH)  return '枠外';
-
-  const c = Math.min(cols - 1, Math.max(0, Math.floor((x - MGpx) / colW)));
-  const r = Math.min(rows - 1, Math.max(0, Math.floor((y - MGpx) / rowH)));
-  // 列ラベルはdrawFrame()と同じくA〜Zを循環させる
-  return String.fromCharCode(65 + c % 26) + (r + 1);
+  const c = Math.min(g.cols - 1, Math.max(0, Math.floor((x - g.x0) / g.colW)));
+  const r = Math.min(g.rows - 1, Math.max(0, Math.floor((y - g.y0) / g.rowH)));
+  return zoneColLabel(c) + zoneRowLabel(r);
 }
 
 // 要素の代表座標を返す。シンボルは(x,y)を持つが、線分系は始点しか持たない。
