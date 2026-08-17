@@ -126,7 +126,6 @@
           <div class="rb rb-sm" onclick="clearAll()" style="color:var(--red)"><svg viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>全消去</div>
           <div class="rb rb-sm" onclick="toggleExpand()"><svg viewBox="0 0 14 14"><path d="M1 5V1h4M13 5V1h-4M1 9v4h4M13 9v4h-4" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg><span id="exp-label">大画面</span></div>
           <div class="rb rb-sm" onclick="toggleDark()"><svg viewBox="0 0 14 14"><path d="M7 2a5 5 0 1 0 5 5 3.5 3.5 0 0 1-5-5z" fill="currentColor"/></svg><span id="dk-label">ダーク</span></div>
-          <div class="rb rb-sm" onclick="toggleAI()" style="color:var(--pur)"><svg viewBox="0 0 14 14"><circle cx="7" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M3 12c0-2.2 1.8-4 4-4s4 1.8 4 4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M7 5v2M6 6h2" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>AI アシスト</div>
         </div>
         <div class="rg-label">ウィンドウ</div>
       </div>
@@ -629,20 +628,6 @@
         <button class="fp-btn" onclick="closeFP('part-reg-p')">閉じる</button>
       </div>
       <hr style="margin:12px 0;border-color:var(--bd2)">
-      <h3 style="font-size:13px">AIでカタログページを読み取る</h3>
-      <p style="font-size:10px;color:var(--fg3);margin-bottom:4px">
-        カタログPDFのページ（またはページのスクリーンショット画像）をそのままAIに読ませて、
-        型式・定格・端子番号などを下の「CSV一括登録」欄へ自動で書き出します。
-        PDFはそのまま送れます（ページ数が多いと重いので、該当ページだけ切り出したものを推奨）。
-        <b>結果は登録前に必ず目視で確認してください。</b>
-        APIキーは画面右下の「AIアシスト」パネルで設定したものを使います。
-      </p>
-      <div class="fr"><label>カタログページ (PDF/画像)</label><input type="file" id="ai-cat-file" accept=".pdf,.png,.jpg,.jpeg"></div>
-      <div style="display:flex;gap:6px;margin:6px 0">
-        <button class="fp-btn primary" onclick="aiCatalogRead()">AIで読み取る</button>
-      </div>
-      <p id="ai-cat-status" style="font-size:10px;color:var(--fg3)"></p>
-      <hr style="margin:12px 0;border-color:var(--bd2)">
       <h3 style="font-size:13px">保留CSVを読み込む</h3>
       <p style="font-size:10px;color:var(--fg3);margin-bottom:4px">
         Claudeとの会話でカタログを読み取ってもらいpushしてもらった「登録待ちCSV」を、
@@ -754,24 +739,6 @@
         <button class="fp-btn" onclick="cancelPinEdit()">キャンセル</button>
       </div>
     </div>
-
-  <!-- AI アシストパネル -->
-  <div id="ai-panel" style="display:none">
-    <div id="ai-panel-header">
-      <h4>AI アシスト (Claude)</h4>
-      <button onclick="toggleAI()" style="background:none;border:none;cursor:pointer;color:var(--fg3);font-size:16px">×</button>
-    </div>
-    <div id="ai-apikey-row">
-      <input type="password" id="ai-apikey" placeholder="Anthropic APIキー (sk-ant-...)">
-      <button onclick="saveApiKey()" style="padding:2px 8px;font-size:10px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)">保存</button>
-    </div>
-    <p style="font-size:9px;color:var(--fg3);margin:2px 6px 4px">今できるのは部品DBの追加・修正・削除のみです（図面のシンボル配置や配線の編集はまだ対応していません）</p>
-    <div id="ai-msgs"></div>
-    <div id="ai-input-row">
-      <input type="text" id="ai-input" placeholder="例: S-T21の価格を13970円に直して" onkeydown="if(event.key==='Enter')sendAI()">
-      <button id="ai-send" onclick="sendAI()">送信</button>
-    </div>
-  </div>
 
   </div><!-- /cw -->
 
