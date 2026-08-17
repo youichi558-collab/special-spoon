@@ -2608,9 +2608,117 @@ function saveApiKey() {
 
 function sendAI() {
   const input = document.getElementById('ai-input');
-  if (!input?.value?.trim()) return;
-  alert('AI機能は現在準備中です');
+  const text = input?.value?.trim();
+  if (!text) return;
   input.value = '';
+  aiPartsAssist(text);
+}
+
+// AIアシスト: 部品DBの修正・追加・削除を自然文で指示できるようにする(2026-08-17)。
+// 「間違いがあったときの修正をAIアシストでやりたい」という要望に応え、まずは
+// 部品DB操作に絞って実装する(シンボル配置や回路編集への拡張は別途)。
+// 現在の部品DB全体をコンテキストとして渡し、AIには変更差分だけをJSONで
+// 返してもらい、こちら側で適用する(自由文で図面や巨大JSONを生成させない設計)。
+function _aiLog(html) {
+  const el = document.getElementById('ai-msgs');
+  if (!el) return;
+  el.innerHTML += html;
+  el.scrollTop = el.scrollHeight;
+}
+async function aiPartsAssist(instruction) {
+  _aiLog(`<div style="padding:4px 6px;font-size:11px;color:var(--fg)"><b>あなた:</b> ${instruction}</div>`);
+  if (!state.apiKey) {
+    _aiLog(`<div style="padding:4px 6px;font-size:11px;color:var(--red)">APIキーが未設定です。上の欄で設定してください。</div>`);
+    return;
+  }
+  _aiLog(`<div id="ai-thinking" style="padding:4px 6px;font-size:11px;color:var(--fg3)">考え中...</div>`);
+
+  const dbSnapshot = state.customParts.map(p => ({
+    maker: p.maker, ref: p.ref, type: p.type, volt: p.volt, amp: p.amp,
+    terminals: p.terminals, contacts: p.contacts, note: p.note,
+  }));
+
+  const prompt =
+    'あなたは電気CADツールの部品データベースを編集するアシスタントです。\n' +
+    '現在の部品DB(JSON配列、フィールド: maker,ref,type,volt,amp,terminals,contacts,note)と、\n' +
+    'ユーザーからの日本語の指示が与えられます。指示を実行するのに必要な操作だけを、\n' +
+    '次のJSON配列形式で出力してください。JSON以外の説明文・コードフェンスは一切出力しないでください。\n' +
+    '操作の種類:\n' +
+    '  {"op":"update","ref":"対象の型番","fields":{"変更するキーだけ":"新しい値"}}\n' +
+    '  {"op":"add","fields":{"maker":"...","ref":"...","type":"coil等","volt":"...","amp":"...","terminals":"...","contacts":"...","note":"..."}}\n' +
+    '  {"op":"delete","ref":"対象の型番"}\n' +
+    '対象の型番が指示から特定できない、または情報が不足していて安全に実行できない場合は、\n' +
+    '操作を実行せず {"op":"question","text":"確認したい内容"} を1件だけ返してください。\n' +
+    'typeは次のいずれかにしてください: coil/sw_no/sw_nc/breaker/motor/terminal/lamp/fuse/transformer/option/thermal\n\n' +
+    '現在の部品DB:\n' + JSON.stringify(dbSnapshot) + '\n\n' +
+    'ユーザーの指示: ' + instruction;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': state.apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 2048,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    document.getElementById('ai-thinking')?.remove();
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      _aiLog(`<div style="padding:4px 6px;font-size:11px;color:var(--red)">API応答エラー(${res.status}): ${errText.slice(0,200)}</div>`);
+      return;
+    }
+    const data = await res.json();
+    let text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+    text = text.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '').trim();
+
+    let ops;
+    try { ops = JSON.parse(text); } catch (e) {
+      _aiLog(`<div style="padding:4px 6px;font-size:11px;color:var(--red)">応答をJSONとして解釈できませんでした: ${text.slice(0,200)}</div>`);
+      return;
+    }
+    if (!Array.isArray(ops)) ops = [ops];
+
+    const summary = [];
+    ops.forEach(op => {
+      if (!op || !op.op) return;
+      if (op.op === 'question') {
+        _aiLog(`<div style="padding:4px 6px;font-size:11px;color:var(--acc)"><b>AI:</b> ${op.text || '確認が必要です'}</div>`);
+        return;
+      }
+      if (op.op === 'update') {
+        const p = state.customParts.find(x => x.ref === op.ref);
+        if (!p) { summary.push(`「${op.ref}」が見つからず更新できませんでした`); return; }
+        Object.assign(p, op.fields || {});
+        summary.push(`「${op.ref}」を更新: ${Object.keys(op.fields||{}).join(', ')}`);
+      } else if (op.op === 'add') {
+        const f = op.fields || {};
+        if (!f.ref) { summary.push('型番が無い追加操作をスキップしました'); return; }
+        const existing = state.customParts.find(x => x.ref === f.ref);
+        const part = { maker: f.maker||'', ref: f.ref, type: f.type||'coil', volt: f.volt||'', amp: f.amp||'', terminals: f.terminals||'', contacts: f.contacts||'', note: f.note||'', custom: true };
+        if (existing) Object.assign(existing, part); else state.customParts.push(part);
+        summary.push(`「${f.ref}」を追加/更新しました`);
+      } else if (op.op === 'delete') {
+        const before = state.customParts.length;
+        state.customParts = state.customParts.filter(x => x.ref !== op.ref);
+        summary.push(state.customParts.length < before ? `「${op.ref}」を削除しました` : `「${op.ref}」が見つからず削除できませんでした`);
+      }
+    });
+    if (summary.length) {
+      _aiLog(`<div style="padding:4px 6px;font-size:11px;color:var(--fg)"><b>AI:</b> ${summary.join('<br>')}</div>`);
+      renderPartsAll();
+      partsDb.scheduleSave();
+    }
+  } catch (e) {
+    document.getElementById('ai-thinking')?.remove();
+    _aiLog(`<div style="padding:4px 6px;font-size:11px;color:var(--red)">エラー: ${e.message || e}</div>`);
+  }
 }
 
 // ----------------------------------------------------------------

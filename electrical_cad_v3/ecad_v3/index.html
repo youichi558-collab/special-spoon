@@ -765,9 +765,10 @@
       <input type="password" id="ai-apikey" placeholder="Anthropic APIキー (sk-ant-...)">
       <button onclick="saveApiKey()" style="padding:2px 8px;font-size:10px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)">保存</button>
     </div>
+    <p style="font-size:9px;color:var(--fg3);margin:2px 6px 4px">今できるのは部品DBの追加・修正・削除のみです（図面のシンボル配置や配線の編集はまだ対応していません）</p>
     <div id="ai-msgs"></div>
     <div id="ai-input-row">
-      <input type="text" id="ai-input" placeholder="例: CR1のa接点を3個追加して" onkeydown="if(event.key==='Enter')sendAI()">
+      <input type="text" id="ai-input" placeholder="例: S-T21の価格を13970円に直して" onkeydown="if(event.key==='Enter')sendAI()">
       <button id="ai-send" onclick="sendAI()">送信</button>
     </div>
   </div>
