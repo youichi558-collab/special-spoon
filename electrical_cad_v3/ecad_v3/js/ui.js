@@ -2235,7 +2235,15 @@ function applyRightPanel() {
     el.modelOffY = v('pp-moy') !== '' ? parseInt(v('pp-moy')) : undefined;
     el.terminals = v('pp-term');
     el.wireNo    = v('pp-wireno');
-    el.rot       = parseInt(v('pp-rot'))||0;
+    // 回転系フィールド(pp-rot/pp-trot)は<input type=number>にmax指定が無いため、
+    // スピナーの上矢印を連打すると際限なく増え続けてしまう不具合があった
+    // (「無限に角度が増えている」、2026-08-17)。適用のたびに0-359へ正規化し、
+    // 入力欄の表示値もその場で書き戻すことで、次のクリックからは正規化後の値を
+    // 起点に90度刻みで回るようにする。
+    const norm360 = (n) => ((n % 360) + 360) % 360;
+    el.rot = norm360(parseInt(v('pp-rot')) || 0);
+    const rotInput = document.getElementById('pp-rot');
+    if (rotInput) rotInput.value = el.rot;
     el.scale      = Math.max(0.1, Math.min(5, parseFloat(v('pp-scale'))||1));
     delete el.color;  // 個別色は廃止（完全BYLAYER）。旧データの残骸をここで掃除する
     el.lineStyle  = v('pp-symls') || undefined;
@@ -2244,7 +2252,9 @@ function applyRightPanel() {
     el.labelFs    = parseInt(v('pp-lfs'))||11;
     el.labelOffX  = parseInt(v('pp-lox'))||0;
     el.labelOffY  = v('pp-loy') ? parseInt(v('pp-loy')) : undefined;
-    el.textRot    = parseInt(v('pp-trot'))||0;
+    el.textRot    = norm360(parseInt(v('pp-trot')) || 0);
+    const trotInput = document.getElementById('pp-trot');
+    if (trotInput) trotInput.value = el.textRot;
     el.layer     = v('pp-layer');
     el.note      = v('pp-note');
   }
