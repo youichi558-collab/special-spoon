@@ -654,6 +654,7 @@
         <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="loadPendingCsv()">読み込む</button>
       </div>
       <p id="pc-status" style="font-size:10px;color:var(--fg3)"></p>
+      <div id="hidden-parts-result" style="max-height:160px;overflow-y:auto;font-size:11px;background:var(--bg3);border-radius:4px;padding:6px;display:none"></div>
       <hr style="margin:12px 0;border-color:var(--bd2)">
       <h3 style="font-size:13px">CSV一括登録</h3>
       <p style="font-size:10px;color:var(--fg3);margin-bottom:4px">1行1部品、カンマ区切り。ヘッダー行は任意（maker等の文字を含む行は自動でスキップ）。<br>形式: メーカー,型番,種別,定格電圧,定格電流,端子番号,接点構成,備考<br>種別は次のいずれか: coil(リレーコイル) / sw_no(a接点) / sw_nc(b接点) / breaker(ブレーカ) / motor(モーター) / terminal(端子台) / lamp(ランプ) / fuse(ヒューズ) / transformer(トランス) / option(増設ユニット等の付属品)<br>例: 三菱電機,S-T21,coil,AC200V,21A,"A1,A2,1,3,5,2,4,6",a3b1,</p>

@@ -376,9 +376,11 @@ function unhideBuiltinPart(ref) {
 // 非表示にした標準部品の一覧をアラートではなくパネルで表示・復元できるようにする
 function showHiddenBuiltinParts() {
   const refs = state.hiddenBuiltinRefs || [];
-  const resultEl = document.getElementById('cs-result');
-  if (!resultEl) return;
   showPartReg();
+  // 2026-08-17: 旧カタログ型式検索パネル撤去時に "cs-result" 要素ごと消えてしまい、
+  // このボタンが無反応になっていた不具合を修正。専用のhidden-parts-resultを使う。
+  const resultEl = document.getElementById('hidden-parts-result');
+  if (!resultEl) return;
   resultEl.style.display = 'block';
   resultEl.innerHTML = refs.length
     ? refs.map(ref => `<div style="display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--bg4);padding:2px 0">
@@ -2836,17 +2838,45 @@ function symRowPointerDown(e, i) {
   document.addEventListener('pointercancel', onUp);
 }
 
+// 種別コード→表示名。CSV一括登録欄のヘルプ文言(js/ui.js内 別箇所)と揃えること。
+const PART_TYPE_LABELS = {
+  coil: 'リレーコイル・コンタクタ', sw_no: 'a接点', sw_nc: 'b接点', breaker: 'ブレーカ',
+  motor: 'モーター', terminal: '端子台', lamp: 'ランプ', fuse: 'ヒューズ',
+  transformer: 'トランス', option: '増設ユニット等(付属品)',
+};
+const PART_TYPE_ORDER = ['breaker','coil','sw_no','sw_nc','motor','option','terminal','lamp','fuse','transformer'];
+// カテゴリの折りたたみ状態(既定は全部開いた状態)。検索中は無視して全部展開する。
+state.partsCollapsed = state.partsCollapsed || {};
+function togglePartsCategory(type) {
+  state.partsCollapsed[type] = !state.partsCollapsed[type];
+  renderPartsTable2(_lastPartsList || allParts());
+}
 // ----------------------------------------------------------------
 // 部品DBフローティングパネル
 // ----------------------------------------------------------------
 function renderPartsFloat() {
+  _lastPartsQuery = '';
+  const searchEl = document.getElementById('part-search2');
+  if (searchEl) searchEl.value = '';
   renderPartsTable2(allParts());
 }
+let _lastPartsList = null;
+let _lastPartsQuery = '';
 function renderPartsTable2(parts) {
   const el = document.getElementById('parts-table2');
   if (!el) return;
+  _lastPartsList = parts;
   const hiddenCount = (state.hiddenBuiltinRefs || []).length;
-  el.innerHTML = parts.map(p => `
+  const searching = !!_lastPartsQuery;
+
+  // 種別ごとにグループ化(増える一方なので一覧が延々スクロールにならないよう、
+  // 種別別に折りたたみ表示する。検索中は絞り込み結果を見せたいので全部展開する。2026-08-17)
+  const groups = {};
+  parts.forEach(p => { (groups[p.type] = groups[p.type] || []).push(p); });
+  const typesPresent = PART_TYPE_ORDER.filter(t => groups[t]?.length);
+  Object.keys(groups).forEach(t => { if (!typesPresent.includes(t)) typesPresent.push(t); });
+
+  const cardHtml = p => `
     <div style="padding:4px 3px;border-bottom:1px solid var(--bg4);cursor:pointer" onclick="placePart('${p.type}','${p.ref}','${p.terminals||''}')">
       <div style="display:flex;justify-content:space-between">
         <span style="font-size:11px;font-weight:600;color:var(--fg)">${p.ref}</span>
@@ -2859,10 +2889,24 @@ function renderPartsTable2(parts) {
       ${p.outlineDxf
         ? `<div style="font-size:9px;color:var(--acc)">外形図: ${p.outlineDxfName||'あり'} <span onclick="event.stopPropagation();placePartOutline('${p.ref}')" style="cursor:pointer;text-decoration:underline">配置</span></div>`
         : (p.custom ? `<div style="font-size:9px;color:var(--fg3)">外形図なし <span onclick="event.stopPropagation();attachOutlineToPart('${p.ref}')" style="cursor:pointer;text-decoration:underline;color:var(--acc)">添付</span></div>` : '')}
-    </div>`).join('')
+    </div>`;
+
+  el.innerHTML = typesPresent.map(t => {
+    const list = groups[t];
+    const collapsed = !searching && state.partsCollapsed[t];
+    const label = PART_TYPE_LABELS[t] || t;
+    return `<div class="parts-cat">
+      <div onclick="togglePartsCategory('${t}')" style="display:flex;justify-content:space-between;align-items:center;padding:5px 4px;cursor:pointer;background:var(--bg3);border-radius:3px;margin-top:4px">
+        <span style="font-size:11px;font-weight:600;color:var(--fg)">${label}（${list.length}）</span>
+        <span style="font-size:10px;color:var(--fg3)">${collapsed ? '▶' : '▼'}</span>
+      </div>
+      ${collapsed ? '' : list.map(cardHtml).join('')}
+    </div>`;
+  }).join('')
     + (hiddenCount ? `<div style="padding:6px 3px;text-align:center"><span onclick="showHiddenBuiltinParts()" style="font-size:10px;color:var(--acc);cursor:pointer;text-decoration:underline">非表示にした標準部品(${hiddenCount}件)を確認・復元</span></div>` : '');
 }
 function filterParts(q) {
+  _lastPartsQuery = q || '';
   const parts = allParts().filter(p => !q || p.ref.toLowerCase().includes(q.toLowerCase()) || p.maker.toLowerCase().includes(q.toLowerCase()));
   renderPartsTable2(parts);
 }
