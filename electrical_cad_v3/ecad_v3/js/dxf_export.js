@@ -707,9 +707,9 @@ function exportDXF(){
         const fs = el.labelFs||11;
         const lh = Math.round(fs*1.25);
         const lines = String(el.label).split('\n');
-        // labelFollowRot(既定OFF): 位置は回転に追随するが文字自体は水平のまま(画面と同じ)。
-        // ONのときだけ従来どおり文字自体も回転させる。
-        const textRot = el.labelFollowRot ? (el.rot||0) : 0;
+        // textFollowRot(デバイス/型式/仕様で共通、既定OFF): 位置は常に回転に追随するが
+        // 文字自体は水平のまま(画面と同じ)。ONのときだけ文字自体も回転させる。
+        const textRot = el.textFollowRot ? (el.rot||0) : 0;
         lines.forEach((ln,i)=>{
           if(!ln) return;
           const ly0 = loy + i*lh;
@@ -720,7 +720,7 @@ function exportDXF(){
       }
       // 【新規】型式(partModel)。draw.jsのdrawSymEl内の型式表示ブロックと同じ位置式。
       // el.showModelがtrueの要素だけ描く(3極品等で同じデバイスの表示重複を避けるため)。
-      // 画面同様、文字自体は回転させない(位置のみel.rotに追随)。
+      // textFollowRotで仕様・デバイスと統一(位置は常に回転に追随、既定は文字水平)。
       if(el.showModel && el.partModel){
         const mfs = el.modelFs || el.labelFs || 11;
         const base = el.labelOffY!=null ? el.labelOffY : (d.h*sc/2 + 15*sc);
@@ -732,24 +732,23 @@ function exportDXF(){
         const rot=(el.rot||0)*Math.PI/180;
         const mx=el.x+mlox*Math.cos(rot)-mloy*Math.sin(rot);
         const my=el.y+mlox*Math.sin(rot)+mloy*Math.cos(rot);
-        eText(layer, mx, my, mfs, el.partModel);
+        const mTextRot = el.textFollowRot ? (el.rot||0) : 0;
+        eText(layer, mx, my, mfs, el.partModel, mTextRot);
       }
       // 【新規】デバイス表示(partRef、例: MCCB1/MC1/TH1/PB1等)。従来DXF出力に
       // 一切存在せず、画面には常に見えているのにDXFに変換すると消える最大の原因だった
       // (2026-08-03、盛田さんのスクリーンショットで判明)。draw.jsのdrawSymEl/drawJunctionElと
       // 同条件(state.showPartRef && !devHide)・同位置式で出力する。
-      // devFollowRot(既定OFF): 位置は固定。ONで位置だけ回転に追随(文字は水平のまま、画面と同じ)。
+      // textFollowRotで型式・仕様と統一(位置は常に回転に追随、既定は文字水平)。
       if(state.showPartRef && el.partRef && !el.devHide){
         const dfs = el.devFs || 11;
         const dx = el.devOffX || 0;
         const dy = el.devOffY!==undefined ? el.devOffY : -(d.h*sc/2 + 6);
-        let px, py;
-        if(el.devFollowRot){
-          const rot=(el.rot||0)*Math.PI/180;
-          px = el.x + dx*Math.cos(rot) - dy*Math.sin(rot);
-          py = el.y + dx*Math.sin(rot) + dy*Math.cos(rot);
-        } else { px = el.x+dx; py = el.y+dy; }
-        eText(layer, px, py, dfs, el.partRef);
+        const rot=(el.rot||0)*Math.PI/180;
+        const px = el.x + dx*Math.cos(rot) - dy*Math.sin(rot);
+        const py = el.y + dx*Math.sin(rot) + dy*Math.cos(rot);
+        const dTextRot = el.textFollowRot ? (el.rot||0) : 0;
+        eText(layer, px, py, dfs, el.partRef, dTextRot);
       }
     }
   });

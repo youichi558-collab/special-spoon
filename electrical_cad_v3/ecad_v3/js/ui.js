@@ -1848,7 +1848,6 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="color" id="pp-dcolor" value="${el.devColor||'#1d6fb5'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('pp-dcolor','pp-dcolorcode');previewDeviceOff()"><input type="text" id="pp-dcolorcode" value="${el.devColor||'#1d6fb5'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-dcolorcode','pp-dcolor');previewDeviceOff()">${colorCodeBtns('pp-dcolorcode','pp-dcolor')}</div></div>`;
     html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-dox" value="${el.devOffX!==undefined?el.devOffX:''}" placeholder="自動" step="5" oninput="previewDeviceOff()"></div>`;
     html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-doy" value="${el.devOffY!==undefined?el.devOffY:''}" placeholder="自動" step="5" oninput="previewDeviceOff()"></div>`;
-    html += `<div class="pp-row"><label>回転に追随</label><input type="checkbox" id="pp-drot"${el.devFollowRot?' checked':''} title="既定はOFF: シンボルを回転してもデバイス名の位置は常に固定(従来の見た目)。ONにすると位置だけ回転に追随します(文字自体は水平のまま)"></div>`;
     html += `<div class="pp-row"><button onclick="resetDeviceOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button></div>`;
     html += `</details>`;
     html += `</div>`; }
@@ -1877,13 +1876,13 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-lfs" value="${el.labelFs||11}" step="1" min="6" max="32" oninput="previewLabelStyle()"></div>`;
     html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-lox" value="${el.labelOffX||0}" step="5" oninput="previewLabelOff()"></div>`;
     html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-loy" value="${el.labelOffY||''}" placeholder="自動" step="5" oninput="previewLabelOff()"></div>`;
-    html += `<div class="pp-row"><label>回転時に文字も傾ける</label><input type="checkbox" id="pp-lrot"${el.labelFollowRot?' checked':''} title="既定はOFF: シンボルを回転しても文字は常に水平のまま(位置だけ回転に追随)。ONにすると文字自体もシンボルと一緒に傾きます"></div>`;
     html += `<div class="pp-row"><button onclick="cancelLabelOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button></div>`;
     html += `</details>`;
     html += `</div>`; }
     html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-term" value="${el.terminals||''}" placeholder="例: A1,A2,13,14"></div>`;
     html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${el.wireNo||''}"></div>`;
     html += `<div class="pp-row"><label>回転(°)</label><input type="number" id="pp-rot" value="${el.rot||0}" step="90"></div>`;
+    html += `<div class="pp-row"><label>回転時に文字も傾ける</label><input type="checkbox" id="pp-trot"${el.textFollowRot?' checked':''} title="このシンボルのデバイス名・型式・仕様すべてに共通で効きます。既定はOFF: 位置はシンボルの回転に追随するが文字自体は常に水平(電気CADの一般的な挙動)。ONにすると3つとも文字自体がシンボルと一緒に傾きます"></div>`;
     html += `<div class="pp-row"><label>スケール</label><input type="number" id="pp-scale" value="${el.scale||1}" step="0.1" min="0.1" max="5" oninput="previewScale()"></div>`;
     // シンボル色ピッカーは撤去（2026-08-16）。62c94f0で完全BYLAYER化した際に
     // 描画側(draw.js)の el.color 参照を消したがUIだけ残っており、押しても画面に
@@ -2229,7 +2228,6 @@ function applyRightPanel() {
     el.devColor  = v('pp-dcolorcode') || v('pp-dcolor') || undefined;
     el.devOffX   = v('pp-dox') !== '' ? parseInt(v('pp-dox')) : undefined;
     el.devOffY   = v('pp-doy') !== '' ? parseInt(v('pp-doy')) : undefined;
-    el.devFollowRot = !!document.getElementById('pp-drot')?.checked;
     el.showModel = !!document.getElementById('pp-showmodel')?.checked;
     el.modelFs   = parseInt(v('pp-mfs')) || undefined;
     el.modelColor = v('pp-mcolorcode') || v('pp-mcolor') || undefined;
@@ -2246,7 +2244,7 @@ function applyRightPanel() {
     el.labelFs    = parseInt(v('pp-lfs'))||11;
     el.labelOffX  = parseInt(v('pp-lox'))||0;
     el.labelOffY  = v('pp-loy') ? parseInt(v('pp-loy')) : undefined;
-    el.labelFollowRot = !!document.getElementById('pp-lrot')?.checked;
+    el.textFollowRot = !!document.getElementById('pp-trot')?.checked;
     el.layer     = v('pp-layer');
     el.note      = v('pp-note');
   }
@@ -2260,6 +2258,7 @@ const DEVICE_PROP_KEYS = [
   'label','labelAlign','labelColor','labelFs','labelOffX','labelOffY',
   'partRef','devHide','devFs','devColor','devOffX','devOffY',
   'partModel','showModel','modelFs','modelColor','modelOffX','modelOffY',
+  'textFollowRot',
 ];
 function copyDeviceProps() {
   const rp = document.getElementById('rp-body');

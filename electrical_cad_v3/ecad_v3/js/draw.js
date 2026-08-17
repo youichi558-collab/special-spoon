@@ -532,8 +532,11 @@ function drawSymEl(el, sel, lc) {
     // 開始位置がズレてしまっていた(同じ書き方でも装置ごとに位置が変わる不具合)。
     // 「左揃え=決まった位置から書き始める」という素直な期待に合わせ、固定点+揃えのみにする。
     ctx.textAlign = el.labelAlign || 'center';
-    if (el.labelFollowRot) {
-      // オプションON: 位置も文字の向きもシンボルの回転に追随(従来の挙動)。
+    // textFollowRot(デバイス/型式/仕様で共通のシンボル単位トグル、既定OFF)。
+    // OFF: 位置は回転に追随するが文字自体は水平。ON: 位置も文字の向きも完全に追随。
+    // 3つを個別にON/OFFできると「仕様だけ傾いてデバイスは水平」という矛盾した
+    // 図面になってしまうため、1つのフラグで揃えて切り替える(2026-08-17)。
+    if (el.textFollowRot) {
       // translate+rotateしたローカル座標系で描くと、文字揃えの基準x(lox)が
       // 全行共通のまま保てる。textAlignをleft/center/rightに切り替えるだけで
       // 各行の長さが違っても自然に左揃え/中央揃え/右揃えになる。
@@ -541,9 +544,7 @@ function drawSymEl(el, sel, lc) {
       ctx.rotate(rot);
       lines.forEach((ln, i) => ctx.fillText(ln, lox, loy + i*lh));
     } else {
-      // 既定(OFF): 位置はシンボルの回転に追随するが、文字自体は常に水平のまま。
-      // 型式(partModel)と同じ考え方(電気CADの一般的な挙動)。回転前後で同じ
-      // 相対位置(lox, loy+i*lh)を回転させ、そこへ水平な文字を置く。
+      // 回転前後で同じ相対位置(lox, loy+i*lh)を回転させ、そこへ水平な文字を置く。
       lines.forEach((ln, i) => {
         const ly = loy + i*lh;
         const px = el.x + lox*Math.cos(rot) - ly*Math.sin(rot);
@@ -570,12 +571,18 @@ function drawSymEl(el, sel, lc) {
     const loy  = el.modelOffY !== undefined ? el.modelOffY
                : base + (lblLines ? (lblLines - 1) * Math.round(lblFs*1.25) + fs + 3 : 0);
     const rot  = (el.rot||0) * Math.PI/180;
-    const mx   = el.x + lox*Math.cos(rot) - loy*Math.sin(rot);
-    const my   = el.y + lox*Math.sin(rot) + loy*Math.cos(rot);
     ctx.save();
     ctx.fillStyle = el.modelColor || el.labelColor || (state.darkMode ? '#aaa' : '#555');
     ctx.font = `${fs}px sans-serif`; ctx.textAlign = 'center';
-    ctx.fillText(el.partModel, mx, my);
+    if (el.textFollowRot) {
+      ctx.translate(el.x, el.y);
+      ctx.rotate(rot);
+      ctx.fillText(el.partModel, lox, loy);
+    } else {
+      const mx = el.x + lox*Math.cos(rot) - loy*Math.sin(rot);
+      const my = el.y + lox*Math.sin(rot) + loy*Math.cos(rot);
+      ctx.fillText(el.partModel, mx, my);
+    }
     ctx.restore();
   }
   // デバイス表示（表示ON時）。
@@ -586,27 +593,27 @@ function drawSymEl(el, sel, lc) {
   // その一方で文字は1箇所だけに出したいので、要素ごとに devHide で
   // 表示/非表示を切り替えられるようにしている(既定は表示=false)。
   // 位置・サイズは devOffX / devOffY / devFs で個別に調整できる。
-  // 既定は従来どおりシンボル上端の少し上・回転に追随しない(従来の見た目を維持)。
-  // devFollowRotをONにすると型式と同じ考え方(位置だけ回転に追随・文字は水平)に切り替わる。
+  // textFollowRotで型式・仕様と統一(位置は常に回転に追随、OFF既定は文字水平)。
   if (state.showPartRef && !state.pdfSkipText && el.partRef && !el.devHide) {
     const d  = getDef(el.type) || { w:64, h:34 };
     const sc = el.scale || 1;
     const fs = Math.round(el.devFs || 11);
     const dx = el.devOffX || 0;
     const dy = el.devOffY !== undefined ? el.devOffY : -(d.h*sc/2 + 6);
-    let px, py;
-    if (el.devFollowRot) {
-      const rot = (el.rot||0) * Math.PI/180;
-      px = el.x + dx*Math.cos(rot) - dy*Math.sin(rot);
-      py = el.y + dx*Math.sin(rot) + dy*Math.cos(rot);
-    } else {
-      px = el.x + dx; py = el.y + dy;
-    }
+    const rot = (el.rot||0) * Math.PI/180;
     ctx.save();
     ctx.textAlign = 'center';
     ctx.font = `bold ${fs}px sans-serif`;
     ctx.fillStyle = el.devColor || (state.darkMode ? '#4da3ff' : '#1d6fb5');
-    ctx.fillText(el.partRef, px, py);
+    if (el.textFollowRot) {
+      ctx.translate(el.x, el.y);
+      ctx.rotate(rot);
+      ctx.fillText(el.partRef, dx, dy);
+    } else {
+      const px = el.x + dx*Math.cos(rot) - dy*Math.sin(rot);
+      const py = el.y + dx*Math.sin(rot) + dy*Math.cos(rot);
+      ctx.fillText(el.partRef, px, py);
+    }
     ctx.restore();
   }
   if (el.refLabel) {
