@@ -357,7 +357,7 @@ function allParts() {
     ...state.customParts.map(p => ({ ...p, custom:true })),
   ];
 }
-function renderPartsAll()  { renderPartsTable2(allParts()); }
+function renderPartsAll()  { renderMakerTabs(); renderPartsTable2(applyPartsFilters()); }
 // filterParts は下で定義
 // 標準部品(BUILTIN_PARTS)を一覧から非表示にする（コード埋め込みのため削除は不可、非表示扱いのみ）
 function hideBuiltinPart(ref) {
@@ -2858,7 +2858,35 @@ function renderPartsFloat() {
   _lastPartsQuery = '';
   const searchEl = document.getElementById('part-search2');
   if (searchEl) searchEl.value = '';
-  renderPartsTable2(allParts());
+  renderMakerTabs();
+  renderPartsTable2(applyPartsFilters());
+}
+// メーカー別タブ(全て/三菱電機/...)。増える一方の部品DBを軸2つ(種別・メーカー)で
+// 絞れるようにする(2026-08-17、種別グループ化だけでは「三菱だけ見たい」に対応できないため)。
+state.partsMakerFilter = state.partsMakerFilter || '';
+function renderMakerTabs() {
+  const el = document.getElementById('parts-maker-tabs');
+  if (!el) return;
+  const makers = [...new Set(allParts().map(p => p.maker).filter(Boolean))].sort();
+  if (makers.length <= 1) { el.innerHTML = ''; return; }
+  const chip = (label, val) => `<span onclick="setPartsMakerFilter('${val.replace(/'/g, "\\'")}')" style="font-size:10px;padding:2px 8px;border-radius:10px;cursor:pointer;white-space:nowrap;${
+    state.partsMakerFilter === val ? 'background:var(--acc);color:#fff' : 'background:var(--bg3);color:var(--fg3);border:1px solid var(--bd2)'
+  }">${label}</span>`;
+  el.innerHTML = chip('全て', '') + makers.map(m => chip(m, m)).join('');
+}
+function setPartsMakerFilter(m) {
+  state.partsMakerFilter = m;
+  renderMakerTabs();
+  renderPartsTable2(applyPartsFilters());
+}
+// 検索欄(型番・メーカー文字列)とメーカータブ、両方の絞り込みをまとめて適用する
+function applyPartsFilters() {
+  const q = _lastPartsQuery;
+  return allParts().filter(p => {
+    if (state.partsMakerFilter && p.maker !== state.partsMakerFilter) return false;
+    if (q && !p.ref.toLowerCase().includes(q.toLowerCase()) && !p.maker.toLowerCase().includes(q.toLowerCase())) return false;
+    return true;
+  });
 }
 let _lastPartsList = null;
 let _lastPartsQuery = '';
@@ -2867,7 +2895,7 @@ function renderPartsTable2(parts) {
   if (!el) return;
   _lastPartsList = parts;
   const hiddenCount = (state.hiddenBuiltinRefs || []).length;
-  const searching = !!_lastPartsQuery;
+  const searching = !!_lastPartsQuery || !!state.partsMakerFilter;
 
   // 種別ごとにグループ化(増える一方なので一覧が延々スクロールにならないよう、
   // 種別別に折りたたみ表示する。検索中は絞り込み結果を見せたいので全部展開する。2026-08-17)
@@ -2907,8 +2935,7 @@ function renderPartsTable2(parts) {
 }
 function filterParts(q) {
   _lastPartsQuery = q || '';
-  const parts = allParts().filter(p => !q || p.ref.toLowerCase().includes(q.toLowerCase()) || p.maker.toLowerCase().includes(q.toLowerCase()));
-  renderPartsTable2(parts);
+  renderPartsTable2(applyPartsFilters());
 }
 
 // ----------------------------------------------------------------
