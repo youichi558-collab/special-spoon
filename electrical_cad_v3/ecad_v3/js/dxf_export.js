@@ -701,26 +701,24 @@ function exportDXF(){
       // 縦に並べ、揃え(labelAlign)もそのまま反映しているのに、DXFだけ1行に潰れて詰まった
       // 見た目になっていた(盛田さんのスクリーンショットでMCCB1/MCCB2/MC1の仕様が
       // 1行化しているのを確認、2026-08-03)。draw.jsと同じ行分割・行間・揃えに合わせる。
+      // 【2026-08-17】位置(オフセット)はシンボルの回転(el.rot)と連動しない固定位置に変更。
+      // 文字の向きはel.textRot(デバイス/型式/仕様で共通、シンボル回転とは独立)で指定する。
+      // DXFはy軸を反転して出力する(fy=-y)ため、その座標系では回転の向きも反転する
+      // (INSERT回転の修正 d57c3c0 と同じ理由)。TEXT側でも同じ符号補正(360-角度)をかける。
       if(el.label){
         const lox=el.labelOffX||0, loy=el.labelOffY||(d.h*sc/2+15*sc);
-        const rot=(el.rot||0)*Math.PI/180;
         const fs = el.labelFs||11;
         const lh = Math.round(fs*1.25);
         const lines = String(el.label).split('\n');
-        // textFollowRot(デバイス/型式/仕様で共通、既定OFF): 位置は常に回転に追随するが
-        // 文字自体は水平のまま(画面と同じ)。ONのときだけ文字自体も回転させる。
-        const textRot = el.textFollowRot ? (el.rot||0) : 0;
+        const textRot = el.textRot ? (360 - el.textRot) % 360 : 0;
         lines.forEach((ln,i)=>{
           if(!ln) return;
-          const ly0 = loy + i*lh;
-          const lx=el.x+lox*Math.cos(rot)-ly0*Math.sin(rot);
-          const ly=el.y+lox*Math.sin(rot)+ly0*Math.cos(rot);
-          eText(layer, lx, ly, fs, ln, textRot, el.labelAlign||'center');
+          eText(layer, el.x+lox, el.y+loy+i*lh, fs, ln, textRot, el.labelAlign||'center');
         });
       }
       // 【新規】型式(partModel)。draw.jsのdrawSymEl内の型式表示ブロックと同じ位置式。
       // el.showModelがtrueの要素だけ描く(3極品等で同じデバイスの表示重複を避けるため)。
-      // textFollowRotで仕様・デバイスと統一(位置は常に回転に追随、既定は文字水平)。
+      // 位置は固定オフセット(シンボル回転に連動しない)。文字の向きはel.textRotで指定。
       if(el.showModel && el.partModel){
         const mfs = el.modelFs || el.labelFs || 11;
         const base = el.labelOffY!=null ? el.labelOffY : (d.h*sc/2 + 15*sc);
@@ -729,26 +727,20 @@ function exportDXF(){
         const lblFs = el.labelFs||11;
         const mloy = el.modelOffY!==undefined ? el.modelOffY
                    : base + (lblLines ? (lblLines-1)*Math.round(lblFs*1.25) + mfs + 3 : 0);
-        const rot=(el.rot||0)*Math.PI/180;
-        const mx=el.x+mlox*Math.cos(rot)-mloy*Math.sin(rot);
-        const my=el.y+mlox*Math.sin(rot)+mloy*Math.cos(rot);
-        const mTextRot = el.textFollowRot ? (el.rot||0) : 0;
-        eText(layer, mx, my, mfs, el.partModel, mTextRot);
+        const mTextRot = el.textRot ? (360 - el.textRot) % 360 : 0;
+        eText(layer, el.x+mlox, el.y+mloy, mfs, el.partModel, mTextRot);
       }
       // 【新規】デバイス表示(partRef、例: MCCB1/MC1/TH1/PB1等)。従来DXF出力に
       // 一切存在せず、画面には常に見えているのにDXFに変換すると消える最大の原因だった
       // (2026-08-03、盛田さんのスクリーンショットで判明)。draw.jsのdrawSymEl/drawJunctionElと
       // 同条件(state.showPartRef && !devHide)・同位置式で出力する。
-      // textFollowRotで型式・仕様と統一(位置は常に回転に追随、既定は文字水平)。
+      // 位置は固定オフセット(シンボル回転に連動しない)。文字の向きはel.textRotで指定。
       if(state.showPartRef && el.partRef && !el.devHide){
         const dfs = el.devFs || 11;
         const dx = el.devOffX || 0;
         const dy = el.devOffY!==undefined ? el.devOffY : -(d.h*sc/2 + 6);
-        const rot=(el.rot||0)*Math.PI/180;
-        const px = el.x + dx*Math.cos(rot) - dy*Math.sin(rot);
-        const py = el.y + dx*Math.sin(rot) + dy*Math.cos(rot);
-        const dTextRot = el.textFollowRot ? (el.rot||0) : 0;
-        eText(layer, px, py, dfs, el.partRef, dTextRot);
+        const dTextRot = el.textRot ? (360 - el.textRot) % 360 : 0;
+        eText(layer, el.x+dx, el.y+dy, dfs, el.partRef, dTextRot);
       }
     }
   });

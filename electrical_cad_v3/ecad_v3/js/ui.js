@@ -1882,7 +1882,7 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-term" value="${el.terminals||''}" placeholder="例: A1,A2,13,14"></div>`;
     html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${el.wireNo||''}"></div>`;
     html += `<div class="pp-row"><label>回転(°)</label><input type="number" id="pp-rot" value="${el.rot||0}" step="90"></div>`;
-    html += `<div class="pp-row"><label>回転時に文字も傾ける</label><input type="checkbox" id="pp-trot"${el.textFollowRot?' checked':''} title="このシンボルのデバイス名・型式・仕様すべてに共通で効きます。既定はOFF: 位置はシンボルの回転に追随するが文字自体は常に水平(電気CADの一般的な挙動)。ONにすると3つとも文字自体がシンボルと一緒に傾きます"></div>`;
+    html += `<div class="pp-row"><label>文字の回転角度(°)</label><input type="number" id="pp-trot" value="${el.textRot||0}" step="90" title="このシンボルのデバイス名・型式・仕様すべてに共通で効きます。シンボル自体の回転(上の「回転(°)」)とは連動しません。位置は各項目のオフセット(X/Y補正)で個別に指定してください"></div>`;
     html += `<div class="pp-row"><label>スケール</label><input type="number" id="pp-scale" value="${el.scale||1}" step="0.1" min="0.1" max="5" oninput="previewScale()"></div>`;
     // シンボル色ピッカーは撤去（2026-08-16）。62c94f0で完全BYLAYER化した際に
     // 描画側(draw.js)の el.color 参照を消したがUIだけ残っており、押しても画面に
@@ -2244,7 +2244,7 @@ function applyRightPanel() {
     el.labelFs    = parseInt(v('pp-lfs'))||11;
     el.labelOffX  = parseInt(v('pp-lox'))||0;
     el.labelOffY  = v('pp-loy') ? parseInt(v('pp-loy')) : undefined;
-    el.textFollowRot = !!document.getElementById('pp-trot')?.checked;
+    el.textRot    = parseInt(v('pp-trot'))||0;
     el.layer     = v('pp-layer');
     el.note      = v('pp-note');
   }
@@ -2258,7 +2258,7 @@ const DEVICE_PROP_KEYS = [
   'label','labelAlign','labelColor','labelFs','labelOffX','labelOffY',
   'partRef','devHide','devFs','devColor','devOffX','devOffY',
   'partModel','showModel','modelFs','modelColor','modelOffX','modelOffY',
-  'textFollowRot',
+  'textRot',
 ];
 function copyDeviceProps() {
   const rp = document.getElementById('rp-body');

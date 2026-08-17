@@ -516,13 +516,17 @@ function drawSymEl(el, sel, lc) {
     const d   = getDef(el.type) || { w:64, h:34 };
     const sc  = el.scale || 1;
     const loy = el.labelOffY || (d.h*sc/2 + 15*sc);
-    const rot = (el.rot||0) * Math.PI/180;
     // 文字サイズはシンボルのスケールに追随させない(印字上の実サイズとして固定)。
     // 位置(loy等)はシンボルに対する相対配置なのでスケールに追随させたまま。
     const fs  = Math.round(el.labelFs||11);
     const lines = String(el.label).split('\n');
     const lh = Math.round(fs * 1.25);
     const lox = el.labelOffX || 0;
+    // 文字の回転角(textRot、デバイス/型式/仕様で共通)は、シンボルの回転(el.rot)とは
+    // 完全に独立。位置(lox/loy)はシンボルを回転させても一切動かず常に固定オフセット。
+    // 「シンボルに追随する必要はなく文字だけ回転させたい」という要望に合わせ、
+    // el.rotに連動した位置回転は廃止した(2026-08-17)。
+    const textRot = (el.textRot||0) * Math.PI/180;
     ctx.save();
     ctx.fillStyle = el.labelColor || (state.darkMode ? '#aaa' : '#555');
     ctx.font = `${fs}px sans-serif`;
@@ -532,26 +536,9 @@ function drawSymEl(el, sel, lc) {
     // 開始位置がズレてしまっていた(同じ書き方でも装置ごとに位置が変わる不具合)。
     // 「左揃え=決まった位置から書き始める」という素直な期待に合わせ、固定点+揃えのみにする。
     ctx.textAlign = el.labelAlign || 'center';
-    // textFollowRot(デバイス/型式/仕様で共通のシンボル単位トグル、既定OFF)。
-    // OFF: 位置は回転に追随するが文字自体は水平。ON: 位置も文字の向きも完全に追随。
-    // 3つを個別にON/OFFできると「仕様だけ傾いてデバイスは水平」という矛盾した
-    // 図面になってしまうため、1つのフラグで揃えて切り替える(2026-08-17)。
-    if (el.textFollowRot) {
-      // translate+rotateしたローカル座標系で描くと、文字揃えの基準x(lox)が
-      // 全行共通のまま保てる。textAlignをleft/center/rightに切り替えるだけで
-      // 各行の長さが違っても自然に左揃え/中央揃え/右揃えになる。
-      ctx.translate(el.x, el.y);
-      ctx.rotate(rot);
-      lines.forEach((ln, i) => ctx.fillText(ln, lox, loy + i*lh));
-    } else {
-      // 回転前後で同じ相対位置(lox, loy+i*lh)を回転させ、そこへ水平な文字を置く。
-      lines.forEach((ln, i) => {
-        const ly = loy + i*lh;
-        const px = el.x + lox*Math.cos(rot) - ly*Math.sin(rot);
-        const py = el.y + lox*Math.sin(rot) + ly*Math.cos(rot);
-        ctx.fillText(ln, px, py);
-      });
-    }
+    ctx.translate(el.x + lox, el.y + loy);
+    ctx.rotate(textRot);
+    lines.forEach((ln, i) => ctx.fillText(ln, 0, i*lh));
     ctx.restore();
   }
   // 型式(partModel)の図面表示。要素ごとの el.showModel が真のときだけ描く。
@@ -570,19 +557,14 @@ function drawSymEl(el, sel, lc) {
     const lblFs    = Math.round(el.labelFs||11);
     const loy  = el.modelOffY !== undefined ? el.modelOffY
                : base + (lblLines ? (lblLines - 1) * Math.round(lblFs*1.25) + fs + 3 : 0);
-    const rot  = (el.rot||0) * Math.PI/180;
+    // 位置は固定オフセット(シンボル回転に連動しない)。文字の向きだけtextRotで独立指定。
+    const textRot = (el.textRot||0) * Math.PI/180;
     ctx.save();
     ctx.fillStyle = el.modelColor || el.labelColor || (state.darkMode ? '#aaa' : '#555');
     ctx.font = `${fs}px sans-serif`; ctx.textAlign = 'center';
-    if (el.textFollowRot) {
-      ctx.translate(el.x, el.y);
-      ctx.rotate(rot);
-      ctx.fillText(el.partModel, lox, loy);
-    } else {
-      const mx = el.x + lox*Math.cos(rot) - loy*Math.sin(rot);
-      const my = el.y + lox*Math.sin(rot) + loy*Math.cos(rot);
-      ctx.fillText(el.partModel, mx, my);
-    }
+    ctx.translate(el.x + lox, el.y + loy);
+    ctx.rotate(textRot);
+    ctx.fillText(el.partModel, 0, 0);
     ctx.restore();
   }
   // デバイス表示（表示ON時）。
@@ -593,27 +575,21 @@ function drawSymEl(el, sel, lc) {
   // その一方で文字は1箇所だけに出したいので、要素ごとに devHide で
   // 表示/非表示を切り替えられるようにしている(既定は表示=false)。
   // 位置・サイズは devOffX / devOffY / devFs で個別に調整できる。
-  // textFollowRotで型式・仕様と統一(位置は常に回転に追随、OFF既定は文字水平)。
+  // 位置は固定オフセット(シンボル回転に連動しない)。文字の向きだけtextRotで独立指定。
   if (state.showPartRef && !state.pdfSkipText && el.partRef && !el.devHide) {
     const d  = getDef(el.type) || { w:64, h:34 };
     const sc = el.scale || 1;
     const fs = Math.round(el.devFs || 11);
     const dx = el.devOffX || 0;
     const dy = el.devOffY !== undefined ? el.devOffY : -(d.h*sc/2 + 6);
-    const rot = (el.rot||0) * Math.PI/180;
+    const textRot = (el.textRot||0) * Math.PI/180;
     ctx.save();
     ctx.textAlign = 'center';
     ctx.font = `bold ${fs}px sans-serif`;
     ctx.fillStyle = el.devColor || (state.darkMode ? '#4da3ff' : '#1d6fb5');
-    if (el.textFollowRot) {
-      ctx.translate(el.x, el.y);
-      ctx.rotate(rot);
-      ctx.fillText(el.partRef, dx, dy);
-    } else {
-      const px = el.x + dx*Math.cos(rot) - dy*Math.sin(rot);
-      const py = el.y + dx*Math.sin(rot) + dy*Math.cos(rot);
-      ctx.fillText(el.partRef, px, py);
-    }
+    ctx.translate(el.x + dx, el.y + dy);
+    ctx.rotate(textRot);
+    ctx.fillText(el.partRef, 0, 0);
     ctx.restore();
   }
   if (el.refLabel) {
