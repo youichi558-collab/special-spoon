@@ -737,12 +737,19 @@ function exportDXF(){
       // 【新規】デバイス表示(partRef、例: MCCB1/MC1/TH1/PB1等)。従来DXF出力に
       // 一切存在せず、画面には常に見えているのにDXFに変換すると消える最大の原因だった
       // (2026-08-03、盛田さんのスクリーンショットで判明)。draw.jsのdrawSymEl/drawJunctionElと
-      // 同条件(state.showPartRef && !devHide)・同位置式(回転には追随しない)で出力する。
+      // 同条件(state.showPartRef && !devHide)・同位置式で出力する。
+      // devFollowRot(既定OFF): 位置は固定。ONで位置だけ回転に追随(文字は水平のまま、画面と同じ)。
       if(state.showPartRef && el.partRef && !el.devHide){
         const dfs = el.devFs || 11;
         const dx = el.devOffX || 0;
         const dy = el.devOffY!==undefined ? el.devOffY : -(d.h*sc/2 + 6);
-        eText(layer, el.x+dx, el.y+dy, dfs, el.partRef);
+        let px, py;
+        if(el.devFollowRot){
+          const rot=(el.rot||0)*Math.PI/180;
+          px = el.x + dx*Math.cos(rot) - dy*Math.sin(rot);
+          py = el.y + dx*Math.sin(rot) + dy*Math.cos(rot);
+        } else { px = el.x+dx; py = el.y+dy; }
+        eText(layer, px, py, dfs, el.partRef);
       }
     }
   });

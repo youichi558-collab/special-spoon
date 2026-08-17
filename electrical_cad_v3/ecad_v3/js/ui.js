@@ -1848,6 +1848,7 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="color" id="pp-dcolor" value="${el.devColor||'#1d6fb5'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('pp-dcolor','pp-dcolorcode');previewDeviceOff()"><input type="text" id="pp-dcolorcode" value="${el.devColor||'#1d6fb5'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-dcolorcode','pp-dcolor');previewDeviceOff()">${colorCodeBtns('pp-dcolorcode','pp-dcolor')}</div></div>`;
     html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-dox" value="${el.devOffX!==undefined?el.devOffX:''}" placeholder="自動" step="5" oninput="previewDeviceOff()"></div>`;
     html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-doy" value="${el.devOffY!==undefined?el.devOffY:''}" placeholder="自動" step="5" oninput="previewDeviceOff()"></div>`;
+    html += `<div class="pp-row"><label>回転に追随</label><input type="checkbox" id="pp-drot"${el.devFollowRot?' checked':''} title="既定はOFF: シンボルを回転してもデバイス名の位置は常に固定(従来の見た目)。ONにすると位置だけ回転に追随します(文字自体は水平のまま)"></div>`;
     html += `<div class="pp-row"><button onclick="resetDeviceOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button></div>`;
     html += `</details>`;
     html += `</div>`; }
@@ -2228,6 +2229,7 @@ function applyRightPanel() {
     el.devColor  = v('pp-dcolorcode') || v('pp-dcolor') || undefined;
     el.devOffX   = v('pp-dox') !== '' ? parseInt(v('pp-dox')) : undefined;
     el.devOffY   = v('pp-doy') !== '' ? parseInt(v('pp-doy')) : undefined;
+    el.devFollowRot = !!document.getElementById('pp-drot')?.checked;
     el.showModel = !!document.getElementById('pp-showmodel')?.checked;
     el.modelFs   = parseInt(v('pp-mfs')) || undefined;
     el.modelColor = v('pp-mcolorcode') || v('pp-mcolor') || undefined;

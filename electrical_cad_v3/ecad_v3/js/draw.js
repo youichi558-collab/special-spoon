@@ -586,18 +586,27 @@ function drawSymEl(el, sel, lc) {
   // その一方で文字は1箇所だけに出したいので、要素ごとに devHide で
   // 表示/非表示を切り替えられるようにしている(既定は表示=false)。
   // 位置・サイズは devOffX / devOffY / devFs で個別に調整できる。
-  // 既定は従来どおりシンボル上端の少し上。回転には追随しない（従来の見た目を維持）。
+  // 既定は従来どおりシンボル上端の少し上・回転に追随しない(従来の見た目を維持)。
+  // devFollowRotをONにすると型式と同じ考え方(位置だけ回転に追随・文字は水平)に切り替わる。
   if (state.showPartRef && !state.pdfSkipText && el.partRef && !el.devHide) {
     const d  = getDef(el.type) || { w:64, h:34 };
     const sc = el.scale || 1;
     const fs = Math.round(el.devFs || 11);
     const dx = el.devOffX || 0;
     const dy = el.devOffY !== undefined ? el.devOffY : -(d.h*sc/2 + 6);
+    let px, py;
+    if (el.devFollowRot) {
+      const rot = (el.rot||0) * Math.PI/180;
+      px = el.x + dx*Math.cos(rot) - dy*Math.sin(rot);
+      py = el.y + dx*Math.sin(rot) + dy*Math.cos(rot);
+    } else {
+      px = el.x + dx; py = el.y + dy;
+    }
     ctx.save();
     ctx.textAlign = 'center';
     ctx.font = `bold ${fs}px sans-serif`;
     ctx.fillStyle = el.devColor || (state.darkMode ? '#4da3ff' : '#1d6fb5');
-    ctx.fillText(el.partRef, el.x + dx, el.y + dy);
+    ctx.fillText(el.partRef, px, py);
     ctx.restore();
   }
   if (el.refLabel) {
