@@ -66,14 +66,81 @@ function refreshFrameTplSel(){
   }
 }
 // 表題欄の様式セレクタの選択肢を作る。
-// TITLE_BLOCK_TPLS に様式を足せば、ここは何も直さなくても選べるようになる。
+// 組み込み様式と、読み込んだ客先様式の両方を並べる。
 function refreshTitleBlockSel(){
   const sel=document.getElementById('frame-tbtpl');
   if(!sel) return;
   const cur=(state.frameObj&&state.frameObj.tbTpl)||'standard';
-  sel.innerHTML=Object.entries(TITLE_BLOCK_TPLS)
-    .map(([k,v])=>`<option value="${k}">${v.label||k}</option>`).join('');
-  sel.value=TITLE_BLOCK_TPLS[cur]?cur:'standard';
+  const user=userTitleBlockTpls();
+  const mk=(k,v)=>`<option value="${k}">${(v&&v.label)||k}</option>`;
+  let html=Object.entries(TITLE_BLOCK_TPLS).filter(([k])=>!user[k]).map(([k,v])=>mk(k,v)).join('');
+  const uKeys=Object.keys(user);
+  if(uKeys.length){
+    html+=`<optgroup label="読み込んだ様式">`+uKeys.map(k=>mk(k,user[k])).join('')+`</optgroup>`;
+  }
+  sel.innerHTML=html;
+  sel.value=allTitleBlockTpls()[cur]?cur:'standard';
+}
+
+// 客先様式のJSONを読み込む。
+// 形式は {"キー":{"label":"表示名","cells":[{x,y,w,h,key,lbl},...]}, ...}
+// 複数の様式を1つのファイルにまとめて入れられる。
+function loadTitleBlockTpl(input){
+  const f=input.files&&input.files[0];
+  if(!f)return;
+  const rd=new FileReader();
+  rd.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data||typeof data!=='object'||Array.isArray(data)) throw new Error('様式定義の形式が違います');
+      // 1件だけの定義({label,cells})を渡された場合はファイル名をキーにして受け付ける
+      const tpls = data.cells ? {[f.name.replace(/\.json$/i,'')]:data} : data;
+      const errs=[];
+      Object.entries(tpls).forEach(([k,v])=>errs.push(...validateTitleBlockTpl(k,v)));
+      if(errs.length){
+        alert('様式の定義に問題があるため読み込めませんでした:\n\n'+errs.slice(0,10).join('\n'));
+        return;
+      }
+      const cur=userTitleBlockTpls();
+      const added=[],replaced=[];
+      Object.entries(tpls).forEach(([k,v])=>{
+        (cur[k]?replaced:added).push((v&&v.label)||k);
+        cur[k]=v;
+      });
+      localStorage.setItem(TB_TPL_STORE,JSON.stringify(cur));
+      refreshTitleBlockSel();
+      draw();
+      alert(`表題欄の様式を読み込みました\n`
+        +(added.length?`\n追加: ${added.join(', ')}`:'')
+        +(replaced.length?`\n更新: ${replaced.join(', ')}`:''));
+    }catch(err){
+      alert('読み込みに失敗しました: '+err.message);
+    }
+  };
+  rd.readAsText(f);
+  input.value='';
+}
+
+// 現在選択中の様式をJSONで書き出す。他のPCへ移すときや、様式を元に改変するときに使う
+function exportTitleBlockTpl(){
+  const sel=document.getElementById('frame-tbtpl');
+  const key=sel?sel.value:'standard';
+  const tpl=allTitleBlockTpls()[key];
+  if(!tpl){alert('様式が見つかりません');return;}
+  dl(JSON.stringify({[key]:tpl},null,2),`titleblock_${key}.json`,'application/json');
+}
+
+// 読み込んだ様式を削除する（組み込み様式は消せない）
+function deleteTitleBlockTpl(){
+  const sel=document.getElementById('frame-tbtpl');
+  const key=sel?sel.value:'';
+  const user=userTitleBlockTpls();
+  if(!user[key]){alert('読み込んだ様式を選んでください（組み込みの様式は削除できません）');return;}
+  if(!confirm(`様式「${user[key].label||key}」を削除しますか？\nこの様式を使っている図面は標準様式で表示されるようになります。`))return;
+  delete user[key];
+  localStorage.setItem(TB_TPL_STORE,JSON.stringify(user));
+  refreshTitleBlockSel();
+  draw();
 }
 
 function showFramePanel(){

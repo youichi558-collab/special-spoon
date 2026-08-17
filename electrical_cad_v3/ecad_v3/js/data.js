@@ -115,8 +115,44 @@ const TITLE_BLOCK_TPLS = {
 // 表題欄テンプレートを取り出す。未指定・未知のキーなら標準様式にフォールバックする
 // (客先様式で作った図面を、その様式が無い環境で開いても表題欄が消えないようにするため)
 function titleBlockCells(fr) {
-  const t = TITLE_BLOCK_TPLS[(fr && fr.tbTpl) || 'standard'] || TITLE_BLOCK_TPLS.standard;
+  const all = allTitleBlockTpls();
+  const t = all[(fr && fr.tbTpl) || 'standard'] || all.standard;
   return t.cells;
+}
+
+// 読み込んだ客先様式の保存先。客先ごとに様式が違うため、コードに埋め込むのではなく
+// JSONで足せるようにしてある。図面枠パネルの「様式を読込」から追加する。
+const TB_TPL_STORE = 'ecad_titleblock_tpls';
+
+function userTitleBlockTpls() {
+  try {
+    const o = JSON.parse(localStorage.getItem(TB_TPL_STORE) || '{}');
+    return (o && typeof o === 'object') ? o : {};
+  } catch (e) {
+    console.warn('[titleBlock] 保存済み様式の読み出しに失敗:', e);
+    return {};
+  }
+}
+
+// 組み込み様式 + 読み込んだ客先様式。同じキーなら読み込んだ方を優先する
+function allTitleBlockTpls() {
+  return Object.assign({}, TITLE_BLOCK_TPLS, userTitleBlockTpls());
+}
+
+// 様式の定義が壊れていないか検査する。壊れた定義で図面枠が描けなくなるのを防ぐ。
+// 戻り値: エラーメッセージの配列（空なら正常）
+function validateTitleBlockTpl(key, tpl) {
+  const errs = [];
+  if (!tpl || typeof tpl !== 'object') { errs.push(`${key}: 定義がオブジェクトではありません`); return errs; }
+  if (!Array.isArray(tpl.cells) || !tpl.cells.length) { errs.push(`${key}: cells が空です`); return errs; }
+  tpl.cells.forEach((c, i) => {
+    ['x','y','w','h'].forEach(k => {
+      if (typeof c[k] !== 'number' || !isFinite(c[k])) errs.push(`${key}: ${i+1}番目のセルの ${k} が数値ではありません`);
+      else if (c[k] < 0 || c[k] > 1) errs.push(`${key}: ${i+1}番目のセルの ${k}=${c[k]} が0〜1の範囲外です`);
+    });
+    if (!c.key) errs.push(`${key}: ${i+1}番目のセルに key がありません`);
+  });
+  return errs;
 }
 
 // カスタムシンボルをDEFSに追加
