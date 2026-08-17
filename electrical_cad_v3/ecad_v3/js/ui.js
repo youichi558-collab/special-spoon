@@ -403,6 +403,26 @@ function placePart(type, ref, terminals) {
   setMode('sym', type);
   document.getElementById('s-hint').textContent = `「${ref}」→ クリックで配置`;
 }
+// 既存のカスタム部品を登録フォームに読み込んで編集できるようにする(2026-08-17)。
+// 従来は同じ型番で全項目を打ち直すか削除して作り直すしかなく不便だった。
+// 保存時(saveCusPart)は型番一致で上書きするので、ここでは値を詰めるだけでよい。
+function editPart(ref) {
+  const p = state.customParts.find(x => x.ref === ref);
+  if (!p) { alert('編集対象が見つかりません（標準部品は編集できません）'); return; }
+  showPartReg();
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  set('pr-name', p.name || p.ref);
+  set('pr-maker', p.maker);
+  set('pr-ref', p.ref);
+  set('pr-type', p.type);
+  set('pr-volt', p.volt);
+  set('pr-amp', p.amp);
+  set('pr-term', p.terminals);
+  set('pr-contacts', p.contacts);
+  set('pr-note', p.note);
+  const statusEl = document.getElementById('pr-outline-status');
+  if (statusEl) statusEl.textContent = p.outlineDxf ? `外形図: ${p.outlineDxfName || 'あり'}(保持されます)` : '';
+}
 function showPartReg() {
   openFP('part-reg-p');
   refreshPendingCsvList();
@@ -796,15 +816,20 @@ function handleOutlineFileSelect(e) {
 function saveCusPart() {
   const ref = document.getElementById('pr-ref').value.trim();
   if (!ref) { alert('型番を入力してください'); return; }
+  const existing = state.customParts.find(p => p.ref === ref);
+  // 外形図DXF: 今回新しく選択したファイルがあればそれを使う。無ければ、編集時に
+  // 既存部品が持っていた外形図をそのまま残す(2026-08-17、編集機能追加時に
+  // 「編集して保存すると外形図が消える」不具合を作り込みそうになったため対策)。
+  const outlineDxf     = _pendingOutlineDxf?.text     ?? existing?.outlineDxf     ?? '';
+  const outlineDxfName = _pendingOutlineDxf?.filename ?? existing?.outlineDxfName ?? '';
   const part = {
     maker: document.getElementById('pr-maker').value,
     ref, type: document.getElementById('pr-type').value,
     volt: document.getElementById('pr-volt').value, amp: document.getElementById('pr-amp').value,
     terminals: document.getElementById('pr-term').value, contacts: document.getElementById('pr-contacts').value,
     note: document.getElementById('pr-note').value, custom: true,
-    outlineDxf: _pendingOutlineDxf?.text || '', outlineDxfName: _pendingOutlineDxf?.filename || '',
+    outlineDxf, outlineDxfName,
   };
-  const existing = state.customParts.find(p => p.ref === ref);
   if (existing) Object.assign(existing, part); else state.customParts.push(part);
   _pendingOutlineDxf = null;
   document.getElementById('pr-outline-status').textContent = '';
@@ -2909,7 +2934,10 @@ function renderPartsTable2(parts) {
       <div style="display:flex;justify-content:space-between">
         <span style="font-size:11px;font-weight:600;color:var(--fg)">${p.ref}</span>
         ${p.custom
-          ? `<span onclick="event.stopPropagation();deletePart('${p.ref}')" style="font-size:9px;color:var(--red);cursor:pointer" title="削除">×</span>`
+          ? `<span>
+               <span onclick="event.stopPropagation();editPart('${p.ref}')" style="font-size:9px;color:var(--acc);cursor:pointer;margin-right:6px" title="編集">✎</span>
+               <span onclick="event.stopPropagation();deletePart('${p.ref}')" style="font-size:9px;color:var(--red);cursor:pointer" title="削除">×</span>
+             </span>`
           : `<span onclick="event.stopPropagation();hideBuiltinPart('${p.ref}')" style="font-size:9px;color:var(--fg3);cursor:pointer" title="一覧から非表示にする（標準部品は削除できないため）">×</span>`}
       </div>
       <div style="font-size:10px;color:var(--fg3)">${p.maker} ${p.volt||''} ${p.amp||''}</div>
