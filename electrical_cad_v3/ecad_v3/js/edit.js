@@ -192,8 +192,11 @@ function saveProject() {
     layers:        LAYERS,
     pages: [pg],
   };
-  dl(JSON.stringify(data, null, 2), fname + '.json', 'application/json');
+  // 書き出す「前」にdirtyを落とすこと。あとで落とすと data.pages が同じオブジェクトを
+  // 参照しているため、保存ファイルに dirty:true が焼き込まれてしまう。
+  // その状態で読み込むと、開いた直後なのにシートタブへ未保存マーク(●)が出る。
   pg.dirty = false;
+  dl(JSON.stringify(data, null, 2), fname + '.json', 'application/json');
   renderPageTabs();
 }
 
@@ -215,8 +218,9 @@ function saveAllProject() {
     layers:        LAYERS,
     pages: state.pages,
   };
-  dl(JSON.stringify(data, null, 2), base + '_all.json', 'application/json');
+  // 書き出す「前」にdirtyを落とす（理由はsaveProject()のコメント参照）
   state.pages.forEach(p => p.dirty = false);
+  dl(JSON.stringify(data, null, 2), base + '_all.json', 'application/json');
   renderPageTabs();
 }
 
@@ -262,6 +266,10 @@ function loadProject(input) {
       stripLegacyColors(state.pages);
       const fixedIds = dedupeIds(state.pages);
       state.pages.forEach(pg => pruneGroups(pg));
+      // 読み込んだ直後は「保存済みの状態」なので未保存マークを消す。
+      // 上の修正以前に保存されたファイルには dirty:true が焼き込まれているため、
+      // ここでも落としておかないと開いた瞬間に●が出たままになる。
+      state.pages.forEach(pg => { pg.dirty = false; });
       renderSymFloat(); renderPartsAll(); renderPageTabs(); draw(); updateRightPanel();
       if (typeof partsDb !== 'undefined') partsDb.scheduleSave();
       alert(fixedIds > 0
