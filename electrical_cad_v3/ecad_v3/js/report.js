@@ -750,6 +750,13 @@ function exportAIAnalysis() {
       partRef:   el.partRef || '',
       label:     el.label   || '',
       type:      el.type,
+      // 【本命修正】typeは"custom_ms9tr3a8_yrh"のような内部生成IDで、AI(Claude)にも
+      // 盛田さん自身にも見た目の判断材料にならない。登録時に付けたシンボル名
+      // (DEFS[type].name)を併記する。同じ名前のはずのデバイスが実は違うシンボル種別
+      // で配置されている、といった食い違いをここで初めて発見できるようにするため
+      // (2026-08-17、実際にAI解析結果を見た盛田さんから「IDは何を見ているのか」と
+      // 指摘され、typeだけでは判断できないことが判明)。
+      symbolName: getDef(el.type)?.name || el.type,
       terminals: el.terminals || '',
       note:      el.note    || '',
       layer:     el.layer   || '',
@@ -793,10 +800,10 @@ function exportAIAnalysis() {
   lines.push(``);
 
   lines.push(`## 部品リスト（${parts.length}件）`);
-  lines.push(`| デバイス | 仕様 | 種別 | 端子番号 | メモ |`);
-  lines.push(`|---------|--------|------|---------|------|`);
+  lines.push(`| デバイス | 仕様 | 種別 | シンボル名 | 端子番号 | メモ |`);
+  lines.push(`|---------|--------|------|-----------|---------|------|`);
   parts.forEach(p => {
-    lines.push(`| ${p.partRef||'-'} | ${p.label||'-'} | ${p.type} | ${p.terminals||'-'} | ${p.note||''} |`);
+    lines.push(`| ${p.partRef||'-'} | ${p.label||'-'} | ${p.type} | ${p.symbolName||'-'} | ${p.terminals||'-'} | ${p.note||''} |`);
   });
   lines.push(``);
 
