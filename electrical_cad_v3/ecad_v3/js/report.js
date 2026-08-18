@@ -738,14 +738,76 @@ function exportTerminalCSV() {
 // ================================================================
 // AI解析エクスポート
 // ================================================================
+// ページ内の全シンボル要素の端子位置(elId, termIdx, x, y)を座標バケットで索引化する。
+// conn_check.js の findUnconnectedTerminals() と同じ考え方・同じ許容誤差を流用し、
+// 「fromElId/toElId(操作時にしか記録されない補助情報)」ではなく、アプリ本体が
+// 未接続端子チェックで信頼している「座標一致」を接続判定の根拠にする(2026-08-17)。
+function _buildTerminalIndexForPage(pgElements, tol) {
+  const bx = x => Math.round(x / tol);
+  const idx = new Map();
+  const SYM_ONLY_TYPES = ['text','rect','circle','fline','triangle','arc','bezier','dim','angle_dim','leader'];
+  const add = (elId, termIdx, x, y) => {
+    const key = `${bx(x)},${bx(y)}`;
+    if (!idx.has(key)) idx.set(key, []);
+    idx.get(key).push({ elId, termIdx, x, y });
+  };
+  pgElements.forEach(el => {
+    // junction(分岐点)は電気的な「端子」ではないが、配線同士の接続点として
+    // 座標1点をそのまま登録する(未接続端子チェックの対象外だが、AI解析の
+    // From/To表示では「junctionに繋がっている」ことは分かった方がよいため)。
+    if (el.type === 'junction') { add(el.id, null, el.x, el.y); return; }
+    if (SYM_ONLY_TYPES.includes(el.type)) return;
+    const cS  = state.customSymbols.find(s => s.type === el.type);
+    const rot = (el.rot || 0) * Math.PI / 180;
+    let pins = [];
+    if (cS && cS.terminals && cS.terminals.length) {
+      pins = cS.terminals.map((t, i) => {
+        const rx = t.x * Math.cos(rot) - t.y * Math.sin(rot);
+        const ry = t.x * Math.sin(rot) + t.y * Math.cos(rot);
+        return { x: el.x + rx, y: el.y + ry, idx: i };
+      });
+    } else {
+      const d  = getDef(el.type) || {};
+      const sc = el.scale || 1;
+      const hw = (d.w || 0) / 2 * sc;
+      pins = [+hw, -hw].map((dx, i) => {
+        const rx = dx * Math.cos(rot), ry = dx * Math.sin(rot);
+        return { x: el.x + rx, y: el.y + ry, idx: i };
+      });
+    }
+    pins.forEach(p => add(el.id, p.idx, p.x, p.y));
+  });
+  return idx;
+}
+function _findTerminalNear(idx, x, y, tol) {
+  const bx = v => Math.round(v / tol);
+  const pbx = bx(x), pby = bx(y);
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dy = -1; dy <= 1; dy++) {
+      const bucket = idx.get(`${pbx + dx},${pby + dy}`);
+      if (!bucket) continue;
+      for (const q of bucket) {
+        if (Math.hypot(q.x - x, q.y - y) <= tol) return q;
+      }
+    }
+  }
+  return null;
+}
+
 function exportAIAnalysis() {
   const skip = ['text','rect','circle','fline','dim','leader','angle_dim'];
+  const TOL = (typeof CONN_CHECK_TOL !== 'undefined') ? CONN_CHECK_TOL : 5;
 
-  // 【本命修正】従来はstate.elements/state.wires(=現在開いているページのみを指す
+  // 【本命修正1】従来はstate.elements/state.wires(=現在開いているページのみを指す
   // ゲッター、js/state.js)を使っており、複数ページある図面でも1ページ分しか
   // 書き出されていなかった。他ページに続く配線(線番のみで接続先が別ページの場合等)を
   // 「接続情報なし」と誤検出する原因になっていた(2026-08-17、盛田さんの実機確認で発覚)。
   // 全ページを横断して集計するよう修正。
+  // 【本命修正2】From/Toの接続先は、配線データが持つfromElId/toElId(ドラッグで端子に
+  // スナップしたときだけ記録される補助情報で、見た目には繋がっていても空のことが多い)
+  // ではなく、未接続端子チェック機能と同じ「配線端点と端子の座標一致」で判定するように
+  // 変更。見た目には繋がっているのに「接続情報なし」と出る誤検出を解消するため
+  // (2026-08-17、盛田さんの実機確認「接続情報なしは接続されてるのに見れてない」で発覚)。
   const allParts = [];
   const allWires = [];
   state.pages.forEach((pg, pageIdx) => {
@@ -767,16 +829,21 @@ function exportAIAnalysis() {
       const el = els.find(e => e.id === id);
       return el ? (el.partRef || el.label || el.type) : '';
     };
+    const termIdx = _buildTerminalIndexForPage(els, TOL);
     (pg.wires || []).forEach(w => {
+      const pts = w.pts || (w.x1 != null ? [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}] : []);
+      const p0 = pts[0], p1 = pts[pts.length - 1];
+      const fromHit = p0 ? _findTerminalNear(termIdx, p0.x, p0.y, TOL) : null;
+      const toHit   = p1 ? _findTerminalNear(termIdx, p1.x, p1.y, TOL) : null;
       allWires.push({
         page:        pageIdx + 1,
         wireNo:      w.wireNo || '',
-        fromPartRef: getLabel(w.fromElId),
-        fromElId:    w.fromElId    || '',
-        fromTermIdx: w.fromTermIdx !== '' ? w.fromTermIdx : '',
-        toPartRef:   getLabel(w.toElId),
-        toElId:      w.toElId      || '',
-        toTermIdx:   w.toTermIdx   !== '' ? w.toTermIdx   : '',
+        fromPartRef: fromHit ? getLabel(fromHit.elId) : '',
+        fromElId:    fromHit ? fromHit.elId : '',
+        fromTermIdx: fromHit ? fromHit.termIdx : '',
+        toPartRef:   toHit ? getLabel(toHit.elId) : '',
+        toElId:      toHit ? toHit.elId : '',
+        toTermIdx:   toHit ? toHit.termIdx : '',
       });
     });
   });
