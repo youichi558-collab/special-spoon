@@ -740,44 +740,51 @@ function exportTerminalCSV() {
 // ================================================================
 function exportAIAnalysis() {
   const skip = ['text','rect','circle','fline','dim','leader','angle_dim'];
-  const frame = maskedFrame(state.pages[state.currentPage]?.frameObj) || {};
 
-  // 部品リスト
-  const parts = state.elements
-    .filter(el => !skip.includes(el.type))
-    .map(el => ({
-      id:        el.id,
-      partRef:   el.partRef || '',
-      label:     el.label   || '',
-      type:      el.type,
-      // 【本命修正】typeは"custom_ms9tr3a8_yrh"のような内部生成IDで、AI(Claude)にも
-      // 盛田さん自身にも見た目の判断材料にならない。登録時に付けたシンボル名
-      // (DEFS[type].name)を併記する。同じ名前のはずのデバイスが実は違うシンボル種別
-      // で配置されている、といった食い違いをここで初めて発見できるようにするため
-      // (2026-08-17、実際にAI解析結果を見た盛田さんから「IDは何を見ているのか」と
-      // 指摘され、typeだけでは判断できないことが判明)。
-      symbolName: getDef(el.type)?.name || el.type,
-      terminals: el.terminals || '',
-      note:      el.note    || '',
-      layer:     el.layer   || '',
-    }));
+  // 【本命修正】従来はstate.elements/state.wires(=現在開いているページのみを指す
+  // ゲッター、js/state.js)を使っており、複数ページある図面でも1ページ分しか
+  // 書き出されていなかった。他ページに続く配線(線番のみで接続先が別ページの場合等)を
+  // 「接続情報なし」と誤検出する原因になっていた(2026-08-17、盛田さんの実機確認で発覚)。
+  // 全ページを横断して集計するよう修正。
+  const allParts = [];
+  const allWires = [];
+  state.pages.forEach((pg, pageIdx) => {
+    const els = pg.elements || [];
+    els.filter(el => !skip.includes(el.type)).forEach(el => {
+      allParts.push({
+        page:      pageIdx + 1,
+        id:        el.id,
+        partRef:   el.partRef || '',
+        label:     el.label   || '',
+        type:      el.type,
+        symbolName: getDef(el.type)?.name || el.type,
+        terminals: el.terminals || '',
+        note:      el.note    || '',
+        layer:     el.layer   || '',
+      });
+    });
+    const getLabel = id => {
+      const el = els.find(e => e.id === id);
+      return el ? (el.partRef || el.label || el.type) : '';
+    };
+    (pg.wires || []).forEach(w => {
+      allWires.push({
+        page:        pageIdx + 1,
+        wireNo:      w.wireNo || '',
+        fromPartRef: getLabel(w.fromElId),
+        fromElId:    w.fromElId    || '',
+        fromTermIdx: w.fromTermIdx !== '' ? w.fromTermIdx : '',
+        toPartRef:   getLabel(w.toElId),
+        toElId:      w.toElId      || '',
+        toTermIdx:   w.toTermIdx   !== '' ? w.toTermIdx   : '',
+      });
+    });
+  });
+  const parts = allParts;
+  const wires = allWires;
 
-  // 配線リスト（From-To付き）
-  const getLabel = id => {
-    const el = state.elements.find(e => e.id === id);
-    return el ? (el.partRef || el.label || el.type) : '';
-  };
-  const wires = state.wires.map(w => ({
-    wireNo:      w.wireNo || '',
-    fromPartRef: getLabel(w.fromElId),
-    fromElId:    w.fromElId    || '',
-    fromTermIdx: w.fromTermIdx !== '' ? w.fromTermIdx : '',
-    toPartRef:   getLabel(w.toElId),
-    toElId:      w.toElId      || '',
-    toTermIdx:   w.toTermIdx   !== '' ? w.toTermIdx   : '',
-  }));
-
-  // ページ情報
+  // ページ情報(表題欄は各ページで異なりうるが、代表として先頭ページのものを載せる)
+  const frame = maskedFrame(state.pages[0]?.frameObj) || {};
   const pageInfo = {
     title:   frame.title   || '',
     drawno:  frame.drawno  || '',
@@ -789,9 +796,9 @@ function exportAIAnalysis() {
 
   // Markdown形式（Claudeに貼りやすい）
   const lines = [];
-  lines.push(`# 電気図面 AI解析データ`);
+  lines.push(`# 電気図面 AI解析データ（全${state.pages.length}ページ）`);
   lines.push(``);
-  lines.push(`## 図面情報`);
+  lines.push(`## 図面情報（先頭ページの表題欄）`);
   lines.push(`- 図面名: ${pageInfo.title}`);
   lines.push(`- 図面番号: ${pageInfo.drawno}`);
   lines.push(`- 設備名: ${pageInfo.equip}`);
@@ -799,27 +806,28 @@ function exportAIAnalysis() {
   lines.push(`- ページ: ${pageInfo.page}`);
   lines.push(``);
 
-  lines.push(`## 部品リスト（${parts.length}件）`);
-  lines.push(`| デバイス | 仕様 | 種別 | シンボル名 | 端子番号 | メモ |`);
-  lines.push(`|---------|--------|------|-----------|---------|------|`);
+  lines.push(`## 部品リスト（${parts.length}件、全ページ横断）`);
+  lines.push(`| ページ | デバイス | 仕様 | 種別 | シンボル名 | 端子番号 | メモ |`);
+  lines.push(`|-------|---------|--------|------|-----------|---------|------|`);
   parts.forEach(p => {
-    lines.push(`| ${p.partRef||'-'} | ${p.label||'-'} | ${p.type} | ${p.symbolName||'-'} | ${p.terminals||'-'} | ${p.note||''} |`);
+    lines.push(`| ${p.page} | ${p.partRef||'-'} | ${p.label||'-'} | ${p.type} | ${p.symbolName||'-'} | ${p.terminals||'-'} | ${p.note||''} |`);
   });
   lines.push(``);
 
   const connWires = wires.filter(w => w.fromElId || w.toElId);
-  lines.push(`## 配線リスト（接続情報あり: ${connWires.length}件 / 計${wires.length}件）`);
-  lines.push(`| 線番 | From部品 | To部品 |`);
-  lines.push(`|------|---------|--------|`);
+  lines.push(`## 配線リスト（接続情報あり: ${connWires.length}件 / 計${wires.length}件、全ページ横断）`);
+  lines.push(`| ページ | 線番 | From部品 | To部品 |`);
+  lines.push(`|-------|------|---------|--------|`);
   connWires.forEach(w => {
-    lines.push(`| ${w.wireNo||'-'} | ${w.fromPartRef||'-'} | ${w.toPartRef||'-'} |`);
+    lines.push(`| ${w.page} | ${w.wireNo||'-'} | ${w.fromPartRef||'-'} | ${w.toPartRef||'-'} |`);
   });
   lines.push(``);
 
   const noConn = wires.filter(w => !w.fromElId && !w.toElId);
   if (noConn.length) {
     lines.push(`## 接続情報なし配線（${noConn.length}件）`);
-    lines.push(noConn.map(w => w.wireNo || '-').join(', '));
+    lines.push(`同じ線番が別ページにも出ている場合、そちらに接続情報がある可能性があります(1本の配線がページをまたぐ場合、線番だけで繋がっている設計のため)。線番ごとに他ページの一致を確認してください。`);
+    lines.push(noConn.map(w => `${w.wireNo||'-'}(${w.page}p)`).join(', '));
     lines.push(``);
   }
 
