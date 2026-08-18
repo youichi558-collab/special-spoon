@@ -823,25 +823,6 @@
 
   <div onpointerdown="symFloatDown(event)" style="height:10px;background:var(--bg3);border-top:1px solid var(--bd2);border-radius:0 0 6px 6px;cursor:move;display:flex;align-items:center;justify-content:center;user-select:none"><span style="color:var(--fg3);font-size:10px;letter-spacing:3px">⠿⠿⠿</span></div>
 </div>
-<!-- フォルダブラウザ（カタログ検索フォルダ選択用） -->
-<div id="folder-browser" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center">
-  <div style="background:var(--bg2,#2a2a2a);border:1px solid var(--bd2,#444);border-radius:6px;width:480px;max-height:70vh;display:flex;flex-direction:column;box-shadow:0 4px 20px rgba(0,0,0,0.5)">
-    <div style="display:flex;align-items:center;padding:8px 12px;background:var(--bg3);border-bottom:1px solid var(--bd2);border-radius:6px 6px 0 0">
-      <span style="flex:1;font-size:13px;font-weight:600;color:var(--fg)">フォルダを選択（PCのカタログPDFが入ったフォルダ）</span>
-      <span onclick="closeFolderBrowser()" style="cursor:pointer;font-size:16px;color:var(--fg3);padding:0 4px">×</span>
-    </div>
-    <div style="padding:6px 12px;font-size:11px;color:var(--fg3);border-bottom:1px solid var(--bd2)" id="fb-current-path">読み込み中...</div>
-    <div style="padding:6px 12px;display:flex;gap:6px;border-bottom:1px solid var(--bd2)">
-      <input type="text" id="fb-path-input" placeholder="パスを直接入力(例: \\サーバー名\共有フォルダ)" style="flex:1;font-size:11px;padding:4px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:3px" onkeydown="if(event.key==='Enter')fbGoToPath()">
-      <button class="fp-btn" style="font-size:11px;padding:4px 8px" onclick="fbGoToPath()">移動</button>
-    </div>
-    <div style="flex:1;overflow-y:auto;padding:6px" id="fb-list"></div>
-    <div style="padding:8px 12px;border-top:1px solid var(--bd2);display:flex;gap:6px;align-items:center">
-      <input type="text" id="fb-name" placeholder="カタログ名（例: 三菱電磁開閉器）" style="flex:1;font-size:11px;padding:4px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:3px">
-      <button class="fp-btn primary" style="font-size:11px" onclick="saveFolderAsCatalog()">このフォルダを使う</button>
-    </div>
-  </div>
-</div>
 <!-- フローティング部品DBパネル -->
 <div id="prt-float" style="display:none;position:fixed;top:60px;left:400px;width:280px;max-height:70vh;background:var(--bg2,#2a2a2a);border:1px solid var(--bd2,#444);border-radius:6px;box-shadow:0 4px 20px rgba(0,0,0,0.5);z-index:9999;flex-direction:column">
   <div id="prt-float-title" onpointerdown="prtFloatDown(event)" style="display:flex;align-items:center;padding:6px 10px;background:var(--bg3);border-bottom:1px solid var(--bd2);border-radius:6px 6px 0 0;cursor:move;user-select:none;flex-shrink:0">
