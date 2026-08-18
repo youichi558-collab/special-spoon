@@ -559,7 +559,7 @@ function parseCSVLine(line) {
   out.push(cur);
   return out.map(s => s.trim());
 }
-const PART_TYPE_CODES = ['coil','sw_no','sw_nc','breaker','motor','terminal','lamp','fuse','transformer','option','thermal'];
+const PART_TYPE_CODES = ['coil','sw_no','sw_nc','breaker','motor','terminal','lamp','fuse','transformer','option','thermal','servo'];
 function bulkImportParts() {
   const raw = document.getElementById('pr-csv').value;
   const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -2450,8 +2450,9 @@ const PART_TYPE_LABELS = {
   coil: 'リレーコイル・コンタクタ', sw_no: 'a接点', sw_nc: 'b接点', breaker: 'ブレーカ',
   motor: 'モーター', terminal: '端子台', lamp: 'ランプ', fuse: 'ヒューズ',
   transformer: 'トランス', option: '増設ユニット等(付属品)', thermal: 'サーマルリレー',
+  servo: 'サーボアンプ',
 };
-const PART_TYPE_ORDER = ['breaker','coil','thermal','sw_no','sw_nc','motor','option','terminal','lamp','fuse','transformer'];
+const PART_TYPE_ORDER = ['breaker','coil','thermal','servo','sw_no','sw_nc','motor','option','terminal','lamp','fuse','transformer'];
 // カテゴリの折りたたみ状態(既定は全部開いた状態)。検索中は無視して全部展開する。
 state.partsCollapsed = state.partsCollapsed || {};
 function togglePartsCategory(type) {
