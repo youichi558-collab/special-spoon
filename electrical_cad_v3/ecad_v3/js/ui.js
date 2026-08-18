@@ -2453,8 +2453,13 @@ const PART_TYPE_LABELS = {
   servo: 'サーボアンプ',
 };
 const PART_TYPE_ORDER = ['breaker','coil','thermal','servo','sw_no','sw_nc','motor','option','terminal','lamp','fuse','transformer'];
-// カテゴリの折りたたみ状態(既定は全部開いた状態)。検索中は無視して全部展開する。
+// カテゴリの折りたたみ状態(既定は全部閉じた状態、2026-08-18変更。以前は全部開いた状態だったが
+// 部品数が増えて一覧が長くなり、開くたびに全展開だと使いにくいとの声を受けて変更)。
+// 検索中は無視して全部展開する。リロードごとにリセットされる(永続化なし)。
 state.partsCollapsed = state.partsCollapsed || {};
+if (Object.keys(state.partsCollapsed).length === 0) {
+  PART_TYPE_ORDER.forEach(t => { state.partsCollapsed[t] = true; });
+}
 function togglePartsCategory(type) {
   state.partsCollapsed[type] = !state.partsCollapsed[type];
   renderPartsTable2(_lastPartsList || allParts());
