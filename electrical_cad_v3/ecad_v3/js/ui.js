@@ -559,7 +559,7 @@ function parseCSVLine(line) {
   out.push(cur);
   return out.map(s => s.trim());
 }
-const PART_TYPE_CODES = ['coil','sw_no','sw_nc','breaker','motor','terminal','lamp','fuse','transformer','option','thermal','servo'];
+const PART_TYPE_CODES = ['coil','sw_no','sw_nc','breaker','motor','terminal','lamp','fuse','transformer','option','thermal','servo','plc','plc_unit','hmi'];
 function bulkImportParts() {
   const raw = document.getElementById('pr-csv').value;
   const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -575,9 +575,22 @@ function bulkImportParts() {
       errors.push(`${i+1}行目: 種別「${type}」が不正です（${PART_TYPE_CODES.join('/')}のいずれか）`);
       skipped++; return;
     }
-    const part = { maker: maker||'', ref, type: type||'coil', volt: volt||'', amp: amp||'', terminals: terminals||'', contacts: contacts||'', note: note||'', custom: true };
+    // 種別が空欄の場合、以前は coil に強制していたが、それだとPLC・タッチパネル等の
+    // 「該当種別なし」で登録した部品が全部リレーコイル扱いになってしまうため、
+    // 2026-08-19に空欄のまま(未分類)を許容するよう変更した。
+    const part = { maker: maker||'', ref, type: type||'', volt: volt||'', amp: amp||'', terminals: terminals||'', contacts: contacts||'', note: note||'', custom: true };
     const existing = state.customParts.find(p => p.ref === ref);
-    if (existing) { Object.assign(existing, part); updated++; }
+    if (existing) {
+      // 外形図DXFはCSVに列が無いため、Object.assignで丸ごと上書きすると
+      // 手作業で紐付けた外形図が消えてしまう(実際に消失事故が起きた)。
+      // 単品登録のsaveCusPartと同じく、既存の外形図は必ず引き継ぐ。2026-08-19
+      const keepDxf     = existing.outlineDxf;
+      const keepDxfName = existing.outlineDxfName;
+      Object.assign(existing, part);
+      if (keepDxf !== undefined)     existing.outlineDxf     = keepDxf;
+      if (keepDxfName !== undefined) existing.outlineDxfName = keepDxfName;
+      updated++;
+    }
     else { state.customParts.push(part); added++; }
   });
   renderPartsAll();
@@ -2450,18 +2463,27 @@ const PART_TYPE_LABELS = {
   coil: 'リレーコイル・コンタクタ', sw_no: 'a接点', sw_nc: 'b接点', breaker: 'ブレーカ',
   motor: 'モーター', terminal: '端子台', lamp: 'ランプ', fuse: 'ヒューズ',
   transformer: 'トランス', option: '増設ユニット等(付属品)', thermal: 'サーマルリレー',
-  servo: 'サーボアンプ',
+  servo: 'サーボアンプ', plc: 'PLC(シーケンサ)', plc_unit: 'PLC増設ユニット',
+  hmi: 'タッチパネル・表示器',
+  '': '(種別未設定)',
 };
-const PART_TYPE_ORDER = ['breaker','coil','thermal','servo','sw_no','sw_nc','motor','option','terminal','lamp','fuse','transformer'];
-// カテゴリの折りたたみ状態(既定は全部閉じた状態、2026-08-18変更。以前は全部開いた状態だったが
-// 部品数が増えて一覧が長くなり、開くたびに全展開だと使いにくいとの声を受けて変更)。
-// 検索中は無視して全部展開する。リロードごとにリセットされる(永続化なし)。
+const PART_TYPE_ORDER = ['breaker','coil','thermal','servo','plc','plc_unit','hmi','sw_no','sw_nc','motor','option','terminal','lamp','fuse','transformer'];
+// 折りたたみ状態。2026-08-19よりメーカーを第一階層、種別を第二階層とする2段構造に変更。
+// キーはメーカー名(第一階層)、または「メーカー名\u0000種別」(第二階層)。
+// 既定は全部閉じた状態。検索中は無視して全部展開する。リロードごとにリセット(永続化なし)。
 state.partsCollapsed = state.partsCollapsed || {};
-if (Object.keys(state.partsCollapsed).length === 0) {
-  PART_TYPE_ORDER.forEach(t => { state.partsCollapsed[t] = true; });
+// 未知のキーは「閉じている」とみなすため、初期化で全部trueを詰める必要はない
+// (partsCollapsed[key]がundefinedのときは閉じた扱いにする)
+function _isCollapsed(key) {
+  return state.partsCollapsed[key] !== false;
 }
-function togglePartsCategory(type) {
-  state.partsCollapsed[type] = !state.partsCollapsed[type];
+function togglePartsMaker(maker) {
+  state.partsCollapsed[maker] = !_isCollapsed(maker) ? true : false;
+  renderPartsTable2(_lastPartsList || allParts());
+}
+function togglePartsCategory(maker, type) {
+  const key = maker + '\u0000' + type;
+  state.partsCollapsed[key] = !_isCollapsed(key) ? true : false;
   renderPartsTable2(_lastPartsList || allParts());
 }
 // ----------------------------------------------------------------
@@ -2510,12 +2532,17 @@ function renderPartsTable2(parts) {
   const hiddenCount = (state.hiddenBuiltinRefs || []).length;
   const searching = !!_lastPartsQuery || !!state.partsMakerFilter;
 
-  // 種別ごとにグループ化(増える一方なので一覧が延々スクロールにならないよう、
-  // 種別別に折りたたみ表示する。検索中は絞り込み結果を見せたいので全部展開する。2026-08-17)
-  const groups = {};
-  parts.forEach(p => { (groups[p.type] = groups[p.type] || []).push(p); });
-  const typesPresent = PART_TYPE_ORDER.filter(t => groups[t]?.length);
-  Object.keys(groups).forEach(t => { if (!typesPresent.includes(t)) typesPresent.push(t); });
+  // メーカー(第一階層) → 種別(第二階層) の2段でグループ化する。
+  // 部品数が数百件規模になり、種別だけの1段では一覧が長くなりすぎるため
+  // 2026-08-19にこの構造へ変更した。検索中は絞り込み結果を見せたいので全部展開する。
+  const byMaker = {};
+  parts.forEach(p => {
+    const mk = p.maker || '(メーカー未設定)';
+    (byMaker[mk] = byMaker[mk] || []).push(p);
+  });
+  // メーカーは件数の多い順(同数なら名前順)で並べる
+  const makersPresent = Object.keys(byMaker).sort((a, b) =>
+    byMaker[b].length - byMaker[a].length || a.localeCompare(b, 'ja'));
 
   const cardHtml = p => `
     <div style="padding:4px 3px;border-bottom:1px solid var(--bg4);cursor:pointer" onclick="placePart('${p.type}','${p.ref}','${p.terminals||''}')">
@@ -2535,16 +2562,35 @@ function renderPartsTable2(parts) {
         : (p.custom ? `<div style="font-size:9px;color:var(--fg3)">外形図なし <span onclick="event.stopPropagation();attachOutlineToPart('${p.ref}')" style="cursor:pointer;text-decoration:underline;color:var(--acc)">添付</span></div>` : '')}
     </div>`;
 
-  el.innerHTML = typesPresent.map(t => {
-    const list = groups[t];
-    const collapsed = !searching && state.partsCollapsed[t];
-    const label = PART_TYPE_LABELS[t] || t;
-    return `<div class="parts-cat">
-      <div onclick="togglePartsCategory('${t}')" style="display:flex;justify-content:space-between;align-items:center;padding:5px 4px;cursor:pointer;background:var(--bg3);border-radius:3px;margin-top:4px">
-        <span style="font-size:11px;font-weight:600;color:var(--fg)">${label}（${list.length}）</span>
-        <span style="font-size:10px;color:var(--fg3)">${collapsed ? '▶' : '▼'}</span>
+  el.innerHTML = makersPresent.map(mk => {
+    const mkParts = byMaker[mk];
+    const mkCollapsed = !searching && _isCollapsed(mk);
+    // このメーカー内を種別でさらに分ける
+    const groups = {};
+    mkParts.forEach(p => { (groups[p.type] = groups[p.type] || []).push(p); });
+    const typesPresent = PART_TYPE_ORDER.filter(t => groups[t]?.length);
+    Object.keys(groups).forEach(t => { if (!typesPresent.includes(t)) typesPresent.push(t); });
+
+    const inner = mkCollapsed ? '' : typesPresent.map(t => {
+      const list = groups[t];
+      const key = mk + '\u0000' + t;
+      const collapsed = !searching && _isCollapsed(key);
+      const label = PART_TYPE_LABELS[t] || t;
+      return `<div class="parts-cat" style="margin-left:8px">
+        <div onclick="togglePartsCategory('${mk.replace(/'/g,"\\'")}','${t}')" style="display:flex;justify-content:space-between;align-items:center;padding:4px;cursor:pointer;background:var(--bg2);border-radius:3px;margin-top:3px">
+          <span style="font-size:10px;color:var(--fg2)">${label}（${list.length}）</span>
+          <span style="font-size:9px;color:var(--fg3)">${collapsed ? '▶' : '▼'}</span>
+        </div>
+        ${collapsed ? '' : list.map(cardHtml).join('')}
+      </div>`;
+    }).join('');
+
+    return `<div class="parts-maker">
+      <div onclick="togglePartsMaker('${mk.replace(/'/g,"\\'")}')" style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;cursor:pointer;background:var(--bg3);border-radius:3px;margin-top:5px;border-left:3px solid var(--acc)">
+        <span style="font-size:12px;font-weight:600;color:var(--fg)">${mk}（${mkParts.length}）</span>
+        <span style="font-size:10px;color:var(--fg3)">${mkCollapsed ? '▶' : '▼'}</span>
       </div>
-      ${collapsed ? '' : list.map(cardHtml).join('')}
+      ${inner}
     </div>`;
   }).join('')
     + (hiddenCount ? `<div style="padding:6px 3px;text-align:center"><span onclick="showHiddenBuiltinParts()" style="font-size:10px;color:var(--acc);cursor:pointer;text-decoration:underline">非表示にした標準部品(${hiddenCount}件)を確認・復元</span></div>` : '');

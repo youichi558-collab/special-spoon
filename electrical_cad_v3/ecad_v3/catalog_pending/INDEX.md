@@ -7,11 +7,11 @@
 | ファイル名 | メーカー | 主な種別 | 件数 |
 |---|---|---|---|
 | `fuji_breaker_contactor_batch1.csv` | 富士電機 | ブレーカ(5)・リレーコイル・コンタクタ(3) | 8 |
-| `idec_hw22_switch_batch1.csv` | IDEC | sw_no・sw_nc(7)・a接点(6)・ランプ(2)・b接点(1) | 16 |
-| `keyence_kv_plc_batch1.csv` | KEYENCE | (種別コードなし・新規種別要検討)(20) | 20 |
-| `keyence_kv_plc_batch2.csv` | KEYENCE | (種別コードなし・新規種別要検討)(34) | 34 |
-| `keyence_kv_plc_batch3.csv` | KEYENCE | (種別コードなし・新規種別要検討)(11) | 11 |
-| `keyence_vt5_batch1.csv` | KEYENCE | (種別コードなし・新規種別要検討)(9) | 9 |
+| `idec_hw22_switch_batch1.csv` | IDEC | a接点(13)・ランプ(2)・b接点(1) | 16 |
+| `keyence_kv_plc_batch1.csv` | KEYENCE | plc_unit(14)・plc(6) | 20 |
+| `keyence_kv_plc_batch2.csv` | KEYENCE | plc_unit(34) | 34 |
+| `keyence_kv_plc_batch3.csv` | KEYENCE | plc_unit(11) | 11 |
+| `keyence_vt5_batch1.csv` | KEYENCE | hmi(8)・plc_unit(1) | 9 |
 | `mitsubishi_breaker_batch1.csv` | 三菱電機 | ブレーカ(3) | 3 |
 | `mitsubishi_breaker_batch2.csv` | 三菱電機 | ブレーカ(5) | 5 |
 | `mitsubishi_breaker_batch3.csv` | 三菱電機 | ブレーカ(5) | 5 |
@@ -25,8 +25,8 @@
 | `mitsubishi_motor_batch1.csv` | 三菱電機 | モーター(4) | 4 |
 | `mitsubishi_option_batch1.csv` | 三菱電機 | 増設ユニット等(付属品)(8) | 8 |
 | `mitsubishi_option_batch2.csv` | 三菱電機 | 増設ユニット等(付属品)(46) | 46 |
-| `mitsubishi_plc_batch1.csv` | 三菱電機 | (種別コードなし・新規種別要検討)(27) | 27 |
-| `mitsubishi_plc_batch2.csv` | 三菱電機 | (種別コードなし・新規種別要検討)(73) | 73 |
+| `mitsubishi_plc_batch1.csv` | 三菱電機 | plc(27) | 27 |
+| `mitsubishi_plc_batch2.csv` | 三菱電機 | plc(73) | 73 |
 | `mitsubishi_regen_converter_batch1.csv` | 三菱電機 | 増設ユニット等(付属品)(7) | 7 |
 | `mitsubishi_servo_amp_batch1.csv` | 三菱電機 | サーボアンプ(14) | 14 |
 | `mitsubishi_servo_amp_batch2.csv` | 三菱電機 | サーボアンプ(28) | 28 |
@@ -37,7 +37,7 @@
 | `mitsubishi_servo_motor_batch3.csv` | 三菱電機 | モーター(27) | 27 |
 | `mitsubishi_simple_converter_batch1.csv` | 三菱電機 | 増設ユニット等(付属品)(1) | 1 |
 | `mitsubishi_thermal_batch1.csv` | 三菱電機 | サーマルリレー(20) | 20 |
-| `mitsubishi_touchpanel_batch1.csv` | 三菱電機 | (種別コードなし・新規種別要検討)(56) | 56 |
+| `mitsubishi_touchpanel_batch1.csv` | 三菱電機 | hmi(56) | 56 |
 | `omron_h3cr_timer_batch1.csv` | オムロン | リレーコイル・コンタクタ(13) | 13 |
 | `omron_h3y_timer_batch1.csv` | オムロン | リレーコイル・コンタクタ(8) | 8 |
 | `omron_my_relay_batch1.csv` | オムロン | リレーコイル・コンタクタ(12) | 12 |
@@ -50,23 +50,23 @@
 
 BW32AAG-3P005, BW32AAG-3P010, BW32AAG-3P015, BW32AAG-3P020, BW32AAG-3P030, SC09XA, SC18XA, SC32XA
 
-### `idec_hw22_switch_batch1.csv`（IDEC／a接点・sw_no・sw_nc・b接点・ランプ／16件）
+### `idec_hw22_switch_batch1.csv`（IDEC／a接点・b接点・ランプ／16件）
 
 HW1B-M1P10B, HW1B-M1P11B, HW1B-A1P10B, HW1L-M1P10Q4R, HW1L-M1P11Q4R, HW7D-B11P1001GR, HW1S-3TP11, HW1S-3TP20, HW1K-3TP11, HW1F-2TP10Q4R, HW1R-2AP11B, HW1M-P1010-20, HW1B-V4P11R, HW1B-V4P01R, HW1P-1JPQ4R, HW1P-1JPQ2G
 
-### `keyence_kv_plc_batch1.csv`（KEYENCE／(種別コードなし・新規種別要検討)／20件）
+### `keyence_kv_plc_batch1.csv`（KEYENCE／plc・plc_unit／20件）
 
 KV-8000, KV-7500, KV-7300, KV-5500, KV-5000, KV-3000, KV-PU1, KV-U7, KV-B16XC, KV-C32XC, KV-B16TD, KV-B16RC, KV-SIR32XT, KV-AD40, KV-DA40, KV-TF40, KV-XLE02, KV-EP21V, KV-XH16ML, KV-CA02
 
-### `keyence_kv_plc_batch2.csv`（KEYENCE／(種別コードなし・新規種別要検討)／34件）
+### `keyence_kv_plc_batch2.csv`（KEYENCE／plc_unit／34件）
 
 KV-C64XC, KV-B8RC, KV-B16TCP, KV-C32TD, KV-C64TD, KV-B8XTD, KV-C32XTD, KV-XH04ML, KV-ML16V, KV-MC40V, KV-MC20V, KV-MX1, KV-SH04PL, KV-SSC02, KV-SC20V, KV-LH20V, KV-LE21V, KV-FL20V, KV-LM21V, KV-CL20, KV-RC16BX, KV-RC4AD, KV-DN20, KL-N20V, KL-16BX, KL-4AD, KV-NC16EX, KV-N8EX, KV-NC8ER, KV-N8ET(P), KV-NC16EXT, KV-N8EXR, KV-NC4AD, KV-NC4TP
 
-### `keyence_kv_plc_batch3.csv`（KEYENCE／(種別コードなし・新規種別要検討)／11件）
+### `keyence_kv_plc_batch3.csv`（KEYENCE／plc_unit／11件）
 
 KV-XD02, KV-NC16EXE, KV-NC32EX, KV-N16EX, KV-NC16ET(P), KV-NC16ET(P)E, KV-NC32ET(P), KV-N16ER, KV-N16ET(P), KV-NC32EXT, KV-N8EXT
 
-### `keyence_vt5_batch1.csv`（KEYENCE／(種別コードなし・新規種別要検討)／9件）
+### `keyence_vt5_batch1.csv`（KEYENCE／hmi・plc_unit／9件）
 
 VT5-WX15, VT5-WX12, VT5-X15, VT5-X12, VT5-X10, VT5-W10, VT5-W07, VT5-W07M, VT-SP1
 
@@ -122,11 +122,11 @@ UT-AX2, UT-AX2BC, UT-AX4, UT-AX4BC, UT-AX11, UT-AX11BC, UT-AX2SQ, UT-AX4SQ
 
 UN-AX2, UN-AX4, UN-AX11, UN-AX80, UN-AX150, UN-AX600, UT-SY21, UT-SY22, UN-SY11, UN-SY12, UN-SY21, UN-SY22, UN-SY31, UN-SY32, UT-SD, UN-SD, UT-SG, UN-SG, UN-YG, UT-YD20, UT-YY20, UT-TH50, UT-RR, UN-RR, UT-SA13, UT-SA23, UT-SA21, UT-SA25, UN-SA721, UN-SA713, UN-SA723, UN-SA725, UT-SA33, UN-SA33, UN-CV250, UN-CZ605, UN-CZ500, UN-CZ501, UT-CV107, UN-CV203, UT-CW800, UT-ML20, UN-ML21, UT-HZ18, UN-RM20, UT-RD13
 
-### `mitsubishi_plc_batch1.csv`（三菱電機／(種別コードなし・新規種別要検討)／27件）
+### `mitsubishi_plc_batch1.csv`（三菱電機／plc／27件）
 
 FX3S-10MR/ES, FX3S-10MT/ES, FX3S-10MT/ESS, FX3S-10MR/DS, FX3S-10MT/DS, FX3S-10MT/DSS, FX3S-14MR/ES, FX3S-14MT/ES, FX3S-14MT/ESS, FX3S-14MR/DS, FX3S-14MT/DS, FX3S-14MT/DSS, FX3S-20MR/ES, FX3S-20MT/ES, FX3S-20MT/ESS, FX3S-20MR/DS, FX3S-20MT/DS, FX3S-20MT/DSS, FX3S-30MR/ES, FX3S-30MT/ES, FX3S-30MT/ESS, FX3S-30MR/DS, FX3S-30MT/DS, FX3S-30MT/DSS, FX3S-30MR/ES-2AD, FX3S-30MT/ES-2AD, FX3S-30MT/ESS-2AD
 
-### `mitsubishi_plc_batch2.csv`（三菱電機／(種別コードなし・新規種別要検討)／73件）
+### `mitsubishi_plc_batch2.csv`（三菱電機／plc／73件）
 
 FX3G-14MR/ES, FX3G-14MT/ES, FX3G-14MT/ESS, FX3G-14MR/DS, FX3G-14MT/DS, FX3G-14MT/DSS, FX3G-24MR/ES, FX3G-24MT/ES, FX3G-24MT/ESS, FX3G-24MR/DS, FX3G-24MT/DS, FX3G-24MT/DSS, FX3G-40MR/ES, FX3G-40MT/ES, FX3G-40MT/ESS, FX3G-40MR/DS, FX3G-40MT/DS, FX3G-40MT/DSS, FX3G-60MR/ES, FX3G-60MT/ES, FX3G-60MT/ESS, FX3G-60MR/DS, FX3G-60MT/DS, FX3G-60MT/DSS, FX3GC-32MT/D, FX3GC-32MT/DSS, FX3U-16MR/ES, FX3U-16MT/ES, FX3U-16MT/ESS, FX3U-16MR/DS, FX3U-16MT/DS, FX3U-16MT/DSS, FX3U-32MR/ES, FX3U-32MS/ES, FX3U-32MT/ES, FX3U-32MT/ESS, FX3U-32MR/DS, FX3U-32MT/DS, FX3U-32MT/DSS, FX3U-48MR/ES, FX3U-48MT/ES, FX3U-48MT/ESS, FX3U-48MR/DS, FX3U-48MT/DS, FX3U-48MT/DSS, FX3U-64MR/ES, FX3U-64MS/ES, FX3U-64MT/ES, FX3U-64MT/ESS, FX3U-64MR/DS, FX3U-64MT/DS, FX3U-64MT/DSS, FX3U-80MR/ES, FX3U-80MT/ES, FX3U-80MT/ESS, FX3U-80MR/DS, FX3U-80MT/DS, FX3U-80MT/DSS, FX3U-128MR/ES, FX3U-128MT/ES, FX3U-128MT/ESS, FX3U-32MR/UA1, FX3U-64MR/UA1, FX3UC-16MR/D-T, FX3UC-16MT/D, FX3UC-32MT/D, FX3UC-64MT/D, FX3UC-96MT/D, FX3UC-16MR/DS-T, FX3UC-16MT/DSS, FX3UC-32MT/DSS, FX3UC-64MT/DSS, FX3UC-96MT/DSS
 
@@ -170,7 +170,7 @@ MR-CM3K
 
 TH-T18, TH-T18KP, TH-T25, TH-T25KP, TH-T50, TH-T50KP, TH-T65, TH-T65KP, TH-T100, TH-T100KP, TH-N120, TH-N120KP, TH-N120TA, TH-N120TAKP, TH-N220RH, TH-N220RHKP, TH-N400RH, TH-N400RHKP, TH-N600, TH-N600KP
 
-### `mitsubishi_touchpanel_batch1.csv`（三菱電機／(種別コードなし・新規種別要検討)／56件）
+### `mitsubishi_touchpanel_batch1.csv`（三菱電機／hmi／56件）
 
 GT2715-XTBA, GT2715-XTBD, GT2712-STBA, GT2712-STBD, GT2712-STWA, GT2712-STWD, GT2710-STBA, GT2710-STBD, GT2710-VTBA, GT2710-VTBD, GT2710-VTWA, GT2710-VTWD, GT2708-STBA, GT2708-STBD, GT2708-VTBA, GT2708-VTBD, GT2705-VTBD, GT2512-STBA, GT2512-STBD, GT2510-VTBA, GT2510-VTBD, GT2510-VTWA, GT2510-VTWD, GT2508-VTBA, GT2508-VTBD, GT2508-VTWA, GT2508-VTWD, GT2505-VTBD, GT2512-WXTBD, GT2512-WXTSD, GT2510-WXTBD, GT2510-WXTSD, GT2507-WTBD, GT2507-WTSD, GT2507T-WTSD, GT2512F-STNA, GT2512F-STND, GT2510F-VTNA, GT2510F-VTND, GT2508F-VTNA, GT2508F-VTND, GT2506HS-VTBD, GT2505HS-VTBD, GT2105-QTBDS, GT2105-QMBDS, GT2104-RTBD, GT2104-PMBD, GT2104-PMBDS, GT2104-PMBDS2, GT2104-PMBLS, GT2103-PMBD, GT2103-PMBDS, GT2103-PMBDS2, GT2103-PMBLS, GT2107-WTBD, GT2107-WTSD
 
