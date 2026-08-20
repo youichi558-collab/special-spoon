@@ -614,18 +614,34 @@ async function catalogResetPartsDb() {
   const st = document.getElementById('cat-status');
   const setMsg = m => { if (st) st.textContent = m; };
   try {
+    // 先にDriveを読み直す。「再取込」を押し忘れると古いカタログで作り直してしまい、
+    // 種別が空欄のまま入る等の分かりにくい失敗になるため、順番を人に意識させない。
+    const handle = await _catLoadHandle();
+    if (handle) {
+      try {
+        let perm = await handle.queryPermission({ mode: 'read' });
+        if (perm !== 'granted') perm = await handle.requestPermission({ mode: 'read' });
+        if (perm === 'granted') {
+          setMsg('Driveのカタログを読み直しています...');
+          await _catImportFromHandle(handle, true);
+        }
+      } catch (e) { /* 読み直せなくても、既存のカタログDBで続行する */ }
+    }
+
     const res = await fetch('/api/catalog/all');
     const d = await res.json();
     if (!d.ok) { setMsg('エラー: ' + (d.error || '取得に失敗しました')); return; }
     const rows = d.results || [];
     if (!rows.length) { setMsg('カタログDBが空です。先にフォルダを選んで取り込んでください'); return; }
 
+    const noType = rows.filter(r => !r.type).length;
     const now = state.customParts.length;
     if (!confirm(
       `部品DBの中身を破棄し、カタログDBの${rows.length}件で作り直します。\n\n`
       + `　現在の部品DB: ${now}件 → 破棄されます\n`
-      + `　作り直し後　: ${rows.length}件\n\n`
-      + `手作業で登録した部品・外形図DXFの紐付けもすべて失われます。\n`
+      + `　作り直し後　: ${rows.length}件\n`
+      + (noType ? `　うち種別が空欄: ${noType}件\n` : '')
+      + `\n手作業で登録した部品・外形図DXFの紐付けもすべて失われます。\n`
       + `実行前に現在の内容をバックアップファイルへ書き出します。\n\n`
       + `続けますか？`)) return;
 
