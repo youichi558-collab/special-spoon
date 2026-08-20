@@ -168,6 +168,10 @@ const symTool = {
       label:  '',
       partRef: '',
       partModel: state.pendingRef || '',
+      // コイル電圧は代表値を入れておく。未選択のまま部品表に空欄が出て
+      // 発注漏れになるのを防ぐため(選択肢が1つならそれが確定値になる)。
+      partVolt: (typeof defaultPartVolt === 'function'
+                 ? defaultPartVolt(state.pendingRef || '') : '') || undefined,
       terminals: state.pendingTerm || '',
       layer:  activeLayer(),
       wireNo: '',

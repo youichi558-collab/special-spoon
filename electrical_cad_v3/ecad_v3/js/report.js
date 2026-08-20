@@ -430,13 +430,19 @@ function collectBOMRows(){
       const raw=(el.partRef||'').trim();
       const key=normalizeRef(raw);
       if(key){
-        if(!devices[key])devices[key]={spellings:new Map(),models:new Set(),types:new Set(),parts:0};
+        if(!devices[key])devices[key]={spellings:new Map(),models:new Set(),types:new Set(),
+                                       volts:new Set(),els:[],parts:0};
         const dv=devices[key];
         dv.spellings.set(raw,(dv.spellings.get(raw)||0)+1);
         dv.parts++;
         dv.types.add(el.type);
+        dv.els.push(el);
         const m=(el.partModel||'').trim();
         if(m)dv.models.add(m);
+        // コイル電圧は同じデバイス内では1つに決まるはず。
+        // 複数あれば設定ミスなので警告に出す。
+        const vv=(el.partVolt||'').trim();
+        if(vv)dv.volts.add(vv);
       }else{
         const name=(el.partModel||'').trim()||el.label||el.type;
         const k=`${el.type}|${name}`;
@@ -456,16 +462,21 @@ function collectBOMRows(){
     const models=[...dv.models];
     const model=models[0]||'';
     const primary=[...dv.types][0]||'';
-    const k=model||`(型番未設定)|${primary}`;
-    if(!byModel[k])byModel[k]={type:primary,model,label:model||'(型番未設定)',
-                               refs:[],count:0,parts:0,jis:getDef(primary)?.jis||'',noRef:false,warn:''};
+    const volts=[...dv.volts];
+    const volt=volts[0]||'';
+    // 型番が同じでもコイル電圧が違えば別部品なので行を分ける
+    const k=(model||`(型番未設定)|${primary}`)+'\u0000'+volt;
+    if(!byModel[k])byModel[k]={type:primary,model,volt,label:model||'(型番未設定)',
+                               refs:[],els:[],count:0,parts:0,jis:getDef(primary)?.jis||'',noRef:false,warn:''};
     const row=byModel[k];
     row.refs.push(ref);
+    row.els.push(...dv.els);
     row.count++;                 // 台数 = デバイス数
     row.parts+=dv.parts;         // 構成要素数(接点・端子の個数)
     const ws=[];
     if(spells.length>1)ws.push(`${ref}に表記ゆれ(${spells.map(s=>s[0]).join(' / ')})`);
     if(models.length>1)ws.push(`${ref}に型番が複数(${models.join(' / ')})`);
+    if(volts.length>1)ws.push(`${ref}にコイル電圧が複数(${volts.join(' / ')})`);
     if(!model)ws.push('型番未設定');
     if(ws.length)row.warn=row.warn?`${row.warn}｜${ws.join('｜')}`:ws.join('｜');
   });
@@ -496,10 +507,24 @@ function showBOM(){
   const head=`<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">全${state.pages.length}ページ集計・${devTotal} 台`
     +(noRefTotal?`　<span style="color:var(--red)">デバイス未設定 ${noRefTotal} 個</span>`:'')
     +`<br>数量はデバイス単位の台数です。構成数は接点・端子を含む図形の個数です。</p>`;
+  // 部品表でもコイル電圧を変えられるようにする(プロパティとどちらでも変更できる)。
+  // 変更するとその行に属する要素すべてに反映され、型番＋電圧で行がまとめ直される。
+  window._bomRows = rows;
+  const voltCell = (r, i) => {
+    if (r.noRef || !r.model) return '<td style="color:var(--fg3)">-</td>';
+    const opts = (typeof partVoltOptions === 'function') ? partVoltOptions(r.model) : [];
+    if (!opts.length) return '<td style="color:var(--fg3)">-</td>';
+    if (opts.length === 1) return `<td style="color:var(--fg2)">${opts[0]}</td>`;
+    const cur = r.volt && opts.includes(r.volt) ? r.volt : opts[0];
+    return `<td><select onchange="setBOMVolt(${i}, this.value)" style="font-size:11px">`
+      + opts.map(o => `<option value="${o}"${o === cur ? ' selected' : ''}>${o}</option>`).join('')
+      + `</select></td>`;
+  };
   let html=rows.length
-    ?head+`<table class="tbl"><tr><th>型番/名称</th><th>種別</th><th>JIS</th><th>デバイス</th><th>数量(台)</th><th>構成数</th></tr>`
-      +rows.map(r=>`<tr${r.noRef?' style="background:var(--rbg)"':''}>`
+    ?head+`<table class="tbl"><tr><th>型番/名称</th><th>コイル電圧</th><th>種別</th><th>JIS</th><th>デバイス</th><th>数量(台)</th><th>構成数</th></tr>`
+      +rows.map((r,i)=>`<tr${r.noRef?' style="background:var(--rbg)"':''}>`
         +`<td>${r.label}${r.warn?` <span style="color:var(--red);font-size:10px">⚠${r.warn}</span>`:''}</td>`
+        +voltCell(r,i)
         +`<td>${r.type}</td><td style="color:var(--acc)">${r.jis}</td>`
         +`<td style="font-size:10px;color:var(--fg3)">${r.noRef?'<span style="color:var(--red)">未設定</span>':(r.refs.join(', ')||'-')}</td>`
         +`<td style="font-weight:600">${r.count}</td><td style="color:var(--fg3)">${r.parts}</td></tr>`).join('')
@@ -507,10 +532,20 @@ function showBOM(){
     :'<p style="font-size:11px;color:var(--fg3)">配置されたシンボルがありません</p>';
   _reportOpen('bom', '部品表 (BOM)', html, exportBOMCSV);
 }
+// 部品表のセルから電圧を変更する。その行の全要素に書き戻して表を作り直す。
+function setBOMVolt(idx, volt){
+  const r=(window._bomRows||[])[idx];
+  if(!r)return;
+  (r.els||[]).forEach(el=>{ el.partVolt=volt||undefined; });
+  if(typeof pushUndo==='function')pushUndo();
+  if(typeof draw==='function')draw();
+  if(typeof updateRightPanel==='function')updateRightPanel();
+  showBOM();   // 型番＋電圧でまとめ直す
+}
 function exportBOMCSV(){
   const rows=collectBOMRows();
-  dl(['型番/名称,種別,JIS規格,デバイス,数量(台),構成数,備考',
-      ...rows.map(r=>`${r.label},${r.type},${r.jis},"${r.noRef?'未設定':r.refs.join('/')}",${r.count},${r.parts},${r.warn||''}`)
+  dl(['型番/名称,コイル電圧,種別,JIS規格,デバイス,数量(台),構成数,備考',
+      ...rows.map(r=>`${r.label},${r.volt||''},${r.type},${r.jis},"${r.noRef?'未設定':r.refs.join('/')}",${r.count},${r.parts},${r.warn||''}`)
      ].join('\n'),'bom.csv','text/csv');
 }
 // 要素の役割を判定する。

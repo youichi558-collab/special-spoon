@@ -423,6 +423,115 @@ function editPart(ref) {
   const statusEl = document.getElementById('pr-outline-status');
   if (statusEl) statusEl.textContent = p.outlineDxf ? `外形図: ${p.outlineDxfName || 'あり'}(保持されます)` : '';
 }
+// ----------------------------------------------------------------
+// コイル電圧（2026-08-20）
+//
+// カタログの定格電圧欄には選べる電圧が全部入っている（例:「AC100V・AC200V」）。
+// 実際にどれを使うかは盤ごとの設計判断なので、部品DBではなく
+// 図面に配置した要素(el.partVolt)に持たせる。
+// これにより同じ型番を別電圧で使う盤も作れる。
+// 部品表はこの値を型番と一緒に出し、型番＋電圧が同じものだけを1行にまとめる。
+// ----------------------------------------------------------------
+
+// 定格電圧欄の文字列から選択肢を取り出す。
+// 「AC100V・AC200V」「DC24V(標準、他DC12~220V選択可)」のような表記に対応。
+//
+// 手順の順番が重要:
+//  1. 先に括弧書き(補足説明)を落とす。括弧の中にも読点やスラッシュが入るため、
+//     先に分割すると「DC24V(標準」「他DC12~220V選択可」のように壊れる。
+//  2. 「・」「、」「,」で分割する。スラッシュは選択肢の区切りではなく
+//     「AC100/110/120」のようにまとめ書きに使われるため、ここでは分けない。
+//  3. まとめ書きをAC/DCの別を保ったまま展開する(AC100/110/120 → AC100V・AC110V・AC120V)。
+// コイル電圧の選択対象にする種別。
+// PLCのアナログユニット等は定格電圧欄に入出力レンジ(「電圧-10~+10V」等)が
+// 入っていることがあり、これをコイル電圧として拾うと誤りになるため、
+// 操作コイルを持つ機器に限定する。
+const COIL_VOLT_TYPES = ['contactor','starter','coil','timer'];
+
+function partVoltOptions(model) {
+  if (!model) return [];
+  const p = (state.customParts || []).find(x => x.ref === model);
+  if (!p || !p.volt) return [];
+  if (!COIL_VOLT_TYPES.includes(p.type)) return [];
+  const out = [];
+  let prefix = '';   // 直前に出てきたAC/DCを覚えておく
+  String(p.volt)
+    .replace(/[（(][^)）]*[)）]/g, '')      // 1. 括弧書きを先に落とす
+    // 2. 選択肢の区切りで分割。
+    //    「AC100/110」のようなまとめ書きと区別するため、スラッシュは
+    //    前後に空白があるとき(「AC200/220 / DC12」のAC群とDC群の区切り)だけ分割に使う。
+    .split(/[・、,]|\s+\/\s+/)
+    .forEach(tok => {
+      let t = tok.trim();
+      if (!t || !/\d/.test(t)) return;
+      // 3. 「AC12・24・100/110」のようにAC/DCが省略されることがあるので、
+      //    直前の接頭辞を引き継ぐ(そうしないと「24」が何Vか分からなくなる)。
+      const pm = t.match(/^(AC|DC)/i);
+      if (pm) prefix = pm[1].toUpperCase();
+      else if (prefix) t = prefix + t;
+      // 4. 「AC100/110/120」形式を展開する
+      const m = t.match(/^(AC|DC)\s*([\d./]+)\s*V?$/i);
+      if (m && m[2].includes('/')) {
+        m[2].split('/').forEach(n => { if (n) out.push(`${m[1].toUpperCase()}${n}V`); });
+      } else {
+        out.push(/V$/i.test(t) ? t : t + 'V');
+      }
+    });
+  return [...new Set(out)];   // 同じ電圧が重複しても1つにする
+}
+
+// 型番から代表電圧（既定値）を決める。未選択のまま部品表に空欄が出て
+// 発注漏れになるのを防ぐため、選択肢の先頭を入れておく。
+function defaultPartVolt(model) {
+  const o = partVoltOptions(model);
+  return o.length ? o[0] : '';
+}
+
+// 型番を設定・変更したときに電圧の既定値を入れる。
+// 既に選ばれている値が新しい型番でも選べるならそのまま残す。
+function applyDefaultVolt(el) {
+  if (!el || !el.partModel) return;
+  const opts = partVoltOptions(el.partModel);
+  if (!opts.length) { delete el.partVolt; return; }
+  if (!el.partVolt || !opts.includes(el.partVolt)) el.partVolt = opts[0];
+}
+
+// プロパティパネルの電圧欄。選択肢が複数ならプルダウン、
+// 1つだけなら自動で決まるので読み取り専用で見せる（選ばせる意味がないため）。
+function partVoltRowHtml(el) {
+  const opts = partVoltOptions(el.partModel);
+  if (!opts.length) return '';
+  const cur = el.partVolt && opts.includes(el.partVolt) ? el.partVolt : opts[0];
+  if (opts.length === 1) {
+    return `<div class="pp-row"><label>コイル電圧</label>`
+      + `<input type="text" id="pp-partvolt" value="${_esc(cur)}" readonly`
+      + ` style="background:var(--bg3);color:var(--fg2)" title="この型番は1種類のみです"></div>`;
+  }
+  return `<div class="pp-row"><label>コイル電圧</label><select id="pp-partvolt">`
+    + opts.map(o => `<option value="${_esc(o)}"${o === cur ? ' selected' : ''}>${_esc(o)}</option>`).join('')
+    + `</select></div>`;
+}
+
+// 型番を打ち替えたら電圧の選択肢も入れ替える。
+// 前の型番の電圧が残ったまま部品表に出るのを防ぐ。
+function onPartModelChanged() {
+  const el = state.sel.els.size === 1
+    ? state.elements.find(e => state.sel.els.has(e.id)) : null;
+  if (!el) return;
+  const model = document.getElementById('pp-partmodel')?.value.trim() || '';
+  const opts = partVoltOptions(model);
+  const row = document.getElementById('pp-partvolt')?.closest('.pp-row');
+  const tmp = { partModel: model, partVolt: el.partVolt };
+  applyDefaultVolt(tmp);
+  const html = partVoltRowHtml(tmp);
+  if (row) {
+    if (html) row.outerHTML = html; else row.remove();
+  } else if (html) {
+    document.getElementById('pp-partmodel')?.closest('.pp-row')
+      ?.insertAdjacentHTML('afterend', html);
+  }
+}
+
 function showPartReg() {
   openFP('part-reg-p');
   refreshPendingCsvList();
@@ -1925,7 +2034,8 @@ function updateRightPanel() {
     html += `</div>`; }
     { const mdlC = el.modelColor||el.labelColor||'#555555';
     html += `<div class="pp-group" style="border-left:4px solid ${mdlC}"><div class="pp-group-cap" style="color:${mdlC}">◆ 型式</div>`;
-    html += `<div class="pp-row"><label>型番</label><input type="text" id="pp-partmodel" value="${el.partModel||''}" placeholder="例: S-T10（メーカー型番）"></div>`;
+    html += `<div class="pp-row"><label>型番</label><input type="text" id="pp-partmodel" value="${el.partModel||''}" placeholder="例: S-T10（メーカー型番）" onchange="onPartModelChanged()"></div>`;
+    html += partVoltRowHtml(el);
     html += `<div class="pp-row"><label>型式を図面に表示</label><input type="checkbox" id="pp-showmodel"${el.showModel?' checked':''} title="チェックしたシンボルにだけ型番が描画されます。接点側はOFFのままにしてください"></div>`;
     html += `<details class="pp-details" style="border-left:4px solid ${mdlC}"><summary>型式表示の詳細（色・サイズ・位置）</summary>`;
     html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-mfs" value="${el.modelFs||el.labelFs||11}" step="1" min="6" max="32" oninput="previewModelOff()"></div>`;
@@ -2296,6 +2406,8 @@ function applyRightPanel() {
     el.partRef   = v('pp-partref');
     el.devHide   = !document.getElementById('pp-devhide')?.checked;
     el.partModel = v('pp-partmodel');
+    { const pv = document.getElementById('pp-partvolt');
+      if (pv) el.partVolt = pv.value || undefined; else applyDefaultVolt(el); }
     el.devFs     = parseInt(v('pp-dfs')) || undefined;
     el.devColor  = v('pp-dcolorcode') || v('pp-dcolor') || undefined;
     el.devOffX   = v('pp-dox') !== '' ? parseInt(v('pp-dox')) : undefined;
@@ -2339,7 +2451,7 @@ function applyRightPanel() {
 const DEVICE_PROP_KEYS = [
   'label','labelAlign','labelColor','labelFs','labelOffX','labelOffY',
   'partRef','devHide','devFs','devColor','devOffX','devOffY',
-  'partModel','showModel','modelFs','modelColor','modelOffX','modelOffY',
+  'partModel','partVolt','showModel','modelFs','modelColor','modelOffX','modelOffY',
   'textRot',
 ];
 function copyDeviceProps() {
