@@ -547,12 +547,20 @@ async function _catImportFromHandle(handle, silent) {
     return false;
   }
   setMsg(`取り込み中... (CSV ${files.length}個)`);
-  const res = await fetch('/api/catalog/import', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ files, label: handle.name }),
-  });
-  const d = await res.json();
+  let d;
+  try {
+    const res = await fetch('/api/catalog/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files, label: handle.name }),
+    });
+    d = await res.json();
+  } catch (e) {
+    // 「Failed to fetch」は通信そのものが失敗したとき。POST未対応の古いserver.pyは
+    // 本文を読まずに接続を切るため、404ではなくこの形で失敗する。
+    setMsg('サーバーとの通信に失敗しました。server.py(start.bat)を起動し直してください');
+    return false;
+  }
   if (!d.ok) { setMsg('エラー: ' + (d.error || '取り込みに失敗しました')); return false; }
   const br = document.getElementById('cat-setup');
   if (br && !silent) br.style.display = 'none';
