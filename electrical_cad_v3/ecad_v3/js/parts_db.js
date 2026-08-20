@@ -109,5 +109,42 @@ const partsDb = (() => {
     } catch (e) { setStatus('部品DBの自動読込に失敗しました（再選択してください）'); }
   }
 
-  return { pickExisting, createNew, scheduleSave, autoRestore, hasFile: () => !!fileHandle };
+  // 破壊的な操作(全件リセット等)の直前に、現在の内容を別ファイルへ退避する。
+  // 同じフォルダに parts_db_backup_YYYY-MM-DD_HHMM.json として書き出す。
+  // 判断を変えるためではなく、万一のときに戻せるようにするための保険。
+  async function backupNow() {
+    if (!fileHandle) return null;
+    try {
+      const dir = await fileHandle.getParent?.();
+      const d = new Date();
+      const p = n => String(n).padStart(2, '0');
+      const name = `parts_db_backup_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`
+        + `_${p(d.getHours())}${p(d.getMinutes())}.json`;
+      const body = JSON.stringify(
+        { customParts: state.customParts, hiddenBuiltinRefs: state.hiddenBuiltinRefs }, null, 2);
+      if (dir) {
+        // 部品DBと同じフォルダに書ければ一番分かりやすい
+        const h = await dir.getFileHandle(name, { create: true });
+        const w = await h.createWritable();
+        await w.write(body);
+        await w.close();
+        return name;
+      }
+      // getParent()が使えないブラウザでは保存先を選んでもらう
+      if (!window.showSaveFilePicker) return null;
+      const h = await window.showSaveFilePicker({
+        suggestedName: name,
+        types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+      });
+      const w = await h.createWritable();
+      await w.write(body);
+      await w.close();
+      return h.name;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  return { pickExisting, createNew, scheduleSave, autoRestore, writeNow, backupNow,
+           hasFile: () => !!fileHandle };
 })();

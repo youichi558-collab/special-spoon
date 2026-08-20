@@ -605,6 +605,58 @@ async function catalogReimport() {
   }
 }
 
+// カタログDBの全件で部品DBを作り直す（2026-08-20）
+//
+// 部品DBに何が入っていて何が最新か分からなくなったため、素性の分かる
+// カタログDBを唯一の出所として作り直す、という盛田さんの判断による機能。
+// 既存の内容は破棄されるので、実行前に必ずバックアップを書き出す。
+async function catalogResetPartsDb() {
+  const st = document.getElementById('cat-status');
+  const setMsg = m => { if (st) st.textContent = m; };
+  try {
+    const res = await fetch('/api/catalog/all');
+    const d = await res.json();
+    if (!d.ok) { setMsg('エラー: ' + (d.error || '取得に失敗しました')); return; }
+    const rows = d.results || [];
+    if (!rows.length) { setMsg('カタログDBが空です。先にフォルダを選んで取り込んでください'); return; }
+
+    const now = state.customParts.length;
+    if (!confirm(
+      `部品DBの中身を破棄し、カタログDBの${rows.length}件で作り直します。\n\n`
+      + `　現在の部品DB: ${now}件 → 破棄されます\n`
+      + `　作り直し後　: ${rows.length}件\n\n`
+      + `手作業で登録した部品・外形図DXFの紐付けもすべて失われます。\n`
+      + `実行前に現在の内容をバックアップファイルへ書き出します。\n\n`
+      + `続けますか？`)) return;
+
+    setMsg('バックアップ中...');
+    const backup = await partsDb.backupNow();
+    if (!backup && now > 0) {
+      if (!confirm('バックアップを書き出せませんでした。\nこのまま作り直すと現在の内容は戻せません。続けますか？')) {
+        setMsg('中止しました');
+        return;
+      }
+    }
+
+    setMsg('作り直し中...');
+    state.customParts = rows.map(r => ({
+      maker: r.maker || '', ref: r.ref, type: r.type || '',
+      volt: r.volt || '', amp: r.amp || '', terminals: r.terminals || '',
+      contacts: r.contacts || '', note: r.note || '', custom: true,
+    }));
+    state.hiddenBuiltinRefs = state.hiddenBuiltinRefs || [];
+    renderPartsAll();
+    await partsDb.writeNow();
+    setMsg(`部品DBを${rows.length}件で作り直しました`
+      + (backup ? `（バックアップ: ${backup}）` : '')
+      + (d.truncated ? `　※カタログは${d.total}件ありますが上限まで取り込みました` : ''));
+    alert(`部品DBを${rows.length}件で作り直しました。`
+      + (backup ? `\n\n以前の内容は「${backup}」に退避してあります。` : ''));
+  } catch (e) {
+    setMsg('エラー: ' + (e.message || e));
+  }
+}
+
 async function catalogSearch() {
   const q = document.getElementById('cat-q')?.value.trim() || '';
   const st = document.getElementById('cat-status');

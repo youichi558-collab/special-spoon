@@ -111,6 +111,19 @@ class Handler(SimpleHTTPRequestHandler):
                     return
                 res = db.build(verbose=True)
                 self._send_json({'ok': True, 'available': True, **res, **db.stats()})
+            elif action == 'all':
+                # カタログDBの全件を返す(部品DBの一括作り直し用)。
+                # 数万件になると重いので上限を付けてある。超えた場合は truncated を立てる。
+                if not os.path.exists(db.db_path):
+                    self._send_json({'ok': False, 'available': True,
+                                     'error': 'カタログDBが未取込です'})
+                    return
+                limit = int(q.get('limit', 20000))
+                rows = db.search('', '', '', limit)
+                total = db.stats().get('count', 0)
+                self._send_json({'ok': True, 'available': True, 'results': rows,
+                                 'count': len(rows), 'total': total,
+                                 'truncated': total > len(rows)})
             elif action == 'search':
                 # Drive未接続(フォルダが見えない)でも、既に構築済みのDBがあれば検索できる。
                 # 出先のノートPC等でDriveが同期していない場面を想定。

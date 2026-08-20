@@ -646,6 +646,9 @@
       <p id="cat-status" style="font-size:10px;color:var(--fg2)"></p>
       <div id="cat-change-wrap" style="display:none;margin-bottom:6px">
         <button class="fp-btn" style="font-size:10px;padding:2px 6px" onclick="catalogShowSetup()">フォルダを変更</button>
+        <button class="fp-btn" style="font-size:10px;padding:2px 6px;color:var(--red);border-color:var(--red)"
+          onclick="catalogResetPartsDb()"
+          title="部品DBの中身を破棄し、カタログDBの全件で作り直します">部品DBをカタログ全件で作り直す</button>
       </div>
       <div id="cat-result" style="max-height:200px;overflow-y:auto;font-size:11px;background:var(--bg3);border-radius:4px;padding:6px;display:none"></div>
       <hr style="margin:12px 0;border-color:var(--bd2)">
