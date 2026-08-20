@@ -217,3 +217,15 @@ body.fullscreen #cw{position:fixed;inset:0;z-index:100;width:100vw;height:100vh;
 /* 大画面解除ボタン（常にキャンバス上に浮かぶ） */
 #fs-exit{display:none;position:fixed;top:8px;right:12px;z-index:200;padding:4px 10px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer;}
 body.fullscreen #fs-exit{display:block;}
+
+/* ---- カタログDB フォルダブラウザ（2026-08-20） ----
+   一覧を <a> で組んだところ、既定のリンク色がダークテーマで潰れて
+   ほとんど読めなかった。リンクではなく行ボタンとして組み直す。 */
+.cat-row{display:flex;align-items:center;gap:6px;width:100%;padding:4px 6px;
+  background:transparent;border:1px solid transparent;border-radius:3px;
+  color:var(--fg);font-size:11px;font-family:inherit;text-align:left;cursor:pointer;}
+.cat-row:hover{background:var(--bg4);border-color:var(--bd);}
+.cat-row .cat-ico{flex-shrink:0;width:14px;text-align:center;}
+.cat-row .cat-nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cat-row.cat-nav{color:var(--acc);}
+.cat-empty{color:var(--fg3);font-size:11px;padding:4px 6px;}

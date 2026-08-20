@@ -525,15 +525,19 @@ async function catalogBrowse(path) {
     let html = '';
     if (!_catBrowsePath) {
       html = (d.drives || []).map(dr =>
-        `<div style="padding:2px 0"><a href="#" onclick="event.preventDefault();catalogBrowse('${_escAttr(dr)}')">💾 ${_esc(dr)}</a></div>`).join('');
+        `<button type="button" class="cat-row" onclick="catalogBrowse('${_escAttr(dr)}')">`
+        + `<span class="cat-ico">💾</span><span class="cat-nm">${_esc(dr)}</span></button>`).join('');
     } else {
-      html += `<div style="padding:2px 0"><a href="#" onclick="event.preventDefault();catalogBrowse('')">💾 ドライブ一覧へ</a></div>`;
+      html += `<button type="button" class="cat-row cat-nav" onclick="catalogBrowse('')">`
+        + `<span class="cat-ico">💾</span><span class="cat-nm">ドライブ一覧へ</span></button>`;
       if (d.parent) {
-        html += `<div style="padding:2px 0"><a href="#" onclick="event.preventDefault();catalogBrowse('${_escAttr(d.parent)}')">⬆ 上のフォルダへ</a></div>`;
+        html += `<button type="button" class="cat-row cat-nav" onclick="catalogBrowse('${_escAttr(d.parent)}')">`
+          + `<span class="cat-ico">⬆</span><span class="cat-nm">上のフォルダへ</span></button>`;
       }
       html += (d.dirs || []).map(x =>
-        `<div style="padding:2px 0"><a href="#" onclick="event.preventDefault();catalogBrowse('${_escAttr(x.path)}')">📁 ${_esc(x.name)}</a></div>`).join('');
-      if (!(d.dirs || []).length) html += '<div style="color:var(--fg3);padding:2px 0">(サブフォルダなし)</div>';
+        `<button type="button" class="cat-row" onclick="catalogBrowse('${_escAttr(x.path)}')" title="${_escAttr(x.path)}">`
+        + `<span class="cat-ico">📁</span><span class="cat-nm">${_esc(x.name)}</span></button>`).join('');
+      if (!(d.dirs || []).length) html += '<div class="cat-empty">(サブフォルダなし)</div>';
     }
     list.innerHTML = html;
   } catch (e) {
