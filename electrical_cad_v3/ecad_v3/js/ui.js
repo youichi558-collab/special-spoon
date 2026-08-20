@@ -457,23 +457,23 @@ async function catalogRefreshStatus() {
     }
     if (!d.configured) {
       if (d.built && d.count) {
-        // Driveが同期していないだけで、前回構築したDBは使える状態
-        st.textContent = `カタログCSVフォルダが見つかりません（前回構築分 ${d.count}件で検索できます。`
-          + `最新CSVを取り込むにはDriveの同期を確認してください）`;
+        st.textContent = `前回取り込んだ ${d.count}件で検索できます`
+          + `（最新のCSVを反映するには「再取込」を押してください）`;
       } else {
-        st.textContent = 'カタログCSVフォルダが未設定です。下から選んでください';
+        st.textContent = 'カタログDBフォルダが未選択です。下の「フォルダの選択」から選んでください';
       }
       if (setup) setup.style.display = 'block';
       if (chg) chg.style.display = 'none';
+      _catShowPickStatus();
       return;
     }
     // 設定済み。設定欄は畳んでおくが、選び直せるようにボタンは常に出す
-    // (畳んだままだと自動検出の確認も再設定もできないため)
     if (setup) setup.style.display = 'none';
     if (chg) chg.style.display = 'block';
     const makers = (d.makers || []).map(m => `${m.maker} ${m.count}`).join(' / ');
-    st.textContent = `登録 ${d.count}件（CSV ${d.csv_files.length}個）${makers ? ' — ' + makers : ''}`
-      + `\n${d.csv_dir}`;
+    const label = d.source_label ? `${d.source_label} — ` : '';
+    st.textContent = `${label}登録 ${d.count}件（CSV ${d.csv_files.length}個）`
+      + `${makers ? '\n' + makers : ''}`;
   } catch (e) {
     st.textContent = 'サーバーが応答しません（start.batを最新版で起動してください）';
     if (setup) setup.style.display = 'none';
@@ -487,93 +487,111 @@ function catalogShowSetup() {
   if (!setup) return;
   const show = setup.style.display === 'none';
   setup.style.display = show ? 'block' : 'none';
-  if (show) catalogBrowse('');
+  if (show) _catShowPickStatus();
 }
 
-// --- フォルダブラウザ ---
-// ブラウザはセキュリティ上フォルダの絶対パスをJSに渡さない(webkitdirectoryでも
-// フォルダ名しか取れない)ため、サーバーにドライブ/フォルダ一覧を出してもらい、
-// 画面上でクリックして辿る方式にしている。
-let _catBrowsePath = '';
-
-function catalogBrowseToggle() {
-  const el = document.getElementById('cat-browser');
-  if (!el) return;
-  const show = el.style.display === 'none';
-  el.style.display = show ? 'block' : 'none';
-  if (show) catalogBrowse('');
+// 設定欄を開いたとき、選択済みフォルダ名を表示する
+async function _catShowPickStatus() {
+  const pick = document.getElementById('cat-pick-status');
+  if (!pick) return;
+  const handle = await _catLoadHandle();
+  pick.textContent = handle ? `選択中: ${handle.name}` : 'フォルダが選択されていません';
 }
 
-async function catalogBrowse(path) {
-  const list = document.getElementById('cat-browse-list');
-  const pathEl = document.getElementById('cat-browse-path');
-  const hint = document.getElementById('cat-browse-hint');
-  const okBtn = document.getElementById('cat-browse-ok');
-  if (!list) return;
-  list.innerHTML = '<div style="color:var(--fg3)">読込中...</div>';
+// --- フォルダ選択(File System Access API) ---
+// 部品DB(parts_db.js)と同じ方式。Windowsのフォルダ選択ダイアログが開く。
+// このAPIはセキュリティ上フォルダの絶対パスをJSに渡さないため、
+// パスではなくCSVの「中身」を読んでサーバーに送り、取り込んでもらう。
+// フォルダのハンドルはIndexedDBに保存するので、次回以降は選び直し不要。
+
+function _catOpenHandleDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('catalogDirHandleDB', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('handles');
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function _catSaveHandle(handle) {
   try {
-    const res = await fetch('/api/catalog/browse?path=' + encodeURIComponent(path || ''));
-    const d = await res.json();
-    if (!d.ok) { list.innerHTML = `<div style="color:var(--red)">${_esc(d.error || '開けません')}</div>`; return; }
-    _catBrowsePath = d.path || '';
-    if (pathEl) pathEl.textContent = _catBrowsePath || '(ドライブを選んでください)';
-    if (hint) hint.textContent = _catBrowsePath
-      ? (d.csv_count ? `このフォルダにCSVが${d.csv_count}個あります` : 'このフォルダにCSVはありません')
-      : '';
-    if (okBtn) okBtn.style.display = _catBrowsePath ? '' : 'none';
+    const db = await _catOpenHandleDB();
+    db.transaction('handles', 'readwrite').objectStore('handles').put(handle, 'catalogDir');
+  } catch (e) {}
+}
+async function _catLoadHandle() {
+  try {
+    const db = await _catOpenHandleDB();
+    return await new Promise(r => {
+      const req = db.transaction('handles', 'readonly').objectStore('handles').get('catalogDir');
+      req.onsuccess = () => r(req.result);
+      req.onerror = () => r(null);
+    });
+  } catch (e) { return null; }
+}
 
-    let html = '';
-    if (!_catBrowsePath) {
-      html = (d.drives || []).map(dr =>
-        `<button type="button" class="cat-row" onclick="catalogBrowse('${_escAttr(dr)}')">`
-        + `<span class="cat-ico">💾</span><span class="cat-nm">${_esc(dr)}</span></button>`).join('');
-    } else {
-      html += `<button type="button" class="cat-row cat-nav" onclick="catalogBrowse('')">`
-        + `<span class="cat-ico">💾</span><span class="cat-nm">ドライブ一覧へ</span></button>`;
-      if (d.parent) {
-        html += `<button type="button" class="cat-row cat-nav" onclick="catalogBrowse('${_escAttr(d.parent)}')">`
-          + `<span class="cat-ico">⬆</span><span class="cat-nm">上のフォルダへ</span></button>`;
-      }
-      html += (d.dirs || []).map(x =>
-        `<button type="button" class="cat-row" onclick="catalogBrowse('${_escAttr(x.path)}')" title="${_escAttr(x.path)}">`
-        + `<span class="cat-ico">📁</span><span class="cat-nm">${_esc(x.name)}</span></button>`).join('');
-      if (!(d.dirs || []).length) html += '<div class="cat-empty">(サブフォルダなし)</div>';
+// フォルダ内のCSVをすべて読んでサーバーに送る
+async function _catImportFromHandle(handle, silent) {
+  const st = document.getElementById('cat-status');
+  const pick = document.getElementById('cat-pick-status');
+  const setMsg = m => { if (st) st.textContent = m; if (pick) pick.textContent = m; };
+  setMsg('読み込み中...');
+  const files = [];
+  for await (const [name, entry] of handle.entries()) {
+    if (entry.kind !== 'file' || !name.toLowerCase().endsWith('.csv')) continue;
+    if (name.startsWith('~$')) continue;
+    const f = await entry.getFile();
+    files.push({ name, text: await f.text() });
+  }
+  if (!files.length) {
+    setMsg(`「${handle.name}」にCSVがありません`);
+    return false;
+  }
+  setMsg(`取り込み中... (CSV ${files.length}個)`);
+  const res = await fetch('/api/catalog/import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ files, label: handle.name }),
+  });
+  const d = await res.json();
+  if (!d.ok) { setMsg('エラー: ' + (d.error || '取り込みに失敗しました')); return false; }
+  const br = document.getElementById('cat-setup');
+  if (br && !silent) br.style.display = 'none';
+  catalogRefreshStatus();
+  return true;
+}
+
+async function catalogPickFolder() {
+  const st = document.getElementById('cat-status');
+  if (!window.showDirectoryPicker) {
+    if (st) st.textContent = 'このブラウザはフォルダ選択に対応していません（Chrome/Edge推奨）';
+    return;
+  }
+  try {
+    const handle = await window.showDirectoryPicker({ mode: 'read' });
+    await _catSaveHandle(handle);
+    await _catImportFromHandle(handle);
+  } catch (e) {
+    if (e.name !== 'AbortError' && st) st.textContent = 'エラー: ' + (e.message || e);
+  }
+}
+
+// 保存済みハンドルからDriveのフォルダを読み直す(Driveの内容を更新したとき)
+async function catalogReimport() {
+  const st = document.getElementById('cat-status');
+  const handle = await _catLoadHandle();
+  if (!handle) {
+    if (st) st.textContent = 'フォルダが未選択です。「フォルダを変更」から選んでください';
+    catalogShowSetup();
+    return;
+  }
+  try {
+    let perm = await handle.queryPermission({ mode: 'read' });
+    if (perm !== 'granted') perm = await handle.requestPermission({ mode: 'read' });
+    if (perm !== 'granted') {
+      if (st) st.textContent = 'フォルダへのアクセスが許可されませんでした';
+      return;
     }
-    list.innerHTML = html;
-  } catch (e) {
-    list.innerHTML = `<div style="color:var(--red)">${_esc(e.message || e)}</div>`;
-  }
-}
-
-function catalogUseCurrentDir() {
-  if (!_catBrowsePath) return;
-  catalogSetDir(_catBrowsePath);
-}
-
-async function catalogSetDir(dir) {
-  const st = document.getElementById('cat-status');
-  if (!dir) { if (st) st.textContent = 'フォルダを選んでください'; return; }
-  if (st) st.textContent = '設定中...';
-  try {
-    const res = await fetch('/api/catalog/setdir?path=' + encodeURIComponent(dir));
-    const d = await res.json();
-    if (!d.ok) { if (st) st.textContent = 'エラー: ' + (d.error || '設定に失敗しました'); return; }
-    const br = document.getElementById('cat-browser');
-    if (br) br.style.display = 'none';
-    catalogRefreshStatus();
-  } catch (e) {
-    if (st) st.textContent = 'エラー: ' + (e.message || e);
-  }
-}
-
-async function catalogRebuild() {
-  const st = document.getElementById('cat-status');
-  if (st) st.textContent = 'CSVを読み直しています...';
-  try {
-    const res = await fetch('/api/catalog/rebuild');
-    const d = await res.json();
-    if (!d.ok) { if (st) st.textContent = 'エラー: ' + (d.error || '再構築に失敗しました'); return; }
-    catalogRefreshStatus();
+    await _catImportFromHandle(handle, true);
   } catch (e) {
     if (st) st.textContent = 'エラー: ' + (e.message || e);
   }

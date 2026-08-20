@@ -53,6 +53,38 @@ class Handler(SimpleHTTPRequestHandler):
             return
         super().do_GET()
 
+    def do_POST(self):
+        parsed = urllib.parse.urlparse(self.path)
+        if parsed.path == '/api/catalog/import':
+            self.handle_catalog_import()
+            return
+        self.send_error(404)
+
+    def handle_catalog_import(self):
+        """ブラウザが読んだカタログCSVの中身を受け取って取り込む。
+
+        File System Access API はフォルダの絶対パスをJSに渡さないため、
+        パスではなく中身を受け取る方式にしている(部品DBと同じ操作感)。
+        """
+        if catalog_db is None:
+            self._send_json({'ok': False, 'available': False,
+                             'error': 'カタログDB機能が導入されていません'})
+            return
+        try:
+            n = int(self.headers.get('Content-Length') or 0)
+            payload = json.loads(self.rfile.read(n).decode('utf-8')) if n else {}
+            files = payload.get('files') or []
+            if not files:
+                self._send_json({'ok': False, 'available': True,
+                                 'error': '選んだフォルダにCSVがありませんでした'})
+                return
+            db = catalog_db.CatalogDB()
+            res = db.import_files(files)
+            db.set_source_label(payload.get('label') or '')
+            self._send_json({'ok': True, 'available': True, **res, **db.stats()})
+        except Exception as e:
+            self._send_json({'ok': False, 'available': True, 'error': str(e)})
+
     # ---- カタログDB(任意機能) --------------------------------------------
     def handle_catalog(self, action, q):
         """カタログDBの検索・設定API。
@@ -68,11 +100,6 @@ class Handler(SimpleHTTPRequestHandler):
             db = catalog_db.CatalogDB()
             if action == 'stats':
                 self._send_json({'ok': True, 'available': True, **db.stats()})
-            elif action == 'browse':
-                # フォルダを画面上でクリックして辿るための一覧。
-                # ブラウザは絶対パスをJSに渡さないため、サーバー側で列挙する。
-                self._send_json({'ok': True, 'available': True,
-                                 **catalog_db.list_dirs(q.get('path', ''))})
             elif action == 'setdir':
                 path = db.set_csv_dir(q.get('path', ''))
                 db.build(verbose=True)

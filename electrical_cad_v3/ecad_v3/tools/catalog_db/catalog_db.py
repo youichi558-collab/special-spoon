@@ -353,11 +353,55 @@ class CatalogDB:
         conn.close()
         return dict(r) if r else None
 
+    # -- 取り込み(ブラウザから) --------------------------------------------
+    def import_files(self, files):
+        """ブラウザが読んだCSVの中身を受け取ってローカルに取り込む。
+
+        File System Access API はセキュリティ上フォルダの絶対パスをJSに渡さない。
+        そこでパスではなく「中身」を受け取り、ローカルのキャッシュフォルダに
+        書き出してからDBを構築する。部品DB(parts_db.json)と同じ操作感になり、
+        Windowsのフォルダ選択ダイアログがそのまま使える。
+
+        files: [{'name': 'mitsubishi.csv', 'text': '...'}, ...]
+        """
+        cache = os.path.join(self.data_dir, 'csv_cache')
+        os.makedirs(cache, exist_ok=True)
+        # Drive側で削除されたCSVが残らないよう、取り込みのたびに作り直す
+        for name in os.listdir(cache):
+            if name.lower().endswith('.csv'):
+                os.remove(os.path.join(cache, name))
+        saved = []
+        for f in files:
+            name = os.path.basename(f.get('name', '')).strip()
+            if not name.lower().endswith('.csv'):
+                continue
+            with open(os.path.join(cache, name), 'w', encoding='utf-8', newline='') as fp:
+                fp.write(f.get('text', ''))
+            saved.append(name)
+        self.csv_dir = cache
+        cfg = load_config(self.data_dir)
+        cfg['csv_dir'] = cache
+        cfg['source_label'] = ''  # 表示用(呼び出し側で上書きする)
+        save_config(cfg, self.data_dir)
+        res = self.build()
+        res['files'] = saved
+        return res
+
+    def set_source_label(self, label):
+        """画面に出す「どこから取り込んだか」の表示名(フォルダ名)を保存する。"""
+        cfg = load_config(self.data_dir)
+        cfg['source_label'] = label or ''
+        save_config(cfg, self.data_dir)
+
+    def source_label(self):
+        return load_config(self.data_dir).get('source_label', '')
+
     def stats(self):
         """件数・メーカー内訳など。CAD側の状態表示に使う。"""
         info = {
             'configured': self.is_configured(),
             'csv_dir': self.csv_dir,
+            'source_label': self.source_label(),
             'db_path': self.db_path,
             'csv_files': [os.path.basename(p) for p in self.csv_files()],
             'count': 0,

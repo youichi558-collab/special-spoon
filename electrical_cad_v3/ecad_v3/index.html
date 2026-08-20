@@ -628,28 +628,24 @@
         カタログDBが未設定・未導入でもCADは通常通り使えます（この欄が使えなくなるだけです）。
       </p>
       <div id="cat-setup" style="display:none;margin-bottom:6px">
-        <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
-          <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="catalogBrowseToggle()">📁 フォルダを選ぶ</button>
-          <span id="cat-browse-path" style="font-size:10px;color:var(--fg2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <button class="fp-btn primary" style="font-size:10px;padding:3px 8px" onclick="catalogPickFolder()">フォルダの選択</button>
+          <span id="cat-pick-status" style="font-size:10px;color:var(--fg2)">フォルダが選択されていません</span>
         </div>
-        <div id="cat-browser" style="display:none;border:1px solid var(--bd2);border-radius:4px;padding:6px;background:var(--bg3)">
-          <div id="cat-browse-list" style="max-height:180px;overflow-y:auto;font-size:11px"></div>
-          <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
-            <button class="fp-btn primary" style="font-size:10px;padding:3px 8px" id="cat-browse-ok" onclick="catalogUseCurrentDir()">このフォルダに決定</button>
-            <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="catalogBrowseToggle()">閉じる</button>
-            <span id="cat-browse-hint" style="font-size:10px;color:var(--fg2)"></span>
-          </div>
-        </div>
+        <p style="font-size:10px;color:var(--fg3);margin-top:4px">
+          Drive上の「カタログDB」フォルダを選ぶと、中のCSVをまとめて取り込みます。<br>
+          次回以降は選び直し不要です（Driveの内容を更新したら「再取込」を押してください）。
+        </p>
       </div>
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
         <input type="text" id="cat-q" placeholder="型番・メーカー・キーワード（空白区切りでAND）" style="flex:1;font-size:11px"
                onkeydown="if(event.key==='Enter'){event.preventDefault();catalogSearch();}">
         <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="catalogSearch()">検索</button>
-        <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="catalogRebuild()" title="CSVを読み直してDBを作り直します">再構築</button>
+        <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="catalogReimport()" title="Driveのフォルダを読み直して取り込み直します">再取込</button>
       </div>
       <p id="cat-status" style="font-size:10px;color:var(--fg2)"></p>
       <div id="cat-change-wrap" style="display:none;margin-bottom:6px">
-        <button class="fp-btn" style="font-size:10px;padding:2px 6px" onclick="catalogShowSetup()">📁 フォルダを変更</button>
+        <button class="fp-btn" style="font-size:10px;padding:2px 6px" onclick="catalogShowSetup()">フォルダを変更</button>
       </div>
       <div id="cat-result" style="max-height:200px;overflow-y:auto;font-size:11px;background:var(--bg3);border-radius:4px;padding:6px;display:none"></div>
       <hr style="margin:12px 0;border-color:var(--bd2)">
