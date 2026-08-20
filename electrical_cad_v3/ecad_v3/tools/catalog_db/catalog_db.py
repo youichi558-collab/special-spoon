@@ -161,34 +161,6 @@ def list_dirs(path):
             'csv_count': csv_count, 'drives': list_drives()}
 
 
-# カタログDBフォルダが置かれていそうな場所(盛田さんのDrive構成に合わせてある)
-CANDIDATE_SUFFIXES = [
-    os.path.join('マイドライブ', 'claude', '部品カタログ', 'カタログDB'),
-    os.path.join('マイドライブ', 'claude', 'カタログDB'),
-    os.path.join('マイドライブ', 'claude', '部品カタログ', '部品CSV'),
-]
-
-
-def detect_candidates():
-    """カタログDBフォルダらしき場所を自動で探す。
-
-    ドライブレターが環境で変わる(I: / G:)ため、全ドライブを対象に既知の構成を試す。
-    見つかったものはCSV数付きで返し、画面から選ぶだけで設定できるようにする。
-    """
-    found = []
-    for drive in list_drives():
-        for suf in CANDIDATE_SUFFIXES:
-            p = os.path.join(drive, suf)
-            if os.path.isdir(p):
-                try:
-                    n = len([x for x in os.listdir(p) if x.lower().endswith('.csv')])
-                except OSError:
-                    n = 0
-                found.append({'path': p, 'csv_count': n})
-    return found
-
-
-
 # ----------------------------------------------------------------------------
 # 本体
 # ----------------------------------------------------------------------------

@@ -465,7 +465,6 @@ async function catalogRefreshStatus() {
       }
       if (setup) setup.style.display = 'block';
       if (chg) chg.style.display = 'none';
-      catalogDetect();
       return;
     }
     // 設定済み。設定欄は畳んでおくが、選び直せるようにボタンは常に出す
@@ -488,28 +487,7 @@ function catalogShowSetup() {
   if (!setup) return;
   const show = setup.style.display === 'none';
   setup.style.display = show ? 'block' : 'none';
-  if (show) catalogDetect();
-}
-
-// カタログDBフォルダらしき場所を自動で探して、ボタン1つで設定できるようにする。
-// ドライブレターが環境で変わる(I:/G:)ため、全ドライブを対象に探している。
-async function catalogDetect() {
-  const box = document.getElementById('cat-detected');
-  if (!box) return;
-  box.innerHTML = '';
-  try {
-    const res = await fetch('/api/catalog/detect');
-    const d = await res.json();
-    const cands = d.candidates || [];
-    if (!cands.length) return;
-    box.innerHTML = '<div style="font-size:10px;color:var(--fg3);margin-bottom:3px">見つかったフォルダ:</div>'
-      + cands.map(c => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:3px">
-          <button class="fp-btn primary" style="font-size:10px;padding:2px 6px;white-space:nowrap"
-            onclick="catalogSetDir('${_escAttr(c.path)}')">これを使う</button>
-          <span style="font-size:10px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
-            title="${_escAttr(c.path)}">${_esc(c.path)} <span style="color:var(--fg3)">(CSV ${c.csv_count}個)</span></span>
-        </div>`).join('');
-  } catch (e) { /* 自動検出は失敗しても無視(手動で選べるため) */ }
+  if (show) catalogBrowse('');
 }
 
 // --- フォルダブラウザ ---

@@ -73,11 +73,6 @@ class Handler(SimpleHTTPRequestHandler):
                 # ブラウザは絶対パスをJSに渡さないため、サーバー側で列挙する。
                 self._send_json({'ok': True, 'available': True,
                                  **catalog_db.list_dirs(q.get('path', ''))})
-            elif action == 'detect':
-                # 既知のDrive構成からカタログDBフォルダらしき場所を自動で探す
-                self._send_json({'ok': True, 'available': True,
-                                 'candidates': catalog_db.detect_candidates(),
-                                 'drives': catalog_db.list_drives()})
             elif action == 'setdir':
                 path = db.set_csv_dir(q.get('path', ''))
                 db.build(verbose=True)
