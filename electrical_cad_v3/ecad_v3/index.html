@@ -628,9 +628,18 @@
         <b>カタログDBが未設定・未導入でもCADは通常通り使えます</b>（この欄が使えなくなるだけです）。
       </p>
       <div id="cat-setup" style="display:none;margin-bottom:6px">
-        <div style="display:flex;gap:6px;align-items:center">
-          <input type="text" id="cat-dir" placeholder="例: G:\マイドライブ\claude\部品カタログ\カタログDB" style="flex:1;font-size:11px">
-          <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="catalogSetDir()">設定</button>
+        <div id="cat-detected" style="margin-bottom:6px"></div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
+          <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="catalogBrowseToggle()">📁 フォルダを選ぶ</button>
+          <span id="cat-browse-path" style="font-size:10px;color:var(--fg3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+        </div>
+        <div id="cat-browser" style="display:none;border:1px solid var(--bd2);border-radius:4px;padding:6px;background:var(--bg3)">
+          <div id="cat-browse-list" style="max-height:180px;overflow-y:auto;font-size:11px"></div>
+          <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
+            <button class="fp-btn primary" style="font-size:10px;padding:3px 8px" id="cat-browse-ok" onclick="catalogUseCurrentDir()">このフォルダに決定</button>
+            <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="catalogBrowseToggle()">閉じる</button>
+            <span id="cat-browse-hint" style="font-size:10px;color:var(--fg3)"></span>
+          </div>
         </div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">

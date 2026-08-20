@@ -68,6 +68,16 @@ class Handler(SimpleHTTPRequestHandler):
             db = catalog_db.CatalogDB()
             if action == 'stats':
                 self._send_json({'ok': True, 'available': True, **db.stats()})
+            elif action == 'browse':
+                # フォルダを画面上でクリックして辿るための一覧。
+                # ブラウザは絶対パスをJSに渡さないため、サーバー側で列挙する。
+                self._send_json({'ok': True, 'available': True,
+                                 **catalog_db.list_dirs(q.get('path', ''))})
+            elif action == 'detect':
+                # 既知のDrive構成からカタログDBフォルダらしき場所を自動で探す
+                self._send_json({'ok': True, 'available': True,
+                                 'candidates': catalog_db.detect_candidates(),
+                                 'drives': catalog_db.list_drives()})
             elif action == 'setdir':
                 path = db.set_csv_dir(q.get('path', ''))
                 db.build(verbose=True)

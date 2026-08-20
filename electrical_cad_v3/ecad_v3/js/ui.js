@@ -457,13 +457,11 @@ async function catalogRefreshStatus() {
         // Driveが同期していないだけで、前回構築したDBは使える状態
         st.textContent = `カタログCSVフォルダが見つかりません（前回構築分 ${d.count}件で検索できます。`
           + `最新CSVを取り込むにはDriveの同期を確認してください）`;
-        if (setup) setup.style.display = 'block';
       } else {
-        st.textContent = 'カタログCSVフォルダが未設定です。フォルダのパスを入力して「設定」を押してください';
-        if (setup) setup.style.display = 'block';
+        st.textContent = 'カタログCSVフォルダが未設定です。下から選んでください';
       }
-      const dirEl = document.getElementById('cat-dir');
-      if (dirEl && d.csv_dir) dirEl.value = d.csv_dir;
+      if (setup) setup.style.display = 'block';
+      catalogDetect();
       return;
     }
     if (setup) setup.style.display = 'none';
@@ -475,15 +473,93 @@ async function catalogRefreshStatus() {
   }
 }
 
-async function catalogSetDir() {
-  const dir = document.getElementById('cat-dir')?.value.trim();
+// カタログDBフォルダらしき場所を自動で探して、ボタン1つで設定できるようにする。
+// ドライブレターが環境で変わる(I:/G:)ため、全ドライブを対象に探している。
+async function catalogDetect() {
+  const box = document.getElementById('cat-detected');
+  if (!box) return;
+  box.innerHTML = '';
+  try {
+    const res = await fetch('/api/catalog/detect');
+    const d = await res.json();
+    const cands = d.candidates || [];
+    if (!cands.length) return;
+    box.innerHTML = '<div style="font-size:10px;color:var(--fg3);margin-bottom:3px">見つかったフォルダ:</div>'
+      + cands.map(c => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:3px">
+          <button class="fp-btn primary" style="font-size:10px;padding:2px 6px;white-space:nowrap"
+            onclick="catalogSetDir('${_escAttr(c.path)}')">これを使う</button>
+          <span style="font-size:10px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+            title="${_escAttr(c.path)}">${_esc(c.path)} <span style="color:var(--fg3)">(CSV ${c.csv_count}個)</span></span>
+        </div>`).join('');
+  } catch (e) { /* 自動検出は失敗しても無視(手動で選べるため) */ }
+}
+
+// --- フォルダブラウザ ---
+// ブラウザはセキュリティ上フォルダの絶対パスをJSに渡さない(webkitdirectoryでも
+// フォルダ名しか取れない)ため、サーバーにドライブ/フォルダ一覧を出してもらい、
+// 画面上でクリックして辿る方式にしている。
+let _catBrowsePath = '';
+
+function catalogBrowseToggle() {
+  const el = document.getElementById('cat-browser');
+  if (!el) return;
+  const show = el.style.display === 'none';
+  el.style.display = show ? 'block' : 'none';
+  if (show) catalogBrowse('');
+}
+
+async function catalogBrowse(path) {
+  const list = document.getElementById('cat-browse-list');
+  const pathEl = document.getElementById('cat-browse-path');
+  const hint = document.getElementById('cat-browse-hint');
+  const okBtn = document.getElementById('cat-browse-ok');
+  if (!list) return;
+  list.innerHTML = '<div style="color:var(--fg3)">読込中...</div>';
+  try {
+    const res = await fetch('/api/catalog/browse?path=' + encodeURIComponent(path || ''));
+    const d = await res.json();
+    if (!d.ok) { list.innerHTML = `<div style="color:var(--red)">${_esc(d.error || '開けません')}</div>`; return; }
+    _catBrowsePath = d.path || '';
+    if (pathEl) pathEl.textContent = _catBrowsePath || '(ドライブを選んでください)';
+    if (hint) hint.textContent = _catBrowsePath
+      ? (d.csv_count ? `このフォルダにCSVが${d.csv_count}個あります` : 'このフォルダにCSVはありません')
+      : '';
+    if (okBtn) okBtn.style.display = _catBrowsePath ? '' : 'none';
+
+    let html = '';
+    if (!_catBrowsePath) {
+      html = (d.drives || []).map(dr =>
+        `<div style="padding:2px 0"><a href="#" onclick="event.preventDefault();catalogBrowse('${_escAttr(dr)}')">💾 ${_esc(dr)}</a></div>`).join('');
+    } else {
+      html += `<div style="padding:2px 0"><a href="#" onclick="event.preventDefault();catalogBrowse('')">💾 ドライブ一覧へ</a></div>`;
+      if (d.parent) {
+        html += `<div style="padding:2px 0"><a href="#" onclick="event.preventDefault();catalogBrowse('${_escAttr(d.parent)}')">⬆ 上のフォルダへ</a></div>`;
+      }
+      html += (d.dirs || []).map(x =>
+        `<div style="padding:2px 0"><a href="#" onclick="event.preventDefault();catalogBrowse('${_escAttr(x.path)}')">📁 ${_esc(x.name)}</a></div>`).join('');
+      if (!(d.dirs || []).length) html += '<div style="color:var(--fg3);padding:2px 0">(サブフォルダなし)</div>';
+    }
+    list.innerHTML = html;
+  } catch (e) {
+    list.innerHTML = `<div style="color:var(--red)">${_esc(e.message || e)}</div>`;
+  }
+}
+
+function catalogUseCurrentDir() {
+  if (!_catBrowsePath) return;
+  catalogSetDir(_catBrowsePath);
+}
+
+async function catalogSetDir(dir) {
   const st = document.getElementById('cat-status');
-  if (!dir) { if (st) st.textContent = 'フォルダのパスを入力してください'; return; }
+  if (!dir) { if (st) st.textContent = 'フォルダを選んでください'; return; }
   if (st) st.textContent = '設定中...';
   try {
     const res = await fetch('/api/catalog/setdir?path=' + encodeURIComponent(dir));
     const d = await res.json();
     if (!d.ok) { if (st) st.textContent = 'エラー: ' + (d.error || '設定に失敗しました'); return; }
+    const br = document.getElementById('cat-browser');
+    if (br) br.style.display = 'none';
     catalogRefreshStatus();
   } catch (e) {
     if (st) st.textContent = 'エラー: ' + (e.message || e);
@@ -545,6 +621,13 @@ async function catalogSearch() {
 
 function _esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+// onclick属性の中に埋め込むパス用。Windowsのパスは「\」を含むので必ずエスケープする
+// (G:\マイドライブ\... がそのままJS文字列に入ると壊れるため)。
+function _escAttr(s) {
+  return String(s == null ? '' : s)
+    .replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
 
 // 検索結果の1件だけを部品DBに追加する。

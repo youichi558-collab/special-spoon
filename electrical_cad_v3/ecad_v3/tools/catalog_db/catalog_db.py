@@ -112,6 +112,84 @@ def save_config(cfg, data_dir=None):
 
 
 # ----------------------------------------------------------------------------
+# フォルダ選択の支援(パスを手入力させないため)
+#
+# ブラウザはセキュリティ上フォルダの絶対パスをJSに渡さない(webkitdirectoryでも
+# フォルダ名しか取れない)。一方サーバー側は絶対パスが要る。そこでサーバーが
+# ドライブ一覧とフォルダ一覧を返し、画面上でクリックして辿れるようにする。
+# ----------------------------------------------------------------------------
+def list_drives():
+    """利用可能なドライブ(Windows)またはルート候補を返す。"""
+    out = []
+    if os.name == 'nt':
+        for c in 'CDEFGHIJKLMNOPQRSTUVWXYZAB':
+            p = f'{c}:\\'
+            if os.path.isdir(p):
+                out.append(p)
+    else:
+        out = ['/', os.path.expanduser('~')]
+    return out
+
+
+def list_dirs(path):
+    """指定フォルダ直下のサブフォルダ一覧を返す。
+
+    戻り値: {'path','parent','dirs':[{'name','path'}],'csv_count','drives'}
+    csv_count はそのフォルダ直下のCSV数。カタログDBフォルダを見分ける手がかりになる。
+    """
+    if not path:
+        return {'path': '', 'parent': None, 'dirs': [], 'csv_count': 0, 'drives': list_drives()}
+    path = os.path.abspath(os.path.expanduser(path))
+    if not os.path.isdir(path):
+        raise ValueError(f'フォルダが見つかりません: {path}')
+    dirs, csv_count = [], 0
+    try:
+        for name in sorted(os.listdir(path)):
+            full = os.path.join(path, name)
+            if name.startswith('.') or name.startswith('~$'):
+                continue
+            if os.path.isdir(full):
+                dirs.append({'name': name, 'path': full})
+            elif name.lower().endswith('.csv'):
+                csv_count += 1
+    except PermissionError:
+        raise ValueError(f'このフォルダは開けません(アクセス権がありません): {path}')
+    parent = os.path.dirname(path.rstrip(os.sep))
+    if parent == path or not os.path.isdir(parent):
+        parent = None
+    return {'path': path, 'parent': parent, 'dirs': dirs,
+            'csv_count': csv_count, 'drives': list_drives()}
+
+
+# カタログDBフォルダが置かれていそうな場所(盛田さんのDrive構成に合わせてある)
+CANDIDATE_SUFFIXES = [
+    os.path.join('マイドライブ', 'claude', '部品カタログ', 'カタログDB'),
+    os.path.join('マイドライブ', 'claude', 'カタログDB'),
+    os.path.join('マイドライブ', 'claude', '部品カタログ', '部品CSV'),
+]
+
+
+def detect_candidates():
+    """カタログDBフォルダらしき場所を自動で探す。
+
+    ドライブレターが環境で変わる(I: / G:)ため、全ドライブを対象に既知の構成を試す。
+    見つかったものはCSV数付きで返し、画面から選ぶだけで設定できるようにする。
+    """
+    found = []
+    for drive in list_drives():
+        for suf in CANDIDATE_SUFFIXES:
+            p = os.path.join(drive, suf)
+            if os.path.isdir(p):
+                try:
+                    n = len([x for x in os.listdir(p) if x.lower().endswith('.csv')])
+                except OSError:
+                    n = 0
+                found.append({'path': p, 'csv_count': n})
+    return found
+
+
+
+# ----------------------------------------------------------------------------
 # 本体
 # ----------------------------------------------------------------------------
 class CatalogDB:
