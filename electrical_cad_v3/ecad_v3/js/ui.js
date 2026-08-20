@@ -883,7 +883,7 @@ function parseCSVLine(line) {
   out.push(cur);
   return out.map(s => s.trim());
 }
-const PART_TYPE_CODES = ['coil','sw_no','sw_nc','breaker','motor','terminal','lamp','fuse','transformer','option','thermal','servo','plc','plc_unit','hmi'];
+const PART_TYPE_CODES = ['contactor','starter','coil','timer','thermal','sw_no','sw_nc','pb','pb_lamp','pb_estop','selector','lever','lamp','breaker','fuse','transformer','terminal','servo','servo_motor','motor','plc','plc_unit','hmi','option'];
 function bulkImportParts() {
   const raw = document.getElementById('pr-csv').value;
   const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -2784,14 +2784,21 @@ function symRowPointerDown(e, i) {
 
 // 種別コード→表示名。CSV一括登録欄のヘルプ文言(js/ui.js内 別箇所)と揃えること。
 const PART_TYPE_LABELS = {
-  coil: 'リレーコイル・コンタクタ', sw_no: 'a接点', sw_nc: 'b接点', breaker: 'ブレーカ',
-  motor: 'モーター', terminal: '端子台', lamp: 'ランプ', fuse: 'ヒューズ',
-  transformer: 'トランス', option: '増設ユニット等(付属品)', thermal: 'サーマルリレー',
-  servo: 'サーボアンプ', plc: 'PLC(シーケンサ)', plc_unit: 'PLC増設ユニット',
-  hmi: 'タッチパネル・表示器',
+  // 開閉器類。electromagnetic contactor(単体)とstarter(サーマル一体)は
+  // 型番自体が変わる別部品なので分けている(S-T21 と MSO-T21 等)。
+  contactor: '電磁接触器', starter: '電磁開閉器(サーマル一体)',
+  coil: 'リレーコイル', timer: 'タイマ', thermal: 'サーマルリレー',
+  sw_no: 'a接点', sw_nc: 'b接点',
+  // 操作機器。押ボタンとセレクタはa接点/b接点とは別物なので専用コードにした。
+  pb: '押ボタン', pb_lamp: '照光押ボタン', pb_estop: '非常停止',
+  selector: 'セレクタ', lever: 'モノレバー', lamp: 'ランプ・表示灯',
+  breaker: 'ブレーカ', fuse: 'ヒューズ', transformer: 'トランス', terminal: '端子台',
+  servo: 'サーボアンプ', servo_motor: 'サーボモータ', motor: 'モーター',
+  plc: 'PLC(シーケンサ)', plc_unit: 'PLC増設ユニット', hmi: 'タッチパネル・表示器',
+  option: '増設ユニット等(付属品)',
   '': '(種別未設定)',
 };
-const PART_TYPE_ORDER = ['breaker','coil','thermal','servo','plc','plc_unit','hmi','sw_no','sw_nc','motor','option','terminal','lamp','fuse','transformer'];
+const PART_TYPE_ORDER = ['breaker','contactor','starter','thermal','coil','timer','sw_no','sw_nc','pb','pb_lamp','pb_estop','selector','lever','lamp','servo','servo_motor','motor','plc','plc_unit','hmi','terminal','fuse','transformer','option'];
 // 折りたたみ状態。2026-08-19よりメーカーを第一階層、種別を第二階層とする2段構造に変更。
 // キーはメーカー名(第一階層)、または「メーカー名\u0000種別」(第二階層)。
 // 既定は全部閉じた状態。検索中は無視して全部展開する。リロードごとにリセット(永続化なし)。
