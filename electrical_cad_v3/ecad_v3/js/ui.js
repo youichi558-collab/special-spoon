@@ -426,6 +426,153 @@ function editPart(ref) {
 function showPartReg() {
   openFP('part-reg-p');
   refreshPendingCsvList();
+  catalogRefreshStatus();
+}
+
+// ----------------------------------------------------------------
+// カタログDB検索(2026-08-20)
+//
+// Google Drive上のメーカー別CSVから作ったSQLiteを、server.py経由で検索する。
+// 選んだ型番だけを部品DBに追加する = カタログ全数を部品DBに流し込まない。
+//
+// 【重要】カタログDBが無い環境(外部PC等)でもCADは普通に使えること。
+// APIが available:false を返したら、この欄を無効化して案内を出すだけにする。
+// ----------------------------------------------------------------
+let _catalogResults = [];
+
+async function catalogRefreshStatus() {
+  const st = document.getElementById('cat-status');
+  const setup = document.getElementById('cat-setup');
+  if (!st) return;
+  try {
+    const res = await fetch('/api/catalog/stats');
+    const d = await res.json();
+    if (!d.available) {
+      st.textContent = 'カタログDB機能は未導入です（CADの他の機能には影響しません）';
+      if (setup) setup.style.display = 'none';
+      return;
+    }
+    if (!d.configured) {
+      if (d.built && d.count) {
+        // Driveが同期していないだけで、前回構築したDBは使える状態
+        st.textContent = `カタログCSVフォルダが見つかりません（前回構築分 ${d.count}件で検索できます。`
+          + `最新CSVを取り込むにはDriveの同期を確認してください）`;
+        if (setup) setup.style.display = 'block';
+      } else {
+        st.textContent = 'カタログCSVフォルダが未設定です。フォルダのパスを入力して「設定」を押してください';
+        if (setup) setup.style.display = 'block';
+      }
+      const dirEl = document.getElementById('cat-dir');
+      if (dirEl && d.csv_dir) dirEl.value = d.csv_dir;
+      return;
+    }
+    if (setup) setup.style.display = 'none';
+    const makers = (d.makers || []).map(m => `${m.maker} ${m.count}`).join(' / ');
+    st.textContent = `登録 ${d.count}件（CSV ${d.csv_files.length}個）${makers ? ' — ' + makers : ''}`;
+  } catch (e) {
+    st.textContent = 'サーバーが応答しません（start.batを最新版で起動してください）';
+    if (setup) setup.style.display = 'none';
+  }
+}
+
+async function catalogSetDir() {
+  const dir = document.getElementById('cat-dir')?.value.trim();
+  const st = document.getElementById('cat-status');
+  if (!dir) { if (st) st.textContent = 'フォルダのパスを入力してください'; return; }
+  if (st) st.textContent = '設定中...';
+  try {
+    const res = await fetch('/api/catalog/setdir?path=' + encodeURIComponent(dir));
+    const d = await res.json();
+    if (!d.ok) { if (st) st.textContent = 'エラー: ' + (d.error || '設定に失敗しました'); return; }
+    catalogRefreshStatus();
+  } catch (e) {
+    if (st) st.textContent = 'エラー: ' + (e.message || e);
+  }
+}
+
+async function catalogRebuild() {
+  const st = document.getElementById('cat-status');
+  if (st) st.textContent = 'CSVを読み直しています...';
+  try {
+    const res = await fetch('/api/catalog/rebuild');
+    const d = await res.json();
+    if (!d.ok) { if (st) st.textContent = 'エラー: ' + (d.error || '再構築に失敗しました'); return; }
+    catalogRefreshStatus();
+  } catch (e) {
+    if (st) st.textContent = 'エラー: ' + (e.message || e);
+  }
+}
+
+async function catalogSearch() {
+  const q = document.getElementById('cat-q')?.value.trim() || '';
+  const st = document.getElementById('cat-status');
+  const box = document.getElementById('cat-result');
+  if (!q) { if (st) st.textContent = 'キーワードを入力してください'; return; }
+  if (st) st.textContent = '検索中...';
+  try {
+    const res = await fetch('/api/catalog/search?q=' + encodeURIComponent(q) + '&limit=100');
+    const d = await res.json();
+    if (!d.ok) {
+      if (st) st.textContent = 'エラー: ' + (d.error || '検索に失敗しました');
+      if (box) box.style.display = 'none';
+      return;
+    }
+    _catalogResults = d.results || [];
+    if (st) {
+      let msg = `${d.count}件ヒット${d.count >= 100 ? '（上位100件を表示）' : ''}`;
+      if (d.warning) msg += ' ※' + d.warning;
+      st.textContent = msg;
+    }
+    if (!box) return;
+    if (!_catalogResults.length) { box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    box.innerHTML = _catalogResults.map((r, i) => {
+      const already = state.customParts.some(p => p.ref === r.ref);
+      const spec = [r.type, r.volt, r.amp, r.contacts].filter(Boolean).join(' / ');
+      return `<div style="display:flex;gap:6px;align-items:flex-start;padding:3px 0;border-bottom:1px solid var(--bd2)">
+        <div style="flex:1;min-width:0">
+          <div><b>${_esc(r.ref)}</b> <span style="color:var(--fg3)">${_esc(r.maker)}</span></div>
+          <div style="color:var(--fg3);font-size:10px">${_esc(spec)}</div>
+        </div>
+        <button class="fp-btn" style="font-size:10px;padding:2px 6px;white-space:nowrap"
+          onclick="catalogAddToParts(${i})">${already ? '上書き' : '部品DBへ'}</button>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    if (st) st.textContent = 'エラー: ' + (e.message || e);
+  }
+}
+
+function _esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+// 検索結果の1件だけを部品DBに追加する。
+// 外形図DXFは盛田さんが手で紐付けたものなので、上書き時も必ず引き継ぐ
+// (CSV一括登録で全件消えた事故と同じ轍を踏まないこと)。
+function catalogAddToParts(idx) {
+  const r = _catalogResults[idx];
+  if (!r) return;
+  const part = {
+    maker: r.maker || '', ref: r.ref, type: r.type || '',
+    volt: r.volt || '', amp: r.amp || '', terminals: r.terminals || '',
+    contacts: r.contacts || '', note: r.note || '', custom: true,
+  };
+  const existing = state.customParts.find(p => p.ref === r.ref);
+  if (existing) {
+    if (!confirm(`「${r.ref}」は既に部品DBにあります。カタログの内容で上書きしますか？\n（外形図DXFの紐付けは保持されます）`)) return;
+    const keepDxf = existing.outlineDxf, keepDxfName = existing.outlineDxfName;
+    Object.assign(existing, part);
+    if (keepDxf !== undefined)     existing.outlineDxf     = keepDxf;
+    if (keepDxfName !== undefined) existing.outlineDxfName = keepDxfName;
+  } else {
+    state.customParts.push(part);
+  }
+  renderPartsAll();
+  partsDb.scheduleSave();
+  const st = document.getElementById('cat-status');
+  if (st) st.textContent = `「${r.ref}」を部品DBに${existing ? '上書き' : '追加'}しました`;
+  catalogSearch();
 }
 
 // 保留CSV(catalog_pending/)の一覧を取得してプルダウンに反映

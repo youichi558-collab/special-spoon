@@ -622,6 +622,26 @@
         <button class="fp-btn" onclick="closeFP('part-reg-p')">閉じる</button>
       </div>
       <hr style="margin:12px 0;border-color:var(--bd2)">
+      <h3 style="font-size:13px">カタログDBから探す</h3>
+      <p style="font-size:10px;color:var(--fg3);margin-bottom:4px">
+        Google Drive上のカタログDB(メーカー別CSV)から型番を検索し、選んだものだけを部品DBに追加します。<br>
+        <b>カタログDBが未設定・未導入でもCADは通常通り使えます</b>（この欄が使えなくなるだけです）。
+      </p>
+      <div id="cat-setup" style="display:none;margin-bottom:6px">
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="cat-dir" placeholder="例: G:\マイドライブ\claude\部品カタログ\カタログDB" style="flex:1;font-size:11px">
+          <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="catalogSetDir()">設定</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+        <input type="text" id="cat-q" placeholder="型番・メーカー・キーワード（空白区切りでAND）" style="flex:1;font-size:11px"
+               onkeydown="if(event.key==='Enter'){event.preventDefault();catalogSearch();}">
+        <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="catalogSearch()">検索</button>
+        <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="catalogRebuild()" title="CSVを読み直してDBを作り直します">再構築</button>
+      </div>
+      <p id="cat-status" style="font-size:10px;color:var(--fg3)"></p>
+      <div id="cat-result" style="max-height:200px;overflow-y:auto;font-size:11px;background:var(--bg3);border-radius:4px;padding:6px;display:none"></div>
+      <hr style="margin:12px 0;border-color:var(--bd2)">
       <h3 style="font-size:13px">保留CSVを読み込む</h3>
       <p style="font-size:10px;color:var(--fg3);margin-bottom:4px">
         Claudeとの会話でカタログを読み取ってもらいpushしてもらった「登録待ちCSV」を、
