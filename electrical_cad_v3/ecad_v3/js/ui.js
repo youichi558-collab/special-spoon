@@ -443,13 +443,16 @@ let _catalogResults = [];
 async function catalogRefreshStatus() {
   const st = document.getElementById('cat-status');
   const setup = document.getElementById('cat-setup');
+  const chg = document.getElementById('cat-change-wrap');
   if (!st) return;
+  st.style.whiteSpace = 'pre-line';  // 現在のフォルダを2行目に出すため
   try {
     const res = await fetch('/api/catalog/stats');
     const d = await res.json();
     if (!d.available) {
       st.textContent = 'カタログDB機能は未導入です（CADの他の機能には影響しません）';
       if (setup) setup.style.display = 'none';
+      if (chg) chg.style.display = 'none';
       return;
     }
     if (!d.configured) {
@@ -461,16 +464,31 @@ async function catalogRefreshStatus() {
         st.textContent = 'カタログCSVフォルダが未設定です。下から選んでください';
       }
       if (setup) setup.style.display = 'block';
+      if (chg) chg.style.display = 'none';
       catalogDetect();
       return;
     }
+    // 設定済み。設定欄は畳んでおくが、選び直せるようにボタンは常に出す
+    // (畳んだままだと自動検出の確認も再設定もできないため)
     if (setup) setup.style.display = 'none';
+    if (chg) chg.style.display = 'block';
     const makers = (d.makers || []).map(m => `${m.maker} ${m.count}`).join(' / ');
-    st.textContent = `登録 ${d.count}件（CSV ${d.csv_files.length}個）${makers ? ' — ' + makers : ''}`;
+    st.textContent = `登録 ${d.count}件（CSV ${d.csv_files.length}個）${makers ? ' — ' + makers : ''}`
+      + `\n${d.csv_dir}`;
   } catch (e) {
     st.textContent = 'サーバーが応答しません（start.batを最新版で起動してください）';
     if (setup) setup.style.display = 'none';
+    if (chg) chg.style.display = 'none';
   }
+}
+
+// 設定済みでも設定欄を開けるようにする(フォルダ変更・自動検出の確認用)
+function catalogShowSetup() {
+  const setup = document.getElementById('cat-setup');
+  if (!setup) return;
+  const show = setup.style.display === 'none';
+  setup.style.display = show ? 'block' : 'none';
+  if (show) catalogDetect();
 }
 
 // カタログDBフォルダらしき場所を自動で探して、ボタン1つで設定できるようにする。
