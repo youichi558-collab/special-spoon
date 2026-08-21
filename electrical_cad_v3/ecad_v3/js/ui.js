@@ -2166,7 +2166,17 @@ function updateRightPanel() {
     </select></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
     if (def.jis) html += `<div class="pp-row"><label style="color:var(--fg4)">JIS規格</label><p style="font-size:10px;color:var(--fg3);padding:2px 5px">${def.jis}</p></div>`;
+    // メモは既定では図面に出さない(従来どおり)。個別の注記を図面に書きたい
+    // ときだけONにする。仕様(label)はデバイス単位で引き継がれて上書きされるため、
+    // シンボル個別に書きたい文字(「運転」「停止」等)の逃げ道としてここを使う。
     html += `<div class="pp-row"><label>メモ</label><textarea rows="2" id="pp-note">${el.note||''}</textarea></div>`;
+    html += `<div class="pp-row"><label>メモを図面に表示</label><input type="checkbox" id="pp-shownote"${el.showNote?' checked':''} title="ONにするとメモの内容が図面に描かれます。仕様と違いデバイスの引き継ぎで上書きされないので、シンボルごとに違う注記を書くのに使えます"></div>`;
+    html += `<details class="pp-details"><summary>メモ表示の詳細（サイズ・色・位置）</summary>`;
+    html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-nfs" value="${el.noteFs||el.labelFs||11}" step="1" min="6" max="32"></div>`;
+    html += `<div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="color" id="pp-ncolor" value="${el.noteColor||'#555555'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('pp-ncolor','pp-ncolorcode')"><input type="text" id="pp-ncolorcode" value="${el.noteColor||'#555555'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-ncolorcode','pp-ncolor')">${colorCodeBtns('pp-ncolorcode','pp-ncolor')}</div></div>`;
+    html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-nox" value="${el.noteOffX!==undefined?el.noteOffX:''}" placeholder="自動" step="5"></div>`;
+    html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-noy" value="${el.noteOffY!==undefined?el.noteOffY:''}" placeholder="自動" step="5"></div>`;
+    html += `</details>`;
   }
 
   // rp.innerHTML を設定する前に _el/_wire をクリアする。
@@ -2504,6 +2514,11 @@ function applyRightPanel() {
     el.modelOffX = v('pp-mox') !== '' ? parseInt(v('pp-mox')) : undefined;
     el.modelOffY = v('pp-moy') !== '' ? parseInt(v('pp-moy')) : undefined;
     el.terminals = v('pp-term');
+    el.showNote  = !!document.getElementById('pp-shownote')?.checked;
+    el.noteFs    = parseInt(v('pp-nfs')) || undefined;
+    el.noteColor = v('pp-ncolorcode') || v('pp-ncolor') || undefined;
+    el.noteOffX  = v('pp-nox') !== '' ? parseInt(v('pp-nox')) : undefined;
+    el.noteOffY  = v('pp-noy') !== '' ? parseInt(v('pp-noy')) : undefined;
     el.wireNo    = v('pp-wireno');
     // 回転系フィールド(pp-rot/pp-trot)は<input type=number>にmax指定が無いため、
     // スピナーの上矢印を連打すると際限なく増え続けてしまう不具合があった

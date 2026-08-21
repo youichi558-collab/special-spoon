@@ -570,6 +570,30 @@ function drawSymEl(el, sel, lc) {
     ctx.fillText(el.partModel, 0, 0);
     ctx.restore();
   }
+  // メモ(note)の図面表示。既定はOFF(el.showNote が真のときだけ描く)。
+  // 仕様(label)はデバイス単位で引き継がれて上書きされるため、シンボルごとに
+  // 違う注記(「運転」「停止」等)を書きたいときはこちらを使う。
+  if (el.showNote && el.note && !state.pdfSkipText) {
+    const d   = getDef(el.type) || { w:64, h:34 };
+    const sc  = el.scale || 1;
+    const fs  = Math.round(el.noteFs || el.labelFs || 11);
+    // 既定位置はシンボルの下。仕様・型式が出ていればその行数ぶん下げて重ねない。
+    const base = el.labelOffY || (d.h*sc/2 + 15*sc);
+    const lh   = Math.round(fs * 1.25);
+    let auto = base;
+    if (el.label && !el.specHide) auto += String(el.label).split('\n').length * lh;
+    if (el.showModel && el.partModel) auto += lh;
+    const lox = el.noteOffX !== undefined ? el.noteOffX : (el.labelOffX || 0);
+    const loy = el.noteOffY !== undefined ? el.noteOffY : auto;
+    const textRot = (el.textRot||0) * Math.PI/180;
+    ctx.save();
+    ctx.fillStyle = el.noteColor || (state.darkMode ? '#aaa' : '#555');
+    ctx.font = `${fs}px sans-serif`; ctx.textAlign = el.labelAlign || 'center';
+    ctx.translate(el.x + lox, el.y + loy);
+    ctx.rotate(textRot);
+    String(el.note).split('\n').forEach((ln, i) => ctx.fillText(ln, 0, i*lh));
+    ctx.restore();
+  }
   // デバイス表示（表示ON時）。
   // 以前は未入力シンボルにオレンジの「?」を描いていたが、デバイスを持たない
   // シンボルすべてに出て図面が読めなくなるため廃止した。
