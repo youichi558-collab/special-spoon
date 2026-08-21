@@ -533,6 +533,66 @@ function onPartModelChanged() {
   }
 }
 
+// ----------------------------------------------------------------
+// デバイス記号の候補と引き継ぎ（2026-08-21）
+//
+// MC1のようなデバイスは主接点・コイル・補助接点と図面上の複数箇所に置かれる。
+// 2つ目以降で型番・仕様を打ち直すのは手間なので、既にあるデバイスを候補から
+// 選ぶだけで型番・仕様・端子番号が引き継がれるようにする。
+// 候補は「図面上で実際に使われているデバイス記号」だけ（別途の登録画面は持たない）。
+// ----------------------------------------------------------------
+
+// 図面上の全ページから、使われているデバイス記号を集める。
+// 型番・仕様を持つ要素を代表として覚えておき、引き継ぎ元にする。
+function collectDeviceInfo() {
+  const map = new Map();   // partRef -> {model, spec, terminals, volt}
+  const pages = state.pages || [{ elements: state.elements }];
+  pages.forEach(pg => (pg.elements || []).forEach(el => {
+    const ref = (el.partRef || '').trim();
+    if (!ref) return;
+    const cur = map.get(ref) || { model:'', spec:'', terminals:'', volt:'' };
+    // 情報を持っている要素の値を優先して残す(空で上書きしない)
+    if (!cur.model     && el.partModel) cur.model     = el.partModel;
+    if (!cur.spec      && el.label)     cur.spec      = el.label;
+    if (!cur.terminals && el.terminals) cur.terminals = el.terminals;
+    if (!cur.volt      && el.partVolt)  cur.volt      = el.partVolt;
+    map.set(ref, cur);
+  }));
+  return map;
+}
+
+function partRefOptionsHtml(current) {
+  const map = collectDeviceInfo();
+  return [...map.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0], 'ja', { numeric: true }))
+    .map(([ref, info]) => {
+      const hint = [info.model, info.spec ? String(info.spec).split('\n')[0] : '']
+        .filter(Boolean).join(' ');
+      return `<option value="${_escAttr(ref)}">${_esc(hint)}</option>`;
+    }).join('');
+}
+
+// デバイスを選び直したら、そのデバイスの型番・仕様・端子番号を引き継ぐ。
+// 【重要】型式の表示ON/OFF(showModel)は引き継がない。MC1は図面上に複数あるが
+// 型番を出すのは代表の1つだけなので、引き継ぐと全部に型番が出てしまう。
+function onPartRefChanged() {
+  const el = state.sel.els.size === 1
+    ? state.elements.find(e => state.sel.els.has(e.id)) : null;
+  if (!el) return;
+  const ref = document.getElementById('pp-partref')?.value.trim() || '';
+  if (!ref) return;
+  const info = collectDeviceInfo().get(ref);
+  if (!info) return;                       // 新規デバイスなら何もしない
+  if (info.model)     el.partModel = info.model;
+  if (info.spec)      el.label     = info.spec;
+  if (info.terminals) el.terminals = info.terminals;
+  if (info.volt)      el.partVolt  = info.volt;
+  el.partRef = ref;
+  pushUndo();
+  draw();
+  updateRightPanel();                      // 引き継いだ値を画面に出し直す
+}
+
 function showPartReg() {
   openFP('part-reg-p');
   refreshPendingCsvList();
@@ -2029,7 +2089,13 @@ function updateRightPanel() {
     </div>`;
     { const devC = el.devColor||(state.darkMode?'#4da3ff':'#1d6fb5');
     html += `<div class="pp-group" style="border-left:4px solid ${devC}"><div class="pp-group-cap" style="color:${devC}">◆ デバイス</div>`;
-    html += `<div class="pp-row"><label>デバイス</label><input type="text" id="pp-partref" value="${el.partRef||''}" placeholder="例: MC1, NFB1"></div>`;
+    // デバイス欄は入力欄＋候補リスト(datalist)。候補は図面上で実際に使われている
+    // デバイス記号だけを出す。既存デバイスを選ぶと型番・仕様がそこから引き継がれる
+    // (MC1は主接点・コイル・補助接点と複数箇所に置くため、2つ目以降は選ぶだけで済む)。
+    html += `<div class="pp-row"><label>デバイス</label>`
+      + `<input type="text" id="pp-partref" list="pp-partref-list" value="${el.partRef||''}"`
+      + ` placeholder="例: MC1, NFB1" onchange="onPartRefChanged()"></div>`
+      + `<datalist id="pp-partref-list">${partRefOptionsHtml(el.partRef)}</datalist>`;
     html += `<div class="pp-row"><label>デバイスを図面に表示</label><input type="checkbox" id="pp-devhide"${el.devHide?'':' checked'} title="3極品等、同じデバイスを複数のシンボルに分けて配置する場合に使います。デバイス名は全部の要素に同じ値を入れつつ、文字はどれか1つだけに絞れます"></div>`;
     html += `<details class="pp-details" style="border-left:4px solid ${devC}"><summary>デバイス表示の詳細（色・サイズ・位置）</summary>`;
     html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-dfs" value="${el.devFs||11}" step="1" min="6" max="32" oninput="previewDeviceOff()"></div>`;
