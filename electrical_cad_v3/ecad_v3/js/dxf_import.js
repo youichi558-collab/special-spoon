@@ -797,8 +797,20 @@ function parseOutlineDXF(text){
     else{xs.push(r.x);ys.push(r.y);}
   });
   const minX=Math.min(...xs),minY=Math.min(...ys),maxX=Math.max(...xs),maxY=Math.max(...ys);
+  // 線幅は図面座標の値で、ズームで割られない(画面表示がそのままDXFに出る設計)。
+  // 従来は1固定だったため、図が小さいと線が太すぎて塊に潰れていた。
+  //
+  // 線分長の中央値を基準にする案は不可。曲線(SPLINE)を折れ線に分割する都合で
+  // 極端に短い線分が大量に混ざり、中央値が実態より小さく出てしまう。
+  // 図の外形サイズを基準にする。製図では図面の長辺のおよそ1/1000〜1/1500が
+  // 標準的な線幅(A3の長辺420mmで0.3〜0.4mm程度)なので、それに倣う。
+  let _outlineLw = 1;
+  {
+    const size = Math.max(maxX-minX, maxY-minY);
+    if (size > 0) _outlineLw = Math.max(0.05, Math.min(1, Math.round(size/1200*100)/100));
+  }
   const elements=raw.map(r=>{
-    if(r.type==='fline')return{type:'fline',x1:r.x1-minX,y1:r.y1-minY,x2:r.x2-minX,y2:r.y2-minY,layer:'外形',lineWidth:1};
+    if(r.type==='fline')return{type:'fline',x1:r.x1-minX,y1:r.y1-minY,x2:r.x2-minX,y2:r.y2-minY,layer:'外形',lineWidth:_outlineLw};
     if(r.type==='circle')return{type:'circle',x:r.x-minX,y:r.y-minY,r:r.r,layer:'外形'};
     if(r.type==='arc')return{type:'arc',x:r.x-minX,y:r.y-minY,r:r.r,startA:r.startA,endA:r.endA,ccw:true,layer:'外形'};
     return{type:'text',x:r.x-minX,y:r.y-minY,text:r.text,fs:r.fs,layer:'外形'};
