@@ -138,7 +138,7 @@ function drawWires() {
     if (lay && !lay.visible) return;
     const sel   = state.sel.wires.has(w.id);
     const color = sel ? '#0067c0' : (lay ? lay.color : '#0F6E56');
-    const lw    = w.lineWidth || lay?.lineWidth || 1.0;
+    const lw    = w.lineWidth || lay?.lineWidth || (typeof DEFAULT_LINE_WIDTH!=='undefined'?DEFAULT_LINE_WIDTH:0.5);
     const pts   = w.pts || [{ x:w.x1, y:w.y1 }, { x:w.x2, y:w.y2 }];
 
     ctx.save();
@@ -333,7 +333,7 @@ function drawTextEl(el, sel, lc, lay) {
 
   // 枠あり
   if (el.textBox) {
-    const lw = el.lineWidth || lay?.lineWidth || 1.0;
+    const lw = el.lineWidth || lay?.lineWidth || (typeof DEFAULT_LINE_WIDTH!=='undefined'?DEFAULT_LINE_WIDTH:0.5);
     ctx.strokeStyle = lc; ctx.lineWidth = lw;
     ctx.strokeRect(el.x - pad, el.y - fs * 0.85, maxW + pad * 2, totalH + pad * 0.5);
   }
@@ -352,7 +352,7 @@ function drawTextEl(el, sel, lc, lay) {
 function drawRectEl(el, sel, lc, lay) {
   ctx.save();
   const c  = lc;
-  const lw = el.lineWidth || lay?.lineWidth || 1.0;
+  const lw = el.lineWidth || lay?.lineWidth || (typeof DEFAULT_LINE_WIDTH!=='undefined'?DEFAULT_LINE_WIDTH:0.5);
   ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+1 : lw);
   applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
   if (el.fillColor) { ctx.fillStyle = el.fillColor; ctx.fillRect(el.x, el.y, el.w, el.h); }
@@ -368,7 +368,7 @@ function drawRectEl(el, sel, lc, lay) {
 function drawCircleEl(el, sel, lc, lay) {
   ctx.save();
   const c  = lc;
-  const lw = el.lineWidth || lay?.lineWidth || 1.0;
+  const lw = el.lineWidth || lay?.lineWidth || (typeof DEFAULT_LINE_WIDTH!=='undefined'?DEFAULT_LINE_WIDTH:0.5);
   ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+1 : lw);
   applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
   if (el.fillColor) { ctx.fillStyle = el.fillColor; ctx.beginPath(); ctx.arc(el.x, el.y, el.r, 0, Math.PI*2); ctx.fill(); }
@@ -379,7 +379,7 @@ function drawCircleEl(el, sel, lc, lay) {
 function drawTriEl(el, sel, lc, lay) {
   ctx.save();
   const c = lc;
-  const lw = el.lineWidth || lay?.lineWidth || 1.0;
+  const lw = el.lineWidth || lay?.lineWidth || (typeof DEFAULT_LINE_WIDTH!=='undefined'?DEFAULT_LINE_WIDTH:0.5);
   ctx.strokeStyle = c; ctx.lineWidth = sel ? lw+1 : lw;
   applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
   ctx.beginPath();
@@ -396,7 +396,7 @@ function drawTriEl(el, sel, lc, lay) {
 function drawArcEl(el, sel, lc, lay) {
   ctx.save();
   const c  = lc;
-  const lw = el.lineWidth || lay?.lineWidth || 1.0;
+  const lw = el.lineWidth || lay?.lineWidth || (typeof DEFAULT_LINE_WIDTH!=='undefined'?DEFAULT_LINE_WIDTH:0.5);
   ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+1 : lw);
   applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
   ctx.beginPath(); ctx.arc(el.x, el.y, el.r, el.startA, el.endA, el.ccw || false); ctx.stroke();
@@ -475,7 +475,7 @@ function drawBezierEl(el, sel, lc, lay) {
   if (!el.pts || el.pts.length < 2) return;
   ctx.save();
   const c = lc;
-  const lw = el.lineWidth || lay?.lineWidth || 1.0;
+  const lw = el.lineWidth || lay?.lineWidth || (typeof DEFAULT_LINE_WIDTH!=='undefined'?DEFAULT_LINE_WIDTH:0.5);
   ctx.strokeStyle = c; ctx.lineWidth = sel ? lw+1 : lw; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
   ctx.beginPath();
@@ -491,7 +491,7 @@ function drawBezierEl(el, sel, lc, lay) {
 function drawFlineEl(el, sel, lc, lay) {
   ctx.save();
   const c  = lc;
-  const lw = el.lineWidth || lay?.lineWidth || 1.0;
+  const lw = el.lineWidth || lay?.lineWidth || (typeof DEFAULT_LINE_WIDTH!=='undefined'?DEFAULT_LINE_WIDTH:0.5);
   ctx.strokeStyle = c; ctx.lineWidth = (sel ? lw+1 : lw); ctx.lineCap = 'round';
   applyLineStyle(ctx, el.lineStyle || lay?.lineDash, state.zoom);
   ctx.beginPath(); ctx.moveTo(el.x1, el.y1); ctx.lineTo(el.x2, el.y2); ctx.stroke(); ctx.setLineDash([]);

@@ -2,20 +2,24 @@
 // data.js — 定数・シンボル定義（状態を持たない）
 // ================================================================
 
-const LAYER_DEFAULTS = { lineWidth: 1, lineDash: 'solid', fontSize: 14 };
+// LAYER_DEFAULTS は未使用のため削除(2026-08-21)。既定線幅は下のLAYERSと
+// js/ui.js の DEFAULT_LINE_WIDTH で管理する。
 const LAYER_DASHES = {
   solid:  [],
   dashed: [8, 4],
   dotted: [2, 4],
   dashdot:[10, 4, 2, 4],
 };
+// 既定の線幅は0.5。JIS/ISO 128の標準線幅(0.13〜2.0の9種)のうち、
+// 電気図面で扱いやすい太さとして採用(盛田さん指定)。
+// 従来は1.0だったが、シンボル・配線・図形で既定がばらついていたため0.5に統一した。
 const LAYERS = [
-  { name: '回路', color: '#1d6fb5', visible: true, locked: false, active: true,  lineWidth: 1, lineDash: 'solid', fontSize: null, attr: '' },
-  { name: '配線', color: '#0F6E56', visible: true, locked: false, active: false, lineWidth: 1, lineDash: 'solid', fontSize: null, attr: '' },
-  { name: '注記', color: '#b45309', visible: true, locked: false, active: false, lineWidth: 1, lineDash: 'solid', fontSize: null, attr: '' },
-  { name: '外形', color: '#444',    visible: true, locked: false, active: false, lineWidth: 1, lineDash: 'solid', fontSize: null, attr: '' },
-  { name: '寸法', color: '#744da9', visible: true, locked: false, active: false, lineWidth: 1, lineDash: 'solid', fontSize: null, attr: '' },
-  { name: '図面枠',color: '#222',   visible: true, locked: false, active: false, lineWidth: 1, lineDash: 'solid', fontSize: null, attr: '' },
+  { name: '回路', color: '#1d6fb5', visible: true, locked: false, active: true,  lineWidth: 0.5, lineDash: 'solid', fontSize: null, attr: '' },
+  { name: '配線', color: '#0F6E56', visible: true, locked: false, active: false, lineWidth: 0.5, lineDash: 'solid', fontSize: null, attr: '' },
+  { name: '注記', color: '#b45309', visible: true, locked: false, active: false, lineWidth: 0.5, lineDash: 'solid', fontSize: null, attr: '' },
+  { name: '外形', color: '#444',    visible: true, locked: false, active: false, lineWidth: 0.5, lineDash: 'solid', fontSize: null, attr: '' },
+  { name: '寸法', color: '#744da9', visible: true, locked: false, active: false, lineWidth: 0.5, lineDash: 'solid', fontSize: null, attr: '' },
+  { name: '図面枠',color: '#222',   visible: true, locked: false, active: false, lineWidth: 0.5, lineDash: 'solid', fontSize: null, attr: '' },
 ];
 
 const BUILTIN_PARTS = [

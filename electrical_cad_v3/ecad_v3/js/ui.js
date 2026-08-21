@@ -280,7 +280,7 @@ function repairOrphanLayers() {
   });
   if (!orphans.size) { alert('孤立レイヤー参照は見つかりませんでした。'); return; }
   pushH();
-  orphans.forEach(name => LAYERS.push({ name, color:'#888888', visible:true, locked:false, active:false, lineWidth:1, lineDash:'solid', fontSize:null, attr:'' }));
+  orphans.forEach(name => LAYERS.push({ name, color:'#888888', visible:true, locked:false, active:false, lineWidth:DEFAULT_LINE_WIDTH, lineDash:'solid', fontSize:null, attr:'' }));
   renderLayers(); draw();
   alert(`${orphans.size}件のレイヤーを復元登録しました:\n${[...orphans].join(', ')}`);
 }
@@ -316,7 +316,7 @@ function addLayer() {
   const n = prompt('レイヤー名:');
   if (!n) return;
   if (LAYERS.find(l=>l.name===n)) { alert('同じ名前のレイヤーが既にあります'); return; }
-  LAYERS.push({ name:n, color:'#888888', visible:true, locked:false, active:false, lineWidth:1, lineDash:'solid', fontSize:null, attr:'' });
+  LAYERS.push({ name:n, color:'#888888', visible:true, locked:false, active:false, lineWidth:DEFAULT_LINE_WIDTH, lineDash:'solid', fontSize:null, attr:'' });
   renderLayers();
 }
 
@@ -1438,17 +1438,21 @@ function srPasteFromClipboard() {
     const ws = srWorldShapesForEl(el);
     if (!ws) return;
     ws.forEach(s => {
-      if (s.t==='L') shapes.push({t:'L', x1:tx(s.x1),y1:ty(s.y1),x2:tx(s.x2),y2:ty(s.y2), lineWidth:s.lineWidth});
-      else if (s.t==='C') shapes.push({t:'C', cx:tx(s.cx),cy:ty(s.cy),r:Math.round(s.r*scale), lineWidth:s.lineWidth});
-      else if (s.t==='R') shapes.push({t:'R', x:tx(s.x),y:ty(s.y),w:Math.round(s.w*scale),h:Math.round(s.h*scale), lineWidth:s.lineWidth});
-      else if (s.t==='P' && s.pts) shapes.push({t:'P', pts:s.pts.map(p=>[tx(p[0]),ty(p[1])]), cl:s.cl, lineWidth:s.lineWidth});
+      // 線幅は規格値(JIS標準の9種)に丸めてから焼き込む。DXFから貼り付けた図形が
+      // 中途半端な太さを持っていると、そのままシンボルに残って配線と繋いだときに
+      // 段差が出るため。未設定(レイヤー既定に従う)の場合は未設定のまま残す。
+      const _lw = s.lineWidth != null ? snapLineWidth(s.lineWidth) : undefined;
+      if (s.t==='L') shapes.push({t:'L', x1:tx(s.x1),y1:ty(s.y1),x2:tx(s.x2),y2:ty(s.y2), lineWidth:_lw});
+      else if (s.t==='C') shapes.push({t:'C', cx:tx(s.cx),cy:ty(s.cy),r:Math.round(s.r*scale), lineWidth:_lw});
+      else if (s.t==='R') shapes.push({t:'R', x:tx(s.x),y:ty(s.y),w:Math.round(s.w*scale),h:Math.round(s.h*scale), lineWidth:_lw});
+      else if (s.t==='P' && s.pts) shapes.push({t:'P', pts:s.pts.map(p=>[tx(p[0]),ty(p[1])]), cl:s.cl, lineWidth:_lw});
       else if (s.t==='T') shapes.push({t:'T', text:s.text, x:tx(s.x), y:ty(s.y), fs:s.fs});
       else if (s.t==='A') {
         // 以前は弧を8本の直線に分解し、さらに各点を整数へ丸めていた。
         // 半径が小さい弧ほど丸め誤差が相対的に大きくなり、歪んで見える不具合があった。
         // 配置時の描画(symbols.js)は弧をネイティブでサポートしているので、
         // 分解せずそのまま持たせる(座標・半径は丸め、角度sa/eaは丸めない)。
-        shapes.push({t:'A', cx:tx(s.cx), cy:ty(s.cy), r:Math.round(s.r*scale), sa:s.sa, ea:s.ea, lineWidth:s.lineWidth});
+        shapes.push({t:'A', cx:tx(s.cx), cy:ty(s.cy), r:Math.round(s.r*scale), sa:s.sa, ea:s.ea, lineWidth:_lw});
       }
     });
   });
