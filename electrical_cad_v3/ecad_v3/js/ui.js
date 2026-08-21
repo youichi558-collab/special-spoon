@@ -418,7 +418,17 @@ function placePart(type, ref, terminals) {
   targets.forEach(el => {
     el.partModel = ref;
     if (terminals) el.terminals = terminals;
-    applyDefaultVolt(el);          // 選択肢が1つなら確定、複数なら代表値
+    applyDefaultVolt(el);          // AC200V優先で代表値を入れる
+    // 仕様欄に主要項目（電圧・電流・接点構成）を入れる。
+    // 図面には「AC100V」のように1つだけ書くので、電圧は選択肢の羅列ではなく
+    // 選ばれた1つを入れる。要らない行はその場で消してもらう前提。
+    // 備考・出典は長すぎて図面に出すものではないので入れない。
+    if (p) {
+      const lines = [el.partVolt || '', p.amp || '', p.contacts || '']
+        .map(x => String(x).trim())
+        .filter(x => x && x !== '-');
+      if (lines.length) el.label = lines.join('\n');
+    }
   });
   pushUndo();
   draw();
@@ -504,11 +514,19 @@ function partVoltOptions(model) {
   return [...new Set(out)];   // 同じ電圧が重複しても1つにする
 }
 
+// 実務でよく使う制御電圧の優先順（盛田さん確認: AC200V > AC100V > DC24V）。
+// 単純に選択肢の先頭を代表値にすると、カタログの表は電圧の低い順に並ぶため
+// S-T21ならAC24Vが既定で入ってしまう。AC24Vは小容量フレームでは実在するが
+// 国内の制御盤ではまず使わないので、よく使うものを優先する。
+const COMMON_VOLTS = ['AC200V', 'AC100V', 'DC24V'];
+
 // 型番から代表電圧（既定値）を決める。未選択のまま部品表に空欄が出て
-// 発注漏れになるのを防ぐため、選択肢の先頭を入れておく。
+// 発注漏れになるのを防ぐため、必ず何かを入れる。
 function defaultPartVolt(model) {
   const o = partVoltOptions(model);
-  return o.length ? o[0] : '';
+  if (!o.length) return '';
+  for (const v of COMMON_VOLTS) if (o.includes(v)) return v;
+  return o[0];        // よく使う電圧が無ければ先頭
 }
 
 // 型番を設定・変更したときに電圧の既定値を入れる。
@@ -517,7 +535,8 @@ function applyDefaultVolt(el) {
   if (!el || !el.partModel) return;
   const opts = partVoltOptions(el.partModel);
   if (!opts.length) { delete el.partVolt; return; }
-  if (!el.partVolt || !opts.includes(el.partVolt)) el.partVolt = opts[0];
+  // 既に選ばれていて、その電圧が新しい型番でも選べるならそのまま残す
+  if (!el.partVolt || !opts.includes(el.partVolt)) el.partVolt = defaultPartVolt(el.partModel);
 }
 
 // プロパティパネルの電圧欄。選択肢が複数ならプルダウン、

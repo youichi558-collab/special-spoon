@@ -6,6 +6,7 @@ const ui=fs.readFileSync(__dirname+'/../js/ui.js','utf8');
 const pick=(re)=>{const m=ui.match(re);if(!m)throw new Error('実装が見つかりません: '+re);return m[0];};
 const IMPL=[
   pick(/const COIL_VOLT_TYPES = \[[\s\S]*?\];/),
+  pick(/const COMMON_VOLTS = \[[\s\S]*?\];/),
   pick(/function partVoltOptions\([\s\S]*?\n\}/),
   pick(/function defaultPartVolt\([\s\S]*?\n\}/),
   pick(/function applyDefaultVolt\([\s\S]*?\n\}/),
@@ -35,12 +36,14 @@ eq(partVoltOptions('NF63-CV'),[],'ブレーカはコイル電圧なし');
 eq(partVoltOptions('KV-RC4AD'),[],'アナログの入出力レンジは拾わない');
 eq(partVoltOptions('未登録'),[],'未登録');
 console.log('\n【既定値】');
-eq(defaultPartVolt('S-T21'),'AC100V','先頭を代表値に');
+eq(defaultPartVolt('S-T21'),'AC200V','実務でよく使うAC200Vを代表値に(先頭のAC100Vではなく)');
 eq(defaultPartVolt('SD-T12'),'DC24V','1つならそれが確定');
 eq(defaultPartVolt('NF63-CV'),'','対象外は空');
 console.log('\n【型番変更時の追従】');
 let el={partModel:'S-T21',partVolt:'AC200V'};
 applyDefaultVolt(el); eq(el.partVolt,'AC200V','選択済みの値は残る');
+el.partVolt='AC400V'; applyDefaultVolt(el); eq(el.partVolt,'AC400V','よく使う電圧でなくても選択済みなら残す');
+el.partVolt=''; applyDefaultVolt(el); eq(el.partVolt,'AC200V','未選択ならAC200Vが入る');
 el.partModel='SD-T12'; applyDefaultVolt(el); eq(el.partVolt,'DC24V','新型番で選べない値は入替');
 el.partModel='NF63-CV'; applyDefaultVolt(el); eq(el.partVolt,undefined,'選択肢が無ければ削除');
 console.log('\n【部品表のまとめ単位】');
