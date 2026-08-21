@@ -42,7 +42,12 @@ function collectTerminalPoints(pageElements) {
       cS.terminals.forEach((t, i) => {
         const rx = t.x * Math.cos(rot) - t.y * Math.sin(rot);
         const ry = t.x * Math.sin(rot) + t.y * Math.cos(rot);
-        pts.push({ x: el.x+rx, y: el.y+ry, elId: el.id, termIdx: i, kind:'symbol', dispName, dispTerm: termList[i] || `T${i+1}` });
+        // 端子番号の優先順位: ①部品割当時の個体差(el.terminals、型番ごとに異なる
+        // 実際の端子番号。例:主接点13-14/補助接点23-24) ②シンボル定義側の既定ラベル
+        // (cS.terminals[i].label。ピンエディタで入力、部品未割当でも参照名として出す)
+        // ③どちらも無ければ通し番号
+        const defLabel = t.label || '';
+        pts.push({ x: el.x+rx, y: el.y+ry, elId: el.id, termIdx: i, kind:'symbol', dispName, dispTerm: termList[i] || defLabel || `T${i+1}` });
       });
     } else {
       const d  = getDef(el.type) || {};

@@ -1621,7 +1621,7 @@ function srRender() {
     c.beginPath(); c.moveTo(px-3,py-3); c.lineTo(px+3,py+3); c.stroke();
     c.beginPath(); c.moveTo(px+3,py-3); c.lineTo(px-3,py+3); c.stroke();
     c.fillStyle = '#0067c0'; c.font = '8px sans-serif'; c.textAlign = 'left';
-    c.fillText(`T${i}`, px+6, py+3);
+    c.fillText(t.label ? `T${i}:${t.label}` : `T${i}`, px+6, py+3);
   });
 
   // Mouse cursor
@@ -1718,7 +1718,7 @@ function srOnDown(e) {
     return;
   }
   if (_srTool === 'term') {
-    _srTerms.push({ x, y });
+    _srTerms.push({ x, y, label: '' });
     srUpdateTermList(); srRender(); return;
   }
   if (_srTool === 'text') {
@@ -1770,12 +1770,22 @@ function srUndo() {
   if (_srShapes.length) { _srShapes.pop(); srRender(); }
 }
 
+function srSetTermLabel(i, v) {
+  if (!_srTerms[i]) return;
+  _srTerms[i].label = v;
+  srRender();
+}
+
 function srUpdateTermList() {
   const el = document.getElementById('sr-term-list');
   if (!el) return;
   if (!_srTerms.length) { el.textContent = '（端子点なし）'; return; }
   el.innerHTML = _srTerms.map((t,i) =>
-    `<div>T${i}: (${t.x}, ${t.y}) <span onclick="_srTerms.splice(${i},1);srUpdateTermList();srRender()" style="cursor:pointer;color:var(--red)">×</span></div>`
+    `<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">`
+    + `<span>T${i}: (${t.x}, ${t.y})</span>`
+    + `<input type="text" value="${(t.label||'').replace(/"/g,'&quot;')}" placeholder="端子番号(例:A1)" style="width:70px;font-size:11px" onchange="srSetTermLabel(${i}, this.value)">`
+    + `<span onclick="_srTerms.splice(${i},1);srUpdateTermList();srRender()" style="cursor:pointer;color:var(--red)">×</span>`
+    + `</div>`
   ).join('');
 }
 
@@ -1793,7 +1803,7 @@ function srAutoDetectTerms() {
   let added = 0;
   candidates.forEach(cand => {
     const dup = _srTerms.some(t => Math.hypot(t.x-cand.x, t.y-cand.y) < 3);
-    if (!dup) { _srTerms.push({ x: Math.round(cand.x), y: Math.round(cand.y) }); added++; }
+    if (!dup) { _srTerms.push({ x: Math.round(cand.x), y: Math.round(cand.y), label: '' }); added++; }
   });
   srUpdateTermList(); srRender();
   if (added === 0) alert('候補はすべて既存の端子と重複していました。');
@@ -1875,7 +1885,7 @@ function saveCustomSymbol() {
   saveSymbolsToStorage();
   if (typeof DEFS !== 'undefined') {
     DEFS[type] = { w, h, cat, name, jis:'', role,
-      terminals: _srTerms.map((t,i) => ({ id:`t${i}`, x:t.x, y:t.y })) };
+      terminals: _srTerms.map((t,i) => ({ id:`t${i}`, x:t.x, y:t.y, label:t.label||'' })) };
   }
   closeFP('sym-reg-p');
   renderSymFloat();
@@ -1942,7 +1952,7 @@ function rescaleCustomSym(type) {
   sym.preview = generateSymPreview(sym.shapes, bbox);
   if (typeof DEFS !== 'undefined' && DEFS[type]) {
     DEFS[type].w = sym.w; DEFS[type].h = sym.h;
-    DEFS[type].terminals = (sym.terminals||[]).map((t,i) => ({ id:`t${i}`, x:t.x, y:t.y }));
+    DEFS[type].terminals = (sym.terminals||[]).map((t,i) => ({ id:`t${i}`, x:t.x, y:t.y, label:t.label||'' }));
   }
   saveSymbolsToStorage();
   renderSymFloat();

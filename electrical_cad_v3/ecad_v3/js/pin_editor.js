@@ -172,8 +172,15 @@ function peRender() {
     c.beginPath(); c.moveTo(px - 3, py - 3); c.lineTo(px + 3, py + 3); c.stroke();
     c.beginPath(); c.moveTo(px + 3, py - 3); c.lineTo(px - 3, py + 3); c.stroke();
     c.fillStyle = '#0067c0'; c.font = '9px sans-serif'; c.textAlign = 'left';
-    c.fillText(`P${i}`, px + 7, py + 3);
+    c.fillText(t.label ? `P${i}:${t.label}` : `P${i}`, px + 7, py + 3);
   });
+}
+
+// 端子番号(label)入力欄の変更をterminalsへ反映(表示ラベルなので空文字も許容)
+function peSetTermLabel(i, v) {
+  if (!_peTerms[i]) return;
+  _peTerms[i].label = v;
+  peRender();
 }
 
 function peUpdateList() {
@@ -181,7 +188,11 @@ function peUpdateList() {
   if (!el) return;
   if (!_peTerms.length) { el.textContent = '（端子点なし）'; return; }
   el.innerHTML = _peTerms.map((t, i) =>
-    `<div>P${i}: (${t.x}, ${t.y}) <span onclick="_peTerms.splice(${i},1);peUpdateList();peRender()" style="cursor:pointer;color:var(--red)">×</span></div>`
+    `<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">`
+    + `<span>P${i}: (${t.x}, ${t.y})</span>`
+    + `<input type="text" value="${(t.label||'').replace(/"/g,'&quot;')}" placeholder="端子番号(例:A1)" style="width:70px;font-size:11px" onchange="peSetTermLabel(${i}, this.value)">`
+    + `<span onclick="_peTerms.splice(${i},1);peUpdateList();peRender()" style="cursor:pointer;color:var(--red)">×</span>`
+    + `</div>`
   ).join('');
 }
 
@@ -198,7 +209,7 @@ function peOnClick(e) {
   _peTerms.forEach((t, i) => { const d = Math.hypot(wx - t.x, wy - t.y); if (d < minD) { minD = d; minI = i; } });
   if (minI >= 0) { _peTerms.splice(minI, 1); peUpdateList(); peRender(); return; }
 
-  _peTerms.push({ x: Math.round(wx), y: Math.round(wy) });
+  _peTerms.push({ x: Math.round(wx), y: Math.round(wy), label: '' });
   peUpdateList(); peRender();
 }
 
@@ -212,7 +223,7 @@ function peAutoDetect() {
   let added = 0;
   candidates.forEach(cand => {
     const dup = _peTerms.some(t => Math.hypot(t.x - cand.x, t.y - cand.y) < 3);
-    if (!dup) { _peTerms.push({ x: Math.round(cand.x), y: Math.round(cand.y) }); added++; }
+    if (!dup) { _peTerms.push({ x: Math.round(cand.x), y: Math.round(cand.y), label: '' }); added++; }
   });
   peUpdateList(); peRender();
   if (added === 0) alert('候補はすべて既存の端子と重複していました。');
@@ -225,7 +236,7 @@ function savePinEdits() {
   cS.terminals = JSON.parse(JSON.stringify(_peTerms));
   cS.role = document.getElementById('pe-role')?.value || '';
   if (typeof DEFS !== 'undefined' && DEFS[_peType]) {
-    DEFS[_peType].terminals = cS.terminals.map((t, i) => ({ id: `t${i}`, x: t.x, y: t.y }));
+    DEFS[_peType].terminals = cS.terminals.map((t, i) => ({ id: `t${i}`, x: t.x, y: t.y, label: t.label || '' }));
     DEFS[_peType].role = cS.role;
   }
   if (typeof saveSymbolsToStorage === 'function') saveSymbolsToStorage();
