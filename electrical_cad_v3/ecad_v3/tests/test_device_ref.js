@@ -51,7 +51,7 @@ eq(el.showModel,false,'型式の表示ON/OFFは引き継がない(重要)');
 console.log('\n【候補リストHTML】');
 const html=partRefOptionsHtml('MC1');
 eq(html.includes('value="MC1"'),true,'MC1が候補にある');
-eq(html.includes('MSO-T12 AC100V'),true,'型番と仕様がヒントに出る');
+eq(html.includes('MSO-T12'),false,'型番などの補足は出さない');
 eq((html.match(/<option/g)||[]).length,4,'候補は4件');
 console.log(ng?`\n失敗 ${ng}件`:'\n全て成功');
 process.exit(ng?1:0);

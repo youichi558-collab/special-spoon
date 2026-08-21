@@ -562,14 +562,11 @@ function collectDeviceInfo() {
 }
 
 function partRefOptionsHtml(current) {
-  const map = collectDeviceInfo();
-  return [...map.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0], 'ja', { numeric: true }))
-    .map(([ref, info]) => {
-      const hint = [info.model, info.spec ? String(info.spec).split('\n')[0] : '']
-        .filter(Boolean).join(' ');
-      return `<option value="${_escAttr(ref)}">${_esc(hint)}</option>`;
-    }).join('');
+  // デバイス記号だけを並べる。型番などの補足は出さない
+  // (デバイス記号は一意なので判別に不要で、かえって選びにくくなる)。
+  return [...collectDeviceInfo().keys()]
+    .sort((a, b) => a.localeCompare(b, 'ja', { numeric: true }))
+    .map(ref => `<option value="${_escAttr(ref)}"></option>`).join('');
 }
 
 // デバイスを選び直したら、そのデバイスの型番・仕様・端子番号を引き継ぐ。
