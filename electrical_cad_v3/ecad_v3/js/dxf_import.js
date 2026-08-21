@@ -468,7 +468,17 @@ function parseDXF(text, isOwnFile){
   // DXFで出現したレイヤーをLAYERSに自動登録（TABLESセクションに実際の色/OFF状態があれば反映）
   const allLayers=new Set([...state.elements.map(e=>e.layer),...state.wires.map(w=>w.layer)]);
   allLayers.forEach(name=>{
-    if(!name||LAYERS.find(l=>l.name===name))return;
+    if(!name)return;
+    const exist=LAYERS.find(l=>l.name===name);
+    if(exist){
+      // 既に同名レイヤーがある場合(同じDXFを読み直したとき等)、登録はスキップされる。
+      // 線幅だけは今回読み込んだ図に合わせて更新しないと、前回の値(既定1.0)が
+      // 残り続けて「読み直しても線が太いまま」になる。
+      const info0=layerTableInfo.get(name);
+      exist.lineWidth=(info0&&info0.lw!=null)?info0.lw:_importLineWidth;
+      exist._dxfImported=true;
+      return;
+    }
     const info = layerTableInfo.get(name);
     const color = info ? aciToHex(info.aci) : '#228844';
     const visible = info ? !(info.off || info.frozen) : true;
@@ -483,7 +493,7 @@ function parseDXF(text, isOwnFile){
     // その場合だけ図の細かさから推測した値を使う。
     const lineWidth = (info && info.lw != null) ? info.lw : _importLineWidth;
     LAYERS.push({name,color,visible,locked:false,active:false,
-                 lineWidth,lineDash:'solid',
+                 lineWidth,lineDash:'solid',_dxfImported:true,
                  fontSize:null,attr:'', ...(aci7 ? {srcAci:7} : {})});
   });
   renderLayers();
@@ -540,6 +550,15 @@ function applyDXFScale(skip) {
       state.wires.forEach(w => {
         w.x1 *= sc; w.y1 *= sc; w.x2 *= sc; w.y2 *= sc;
         if (w.pts) w.pts = w.pts.map(p => ({ x: p.x * sc, y: p.y * sc }));
+      });
+      // 線幅も縮尺に追随させる。座標だけを縮めると図は小さくなるのに線は
+      // そのままの太さで残り、相対的に太くなって図が潰れる。
+      // 要素に焼き込まれた線幅(DXFの370指定)とレイヤーの線幅の両方を掛ける。
+      const scaleLw = o => { if (o.lineWidth > 0) o.lineWidth = Math.max(0.05, o.lineWidth * sc); };
+      state.elements.forEach(scaleLw);
+      state.wires.forEach(scaleLw);
+      (typeof LAYERS !== 'undefined' ? LAYERS : []).forEach(l => {
+        if (l._dxfImported && l.lineWidth > 0) l.lineWidth = Math.max(0.05, l.lineWidth * sc);
       });
     }
     if (!isNaN(fsScale) && fsScale > 0 && fsScale !== 1) {
