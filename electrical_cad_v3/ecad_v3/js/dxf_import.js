@@ -394,6 +394,19 @@ function parseDXF(text, isOwnFile){
     state.page.elements.push(..._dimE);
   }
 
+  // レイヤー名が付かなかった要素を救済する。
+  // DXFのエンティティにgroup code 8が無い等でlayerがundefined/空のまま残ると、
+  // 描画時にLAYERS.findが外れて色がfgC()(ダークで#ccc=ほぼ白)になり、
+  // 「図面の一か所だけ白く壊れる」症状になる。下の自動登録は !name をスキップ
+  // するため、要素側を直さないと白いまま残ってしまう。
+  {
+    const FALLBACK='外形';
+    let n=0;
+    const fix=o=>{ if(!o.layer){ o.layer=FALLBACK; n++; } };
+    state.elements.forEach(fix); state.wires.forEach(fix);
+    if(n)console.log(`DXF読込: レイヤー名の無い要素を${n}件「${FALLBACK}」に割り当てました`);
+  }
+
   // DXFで出現したレイヤーをLAYERSに自動登録（TABLESセクションに実際の色/OFF状態があれば反映）
   const allLayers=new Set([...state.elements.map(e=>e.layer),...state.wires.map(w=>w.layer)]);
   allLayers.forEach(name=>{
