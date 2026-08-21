@@ -550,8 +550,8 @@ function showBOM(){
 function setBOMVolt(idx, volt){
   const r=(window._bomRows||[])[idx];
   if(!r)return;
+  if(typeof pushH==='function')pushH();   // 変更前の状態を履歴に積む
   (r.els||[]).forEach(el=>{ el.partVolt=volt||undefined; });
-  if(typeof pushUndo==='function')pushUndo();
   if(typeof draw==='function')draw();
   if(typeof updateRightPanel==='function')updateRightPanel();
   showBOM();   // 型番＋電圧でまとめ直す

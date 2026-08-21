@@ -415,6 +415,7 @@ function placePart(type, ref, terminals) {
         + `そのシンボルを選択した状態でこの部品をクリックしてください。`);
     return;
   }
+  pushH();                         // 変更前の状態を履歴に積む
   targets.forEach(el => {
     el.partModel = ref;
     if (terminals) el.terminals = terminals;
@@ -430,7 +431,6 @@ function placePart(type, ref, terminals) {
       if (lines.length) el.label = lines.join('\n');
     }
   });
-  pushUndo();
   draw();
   updateRightPanel();
   const hint = document.getElementById('s-hint');
@@ -627,6 +627,7 @@ function onPartRefChanged() {
   if (!ref) return;
   const info = collectDeviceInfo().get(ref);
   if (!info) return;                       // 新規デバイスなら何もしない
+  pushH();                                 // 変更前の状態を履歴に積む
 
   // 要素に書くだけでは足りない。プロパティパネルは「適用」で入力欄の値を
   // 丸ごと要素へ書き戻すため、入力欄が空のままだと引き継いだ値が即座に
@@ -646,7 +647,6 @@ function onPartRefChanged() {
   const pv = document.getElementById('pp-partvolt');
   if (pv && info.volt) pv.value = info.volt;
 
-  pushUndo();
   draw();
 }
 
@@ -659,8 +659,15 @@ function onPartRefChanged() {
 // 部品表はグループのデバイスも集計対象にする(展開接続図のMC1と
 // 配置図のMC1は同じ1台なので、partRefが同じなら1台にまとまる)。
 // ----------------------------------------------------------------
-function groupDevicePropsHtml(g) {
+function groupDevicePropsHtml(g, count) {
   if (!g) return '';
+  // グループが複数選ばれていると、どれに入れるのか決められない。
+  // 黙って先頭に書き込むと事故になるので、1つに絞ってもらう。
+  if (count > 1) {
+    return `<hr style="margin:6px 10px;border-color:var(--border)">
+      <p style="font-size:10px;color:var(--fg3);padding:2px 10px">
+        グループが${count}個選ばれています。デバイスを設定するには1つだけ選択してください。</p>`;
+  }
   return `<hr style="margin:6px 10px;border-color:var(--border)">
     <p style="font-size:10px;font-weight:600;color:var(--fg4);padding:2px 10px">グループのデバイス</p>
     <div class="pp-row"><label>デバイス</label>
@@ -674,15 +681,16 @@ function groupDevicePropsHtml(g) {
 }
 
 function applyGroupDevice() {
-  const g = (state.page.groups || []).find(x =>
+  const hit = (state.page.groups || []).filter(x =>
     x.elIds.some(id => state.sel.els.has(id)) || x.wireIds.some(id => state.sel.wires.has(id)));
-  if (!g) return;
+  if (hit.length !== 1) return;    // 複数選択時は書き込まない(どれに入れるか決められないため)
+  const g = hit[0];
+  pushH();                         // 変更前の状態を履歴に積む
   const val = id => document.getElementById(id)?.value.trim() || '';
   g.partRef   = val('gp-partref')   || undefined;
   g.partModel = val('gp-partmodel') || undefined;
   const c = document.getElementById('gp-showdev');
   g.showDev = c ? c.checked : true;
-  pushUndo();
   draw();
   updateRightPanel();
 }
@@ -2020,7 +2028,7 @@ function updateRightPanel() {
       <div class="pp-row"><label>ΔY</label><input type="number" id="gp-dy" value="0" step="any"></div>
       <button class="pp-apply" onclick="applyGroupMove()">移動適用</button>
       ${groupBtn}
-      ${isGrouped ? groupDevicePropsHtml(selGroups[0]) : ''}
+      ${isGrouped ? groupDevicePropsHtml(selGroups[0], selGroups.length) : ''}
       ${deviceClipboard ? `<button class="pp-apply" onclick="pasteDeviceProps()" title="コピー済みのデバイス名・型番・仕様・文字設定を、選択中の全シンボルへまとめて貼り付けます(形が違うシンボル同士でもOK)">選択中の${state.sel.els.size}個へデバイス/型式/仕様を貼り付け</button>` : ''}
     `;
     document.getElementById('gp-x').addEventListener('change', function() {
