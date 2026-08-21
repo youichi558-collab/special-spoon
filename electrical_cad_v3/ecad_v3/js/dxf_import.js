@@ -436,6 +436,34 @@ function parseDXF(text, isOwnFile){
     if(n)console.log(`DXF読込: レイヤー名の無い要素を${n}件「${FALLBACK}」に割り当てました`);
   }
 
+  // 読み込んだ図の「細かさ」から既定の線幅を決める。
+  //
+  // 線幅は図面座標の値で、ズームで割られない(画面表示がそのままDXFに出る設計)。
+  // 展開接続図なら1.0でよいが、部品の外形図は短い線分が多く、線幅1.0だと
+  // 線分そのものより太くなって塊に潰れる。
+  // 図全体の大きさでは判断できない(外形図でも図面枠込みで420あることがある)。
+  // 線分の長さの中央値を見て、その1/5程度(下限0.1・上限1.0)に収める。
+  let _importLineWidth = 1;
+  {
+    const lens=[];
+    state.wires.forEach(w=>{
+      const p=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
+      for(let k=0;k<p.length-1;k++){
+        const d=Math.hypot(p[k+1].x-p[k].x,p[k+1].y-p[k].y);
+        if(d>0.01)lens.push(d);
+      }
+    });
+    state.elements.forEach(e=>{
+      if(e.x1!=null){const d=Math.hypot(e.x2-e.x1,e.y2-e.y1);if(d>0.01)lens.push(d);}
+      else if(e.r!=null&&e.r>0.01)lens.push(e.r);
+    });
+    if(lens.length>=10){
+      lens.sort((a,b)=>a-b);
+      const med=lens[Math.floor(lens.length/2)];
+      _importLineWidth=Math.max(0.1,Math.min(1,Math.round(med/5*10)/10));
+    }
+  }
+
   // DXFで出現したレイヤーをLAYERSに自動登録（TABLESセクションに実際の色/OFF状態があれば反映）
   const allLayers=new Set([...state.elements.map(e=>e.layer),...state.wires.map(w=>w.layer)]);
   allLayers.forEach(name=>{
@@ -447,7 +475,11 @@ function parseDXF(text, isOwnFile){
     // そのまま書き出すと別のACI番号になってしまうので、元の番号を覚えておき
     // エクスポート時に7へ戻せるようにする。
     const aci7 = info && Math.abs(parseInt(info.aci,10)) === 7;
-    LAYERS.push({name,color,visible,locked:false,active:false,lineWidth:1,lineDash:'solid',
+    // 線幅は図面座標の値で、ズームで割られない(画面表示がそのままDXFに出る設計)。
+    // 展開接続図(A3相当・幅420)なら1.0が適切だが、部品の外形図は細部が細かく、
+    // 同じ1.0だと線が太すぎて図が潰れる。読み込んだ図の実サイズから決める。
+    LAYERS.push({name,color,visible,locked:false,active:false,
+                 lineWidth:_importLineWidth,lineDash:'solid',
                  fontSize:null,attr:'', ...(aci7 ? {srcAci:7} : {})});
   });
   renderLayers();
