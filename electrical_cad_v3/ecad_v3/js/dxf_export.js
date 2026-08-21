@@ -217,7 +217,14 @@ function exportDXF(){
   const allLayers = [
     ...LAYER_DEFS,
     // LAYERS変数（状態由来）もマージ（重複はスキップ）
-    ...(typeof LAYERS !== 'undefined' ? LAYERS : []).map(l=>({n:dxfLayer(l.name),c:hexToACI(l.color)}))
+    // srcAci: DXFから読み込んだときのACI番号。ACI 7(既定色)は画面の前景色に
+    // 寄せて取り込むため、そのままhexToACIすると別番号になる。色を変えていない
+    // 限りは元の番号で書き戻す(他CADで開いたときに既定色のまま見えるように)。
+    ...(typeof LAYERS !== 'undefined' ? LAYERS : []).map(l=>({
+      n:dxfLayer(l.name),
+      c:(l.srcAci && typeof aciDefaultColor === 'function'
+         && l.color === aciDefaultColor()) ? l.srcAci : hexToACI(l.color)
+    }))
       .filter(l=>!LAYER_DEFS.some(d=>d.n===l.n))
   ];
   // 【安全網】LAYERS配列に登録漏れの孤立レイヤー名(過去のdeleteLayerバグ等で発生しうる)を

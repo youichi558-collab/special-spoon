@@ -163,6 +163,13 @@ function parseDXF(text, isOwnFile){
         }
         j=e._end-1; continue;
       }
+      if (c===0 && (v==='SPLINE'||v==='ELLIPSE')) {
+        const e=readMulti(pairs,j);
+        const pts = v==='SPLINE' ? splinePtsOf(e) : ellipsePtsOf(e);
+        for(let k=0;k<pts.length-1;k++)
+          _curArr.push({type:'fline',x1:pts[k].x,y1:pts[k].y,x2:pts[k+1].x,y2:pts[k+1].y,layer:e['8']});
+        j=e._end-1; continue;
+      }
       if (c===0 && (v==='TEXT'||v==='MTEXT')) {
         const e=readEnt(pairs,j);
         let t=(e['1']||e['3']||'').replace(/\\[A-Za-z][^;]*;/g,'').replace(/[{}]/g,'').replace(/\\P/g,' ').trim();
@@ -300,6 +307,28 @@ function parseDXF(text, isOwnFile){
         }
         i=e._end;continue;
       }
+      // SPLINE/ELLIPSE は折れ線に近似して取り込む。未対応だったため、
+      // メーカー外形図で曲線部(角のR等)が丸ごと欠けていた。
+      if(val==='SPLINE'){
+        const e=readMulti(pairs,i);
+        if(isFrameLayer(e['8'])){i=e._end;continue;}
+        const pts=splinePtsOf(e);
+        for(let k=0;k<pts.length-1;k++){
+          state.wires.push({id:genId('w'),x1:pts[k].x,y1:pts[k].y,x2:pts[k+1].x,y2:pts[k+1].y,
+                            pts:[pts[k],pts[k+1]],layer:e['8']||'外形',wireNo:null});lc++;
+        }
+        i=e._end;continue;
+      }
+      if(val==='ELLIPSE'){
+        const e=readMulti(pairs,i);
+        if(isFrameLayer(e['8'])){i=e._end;continue;}
+        const pts=ellipsePtsOf(e);
+        for(let k=0;k<pts.length-1;k++){
+          state.wires.push({id:genId('w'),x1:pts[k].x,y1:pts[k].y,x2:pts[k+1].x,y2:pts[k+1].y,
+                            pts:[pts[k],pts[k+1]],layer:e['8']||'外形',wireNo:null});lc++;
+        }
+        i=e._end;continue;
+      }
       if(val==='ELLIPSE'){
         const e=readEnt(pairs,i);
         if(isFrameLayer(e['8'])){i=e._end;continue;}
@@ -414,7 +443,12 @@ function parseDXF(text, isOwnFile){
     const info = layerTableInfo.get(name);
     const color = info ? aciToHex(info.aci) : '#228844';
     const visible = info ? !(info.off || info.frozen) : true;
-    LAYERS.push({name,color,visible,locked:false,active:false,lineWidth:1,lineDash:'solid',fontSize:null,attr:''});
+    // ACI 7(既定色)は背景に応じて表示色が変わるため画面の前景色に寄せている。
+    // そのまま書き出すと別のACI番号になってしまうので、元の番号を覚えておき
+    // エクスポート時に7へ戻せるようにする。
+    const aci7 = info && Math.abs(parseInt(info.aci,10)) === 7;
+    LAYERS.push({name,color,visible,locked:false,active:false,lineWidth:1,lineDash:'solid',
+                 fontSize:null,attr:'', ...(aci7 ? {srcAci:7} : {})});
   });
   renderLayers();
   document.getElementById('dxf-log-body').innerHTML=`<p style="font-size:11px;margin-bottom:8px">読込完了: <b>${total}</b>要素</p><table class="tbl"><tr><th>種別</th><th>件数</th></tr><tr><td>配線</td><td>${lc}</td></tr><tr><td>円</td><td>${cc}</td></tr><tr><td>テキスト</td><td>${tc}</td></tr><tr><td>シンボル</td><td>${ic}</td></tr></table>${total===0?'<p style="font-size:11px;color:var(--red);margin-top:6px">要素が読み込めませんでした</p>':''}`;
@@ -484,6 +518,90 @@ function applyDXFScale(skip) {
 
 function readEnt(pairs,start){const e={_end:start+1};let i=start+1;while(i<pairs.length){const{code,val}=pairs[i];if(code===0)break;if(e[String(code)]===undefined)e[String(code)]=val;i++;}e._end=i;return e;}
 function readPoly(pairs,start){const e={_end:start+1,pts:[]};let i=start+1,cx=null;while(i<pairs.length){const{code,val}=pairs[i];if(code===0&&i>start+1)break;if(e[String(code)]===undefined&&code!==10&&code!==20)e[String(code)]=val;if(code===10)cx=+val||0;if(code===20&&cx!==null){e.pts.push({x:cx,y:-(+val||0)});cx=null;}i++;}e._end=i;return e;}
+// SPLINE/ELLIPSE用: 同じgroup codeが複数回現れる実体を読む。
+// readEnt()は最初の1個しか拾わないため、制御点やノットを取りこぼす。
+function readMulti(pairs,start){
+  const e={_end:start+1,_all:{}};let i=start+1;
+  while(i<pairs.length){const{code,val}=pairs[i];if(code===0)break;
+    const k=String(code);
+    (e._all[k]=e._all[k]||[]).push(val);
+    if(e[k]===undefined)e[k]=val;
+    i++;}
+  e._end=i;return e;
+}
+
+// 3次(以下)のB-スプラインを折れ線に近似する。
+// DXFのSPLINEは制御点(10/20)とノットベクトル(40)を持つ。de Boorの式で
+// パラメータtを刻んで点を求める。CADの外形図では曲線が閉じた輪郭の一部を
+// なすことが多く、無視すると図形が欠けるため近似して取り込む。
+function splineToPts(ctrl,knots,degree,segs){
+  if(ctrl.length<2)return[];
+  const n=ctrl.length-1, p=Math.min(degree||3, n);
+  // ノットが無い/数が合わない場合は一様ノットを作る
+  if(!knots||knots.length!==n+p+2){
+    knots=[];
+    for(let i=0;i<=n+p+1;i++)knots.push(i<=p?0:(i>=n+1?n-p+1:i-p));
+  }
+  const N=(i,k,t)=>{
+    if(k===0)return (t>=knots[i]&&t<knots[i+1])?1:0;
+    let a=0,b=0;
+    const d1=knots[i+k]-knots[i], d2=knots[i+k+1]-knots[i+1];
+    if(d1>1e-12)a=(t-knots[i])/d1*N(i,k-1,t);
+    if(d2>1e-12)b=(knots[i+k+1]-t)/d2*N(i+1,k-1,t);
+    return a+b;
+  };
+  const t0=knots[p], t1=knots[n+1];
+  const out=[];
+  const m=Math.max(8,segs||24);
+  for(let s=0;s<=m;s++){
+    let t=t0+(t1-t0)*s/m;
+    if(s===m)t=t1-1e-9;               // 終端はノット区間の外に出さない
+    let x=0,y=0,w=0;
+    for(let i=0;i<=n;i++){const b=N(i,p,t); if(b){x+=ctrl[i].x*b;y+=ctrl[i].y*b;w+=b;}}
+    if(w>1e-9)out.push({x:x/w,y:y/w});
+  }
+  return out;
+}
+
+// 楕円(ELLIPSE)を折れ線に近似する。
+// 10/20=中心, 11/21=長軸の端点(中心からの相対ベクトル), 40=短軸/長軸比,
+// 41/42=開始/終了パラメータ(ラジアン)。41=0,42=2πなら全周。
+function ellipseToPts(cx,cy,mx,my,ratio,a0,a1,segs){
+  const rot=Math.atan2(my,mx), ra=Math.hypot(mx,my), rb=ra*(ratio||1);
+  let s=a0||0, e=(a1===undefined?Math.PI*2:a1);
+  if(e<=s)e+=Math.PI*2;
+  const m=Math.max(8,segs||36), out=[];
+  for(let i=0;i<=m;i++){
+    const t=s+(e-s)*i/m;
+    const x=ra*Math.cos(t), y=rb*Math.sin(t);
+    out.push({x:cx+x*Math.cos(rot)-y*Math.sin(rot),
+              y:cy+x*Math.sin(rot)+y*Math.cos(rot)});
+  }
+  return out;
+}
+
+// SPLINE実体から折れ線の点列を得る（y反転済み）。
+function splinePtsOf(e){
+  const xs=(e._all['10']||[]).map(Number), ys=(e._all['20']||[]).map(Number);
+  const n=Math.min(xs.length,ys.length);
+  if(n<2)return[];
+  const ctrl=[];for(let k=0;k<n;k++)ctrl.push({x:xs[k],y:-ys[k]});
+  const knots=(e._all['40']||[]).map(Number);
+  const deg=parseInt(e['71'])||3;
+  // 分割数は制御点数に応じて決める。細かすぎると要素数が膨らむので上限を置く。
+  const pts=splineToPts(ctrl,knots,deg,Math.min(32,Math.max(8,n*2)));
+  if((parseInt(e['70'])||0)&1 && pts.length>1)pts.push(pts[0]);  // 閉じたスプライン
+  return pts;
+}
+// ELLIPSE実体から折れ線の点列を得る（y反転済み）。
+function ellipsePtsOf(e){
+  const cx=+e['10']||0, cy=-(+e['20']||0);
+  const mx=+e['11']||0, my=-(+e['21']||0);
+  if(!mx&&!my)return[];
+  return ellipseToPts(cx,cy,mx,my,+e['40']||1,+e['41']||0,
+                      e['42']!==undefined?+e['42']:Math.PI*2,32);
+}
+
 function fromUnicodeDXF(str){return str.replace(/\\U\+([0-9A-Fa-f]{4})/g,(_,h)=>String.fromCharCode(parseInt(h,16)));}
 function _detectSjis(u8){
   let sjis=0,utf8=0;
@@ -572,6 +690,18 @@ function parseOutlineDXF(text){
           const sa=+e['50']||0, ea=+e['51']||0;
           raw.push({type:'arc',x:+e['10']||0,y:-(+e['20']||0),r,startA:-sa*Math.PI/180,endA:-ea*Math.PI/180,ccw:true});
         }
+        i=e._end;continue;
+      }
+      if(val==='SPLINE'){
+        const e=readMulti(pairs,i);
+        const pts=splinePtsOf(e);
+        for(let k=0;k<pts.length-1;k++)raw.push({type:'fline',x1:pts[k].x,y1:pts[k].y,x2:pts[k+1].x,y2:pts[k+1].y});
+        i=e._end;continue;
+      }
+      if(val==='ELLIPSE'){
+        const e=readMulti(pairs,i);
+        const pts=ellipsePtsOf(e);
+        for(let k=0;k<pts.length-1;k++)raw.push({type:'fline',x1:pts[k].x,y1:pts[k].y,x2:pts[k+1].x,y2:pts[k+1].y});
         i=e._end;continue;
       }
       if(val==='TEXT'||val==='MTEXT'){

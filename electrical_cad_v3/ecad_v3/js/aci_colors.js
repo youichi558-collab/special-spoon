@@ -58,8 +58,22 @@ function hexToACI(hex) {
 
 // ACI番号 → hex(#rrggbb)。範囲外や負数(レイヤーOFFの符号)は絶対値を使い、それでも
 // 範囲外なら白(7番相当)にフォールバック。
+//
+// 【ACI 7の扱い】AutoCADではACI 7(既定色)は背景に応じて表示色が反転する。
+// 黒背景なら白、白背景なら黒。単純に#ffffffへ変換すると、白背景では見えず、
+// 黒背景では他の要素より浮いて「白く壊れて見える」。
+// メーカー配布の外形図は全実体がレイヤー0(ACI 7)ということが珍しくないため、
+// ここで画面の前景色に寄せる。
 function aciToHex(aci) {
   const n = Math.abs(parseInt(aci, 10));
-  if (isNaN(n) || n < 0 || n > 255) return ACI_TO_HEX[7];
-  return ACI_TO_HEX[n] || ACI_TO_HEX[7];
+  if (isNaN(n) || n < 0 || n > 255) return aciDefaultColor();
+  if (n === 7) return aciDefaultColor();
+  return ACI_TO_HEX[n] || aciDefaultColor();
+}
+
+// ACI 7(既定色)の表示色。ダークモードなら明るいグレー、明るい背景なら黒に近い色。
+// 純白/純黒にせず、他のレイヤー色と並べても浮かない濃度にしてある。
+function aciDefaultColor() {
+  const dark = (typeof state !== 'undefined' && state && state.darkMode);
+  return dark ? '#cccccc' : '#222222';
 }
