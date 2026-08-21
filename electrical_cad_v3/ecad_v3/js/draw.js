@@ -512,7 +512,10 @@ function drawSymEl(el, sel, lc) {
   } else {
     drawSym(el.type, el.x, el.y, sel, el.rot||0, el.flipH, el.flipV, lc, el.lineStyle, el.lineWidth, 1);
   }
-  if (el.label && !state.pdfSkipText) {
+  // 仕様(label)の図面表示。デバイス・型式と同じく、同じデバイスを複数の
+  // シンボルに分けて置いたとき、代表の1つにだけ出せるよう個別に切れる。
+  // 既定は表示(specHideが真のときだけ隠す)。既存データは従来どおり表示される。
+  if (el.label && !el.specHide && !state.pdfSkipText) {
     const d   = getDef(el.type) || { w:64, h:34 };
     const sc  = el.scale || 1;
     const loy = el.labelOffY || (d.h*sc/2 + 15*sc);

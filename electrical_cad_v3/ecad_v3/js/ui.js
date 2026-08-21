@@ -2131,6 +2131,7 @@ function updateRightPanel() {
     { const lblC = el.labelColor||'#555555';
     html += `<div class="pp-group" style="border-left:4px solid ${lblC}"><div class="pp-group-cap" style="color:${lblC}">◆ 仕様</div>`;
     html += `<div class="pp-row"><label>仕様</label><textarea rows="2" id="pp-label" style="text-align:${el.labelAlign||'center'}" placeholder="例: AC200V 3.7kW&#10;冷却ファン用（改行可）">${el.label||''}</textarea></div>`;
+    html += `<div class="pp-row"><label>仕様を図面に表示</label><input type="checkbox" id="pp-showspec"${el.specHide?'':' checked'} title="チェックしたシンボルにだけ仕様が描画されます。同じデバイスを複数のシンボルに分けて配置する場合、代表の1つだけONにしてください"></div>`;
     html += `<details class="pp-details" style="border-left:4px solid ${lblC}"><summary>仕様表示の詳細（揃え・色・サイズ・位置）</summary>`;
     html += `<div class="pp-row"><label>文字揃え</label><select id="pp-lalign" onchange="previewLabelStyle()">
       <option value="left"  ${el.labelAlign==='left'  ?'selected':''}>左揃え</option>
@@ -2496,6 +2497,8 @@ function applyRightPanel() {
     el.devOffX   = v('pp-dox') !== '' ? parseInt(v('pp-dox')) : undefined;
     el.devOffY   = v('pp-doy') !== '' ? parseInt(v('pp-doy')) : undefined;
     el.showModel = !!document.getElementById('pp-showmodel')?.checked;
+    { const c = document.getElementById('pp-showspec');
+      el.specHide = c ? !c.checked : el.specHide; }
     el.modelFs   = parseInt(v('pp-mfs')) || undefined;
     el.modelColor = v('pp-mcolorcode') || v('pp-mcolor') || undefined;
     el.modelOffX = v('pp-mox') !== '' ? parseInt(v('pp-mox')) : undefined;
