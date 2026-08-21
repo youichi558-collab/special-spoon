@@ -415,13 +415,15 @@ function exportDXF(){
     if(lt) p(6,lt);
     p(10,fx(cx),20,fy(cy),30,'0.0',40,r.toFixed(3));
   }
-  // 塗りつぶし円(配線分岐点のjunction用、および端子台の背景マスク用)。CIRCLEエンティティは
-  // 輪郭のみで塗り潰されないため、画面(drawJunctionEl)の「塗りつぶし丸」「白丸(背景色で塗って
-  // 輪郭のみ描く)」を再現するにはHATCH(単色塗り)が必要。
-  // colorCode省略時はBYLAYER(他エンティティと同じ)、指定時はgroup62で個別色を出す
-  // (端子台の背景マスクは常に白= ACI7 固定。ACI7は表示背景の白/黒を自動反転するため、
-  //  通常の白紙面(印刷/TrueView既定)では白マスクとして機能し、下を通る配線を隠す)。
+  // 塗りつぶし円(配線分岐点●のjunction用)。CIRCLEエンティティは輪郭のみで
+  // 塗り潰されないため、画面(drawJunctionEl)の「塗りつぶし丸」を再現するには
+  // HATCH(単色塗り)が必要。
+  // colorCode省略時はBYLAYER(他エンティティと同じ)、指定時はgroup62で個別色を出す。
   // node.js+ezdxfでHATCH(ArcEdge境界・solid_fill)がエラーなくパースされることを検証済み(2026-08-07)。
+  //
+  // かつては端子台の端子(○/◎)の背景マスクにも白(ACI7)指定で使っていたが、
+  // 他CADで白い円板として見える副作用があり2026-08-21に廃止した
+  // (端子の円周にスナップできるようにして、配線が貫通しない描き方に変更)。
   function eFilledCircle(layer,cx,cy,r,colorCode){
     p(0,'HATCH',5,nh(),100,'AcDbEntity',8,layer);
     if(colorCode!==undefined) p(62,colorCode);
@@ -611,11 +613,15 @@ function exportDXF(){
       if (jStyle === 'dot') {
         eFilledCircle(layer,el.x,el.y,el.r||5);
       } else {
-        // 端子台の端子: 画面(drawJunctionEl)は背景色で塗ってから輪郭を描くことで、
-        // 下を通る配線を隠して「白丸」に見せている。DXF側もHATCH(白=ACI7)で
-        // 同じマスクを先に描いてから輪郭(eCircle)を重ねる。これが無いと配線が
-        // 円の中に透けて見えてしまう(2026-08-07 盛田さん報告)。
-        eFilledCircle(layer,el.x,el.y,el.r||5,7);
+        // 端子台の端子: 輪郭だけを描く。
+        //
+        // 以前は下を通る配線を隠すため、白(ACI7)で塗ったマスク円を先に描いていた
+        // (2026-08-07)。しかしこれは他CADで開くと白い円板として見え、印刷にも
+        // 不要な塗りが出る副作用があった。
+        // 本来、配線が円を貫通していること自体が誤りで、実際の展開接続図は
+        // 端子の手前で配線を止めて反対側から出す。2026-08-21に端子の円周へ
+        // スナップできるようにしたので、貫通しない描き方ができる。
+        // マスクという小細工をやめ、輪郭のみにする(盛田さん判断)。
         eCircle(layer,el.x,el.y,el.r||5);
         if(jStyle==='dbl') eCircle(layer,el.x,el.y,(el.r||5)*0.55);
       }
