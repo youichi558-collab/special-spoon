@@ -451,6 +451,20 @@ function collectBOMRows(){
         noRef[k].count++; noRef[k].parts++;
       }
     });
+    // グループが持つデバイス(部品外形図など)も集計する。
+    // 外形図は数十本の線の集まりなので、デバイスはグループ側が持っている。
+    // partRefが同じなら展開接続図のシンボルと同じ1台にまとまる(二重計上しない)。
+    (pg.groups||[]).forEach(g=>{
+      const raw=(g.partRef||'').trim();
+      const key=normalizeRef(raw);
+      if(!key)return;
+      if(!devices[key])devices[key]={spellings:new Map(),models:new Set(),types:new Set(),
+                                     volts:new Set(),els:[],parts:0};
+      const dv=devices[key];
+      dv.spellings.set(raw,(dv.spellings.get(raw)||0)+1);
+      const m=(g.partModel||'').trim();
+      if(m)dv.models.add(m);
+    });
   });
 
   // 型番(無ければ種別)ごとにデバイスを束ねて台数を出す

@@ -589,17 +589,22 @@ function onPartModelChanged() {
 function collectDeviceInfo() {
   const map = new Map();   // partRef -> {model, spec, terminals, volt}
   const pages = state.pages || [{ elements: state.elements }];
-  pages.forEach(pg => (pg.elements || []).forEach(el => {
-    const ref = (el.partRef || '').trim();
+  const put = (ref, src) => {
+    ref = (ref || '').trim();
     if (!ref) return;
     const cur = map.get(ref) || { model:'', spec:'', terminals:'', volt:'' };
     // 情報を持っている要素の値を優先して残す(空で上書きしない)
-    if (!cur.model     && el.partModel) cur.model     = el.partModel;
-    if (!cur.spec      && el.label)     cur.spec      = el.label;
-    if (!cur.terminals && el.terminals) cur.terminals = el.terminals;
-    if (!cur.volt      && el.partVolt)  cur.volt      = el.partVolt;
+    if (!cur.model     && src.partModel) cur.model     = src.partModel;
+    if (!cur.spec      && src.label)     cur.spec      = src.label;
+    if (!cur.terminals && src.terminals) cur.terminals = src.terminals;
+    if (!cur.volt      && src.partVolt)  cur.volt      = src.partVolt;
     map.set(ref, cur);
-  }));
+  };
+  pages.forEach(pg => {
+    (pg.elements || []).forEach(el => put(el.partRef, el));
+    // 部品外形図はグループ側がデバイスを持つので、そちらも候補に含める
+    (pg.groups || []).forEach(g => put(g.partRef, g));
+  });
   return map;
 }
 
@@ -643,6 +648,43 @@ function onPartRefChanged() {
 
   pushUndo();
   draw();
+}
+
+// ----------------------------------------------------------------
+// グループのデバイス（2026-08-21）
+//
+// 部品外形図は数十本の線の集まりで、配置時にグループ化される。
+// デバイス記号を線の1本1本に持たせると図面に文字が何度も出てしまうので、
+// グループ自体が持つ。線を消してもデバイスが失われないという利点もある。
+// 部品表はグループのデバイスも集計対象にする(展開接続図のMC1と
+// 配置図のMC1は同じ1台なので、partRefが同じなら1台にまとまる)。
+// ----------------------------------------------------------------
+function groupDevicePropsHtml(g) {
+  if (!g) return '';
+  return `<hr style="margin:6px 10px;border-color:var(--border)">
+    <p style="font-size:10px;font-weight:600;color:var(--fg4);padding:2px 10px">グループのデバイス</p>
+    <div class="pp-row"><label>デバイス</label>
+      <input type="text" id="gp-partref" list="pp-partref-list" value="${_escAttr(g.partRef||'')}" placeholder="例: MC1"></div>
+    <datalist id="pp-partref-list">${partRefOptionsHtml(g.partRef)}</datalist>
+    <div class="pp-row"><label>型番</label>
+      <input type="text" id="gp-partmodel" value="${_escAttr(g.partModel||'')}" placeholder="例: MSO-T12"></div>
+    <div class="pp-row"><label>図面に表示</label>
+      <input type="checkbox" id="gp-showdev"${g.showDev===false?'':' checked'} title="グループの左上にデバイス記号を描きます"></div>
+    <button class="pp-apply" onclick="applyGroupDevice()">デバイスを適用</button>`;
+}
+
+function applyGroupDevice() {
+  const g = (state.page.groups || []).find(x =>
+    x.elIds.some(id => state.sel.els.has(id)) || x.wireIds.some(id => state.sel.wires.has(id)));
+  if (!g) return;
+  const val = id => document.getElementById(id)?.value.trim() || '';
+  g.partRef   = val('gp-partref')   || undefined;
+  g.partModel = val('gp-partmodel') || undefined;
+  const c = document.getElementById('gp-showdev');
+  g.showDev = c ? c.checked : true;
+  pushUndo();
+  draw();
+  updateRightPanel();
 }
 
 function showPartReg() {
@@ -1978,6 +2020,7 @@ function updateRightPanel() {
       <div class="pp-row"><label>ΔY</label><input type="number" id="gp-dy" value="0" step="any"></div>
       <button class="pp-apply" onclick="applyGroupMove()">移動適用</button>
       ${groupBtn}
+      ${isGrouped ? groupDevicePropsHtml(selGroups[0]) : ''}
       ${deviceClipboard ? `<button class="pp-apply" onclick="pasteDeviceProps()" title="コピー済みのデバイス名・型番・仕様・文字設定を、選択中の全シンボルへまとめて貼り付けます(形が違うシンボル同士でもOK)">選択中の${state.sel.els.size}個へデバイス/型式/仕様を貼り付け</button>` : ''}
     `;
     document.getElementById('gp-x').addEventListener('change', function() {

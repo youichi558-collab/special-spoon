@@ -23,6 +23,9 @@ const state = { pages: [
   { elements: [
     { id:6, partRef:'MC1',  partModel:'', label:'' },
     { id:7, partRef:'CR2',  partModel:'MY2', label:'AC100V' },
+    { id:8, partRef:'',     partModel:'' },   // 外形図の線(デバイスはグループが持つ)
+  ], groups: [
+    { elIds:[8], wireIds:[], partRef:'CP1', partModel:'CP30-BA' },
   ]},
 ]};
 
@@ -32,7 +35,8 @@ let ng=0;
 const eq=(a,b,m)=>{const p=JSON.stringify(a)===JSON.stringify(b);if(!p){ng++;console.log('  NG',m,'\n   期待',JSON.stringify(b),'\n   実際',JSON.stringify(a));}else console.log('  OK',m);};
 const map=collectDeviceInfo();
 console.log('【候補の収集】');
-eq([...map.keys()].sort(),['CR2','ELB1','MC1','TH1'],'空のpartRefは候補に入らない');
+eq([...map.keys()].sort(),['CP1','CR2','ELB1','MC1','TH1'],'空のpartRefは候補に入らない');
+eq(map.get('CP1').model,'CP30-BA','グループが持つデバイスも候補になる(部品外形図)');
 eq(map.get('MC1').model,'MSO-T12','情報を持つ要素から型番を拾う');
 eq(map.get('MC1').spec,'AC100V','仕様も拾う');
 eq(map.get('MC1').terminals,'A1,A2,1,3,5,2,4,6','端子番号も拾う');
@@ -52,6 +56,6 @@ console.log('\n【候補リストHTML】');
 const html=partRefOptionsHtml('MC1');
 eq(html.includes('value="MC1"'),true,'MC1が候補にある');
 eq(html.includes('MSO-T12'),false,'型番などの補足は出さない');
-eq((html.match(/<option/g)||[]).length,4,'候補は4件');
+eq((html.match(/<option/g)||[]).length,5,'候補は5件(グループ分を含む)');
 console.log(ng?`\n失敗 ${ng}件`:'\n全て成功');
 process.exit(ng?1:0);

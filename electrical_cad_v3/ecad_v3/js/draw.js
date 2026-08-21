@@ -1068,6 +1068,26 @@ function drawGroupBoxes() {
     ctx.setLineDash([6/state.zoom, 3/state.zoom]);
     ctx.strokeRect(minX-pad, minY-pad, maxX-minX+pad*2, maxY-minY+pad*2);
     ctx.setLineDash([]);
+
+    // グループのデバイス記号・型番を左上に描く。部品外形図(数十本の線の集まり)に
+    // デバイスを表示するための仕組み。線1本1本に持たせると文字が何度も出るため、
+    // グループが持つ値をここで1回だけ描く。
+    if (g.partRef && g.showDev !== false && !state.pdfSkipText) {
+      const fs = (g.devFs || 12) / state.zoom;
+      ctx.save();
+      ctx.fillStyle = g.devColor || (state.darkMode ? '#ddd' : '#333');
+      ctx.font = `bold ${fs}px sans-serif`;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+      const tx = minX - pad + (g.devOffX || 0);
+      const ty = minY - pad - 2/state.zoom + (g.devOffY || 0);
+      ctx.fillText(g.partRef, tx, ty);
+      if (g.partModel) {
+        ctx.font = `${fs*0.85}px sans-serif`;
+        ctx.fillStyle = g.devColor || (state.darkMode ? '#aaa' : '#555');
+        ctx.fillText(g.partModel, tx, ty + fs * 1.0);
+      }
+      ctx.restore();
+    }
   });
 
   ctx.restore();
