@@ -695,6 +695,35 @@ function applyGroupDevice() {
   updateRightPanel();
 }
 
+// 線幅の選択肢（JIS / ISO 128 の標準線幅）。
+// 0.13 / 0.18 / 0.25 / 0.35 / 0.5 / 0.7 / 1.0 / 1.4 / 2.0 の9種が規格値で、
+// 細線:太線:極太線 = 1:2:4 の比で組み合わせて使う。
+// 以前は 0.5/1/1.5/2/3 だったが、1.5と3は規格に無く、0.5未満が選べないため
+// 部品外形図のような細かい図で線が太すぎて潰れていた。
+const LINE_WIDTHS = [0.13, 0.18, 0.25, 0.35, 0.5, 0.7, 1, 1.4, 2];
+const DEFAULT_LINE_WIDTH = 0.5;
+
+// 任意の値を規格値に丸める。DXFから読み込んだ中途半端な太さが図面に混ざると、
+// 線同士を繋いだときに段差が出るため、必ず選択肢のいずれかに寄せる。
+function snapLineWidth(v) {
+  const n = parseFloat(v);
+  if (!isFinite(n) || n <= 0) return DEFAULT_LINE_WIDTH;
+  return LINE_WIDTHS.reduce((a, b) => Math.abs(b - n) < Math.abs(a - n) ? b : a);
+}
+
+// 線幅プルダウンのoption群を作る。現在値が規格外(旧データの1.5/3等)なら
+// その値も選択肢に足して、開いただけで勝手に変わらないようにする。
+function lineWidthOptions(cur) {
+  const vals = [...LINE_WIDTHS];
+  const c = parseFloat(cur);
+  if (isFinite(c) && c > 0 && !vals.includes(c)) { vals.push(c); vals.sort((a,b)=>a-b); }
+  return vals.map(v => {
+    const lbl = v === DEFAULT_LINE_WIDTH ? `${v}（標準）`
+              : (LINE_WIDTHS.includes(v) ? String(v) : `${v}（規格外）`);
+    return `<option value="${v}"${c === v ? ' selected' : ''}>${lbl}</option>`;
+  }).join('');
+}
+
 function showPartReg() {
   openFP('part-reg-p');
   refreshPendingCsvList();
@@ -2103,12 +2132,7 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>矢印サイズ</label><input type="number" id="pp-arrsz" value="${el.arrowSz||8}" min="2" max="30" step="1"></div>`;
     html += `<div class="pp-row"><label>引出しgap</label><input type="number" id="pp-gap" value="${el.gap!=null?el.gap:state.G}" min="0" max="20"></div>`;
     html += `<div class="pp-row"><label>伸び(ext)</label><input type="number" id="pp-ext" value="${el.ext!=null?el.ext:state.G}" min="0" max="20"></div>`;
-    html += `<div class="pp-row"><label>線幅</label><select id="pp-dimlw">
-      <option value="0.5" ${(el.lineWidth||1)==0.5?'selected':''}>極細(0.5)</option>
-      <option value="1"   ${(el.lineWidth||1)==1  ?'selected':''}>標準(1)</option>
-      <option value="1.5" ${(el.lineWidth||1)==1.5?'selected':''}>やや太(1.5)</option>
-      <option value="2"   ${(el.lineWidth||1)==2  ?'selected':''}>太(2)</option>
-    </select></div>`;
+    html += `<div class="pp-row"><label>線幅</label><select id="pp-dimlw">${lineWidthOptions(el.lineWidth||DEFAULT_LINE_WIDTH)}</select></div>`;
     html += `<div class="pp-row"><label>線種</label><select id="pp-dimls">
       <option value=""        ${!el.lineStyle          ?'selected':''}>実線</option>
       <option value="dash"    ${el.lineStyle==='dash'   ?'selected':''}>破線</option>
@@ -2138,7 +2162,7 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>線番X補正</label><input type="number" id="pp-wno-ox" value="${item.wireNoOffX||0}" step="5"></div>`;
     html += `<div class="pp-row"><label>線番Y補正</label><input type="number" id="pp-wno-oy" value="${item.wireNoOffY||0}" step="5"></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${item.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
-    html += `<div class="pp-row"><label>線幅</label><select id="pp-lw"><option value="0.5"${(item.lineWidth||1.0)==0.5?' selected':''}>極細(0.5)</option><option value="1"${(item.lineWidth||1.0)==1?' selected':''}>標準(1)</option><option value="1.5"${(item.lineWidth||1.0)==1.5?' selected':''}>やや太(1.5)</option><option value="2"${(item.lineWidth||1.0)==2?' selected':''}>太(2)</option><option value="3"${(item.lineWidth||1.0)==3?' selected':''}>極太(3)</option></select></div>`;
+    html += `<div class="pp-row"><label>線幅</label><select id="pp-lw">${lineWidthOptions(item.lineWidth||DEFAULT_LINE_WIDTH)}</select></div>`;
     html += `<div class="pp-row"><label>線種</label><select id="pp-ls"><option value=""${!item.lineStyle?' selected':''}>実線</option><option value="dash"${item.lineStyle==='dash'?' selected':''}>破線</option><option value="dashdot"${item.lineStyle==='dashdot'?' selected':''}>一点鎖線</option><option value="dot"${item.lineStyle==='dot'?' selected':''}>点線</option></select></div>`;
     if (lay?.attr) html += `<div class="pp-row"><label>属性（レイヤー）</label><p style="font-size:11px;color:var(--fg3);padding:2px 5px">${lay.attr}</p></div>`;
   } else if (el && ['fline','rect','circle','arc','triangle'].includes(el.type)) {
@@ -2174,7 +2198,7 @@ function updateRightPanel() {
       html += `<div class="pp-row"><label>幅</label><input type="number" id="pp-rw" value="${Math.round(el.w*1000)/1000}" step="any" min="1"></div>`;
       html += `<div class="pp-row"><label>高さ</label><input type="number" id="pp-rh" value="${Math.round(el.h*1000)/1000}" step="any" min="1"></div>`;
     }
-    html += `<div class="pp-row"><label>線幅</label><select id="pp-lw"><option value="0.5"${(el.lineWidth||1.0)==0.5?' selected':''}>極細(0.5)</option><option value="1"${(el.lineWidth||1.0)==1?' selected':''}>標準(1)</option><option value="1.5"${(el.lineWidth||1.0)==1.5?' selected':''}>やや太(1.5)</option><option value="2"${(el.lineWidth||1.0)==2?' selected':''}>太(2)</option><option value="3"${(el.lineWidth||1.0)==3?' selected':''}>極太(3)</option></select></div>`;
+    html += `<div class="pp-row"><label>線幅</label><select id="pp-lw">${lineWidthOptions(el.lineWidth||DEFAULT_LINE_WIDTH)}</select></div>`;
     html += `<div class="pp-row"><label>線種</label><select id="pp-ls"><option value=""${!el.lineStyle?' selected':''}>実線</option><option value="dash"${el.lineStyle==='dash'?' selected':''}>破線</option><option value="dot"${el.lineStyle==='dot'?' selected':''}>点線</option><option value="dashdot"${el.lineStyle==='dashdot'?' selected':''}>一点鎖線</option></select></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
     html += `<div class="pp-row"><label>メモ</label><textarea rows="2" id="pp-note">${el.note||''}</textarea></div>`;
@@ -2250,12 +2274,7 @@ function updateRightPanel() {
     // 色はレイヤーで分ける方針で確定（盛田さん判断）。
     html += `<div class="pp-row"><label>シンボル線種</label><select id="pp-symls"><option value=""${!el.lineStyle?' selected':''}>実線</option><option value="dash"${el.lineStyle==='dash'?' selected':''}>破線</option><option value="dot"${el.lineStyle==='dot'?' selected':''}>点線</option><option value="dashdot"${el.lineStyle==='dashdot'?' selected':''}>一点鎖線</option></select></div>`;
     html += `<div class="pp-row"><label>シンボル線幅</label><select id="pp-symlw" title="登録時の太さや標準シンボルの既定太さを、このシンボル1個だけ上書きします">
-      <option value=""${!el.lineWidth?' selected':''}>個別（変更なし）</option>
-      <option value="0.5"${el.lineWidth==0.5?' selected':''}>極細(0.5)</option>
-      <option value="1"${el.lineWidth==1?' selected':''}>標準(1)</option>
-      <option value="1.5"${el.lineWidth==1.5?' selected':''}>やや太(1.5)</option>
-      <option value="2"${el.lineWidth==2?' selected':''}>太(2)</option>
-      <option value="3"${el.lineWidth==3?' selected':''}>極太(3)</option>
+      <option value=""${!el.lineWidth?' selected':''}>個別（変更なし）</option>${lineWidthOptions(el.lineWidth)}
     </select></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
     if (def.jis) html += `<div class="pp-row"><label style="color:var(--fg4)">JIS規格</label><p style="font-size:10px;color:var(--fg3);padding:2px 5px">${def.jis}</p></div>`;

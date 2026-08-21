@@ -461,7 +461,7 @@ function parseDXF(text, isOwnFile){
     if(lens.length>=10){
       lens.sort((a,b)=>a-b);
       const med=lens[Math.floor(lens.length/2)];
-      _importLineWidth=Math.max(0.1,Math.min(1,Math.round(med/5*10)/10));
+      _importLineWidth=(typeof snapLineWidth==='function')?snapLineWidth(med/5):1;
     }
   }
 
@@ -554,11 +554,13 @@ function applyDXFScale(skip) {
       // 線幅も縮尺に追随させる。座標だけを縮めると図は小さくなるのに線は
       // そのままの太さで残り、相対的に太くなって図が潰れる。
       // 要素に焼き込まれた線幅(DXFの370指定)とレイヤーの線幅の両方を掛ける。
-      const scaleLw = o => { if (o.lineWidth > 0) o.lineWidth = Math.max(0.05, o.lineWidth * sc); };
+      // 縮尺後も選択肢の値に丸める(中途半端な太さを図面に持ち込まないため)
+      const snap = v => (typeof snapLineWidth === 'function') ? snapLineWidth(v) : v;
+      const scaleLw = o => { if (o.lineWidth > 0) o.lineWidth = snap(o.lineWidth * sc); };
       state.elements.forEach(scaleLw);
       state.wires.forEach(scaleLw);
       (typeof LAYERS !== 'undefined' ? LAYERS : []).forEach(l => {
-        if (l._dxfImported && l.lineWidth > 0) l.lineWidth = Math.max(0.05, l.lineWidth * sc);
+        if (l._dxfImported && l.lineWidth > 0) l.lineWidth = snap(l.lineWidth * sc);
       });
     }
     if (!isNaN(fsScale) && fsScale > 0 && fsScale !== 1) {
@@ -664,8 +666,11 @@ function ellipsePtsOf(e){
 function lineweightToMm(val){
   const n = parseInt(val, 10);
   if (isNaN(n) || n < 0) return null;
-  if (n === 0) return 0.05;          // 0は「極細」の意味。線が消えないよう最小値にする
-  return n / 100;
+  // DXFの規格値(0.05〜2.11mm)はこのCADの選択肢と完全には一致しない。
+  // 中途半端な太さが図面に混ざると線同士を繋いだときに段差が出るため、
+  // 必ず選択肢(JIS標準の9種)のいずれかに丸める。
+  const mm = (n === 0) ? 0.05 : n / 100;
+  return (typeof snapLineWidth === 'function') ? snapLineWidth(mm) : mm;
 }
 
 // エンティティ個別の線の太さ(370)。指定があれば要素に焼き込み、
@@ -804,10 +809,14 @@ function parseOutlineDXF(text){
   // 極端に短い線分が大量に混ざり、中央値が実態より小さく出てしまう。
   // 図の外形サイズを基準にする。製図では図面の長辺のおよそ1/1000〜1/1500が
   // 標準的な線幅(A3の長辺420mmで0.3〜0.4mm程度)なので、それに倣う。
-  let _outlineLw = 1;
+  // 線幅は図面座標の値で、ズームで割られない(画面表示がそのままDXFに出る設計)。
+  // 従来は1固定で、図が小さいと線が太すぎて塊に潰れていた。
+  // 図の外形サイズの約1/1200を目安にし、選択肢(JIS標準の9種)に丸める。
+  // A3相当(長辺420)なら0.35に落ち着く。
+  let _outlineLw = (typeof DEFAULT_LINE_WIDTH !== 'undefined') ? DEFAULT_LINE_WIDTH : 0.5;
   {
     const size = Math.max(maxX-minX, maxY-minY);
-    if (size > 0) _outlineLw = Math.max(0.05, Math.min(1, Math.round(size/1200*100)/100));
+    if (size > 0 && typeof snapLineWidth === 'function') _outlineLw = snapLineWidth(size/1200);
   }
   const elements=raw.map(r=>{
     if(r.type==='fline')return{type:'fline',x1:r.x1-minX,y1:r.y1-minY,x2:r.x2-minX,y2:r.y2-minY,layer:'外形',lineWidth:_outlineLw};

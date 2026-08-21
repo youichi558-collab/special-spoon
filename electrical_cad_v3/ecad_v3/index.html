@@ -154,11 +154,15 @@
               onchange="state.drawLineWidth=this.value?parseFloat(this.value):null"
               style="font-size:11px;padding:1px 2px;border:1px solid var(--bd2);border-radius:3px;background:var(--bg);color:var(--fg)">
               <option value="" selected>レイヤー既定</option>
-              <option value="0.5">極細(0.5)</option>
-              <option value="1">標準(1)</option>
-              <option value="1.5">やや太(1.5)</option>
-              <option value="2">太(2)</option>
-              <option value="3">極太(3)</option>
+              <option value="0.13">0.13</option>
+              <option value="0.18">0.18</option>
+              <option value="0.25">0.25</option>
+              <option value="0.35">0.35</option>
+              <option value="0.5">0.5（標準）</option>
+              <option value="0.7">0.7</option>
+              <option value="1">1.0</option>
+              <option value="1.4">1.4</option>
+              <option value="2">2.0</option>
             </select>
           </div>
         </div>
@@ -231,11 +235,15 @@
             <select id="bulk-lw" title="現在選択中の図形・配線・シンボルの太さを一括で変更します。シンボルは登録時の太さを上書きします" onchange="bulkSetLineWidth(this.value);this.value='__'">
               <option value="__" selected disabled hidden>一括変更…</option>
               <option value="">個別/レイヤー既定に戻す</option>
-              <option value="0.5">極細(0.5)</option>
-              <option value="1">標準(1)</option>
-              <option value="1.5">やや太(1.5)</option>
-              <option value="2">太(2)</option>
-              <option value="3">極太(3)</option>
+              <option value="0.13">0.13</option>
+              <option value="0.18">0.18</option>
+              <option value="0.25">0.25</option>
+              <option value="0.35">0.35</option>
+              <option value="0.5">0.5（標準）</option>
+              <option value="0.7">0.7</option>
+              <option value="1">1.0</option>
+              <option value="1.4">1.4</option>
+              <option value="2">2.0</option>
             </select>
           </div>
         </div>

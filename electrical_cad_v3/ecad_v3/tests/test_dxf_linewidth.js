@@ -5,6 +5,13 @@
 // 線幅1.0だと線分より太くなって図が潰れる。線分長の中央値から決める。
 const fs=require('fs');
 const src=fs.readFileSync(__dirname+'/../js/dxf_import.js','utf8');
+// 実装は js/ui.js の snapLineWidth に依存する。読み込まないとフォールバックで
+// 1.0になり、テストが通らないだけでなく実装の検証にもならない。
+const ui=fs.readFileSync(__dirname+'/../js/ui.js','utf8');
+const grab=re=>{const m=ui.match(re);if(!m)throw new Error('見つからない:'+re);return m[0];};
+eval([grab(/const LINE_WIDTHS = \[[\s\S]*?\];/).replace('const','var'),
+      grab(/const DEFAULT_LINE_WIDTH = [\d.]+;/).replace('const','var'),
+      grab(/function snapLineWidth\([\s\S]*?\n\}/)].join('\n'));
 const m=src.match(/  let _importLineWidth = 1;[\s\S]*?\n  \}/);
 if(!m)throw new Error('計算処理が見つからない');
 const body=m[0].replace('let _importLineWidth','var _importLineWidth');
@@ -14,11 +21,11 @@ let ng=0;
 const eq=(a,b,msg)=>{if(a!==b){ng++;console.log('  NG',msg,'期待',b,'実際',a);}else console.log('  OK',msg);};
 
 console.log('【線分の細かさから既定線幅を決める】');
-eq(calc(seg(2,20)),0.4,  '中央値2.0(今回の外形図) → 0.4');
-eq(calc(seg(10,20)),1,   '中央値10(展開図の配線)  → 1.0(上限)');
-eq(calc(seg(0.5,20)),0.1,'中央値0.5(極細かい図)   → 0.1(下限)');
-eq(calc(seg(5,20)),1,    '中央値5                → 1.0');
-eq(calc(seg(3,20)),0.6,  '中央値3                → 0.6');
+eq(calc(seg(2,20)),0.35, '中央値2.0 → 0.4を規格値に丸めて0.35');
+eq(calc(seg(10,20)),2,   '中央値10 → 2.0(最太)');
+eq(calc(seg(0.5,20)),0.13,'中央値0.5 → 最細の0.13');
+eq(calc(seg(5,20)),1,    '中央値5 → 1.0');
+eq(calc(seg(3,20)),0.5,  '中央値3 → 0.6は0.5の方が近いので0.5');
 eq(calc(seg(2,5)),1,     '線分が少なすぎる(10本未満)ときは1.0のまま');
 eq(calc([],[]),1,        '要素が無ければ1.0');
 
