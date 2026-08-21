@@ -602,7 +602,11 @@ const outlineTool = {
       elIds.push(el.id);
     });
     state.page.groups = state.page.groups || [];
-    state.page.groups.push({ id: genId('g'), elIds, wireIds: [] });
+    // 部品DBから配置した外形図は型番が分かっているのでグループに持たせる。
+    // showDevはpartRefが入るまで描画されないので、ここでONにしておいてよい。
+    state.page.groups.push({ id: genId('g'), elIds, wireIds: [],
+                             ...(state.pendingOutline.partModel
+                                 ? { partModel: state.pendingOutline.partModel } : {}) });
     state.pendingOutline = null;
     setMode('select');
     draw();

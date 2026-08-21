@@ -1182,6 +1182,9 @@ function placePartOutline(ref) {
   if (!part || !part.outlineDxf) { alert('この部品には外形図が登録されていません'); return; }
   const parsed = parseOutlineDXF(part.outlineDxf);
   if (!parsed.elements.length) { alert('外形図DXFから図形を読み取れませんでした'); return; }
+  // 部品DBから配置しているので型番は分かっている。配置時にグループへ入れる
+  // (手で打ち直させない)。デバイス記号は盤ごとに決まるので配置後に入力する。
+  parsed.partModel = ref;
   state.pendingOutline = parsed;
   setMode('outline');
   document.getElementById('s-hint').textContent = `「${ref}」外形図 → クリックで配置  [ESC] 終了`;
