@@ -47,20 +47,37 @@ state.sel.els.add(1); state.sel.els.add(2);
 placePart('contactor','S-T21','A1,A2');
 eq(state.elements[0].partModel,'S-T21','型番が入る');
 eq(state.elements[0].partVolt,'AC200V','AC200Vが代表値');
-eq(state.elements[0].label,'AC200V\n18A\n2a2b','仕様が入る');
+eq(state.elements[0].label,'AC200V\n18A\n2a2b','仕様が入る(未入力だったので自動入力)');
 eq(histPushed,1,'履歴が積まれる(pushHが呼べている)');
 eq(drawn,1,'再描画される');
 
+console.log('\n【2026-08-22追加: 既存の仕様欄(手書き)は上書きしない】');
+state.elements.push({id:3,type:'coil',label:'既存の手書きメモ　運転用'});
+state.sel.els.clear(); state.sel.els.add(3);
+placePart('contactor','S-T21','A1,A2');
+eq(state.elements[2].partModel,'S-T21','型番は割り当てられる(端子番号目的なので問題ない)');
+eq(state.elements[2].label,'既存の手書きメモ　運転用','仕様欄(手書き)は上書きされず保護される');
+
+console.log('\n【複数選択で一部だけ既存ラベルがある場合】');
+state.elements.push({id:4,type:'coil'}); // labelなし
+state.sel.els.clear(); state.sel.els.add(3); state.sel.els.add(4);
+placePart('contactor','S-T21','A1,A2');
+eq(state.elements[2].label,'既存の手書きメモ　運転用','id3(既存ラベルあり)は保護されたまま');
+eq(state.elements[3].label,'AC200V\n18A\n2a2b','id4(ラベルなし)は自動入力される');
+
 console.log('\n【applyGroupDevice を実コードで実行】');
+state.sel.els.clear(); state.sel.els.add(1);
+const drawnBeforeGroup = drawn;
 state.page.groups.push({elIds:[1],wireIds:[],partRef:'',partModel:''});
 mk('gp-partref','MC1'); mk('gp-partmodel','MSO-T12'); mk('gp-showdev');
 applyGroupDevice();
 eq(state.page.groups[0].partRef,'MC1','グループにデバイスが入る');
 eq(state.page.groups[0].partModel,'MSO-T12','型番も入る');
-eq(drawn,2,'再描画される');
+eq(drawn,drawnBeforeGroup+1,'再描画される');
 
 console.log('\n【グループが複数選択されているとき】');
 state.page.groups.push({elIds:[2],wireIds:[],partRef:'',partModel:''});
+state.sel.els.add(2);
 fields['gp-partref'].value='CR1';
 applyGroupDevice();
 eq(state.page.groups[0].partRef,'MC1','1つ目は書き換わらない');

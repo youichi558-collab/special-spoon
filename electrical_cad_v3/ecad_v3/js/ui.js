@@ -404,6 +404,15 @@ function deletePart(ref) {
 //
 // 正しくは「シンボルを置いてから部品を割り当てる」。ここでは選択中の
 // シンボルに型番・端子番号・コイル電圧を書き込む。
+//
+// 【2026-08-22修正】盛田さんの指摘: 既に書いた図面（仕様欄に手書きでデバイス名・注記等を
+// 入力済み）に対して端子番号だけ足したくて部品DBをクリックしても、以下のel.labelへの
+// 無条件上書きのせいで仕様欄が丸ごと[電圧/電流/接点構成]に置き換わり、手書き内容が
+// 消えていた。「型番を割り当てるたびに全シンボル書き直しになるので使えない」という
+// 実害が出ていたバグ。型番・端子番号は元々「値がある時だけ」上書きする配慮があったのに
+// 仕様欄だけ無条件上書きだったのが原因。→ 仕様欄が空のときだけ自動入力するよう変更し、
+// 既に何か書かれている場合は一切触らない（過去のoutlineDxf破壊バグと同じ教訓: 割り当て系の
+// 操作は既存データを問答無用で上書きしない）。
 function placePart(type, ref, terminals) {
   const p = (state.customParts || []).find(x => x.ref === ref);
   const targets = state.elements.filter(e => state.sel.els.has(e.id) && e.type !== 'junction');
@@ -416,6 +425,7 @@ function placePart(type, ref, terminals) {
     return;
   }
   pushH();                         // 変更前の状態を履歴に積む
+  let labelFilled = 0, labelSkipped = 0;
   targets.forEach(el => {
     el.partModel = ref;
     if (terminals) el.terminals = terminals;
@@ -424,17 +434,26 @@ function placePart(type, ref, terminals) {
     // 図面には「AC100V」のように1つだけ書くので、電圧は選択肢の羅列ではなく
     // 選ばれた1つを入れる。要らない行はその場で消してもらう前提。
     // 備考・出典は長すぎて図面に出すものではないので入れない。
+    // 【重要】既に仕様欄に何か入っている場合は一切上書きしない（手書き内容の保護）。
     if (p) {
-      const lines = [el.partVolt || '', p.amp || '', p.contacts || '']
-        .map(x => String(x).trim())
-        .filter(x => x && x !== '-');
-      if (lines.length) el.label = lines.join('\n');
+      if ((el.label || '').trim()) {
+        labelSkipped++;
+      } else {
+        const lines = [el.partVolt || '', p.amp || '', p.contacts || '']
+          .map(x => String(x).trim())
+          .filter(x => x && x !== '-');
+        if (lines.length) { el.label = lines.join('\n'); labelFilled++; }
+      }
     }
   });
   draw();
   updateRightPanel();
   const hint = document.getElementById('s-hint');
-  if (hint) hint.textContent = `「${ref}」を${targets.length}個のシンボルに割り当てました`;
+  if (hint) {
+    let msg = `「${ref}」を${targets.length}個のシンボルに割り当てました`;
+    if (labelSkipped) msg += `（仕様欄は既存${labelSkipped}件を保護、未入力${labelFilled}件のみ自動入力）`;
+    hint.textContent = msg;
+  }
 }
 // 既存のカスタム部品を登録フォームに読み込んで編集できるようにする(2026-08-17)。
 // 従来は同じ型番で全項目を打ち直すか削除して作り直すしかなく不便だった。
