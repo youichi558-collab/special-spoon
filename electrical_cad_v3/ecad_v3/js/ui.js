@@ -580,14 +580,27 @@ function onPartRefChanged() {
   if (!ref) return;
   const info = collectDeviceInfo().get(ref);
   if (!info) return;                       // 新規デバイスなら何もしない
-  if (info.model)     el.partModel = info.model;
-  if (info.spec)      el.label     = info.spec;
-  if (info.terminals) el.terminals = info.terminals;
-  if (info.volt)      el.partVolt  = info.volt;
+
+  // 要素に書くだけでは足りない。プロパティパネルは「適用」で入力欄の値を
+  // 丸ごと要素へ書き戻すため、入力欄が空のままだと引き継いだ値が即座に
+  // 消されてしまう。要素と入力欄の両方を更新すること。
+  const setVal = (id, val) => {
+    const e = document.getElementById(id);
+    if (e && val !== undefined && val !== '') e.value = val;
+  };
+  if (info.model)     { el.partModel = info.model;     setVal('pp-partmodel', info.model); }
+  if (info.spec)      { el.label     = info.spec;      setVal('pp-label',     info.spec); }
+  if (info.terminals) { el.terminals = info.terminals; setVal('pp-term',      info.terminals); }
+  if (info.volt)      { el.partVolt  = info.volt; }
   el.partRef = ref;
+
+  // コイル電圧は型番によって選択肢が変わるので、欄ごと作り直してから値を入れる
+  onPartModelChanged();
+  const pv = document.getElementById('pp-partvolt');
+  if (pv && info.volt) pv.value = info.volt;
+
   pushUndo();
   draw();
-  updateRightPanel();                      // 引き継いだ値を画面に出し直す
 }
 
 function showPartReg() {
