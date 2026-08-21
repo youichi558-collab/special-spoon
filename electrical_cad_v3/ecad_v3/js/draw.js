@@ -1073,13 +1073,15 @@ function drawGroupBoxes() {
     // デバイスを表示するための仕組み。線1本1本に持たせると文字が何度も出るため、
     // グループが持つ値をここで1回だけ描く。
     if (g.partRef && g.showDev !== false && !state.pdfSkipText) {
-      const fs = (g.devFs || 12) / state.zoom;
+      // 文字サイズはズームで割らない(シンボルのデバイス表示と同じ扱い)。
+      // 割ると拡大縮小で文字の見かけが変わり、シンボル側と挙動が食い違う。
+      const fs = Math.round(g.devFs || 11);
       ctx.save();
       ctx.fillStyle = g.devColor || (state.darkMode ? '#ddd' : '#333');
       ctx.font = `bold ${fs}px sans-serif`;
       ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
       const tx = minX - pad + (g.devOffX || 0);
-      const ty = minY - pad - 2/state.zoom + (g.devOffY || 0);
+      const ty = minY - pad - 2 + (g.devOffY || 0);
       ctx.fillText(g.partRef, tx, ty);
       if (g.partModel) {
         ctx.font = `${fs*0.85}px sans-serif`;

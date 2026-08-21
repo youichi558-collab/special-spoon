@@ -677,6 +677,18 @@ function groupDevicePropsHtml(g, count) {
       <input type="text" id="gp-partmodel" value="${_escAttr(g.partModel||'')}" placeholder="例: MSO-T12"></div>
     <div class="pp-row"><label>図面に表示</label>
       <input type="checkbox" id="gp-showdev"${g.showDev===false?'':' checked'} title="グループの左上にデバイス記号を描きます"></div>
+    <details class="pp-details"><summary>文字の詳細（サイズ・色・位置）</summary>
+      <div class="pp-row"><label>サイズ</label>
+        <input type="number" id="gp-devfs" value="${g.devFs||11}" step="1" min="6" max="32"></div>
+      <div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
+        <input type="color" id="gp-devcolor" value="${g.devColor||'#333333'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('gp-devcolor','gp-devcolorcode')">
+        <input type="text" id="gp-devcolorcode" value="${g.devColor||'#333333'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('gp-devcolorcode','gp-devcolor')">
+        ${colorCodeBtns('gp-devcolorcode','gp-devcolor')}</div></div>
+      <div class="pp-row"><label>位置X補正</label>
+        <input type="number" id="gp-devox" value="${g.devOffX!==undefined?g.devOffX:''}" placeholder="自動" step="5"></div>
+      <div class="pp-row"><label>位置Y補正</label>
+        <input type="number" id="gp-devoy" value="${g.devOffY!==undefined?g.devOffY:''}" placeholder="自動" step="5"></div>
+    </details>
     <button class="pp-apply" onclick="applyGroupDevice()">デバイスを適用</button>`;
 }
 
@@ -691,6 +703,11 @@ function applyGroupDevice() {
   g.partModel = val('gp-partmodel') || undefined;
   const c = document.getElementById('gp-showdev');
   g.showDev = c ? c.checked : true;
+  const num = id => { const v = val(id); return v === '' ? undefined : parseInt(v); };
+  g.devFs    = num('gp-devfs');
+  g.devColor = val('gp-devcolorcode') || val('gp-devcolor') || undefined;
+  g.devOffX  = num('gp-devox');
+  g.devOffY  = num('gp-devoy');
   draw();
   updateRightPanel();
 }
