@@ -395,13 +395,36 @@ function deletePart(ref) {
   renderPartsAll();
   partsDb.scheduleSave();
 }
+// 部品DBの部品をクリックしたときの動作（2026-08-21に変更）。
+//
+// 以前は種別(p.type)をそのままシンボル種別として配置モードに入っていたが、
+// これは誤り。同じS-T21でも主回路では接点、制御回路ではコイルを描くので、
+// 部品と図記号は1対1ではない。種別コードを細分化したこともあり、
+// 対応する図記号が無い種別(plc/hmi/contactor等)では描けもしなかった。
+//
+// 正しくは「シンボルを置いてから部品を割り当てる」。ここでは選択中の
+// シンボルに型番・端子番号・コイル電圧を書き込む。
 function placePart(type, ref, terminals) {
-  state.symType    = type;
-  state.pendingRef = ref;
-  state.pendingTerm= terminals;
-  document.querySelectorAll('.sym-item').forEach(e => e.classList.remove('on'));
-  setMode('sym', type);
-  document.getElementById('s-hint').textContent = `「${ref}」→ クリックで配置`;
+  const p = (state.customParts || []).find(x => x.ref === ref);
+  const targets = state.elements.filter(e => state.sel.els.has(e.id) && e.type !== 'junction');
+  if (!targets.length) {
+    const hint = document.getElementById('s-hint');
+    if (hint) hint.textContent = `「${ref}」を割り当てるシンボルを先に選択してください`;
+    alert(`「${ref}」を割り当てるシンボルを先に選択してください。\n\n`
+        + `部品DBは図記号を持ちません。図面にシンボルを置いてから、\n`
+        + `そのシンボルを選択した状態でこの部品をクリックしてください。`);
+    return;
+  }
+  targets.forEach(el => {
+    el.partModel = ref;
+    if (terminals) el.terminals = terminals;
+    applyDefaultVolt(el);          // 選択肢が1つなら確定、複数なら代表値
+  });
+  pushUndo();
+  draw();
+  updateRightPanel();
+  const hint = document.getElementById('s-hint');
+  if (hint) hint.textContent = `「${ref}」を${targets.length}個のシンボルに割り当てました`;
 }
 // 既存のカスタム部品を登録フォームに読み込んで編集できるようにする(2026-08-17)。
 // 従来は同じ型番で全項目を打ち直すか削除して作り直すしかなく不便だった。
@@ -3090,7 +3113,7 @@ function renderPartsTable2(parts) {
     byMaker[b].length - byMaker[a].length || a.localeCompare(b, 'ja'));
 
   const cardHtml = p => `
-    <div style="padding:4px 3px;border-bottom:1px solid var(--bg4);cursor:pointer" onclick="placePart('${p.type}','${p.ref}','${p.terminals||''}')">
+    <div style="padding:4px 3px;border-bottom:1px solid var(--bg4);cursor:pointer" title="選択中のシンボルにこの部品を割り当てます（型番・端子番号・コイル電圧）" onclick="placePart('${p.type}','${p.ref}','${p.terminals||''}')">
       <div style="display:flex;justify-content:space-between">
         <span style="font-size:11px;font-weight:600;color:var(--fg)">${p.ref}</span>
         ${p.custom
