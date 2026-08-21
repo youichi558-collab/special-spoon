@@ -739,15 +739,15 @@
     </div>
 
     <!-- 登録済みシンボルの端子(ピン)編集パネル -->
-    <div class="fp" id="pin-edit-p" style="width:460px;max-height:90vh">
+    <div class="fp" id="pin-edit-p" style="width:600px;max-width:95vw;max-height:90vh">
       <h3>端子(ピン)編集 — <span id="pe-name" style="color:var(--acc)"></span></h3>
-      <div style="display:flex;gap:12px;align-items:flex-start">
+      <div style="display:flex;gap:14px;align-items:flex-start">
         <div>
           <canvas id="pin-edit-cv" width="320" height="260"
             style="border:1px solid var(--bd);cursor:crosshair;display:block;background:#fff"></canvas>
           <div style="font-size:10px;color:var(--fg3);margin-top:3px">クリックで端子を追加／既存の端子付近をクリックで削除　ホイールでズーム</div>
         </div>
-        <div style="min-width:150px;display:flex;flex-direction:column;gap:8px">
+        <div style="min-width:220px;display:flex;flex-direction:column;gap:8px">
           <button class="fp-btn primary" onclick="peAutoDetect()">🔍 自動候補(開放端検出)</button>
           <div class="fr"><label style="font-size:11px;font-weight:600">種別（接点Ref用）</label>
             <select id="pe-role">
@@ -759,7 +759,7 @@
           </div>
           <div>
             <div style="font-size:11px;font-weight:600;margin-bottom:4px">端子点一覧</div>
-            <div id="pe-term-list" style="font-size:10px;color:var(--fg3);max-height:140px;overflow-y:auto"></div>
+            <div id="pe-term-list" style="font-size:10px;color:var(--fg3);max-height:160px;overflow-y:auto"></div>
           </div>
           <div style="font-size:10px;color:var(--fg3);line-height:1.5">
             図形(線・円等)はここでは編集できません。<br>
