@@ -420,6 +420,7 @@ function editPart(ref) {
   set('pr-term', p.terminals);
   set('pr-contacts', p.contacts);
   set('pr-note', p.note);
+  set('pr-source', p.source);
   const statusEl = document.getElementById('pr-outline-status');
   if (statusEl) statusEl.textContent = p.outlineDxf ? `外形図: ${p.outlineDxfName || 'あり'}(保持されます)` : '';
 }
@@ -767,7 +768,7 @@ async function catalogResetPartsDb() {
     state.customParts = rows.map(r => ({
       maker: r.maker || '', ref: r.ref, type: r.type || '',
       volt: r.volt || '', amp: r.amp || '', terminals: r.terminals || '',
-      contacts: r.contacts || '', note: r.note || '', custom: true,
+      contacts: r.contacts || '', note: r.note || '', source: r.source || '', custom: true,
     }));
     state.hiddenBuiltinRefs = state.hiddenBuiltinRefs || [];
     renderPartsAll();
@@ -808,10 +809,13 @@ async function catalogSearch() {
     box.innerHTML = _catalogResults.map((r, i) => {
       const already = state.customParts.some(p => p.ref === r.ref);
       const spec = [r.type, r.volt, r.amp, r.contacts].filter(Boolean).join(' / ');
+      // 出典(カタログ名・ページ)を出す。調べられない情報は持つ意味がないため。
+      const src = r.source ? `<div style="color:var(--fg3);font-size:10px">出典: ${_esc(r.source)}</div>` : '';
       return `<div style="display:flex;gap:6px;align-items:flex-start;padding:3px 0;border-bottom:1px solid var(--bd2)">
         <div style="flex:1;min-width:0">
           <div><b>${_esc(r.ref)}</b> <span style="color:var(--fg3)">${_esc(r.maker)}</span></div>
           <div style="color:var(--fg3);font-size:10px">${_esc(spec)}</div>
+          ${src}
         </div>
         <button class="fp-btn" style="font-size:10px;padding:2px 6px;white-space:nowrap"
           onclick="catalogAddToParts(${i})">${already ? '上書き' : '部品DBへ'}</button>
@@ -842,7 +846,7 @@ function catalogAddToParts(idx) {
   const part = {
     maker: r.maker || '', ref: r.ref, type: r.type || '',
     volt: r.volt || '', amp: r.amp || '', terminals: r.terminals || '',
-    contacts: r.contacts || '', note: r.note || '', custom: true,
+    contacts: r.contacts || '', note: r.note || '', source: r.source || '', custom: true,
   };
   const existing = state.customParts.find(p => p.ref === r.ref);
   if (existing) {
@@ -934,7 +938,8 @@ function saveCusPart() {
     ref, type: document.getElementById('pr-type').value,
     volt: document.getElementById('pr-volt').value, amp: document.getElementById('pr-amp').value,
     terminals: document.getElementById('pr-term').value, contacts: document.getElementById('pr-contacts').value,
-    note: document.getElementById('pr-note').value, custom: true,
+    note: document.getElementById('pr-note').value,
+    source: document.getElementById('pr-source').value, custom: true,
     outlineDxf, outlineDxfName,
   };
   if (existing) Object.assign(existing, part); else state.customParts.push(part);
@@ -1002,7 +1007,9 @@ function bulkImportParts() {
     // ヘッダー行らしき行はスキップ（「型番」「maker」等の文字を含む、または種別列が既知コードでない）
     if (/型番|メーカー|maker|ref/i.test(line)) return;
     const cols = parseCSVLine(line);
-    const [maker, ref, type, volt, amp, terminals, contacts, note] = cols;
+    // 9列目=出典(カタログ名・ページ)。将来列が増えても壊れないよう、
+    // 足りない列は空として扱う(「ちょうどN列」では判定しない)。2026-08-21
+    const [maker, ref, type, volt, amp, terminals, contacts, note, source] = cols;
     if (!ref) { errors.push(`${i+1}行目: 型番が空です`); skipped++; return; }
     if (type && !PART_TYPE_CODES.includes(type)) {
       errors.push(`${i+1}行目: 種別「${type}」が不正です（${PART_TYPE_CODES.join('/')}のいずれか）`);
@@ -1011,7 +1018,7 @@ function bulkImportParts() {
     // 種別が空欄の場合、以前は coil に強制していたが、それだとPLC・タッチパネル等の
     // 「該当種別なし」で登録した部品が全部リレーコイル扱いになってしまうため、
     // 2026-08-19に空欄のまま(未分類)を許容するよう変更した。
-    const part = { maker: maker||'', ref, type: type||'', volt: volt||'', amp: amp||'', terminals: terminals||'', contacts: contacts||'', note: note||'', custom: true };
+    const part = { maker: maker||'', ref, type: type||'', volt: volt||'', amp: amp||'', terminals: terminals||'', contacts: contacts||'', note: note||'', source: source||'', custom: true };
     const existing = state.customParts.find(p => p.ref === ref);
     if (existing) {
       // 外形図DXFはCSVに列が無いため、Object.assignで丸ごと上書きすると
@@ -3001,6 +3008,7 @@ function renderPartsTable2(parts) {
       </div>
       <div style="font-size:10px;color:var(--fg3)">${p.maker} ${p.volt||''} ${p.amp||''}</div>
       ${p.contacts?`<div style="font-size:10px;color:var(--acc)">接点:${p.contacts}</div>`:''}
+      ${p.source?`<div style="font-size:9px;color:var(--fg3)" title="出典">📖 ${p.source}</div>`:''}
       ${p.outlineDxf
         ? `<div style="font-size:9px;color:var(--acc)">外形図: ${p.outlineDxfName||'あり'} <span onclick="event.stopPropagation();placePartOutline('${p.ref}')" style="cursor:pointer;text-decoration:underline">配置</span></div>`
         : (p.custom ? `<div style="font-size:9px;color:var(--fg3)">外形図なし <span onclick="event.stopPropagation();attachOutlineToPart('${p.ref}')" style="cursor:pointer;text-decoration:underline;color:var(--acc)">添付</span></div>` : '')}

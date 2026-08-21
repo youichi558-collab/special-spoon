@@ -39,14 +39,20 @@ import catalog_db  # noqa: E402
 PRICE_HINTS = ('標準価格', '価格', '円)', '¥')
 
 
+MIN_COLUMNS = 8   # メーカー〜備考。9列目の出典以降は任意
+
 def validate(text):
-    """8列検証。問題があれば (None, エラー一覧) を返す。"""
+    """列数検証。問題があれば (None, エラー一覧) を返す。
+
+    「8列以上」を条件にしてある。将来列が増えても古いCSVが読めるようにするため、
+    「ちょうどN列」では検証しない。ただし列が足りない=カンマ混入で壊れた行なので弾く。
+    """
     rows, errors = [], []
     for i, row in enumerate(csv.reader(io.StringIO(text)), 1):
         if not row or not any(c.strip() for c in row):
             continue
-        if len(row) != 8:
-            errors.append(f'{i}行目: {len(row)}列です(8列であること)。'
+        if len(row) < MIN_COLUMNS:
+            errors.append(f'{i}行目: {len(row)}列です({MIN_COLUMNS}列以上であること)。'
                           f'仕様値の中のカンマは「/」や「・」に置き換えてください: {row[:3]}...')
             continue
         if not row[1].strip():

@@ -43,8 +43,14 @@ APP_NAME = 'ecad'
 CONFIG_NAME = 'catalog_db_config.json'
 DB_NAME = 'catalog.sqlite3'
 
-# CSVの列定義(部品登録パネルのCSV一括登録と同じ並び)
-COLUMNS = ('maker', 'ref', 'type', 'volt', 'amp', 'terminals', 'contacts', 'note')
+# CSVの列定義(部品登録パネルのCSV一括登録と同じ並び)。
+# 9列目に source(出典) を追加(2026-08-21)。
+#
+# 列数は「8列以上あればよい」という扱いにしてある。将来さらに列が増えても、
+# 古いCSV(8列)と新しいCSV(9列以上)が混在したまま読めるようにするため。
+# 「ちょうどN列」で検証すると列を足すたびに全ファイルの修正が必要になる。
+COLUMNS = ('maker', 'ref', 'type', 'volt', 'amp', 'terminals', 'contacts', 'note', 'source')
+MIN_COLUMNS = 8
 
 SCHEMA = """
 PRAGMA journal_mode = WAL;
@@ -58,7 +64,8 @@ CREATE TABLE IF NOT EXISTS parts (
     terminals  TEXT,
     contacts   TEXT,
     note       TEXT,
-    source     TEXT                -- 由来(元CSVファイル名。出典追跡用)
+    source     TEXT,               -- 出典(カタログ名・ページ)。CSVの9列目
+    src_file   TEXT                -- 由来(元CSVファイル名。取り込み追跡用)
 );
 
 CREATE INDEX IF NOT EXISTS idx_parts_maker ON parts(maker);
@@ -262,11 +269,13 @@ class CatalogDB:
                 for i, row in enumerate(csv.reader(f), 1):
                     if not row or not any(c.strip() for c in row):
                         continue
-                    if len(row) != 8:
-                        bad.append(f'{src}:{i} が{len(row)}列(8列でないためスキップ)')
+                    if len(row) < MIN_COLUMNS:
+                        bad.append(f'{src}:{i} が{len(row)}列({MIN_COLUMNS}列未満のためスキップ)')
                         skipped += 1
                         continue
-                    maker, ref, typ, volt, amp, term, cont, note = [c.strip() for c in row]
+                    # 列が足りなければ空で補う(古い8列のCSVもそのまま読める)
+                    cells = [c.strip() for c in row] + [''] * (len(COLUMNS) - len(row))
+                    maker, ref, typ, volt, amp, term, cont, note, source = cells[:len(COLUMNS)]
                     if not ref:
                         skipped += 1
                         continue
@@ -274,13 +283,15 @@ class CatalogDB:
                     if ref.lower() in ('ref', '型番') and maker.lower() in ('maker', 'メーカー'):
                         continue
                     conn.execute("""
-                        INSERT INTO parts (ref, maker, type, volt, amp, terminals, contacts, note, source)
-                        VALUES (?,?,?,?,?,?,?,?,?)
+                        INSERT INTO parts (ref, maker, type, volt, amp, terminals, contacts,
+                                           note, source, src_file)
+                        VALUES (?,?,?,?,?,?,?,?,?,?)
                         ON CONFLICT(ref) DO UPDATE SET
                           maker=excluded.maker, type=excluded.type, volt=excluded.volt,
                           amp=excluded.amp, terminals=excluded.terminals,
-                          contacts=excluded.contacts, note=excluded.note, source=excluded.source
-                    """, (ref, maker, typ, volt, amp, term, cont, note, src))
+                          contacts=excluded.contacts, note=excluded.note,
+                          source=excluded.source, src_file=excluded.src_file
+                    """, (ref, maker, typ, volt, amp, term, cont, note, source, src))
                     total += 1
 
         for name, (mtime, size) in self._current_state().items():
@@ -320,9 +331,9 @@ class CatalogDB:
         """
         where, args = [], []
         for term in (q or '').split():
-            where.append('(ref LIKE ? OR maker LIKE ? OR note LIKE ? OR type LIKE ?)')
+            where.append('(ref LIKE ? OR maker LIKE ? OR note LIKE ? OR type LIKE ? OR source LIKE ?)')
             like = f'%{term}%'
-            args += [like, like, like, like]
+            args += [like, like, like, like, like]
         if maker:
             where.append('maker LIKE ?')
             args.append(f'%{maker}%')
