@@ -1072,9 +1072,11 @@ function drawGroupBoxes() {
     // グループのデバイス記号・型番を左上に描く。部品外形図(数十本の線の集まり)に
     // デバイスを表示するための仕組み。線1本1本に持たせると文字が何度も出るため、
     // グループが持つ値をここで1回だけ描く。
-    // デバイス記号が未入力でも、型番が分かっていれば型番だけ描く
-    // (部品DBから配置した外形図は型番が入っている)。
-    if ((g.partRef || g.partModel) && g.showDev !== false && !state.pdfSkipText) {
+    // デバイス記号と型番はそれぞれ独立して表示を切れる。値は保持したまま
+    // 描画だけ止めるので、密集した箇所で1つだけ書いて他は省略できる。
+    const _showRef = g.partRef && g.showDev !== false;
+    const _showMdl = g.partModel && g.showModel !== false;
+    if ((_showRef || _showMdl) && !state.pdfSkipText) {
       // 文字サイズはズームで割らない(シンボルのデバイス表示と同じ扱い)。
       // 割ると拡大縮小で文字の見かけが変わり、シンボル側と挙動が食い違う。
       const fs = Math.round(g.devFs || 11);
@@ -1085,8 +1087,8 @@ function drawGroupBoxes() {
       const tx = minX - pad + (g.devOffX || 0);
       const ty = minY - pad - 2 + (g.devOffY || 0);
       let dy = 0;
-      if (g.partRef) { ctx.fillText(g.partRef, tx, ty); dy = fs; }
-      if (g.partModel) {
+      if (_showRef) { ctx.fillText(g.partRef, tx, ty); dy = fs; }
+      if (_showMdl) {
         ctx.font = `${fs*0.85}px sans-serif`;
         ctx.fillStyle = g.devColor || (state.darkMode ? '#aaa' : '#555');
         ctx.fillText(g.partModel, tx, ty + dy);

@@ -675,8 +675,10 @@ function groupDevicePropsHtml(g, count) {
     <datalist id="pp-partref-list">${partRefOptionsHtml(g.partRef)}</datalist>
     <div class="pp-row"><label>型番</label>
       <input type="text" id="gp-partmodel" value="${_escAttr(g.partModel||'')}" placeholder="例: MSO-T12"></div>
-    <div class="pp-row"><label>図面に表示</label>
+    <div class="pp-row"><label>デバイスを図面に表示</label>
       <input type="checkbox" id="gp-showdev"${g.showDev===false?'':' checked'} title="グループの左上にデバイス記号を描きます"></div>
+    <div class="pp-row"><label>型番を図面に表示</label>
+      <input type="checkbox" id="gp-showmodel"${g.showModel===false?'':' checked'} title="型番の描画だけを切ります。値は保持されるので部品表には出ます。密集した箇所で1つだけ書いて他は省略する、といった使い方ができます"></div>
     <details class="pp-details"><summary>文字の詳細（サイズ・色・位置）</summary>
       <div class="pp-row"><label>サイズ</label>
         <input type="number" id="gp-devfs" value="${g.devFs||11}" step="1" min="6" max="32"></div>
@@ -703,6 +705,9 @@ function applyGroupDevice() {
   g.partModel = val('gp-partmodel') || undefined;
   const c = document.getElementById('gp-showdev');
   g.showDev = c ? c.checked : true;
+  // 型番は値を保持したまま表示だけ切れるようにする(消すと部品表からも消えるため)
+  const cm = document.getElementById('gp-showmodel');
+  g.showModel = cm ? cm.checked : true;
   const num = id => { const v = val(id); return v === '' ? undefined : parseInt(v); };
   g.devFs    = num('gp-devfs');
   g.devColor = val('gp-devcolorcode') || val('gp-devcolor') || undefined;
