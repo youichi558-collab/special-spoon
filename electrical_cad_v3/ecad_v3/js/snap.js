@@ -47,13 +47,30 @@ function getAllSnapPoints(wx, wy) {
       }
       return;
     }
-    // ジャンクション(端子台の端子○/◎・分岐点●)：中心点スナップ
-    // 補助線を端子中心に合わせて引けるようにするため専用に扱う。
-    // wire.fromElId/toElIdの記録に使われるsnapType:'terminal'を踏襲し、配線ツールでの
-    // 接続記録(report.js旧BOM機能)にも従来通り使えるようにする。
+    // ジャンクション(端子台の端子○/◎・分岐点●)
+    // 分岐点(●)は中心スナップのみ。配線が交わる点なので中心で正しい。
+    //
+    // 端子台の端子(○/◎)は円周にもスナップできるようにする。中心まで配線を
+    // 引くと円を貫通してしまい、実際の展開接続図の描き方(端子の手前で止めて
+    // 反対側から出す)と食い違う。DXF出力でも貫通した配線を隠すために
+    // 白塗りのマスクを描く羽目になっていた。
+    // 円周で止められれば、画面もDXFも小細工なしで正しくなる。
     if (el.type === 'junction') {
-      const d = Math.hypot(wx - el.x, wy - el.y);
-      if (d < bestD) { bestD = d; best = { x: el.x, y: el.y, snapType: 'terminal', elId: el.id, termIdx: 0 }; }
+      const r = el.r || 5;
+      const isTerm = (el.style === 'circle' || el.style === 'dbl');
+      const dc = Math.hypot(wx - el.x, wy - el.y);
+      if (dc < bestD) { bestD = dc; best = { x: el.x, y: el.y, snapType: 'terminal', elId: el.id, termIdx: 0 }; }
+      if (isTerm && r > 0 && dc > 1e-6) {
+        // カーソル方向の円周上の点。上下左右に寄っているときは軸に合わせて
+        // 真横・真上の位置に寄せる(配線は水平垂直で引くのが基本のため)。
+        let ux = (wx - el.x) / dc, uy = (wy - el.y) / dc;
+        if (Math.abs(ux) > Math.abs(uy) * 2)      { ux = Math.sign(ux); uy = 0; }
+        else if (Math.abs(uy) > Math.abs(ux) * 2) { uy = Math.sign(uy); ux = 0; }
+        else { const n = Math.hypot(ux, uy); ux /= n; uy /= n; }
+        const px = el.x + ux * r, py = el.y + uy * r;
+        const dp = Math.hypot(wx - px, wy - py);
+        if (dp < bestD) { bestD = dp; best = { x: px, y: py, snapType: 'terminal', elId: el.id, termIdx: 0 }; }
+      }
       return;
     }
     if (state.snapEnd && !['text','rect','circle','fline','dim','leader','junction'].includes(el.type)) {
