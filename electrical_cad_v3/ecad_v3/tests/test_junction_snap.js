@@ -27,9 +27,19 @@ eq(rnd(snapJ(term,112,100).best),{x:105,y:100},'右から来たら円周の右�
 eq(rnd(snapJ(term,88,100).best),{x:95,y:100},'左から来たら円周の左端');
 eq(rnd(snapJ(term,100,112).best),{x:100,y:105},'下から来たら円周の下端');
 eq(rnd(snapJ(term,100,88).best),{x:100,y:95},'上から来たら円周の上端');
-console.log('  斜め45度 →',JSON.stringify(rnd(snapJ(term,110,110).best)),'(円周上)');
+console.log('\n【斜め45度にも止まる(8点限定)】');
 const p=snapJ(term,110,110).best;
-eq(Math.round(Math.hypot(p.x-100,p.y-100)*100)/100,5,'斜めでも半径5の円周上に乗る');
+eq(rnd(p),{x:103.54,y:103.54},'右下45度');
+eq(Math.round(Math.hypot(p.x-100,p.y-100)*100)/100,5,'半径5の円周上');
+// 中途半端な角度(20度など)から近づいても、必ず8点のいずれかに寄る
+const cand=[];
+for(let a=0;a<360;a+=7){
+  const rad=a*Math.PI/180;
+  const q=snapJ(term,100+12*Math.cos(rad),100+12*Math.sin(rad)).best;
+  cand.push(`${Math.round(q.x*100)/100},${Math.round(q.y*100)/100}`);
+}
+const uniq=[...new Set(cand)];
+eq(uniq.length,8,'全方向から試しても8点のみ(中途半端な角度に止まらない)');
 
 console.log('\n【分岐点(●)は従来どおり中心のみ】');
 eq(rnd(snapJ(dot,112,100).best),{x:100,y:100},'離れていても中心');

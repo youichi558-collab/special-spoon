@@ -61,15 +61,15 @@ function getAllSnapPoints(wx, wy) {
       const dc = Math.hypot(wx - el.x, wy - el.y);
       if (dc < bestD) { bestD = dc; best = { x: el.x, y: el.y, snapType: 'terminal', elId: el.id, termIdx: 0 }; }
       if (isTerm && r > 0 && dc > 1e-6) {
-        // カーソル方向の円周上の点。上下左右に寄っているときは軸に合わせて
-        // 真横・真上の位置に寄せる(配線は水平垂直で引くのが基本のため)。
-        let ux = (wx - el.x) / dc, uy = (wy - el.y) / dc;
-        if (Math.abs(ux) > Math.abs(uy) * 2)      { ux = Math.sign(ux); uy = 0; }
-        else if (Math.abs(uy) > Math.abs(ux) * 2) { uy = Math.sign(uy); ux = 0; }
-        else { const n = Math.hypot(ux, uy); ux /= n; uy /= n; }
-        const px = el.x + ux * r, py = el.y + uy * r;
-        const dp = Math.hypot(wx - px, wy - py);
-        if (dp < bestD) { bestD = dp; best = { x: px, y: py, snapType: 'terminal', elId: el.id, termIdx: 0 }; }
+        // 円周上の8点(上下左右＋斜め45度)だけに限定する。
+        // 円周のどこにでも止められると、わずかに斜めに接続していても
+        // 見た目で気づけない。45度なら明確な角度なので微妙なズレと区別がつく。
+        const d = Math.SQRT1_2;   // 45度方向の単位ベクトル成分(1/√2)
+        [[1,0],[-1,0],[0,1],[0,-1],[d,d],[d,-d],[-d,d],[-d,-d]].forEach(([ux, uy]) => {
+          const px = el.x + ux * r, py = el.y + uy * r;
+          const dp = Math.hypot(wx - px, wy - py);
+          if (dp < bestD) { bestD = dp; best = { x: px, y: py, snapType: 'terminal', elId: el.id, termIdx: 0 }; }
+        });
       }
       return;
     }
