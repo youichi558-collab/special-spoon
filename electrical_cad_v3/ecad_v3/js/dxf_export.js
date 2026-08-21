@@ -250,7 +250,13 @@ function exportDXF(){
     // 「テーブル LAYER にエラー発生。印刷スタイル名を受け取れません」で読込全体を破棄する
     // (元図.DXFの全LAYERエントリに390が存在することを確認して特定。2026-07-23)。
     // ACAD_PLOTSTYLENAME辞書の"Normal"プレースホルダ(H_PLOTSTYLE_NORMAL)を全レイヤーに割当てる。
-    p(2,ld.n, 70,0, 62,ld.c, 6,ltype, 370,-3, 390,H_PLOTSTYLE_NORMAL);
+    // 370: 線の太さ(1/100mm単位)。-3は「既定に従う」。
+    // 画面に見えている太さをそのまま書き出す(この設計原則に従う)。
+    // ただし太さを持たないレイヤーは従来どおり-3のままにする。
+    const lwCode = (srcLayer && srcLayer.lineWidth > 0)
+      ? Math.max(0, Math.min(211, Math.round(srcLayer.lineWidth * 100)))
+      : -3;
+    p(2,ld.n, 70,0, 62,ld.c, 6,ltype, 370,lwCode, 390,H_PLOTSTYLE_NORMAL);
   });
   p(0,'ENDTAB');
 

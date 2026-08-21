@@ -68,11 +68,12 @@ function parseDXF(text, isOwnFile){
       if (code===2 && val==='LAYER') inLayerTbl=true;
       if (inLayerTbl && code===0 && val==='ENDTAB') { if(cur&&cur.name) layerTableInfo.set(cur.name,cur); inLayerTbl=false; cur=null; }
       if (!inLayerTbl) continue;
-      if (code===0 && val==='LAYER') { if(cur&&cur.name) layerTableInfo.set(cur.name,cur); cur={name:null,aci:7,off:false,frozen:false}; }
+      if (code===0 && val==='LAYER') { if(cur&&cur.name) layerTableInfo.set(cur.name,cur); cur={name:null,aci:7,off:false,frozen:false,lw:null}; }
       if (!cur) continue;
       if (code===2) cur.name = fromUnicodeDXF(val);
       if (code===62) { const c=parseInt(val,10); cur.aci=Math.abs(c); cur.off=(c<0); }
       if (code===70) { const f=parseInt(val,10)||0; cur.frozen=!!(f&1); }
+      if (code===370) cur.lw = lineweightToMm(val);   // 線の太さ(1/100mm単位)
     }
   }
 
@@ -218,7 +219,7 @@ function parseDXF(text, isOwnFile){
         const e=readEnt(pairs,i);
         if(isFrameLayer(e['8'])){i=e._end;continue;}
         const x1=+e['10']||0,y1=-(+e['20']||0),x2=+e['11']||0,y2=-(+e['21']||0);
-        if(Math.hypot(x2-x1,y2-y1)>0.1){state.wires.push({id:genId('w'),x1,y1,x2,y2,pts:[{x:x1,y:y1},{x:x2,y:y2}],layer:e['8']||'配線',wireNo:null});lc++;}
+        if(Math.hypot(x2-x1,y2-y1)>0.1){state.wires.push({id:genId('w'),x1,y1,x2,y2,pts:[{x:x1,y:y1},{x:x2,y:y2}],layer:e['8']||'配線',wireNo:null,..._lwOf(e)});lc++;}
         i=e._end;continue;
       }
       if(val==='CIRCLE'){
@@ -229,7 +230,7 @@ function parseDXF(text, isOwnFile){
           const cx=+e['10']||0, cy=-(+e['20']||0);
           const jm=parsedJunctions.find(j=>Math.hypot(j.x-cx,j.y-cy)<0.1);
           if(jm){state.elements.push({id:genId('el'),type:'junction',x:cx,y:cy,r:jm.r||r,color:jm.color,layer:jm.layer||e['8']||'回路'});cc++;}
-          else  {state.elements.push({id:genId('el'),type:'circle', x:cx,y:cy,r,           layer:e['8']||'外形'});cc++;}
+          else  {state.elements.push({id:genId('el'),type:'circle', x:cx,y:cy,r,           layer:e['8']||'外形',..._lwOf(e)});cc++;}
         }
         i=e._end;continue;
       }
@@ -303,7 +304,7 @@ function parseDXF(text, isOwnFile){
           // DXF角度はDXF座標系（y上向）、Canvasはy反転でccwも反転
           const sa=+e['50']||0, ea=+e['51']||0;
           const startA=-sa*Math.PI/180, endA=-ea*Math.PI/180;
-          state.elements.push({id:genId('el'),type:'arc',x:+e['10']||0,y:-(+e['20']||0),r,startA,endA,ccw:true,layer:e['8']||'外形'});cc++;
+          state.elements.push({id:genId('el'),type:'arc',x:+e['10']||0,y:-(+e['20']||0),r,startA,endA,ccw:true,layer:e['8']||'外形',..._lwOf(e)});cc++;
         }
         i=e._end;continue;
       }
@@ -315,7 +316,7 @@ function parseDXF(text, isOwnFile){
         const pts=splinePtsOf(e);
         for(let k=0;k<pts.length-1;k++){
           state.wires.push({id:genId('w'),x1:pts[k].x,y1:pts[k].y,x2:pts[k+1].x,y2:pts[k+1].y,
-                            pts:[pts[k],pts[k+1]],layer:e['8']||'外形',wireNo:null});lc++;
+                            pts:[pts[k],pts[k+1]],layer:e['8']||'外形',wireNo:null,..._lwOf(e)});lc++;
         }
         i=e._end;continue;
       }
@@ -325,7 +326,7 @@ function parseDXF(text, isOwnFile){
         const pts=ellipsePtsOf(e);
         for(let k=0;k<pts.length-1;k++){
           state.wires.push({id:genId('w'),x1:pts[k].x,y1:pts[k].y,x2:pts[k+1].x,y2:pts[k+1].y,
-                            pts:[pts[k],pts[k+1]],layer:e['8']||'外形',wireNo:null});lc++;
+                            pts:[pts[k],pts[k+1]],layer:e['8']||'外形',wireNo:null,..._lwOf(e)});lc++;
         }
         i=e._end;continue;
       }
@@ -334,7 +335,7 @@ function parseDXF(text, isOwnFile){
         if(isFrameLayer(e['8'])){i=e._end;continue;}
         const _ratio=Math.abs(+e['40']||0);
         const r=_ratio*Math.hypot(+e['11']||0,+e['21']||0);
-        if(r>0&&_ratio>=0.9){state.elements.push({id:genId('el'),type:'circle',x:+e['10']||0,y:-(+e['20']||0),r,layer:e['8']||'外形'});cc++;}
+        if(r>0&&_ratio>=0.9){state.elements.push({id:genId('el'),type:'circle',x:+e['10']||0,y:-(+e['20']||0),r,layer:e['8']||'外形',..._lwOf(e)});cc++;}
         i=e._end;continue;
       }
       if(val==='SPLINE'){
@@ -478,8 +479,11 @@ function parseDXF(text, isOwnFile){
     // 線幅は図面座標の値で、ズームで割られない(画面表示がそのままDXFに出る設計)。
     // 展開接続図(A3相当・幅420)なら1.0が適切だが、部品の外形図は細部が細かく、
     // 同じ1.0だと線が太すぎて図が潰れる。読み込んだ図の実サイズから決める。
+    // 線の太さはDXFの指定(370)を最優先。指定が無いファイルが多いので、
+    // その場合だけ図の細かさから推測した値を使う。
+    const lineWidth = (info && info.lw != null) ? info.lw : _importLineWidth;
     LAYERS.push({name,color,visible,locked:false,active:false,
-                 lineWidth:_importLineWidth,lineDash:'solid',
+                 lineWidth,lineDash:'solid',
                  fontSize:null,attr:'', ...(aci7 ? {srcAci:7} : {})});
   });
   renderLayers();
@@ -632,6 +636,24 @@ function ellipsePtsOf(e){
   if(!mx&&!my)return[];
   return ellipseToPts(cx,cy,mx,my,+e['40']||1,+e['41']||0,
                       e['42']!==undefined?+e['42']:Math.PI*2,32);
+}
+
+// DXFの線の太さ(group code 370)をmmに変換する。値は1/100mm単位の整数。
+// 負の値は特別な意味を持ち、太さの指定ではない:
+//   -1 = レイヤーに従う / -2 = ブロックに従う / -3 = 既定値に従う
+// これらと未指定は null を返し、呼び出し側の推測値に委ねる。
+function lineweightToMm(val){
+  const n = parseInt(val, 10);
+  if (isNaN(n) || n < 0) return null;
+  if (n === 0) return 0.05;          // 0は「極細」の意味。線が消えないよう最小値にする
+  return n / 100;
+}
+
+// エンティティ個別の線の太さ(370)。指定があれば要素に焼き込み、
+// レイヤーの太さより優先させる(DXFの規定と同じ)。無指定なら何も付けない。
+function _lwOf(e){
+  const mm = lineweightToMm(e['370']);
+  return mm == null ? {} : { lineWidth: mm };
 }
 
 function fromUnicodeDXF(str){return str.replace(/\\U\+([0-9A-Fa-f]{4})/g,(_,h)=>String.fromCharCode(parseInt(h,16)));}
