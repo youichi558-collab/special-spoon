@@ -2485,6 +2485,17 @@ function applyRightPanel() {
   // 同じ要素の連続変更はundoスタックをまとめる
   if (_lastApplyItem !== item) { pushH(); _lastApplyItem = item; setTimeout(()=>{ _lastApplyItem = null; }, 1000); }
   const v = id => { const e = document.getElementById(id); return e ? e.value : ''; };
+  // レイヤーだけは「欄が無いときに空で上書きしない」。
+  // 空にするとLAYERS.findが外れて描画色がfgC()(ダークで#ccc=ほぼ白)になり、
+  // 「一か所だけ白く壊れる」という症状になる。過去に同じ原因で
+  // 「存在しないpp-layerを''で読んでコピー元のレイヤーを破壊する」不具合が出ており、
+  // そのときはrp._elのクリアで対処したが、v()側は空を返したままだった。
+  // 根本を塞ぐため、欄が無い・値が空のときは現在のレイヤーを保つ。
+  const vLayer = cur => {
+    const e = document.getElementById('pp-layer');
+    const val = e ? e.value : '';
+    return val || cur;
+  };
   if (el && el.type === 'junction') {
     if (v('pp-jx')!=='') { el.x = parseFloat(v('pp-jx')); el.y = parseFloat(v('pp-jy')); }
     if (v('pp-jr')!=='') el.r = Math.max(1, parseFloat(v('pp-jr')));
@@ -2502,7 +2513,7 @@ function applyRightPanel() {
       delete el.label; delete el.partRef; delete el.partModel;
       delete el.devOffX; delete el.devOffY; delete el.labelOffX; delete el.labelOffY;
     }
-    el.layer = v('pp-layer');
+    el.layer = vLayer(el.layer);
   } else if (el && el.type === 'text') {
     el.text = v('pp-text'); el.fs = parseInt(v('pp-fs'))||14;
     el.textBox = document.getElementById('pp-textbox')?.checked || false;
@@ -2512,7 +2523,7 @@ function applyRightPanel() {
     el.r       = parseFloat(v('pp-angr'))||30;
     el.dimTx   = parseInt(v('pp-angtx'))||0;
     el.dimTy   = parseInt(v('pp-angty'))||0;
-    el.layer   = v('pp-layer');
+    el.layer   = vLayer(el.layer);
   } else if (el && el.type === 'dim') {
     el.dimText  = v('pp-dimtext');
     el.dimFs    = parseInt(v('pp-dimfs')) || 11;
@@ -2526,15 +2537,15 @@ function applyRightPanel() {
     el.lineStyle  = v('pp-dimls') || undefined;
     el.gap      = parseInt(v('pp-gap'));
     el.ext      = parseInt(v('pp-ext'));
-    el.layer    = v('pp-layer');
+    el.layer    = vLayer(el.layer);
   } else if (el && el.type === 'leader') {
     el.leaderText = v('pp-ldrtext');
     el.leaderFs   = parseInt(v('pp-ldrfs')) || 11;
     el.leaderTx   = parseInt(v('pp-ldrtx')) || 0;
     el.leaderTy   = parseInt(v('pp-ldrty')) || 0;
-    el.layer      = v('pp-layer');
+    el.layer      = vLayer(el.layer);
   } else if (wire) {
-    wire.wireNo    = v('pp-wireno'); wire.layer = v('pp-layer');
+    wire.wireNo    = v('pp-wireno'); wire.layer = vLayer(wire.layer);
     wire.wireNoFs  = parseInt(v('pp-wno-fs')) || 10;
     wire.wireNoOffX = parseFloat(v('pp-wno-ox'))||0;
     wire.wireNoOffY = parseFloat(v('pp-wno-oy'))||0;
@@ -2585,7 +2596,7 @@ function applyRightPanel() {
       if (v('pp-rx')!=='') { el.x=parseFloat(v('pp-rx')); el.y=parseFloat(v('pp-ry')); }
       if (v('pp-rw')!=='') { el.w=parseFloat(v('pp-rw')); el.h=parseFloat(v('pp-rh')); }
     }
-    el.layer     = v('pp-layer');
+    el.layer     = vLayer(el.layer);
     el.note      = v('pp-note');
   } else if (el) {
     el.label     = v('pp-label');
@@ -2633,7 +2644,7 @@ function applyRightPanel() {
     el.textRot    = norm360(parseInt(v('pp-trot')) || 0);
     const trotInput = document.getElementById('pp-trot');
     if (trotInput) trotInput.value = el.textRot;
-    el.layer     = v('pp-layer');
+    el.layer     = vLayer(el.layer);
     el.note      = v('pp-note');
   }
   draw();

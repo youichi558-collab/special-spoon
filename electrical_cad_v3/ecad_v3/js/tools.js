@@ -591,8 +591,11 @@ const outlineTool = {
     const sx = snap(wx), sy = snap(wy);
     const elIds = [];
     state.pendingOutline.elements.forEach(src => {
+      // レイヤーを必ず入れる。空のままだとLAYERS.findが外れて描画色が
+      // fgC()(ダークで#ccc=ほぼ白)になり、外形図だけ白く浮いてしまう。
       const el = { id: genId('el'), ...src, rot: 0, flipH: false, flipV: false,
-                   label: '', partRef: '', terminals: '', wireNo: '', note: '' };
+                   label: '', partRef: '', terminals: '', wireNo: '', note: '',
+                   layer: activeLayer() };
       if (el.x1 != null) { el.x1 += sx; el.y1 += sy; el.x2 += sx; el.y2 += sy; }
       else { el.x += sx; el.y += sy; }
       state.elements.push(el);

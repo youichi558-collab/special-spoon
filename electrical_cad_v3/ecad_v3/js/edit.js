@@ -105,6 +105,29 @@ function stripLegacyColors(pages) {
   });
 }
 
+// レイヤー名が空・未定義・LAYERSに無い名前になっている要素を修復する。
+//
+// レイヤーが引けないと描画色が fgC()(ダークで#ccc=ほぼ白)になり、
+// 「図面の一か所だけ白く壊れる」という症状になる。原因は、プロパティパネルに
+// レイヤー欄が無い状態で適用処理が走ると v('pp-layer') が '' を返し、
+// el.layer を空で上書きしていたこと(適用側は修正済み)。
+// 既に壊れた図面を読み込んだときのために、ここで拾って既定レイヤーへ戻す。
+// 戻した件数を返す。
+function repairLayers(pages) {
+  const names = new Set((typeof LAYERS !== 'undefined' ? LAYERS : []).map(l => l.name));
+  const fallback = (typeof LAYERS !== 'undefined' && LAYERS.length) ? LAYERS[0].name : '';
+  if (!fallback) return 0;
+  let n = 0;
+  (pages || []).forEach(pg => {
+    const fix = o => {
+      if (!o.layer || !names.has(o.layer)) { o.layer = fallback; n++; }
+    };
+    (pg.elements || []).forEach(fix);
+    (pg.wires    || []).forEach(fix);
+  });
+  return n;
+}
+
 // 図面ファイル内で重複してしまっている要素ID・配線IDを検出し、後から出てきた方に
 // 新しいIDを振り直す。
 //
@@ -264,6 +287,8 @@ function loadProject(input) {
       state.saveFileName = d.saveFileName || '';
       state.sel.els.clear(); state.sel.wires.clear();
       stripLegacyColors(state.pages);
+      const fixedLayers = repairLayers(state.pages);
+      if (fixedLayers) console.log(`レイヤーが失われた要素を${fixedLayers}件修復しました`);
       const fixedIds = dedupeIds(state.pages);
       state.pages.forEach(pg => pruneGroups(pg));
       // 読み込んだ直後は「保存済みの状態」なので未保存マークを消す。
