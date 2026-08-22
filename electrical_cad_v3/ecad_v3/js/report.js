@@ -701,12 +701,87 @@ function exportRefCSV(devs){
   });
   dl(lines.join('\n'),'cross_reference.csv','text/csv');
 }
-function showTerminals(){
-  const terms=state.elements.filter(el=>el.type==='terminal');
-  let html=terms.length?`<table class="tbl"><tr><th>No</th><th>仕様</th><th>端子番号</th><th>線番</th><th>メモ</th></tr>${terms.map((t,i)=>`<tr><td>${i+1}</td><td>${t.label||''}</td><td>${t.terminals||''}</td><td>${t.wireNo||''}</td><td>${t.note||''}</td></tr>`).join('')}</table>`:'<p style="font-size:11px;color:var(--fg3)">端子台がありません</p>';
+// 端子台一覧。
+//
+// 【2026-08-22 作り直し】盛田さんの指摘で判明した不具合。
+// 旧実装は state.elements から type==='terminal' のシンボルだけを拾っていたが、
+// 実際に図面へ配置している端子台の端子は type==='junction' かつ
+// style==='circle'(○) / 'dbl'(◎) のもの。つまり全く別のものを集計しており、
+// 端子を何個置いても「端子台がありません」と出る状態だった。
+// さらに旧実装は state.elements(=現在のページ)しか見ておらず、ページを
+// またぐ端子台に対応していなかった。
+//
+// 端子台は「TB1という1台に端子が複数」という構造なので、デバイス(partRef)で
+// グループ化して表示する。並び順は tbOrder(端子表で並べ替えた結果)があれば
+// それに従い、無ければ従来どおりページ順→配置順とする(既存図面との互換)。
+function collectTerminals() {
+  const out = [];
+  state.pages.forEach((pg, pi) => {
+    (pg.elements || []).forEach(el => {
+      if (el.type !== 'junction') return;
+      if (el.style !== 'circle' && el.style !== 'dbl') return;  // ●分岐点は端子ではない
+      out.push({ el, page: pi, loc: elLocation(el, pi) });
+    });
+  });
+  // tbOrder があるものを優先し、無いものは後ろに元の順で残す
+  out.forEach((r, i) => { r._seq = i; });
+  out.sort((a, b) => {
+    const ao = a.el.tbOrder, bo = b.el.tbOrder;
+    if (ao != null && bo != null) return ao - bo;
+    if (ao != null) return -1;
+    if (bo != null) return 1;
+    return a._seq - b._seq;
+  });
+  return out;
+}
+
+// デバイス(TB1等)ごとにまとめる。デバイス未設定のものは「(デバイス未設定)」へ。
+function groupTerminalsByDevice(rows) {
+  const g = new Map();
+  rows.forEach(r => {
+    const key = (r.el.partRef || '').trim() || '(デバイス未設定)';
+    if (!g.has(key)) g.set(key, []);
+    g.get(key).push(r);
+  });
+  return g;
+}
+
+function showTerminals() {
+  const rows = collectTerminals();
+  if (!rows.length) {
+    _reportOpen('term', '端子台一覧',
+      '<p style="font-size:11px;color:var(--fg3)">端子台の端子がありません。'
+      + '<br>接続点を「○白丸」または「◎二重丸」にすると端子台の端子として扱われます。</p>', null);
+    return;
+  }
+  const groups = groupTerminalsByDevice(rows);
+  let html = `<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">`
+    + `全${state.pages.length}ページ集計。端子は${rows.length}点、端子台は${groups.size}台。`
+    + `位置は「ページ/区画」で表示します(例: 2/B3)。</p>`;
+  groups.forEach((list, dev) => {
+    html += `<p style="font-size:11px;font-weight:600;margin:8px 0 3px">${dev}`
+      + `<span style="color:var(--fg3);font-weight:400">（${list.length}点）</span></p>`;
+    html += `<table class="tbl"><tr><th>No</th><th>端子番号</th><th>型式</th><th>位置</th></tr>`
+      + list.map((r, i) =>
+        `<tr><td>${i + 1}</td><td>${r.el.label || ''}</td>`
+        + `<td>${r.el.partModel || ''}</td><td>${r.loc}</td></tr>`).join('')
+      + `</table>`;
+  });
   _reportOpen('term', '端子台一覧', html, exportTermCSV);
 }
-function exportTermCSV(){const terms=state.elements.filter(el=>el.type==='terminal');dl(['No,仕様,端子番号,線番,メモ',...terms.map((t,i)=>`${i+1},${t.label||''},${t.terminals||''},${t.wireNo||''},${t.note||''}`)].join('\n'),'terminals.csv','text/csv');}
+
+function exportTermCSV() {
+  const rows = collectTerminals();
+  const groups = groupTerminalsByDevice(rows);
+  const esc = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+  const lines = ['デバイス,No,端子番号,型式,位置'];
+  groups.forEach((list, dev) => {
+    list.forEach((r, i) => {
+      lines.push([dev, i + 1, r.el.label || '', r.el.partModel || '', r.loc].map(esc).join(','));
+    });
+  });
+  dl(lines.join('\n'), 'terminals.csv', 'text/csv');
+}
 
 
 // ================================================================
