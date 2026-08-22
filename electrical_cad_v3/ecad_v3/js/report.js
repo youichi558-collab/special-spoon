@@ -618,25 +618,6 @@ function symRole(el){
   return '';
 }
 
-// 配置した1個のシンボル(el)が実際に使っている端子番号を「13-14」のように返す。
-// conn_table.js の collectTerminalPoints() と同じ優先順位で決める:
-// ①el.terminals(部品割当時の個体差。同じ接点シンボルでも主接点13-14/補助接点23-24
-// のように配置ごとに異なる) ②cS.terminals[i].label(シンボル定義側の既定ラベル)。
-// どちらも無ければその桁は空扱いにする(通し番号T1,T2はRef表では意味が薄いため使わない)。
-// カスタムシンボルはcS.terminalsの点数、標準シンボルは2点(端子台一覧と同じ前提)とする。
-function elTerminalLabel(el){
-  const cS=(state.customSymbols||[]).find(s=>s.type===el.type);
-  const rawList=(el.terminals||'').split(',').map(t=>t.trim());
-  const n=(cS&&cS.terminals)?cS.terminals.length:2;
-  const labels=[];
-  for(let i=0;i<n;i++){
-    const defLabel=(cS&&cS.terminals&&cS.terminals[i])?(cS.terminals[i].label||''):'';
-    const lbl=rawList[i]||defLabel;
-    if(lbl)labels.push(lbl);
-  }
-  return labels.join('-');
-}
-
 // 接点・コイル リファレンス。
 // 旧実装は coilName / refCoil というフィールドで紐づける作りだったが、
 // このフィールドを書き込むコードが存在せず、実質 label 一致でしか動いて
@@ -655,7 +636,7 @@ function showRefPanel(){
       if(!devs[key])devs[key]={spellings:new Map(),coils:[],contacts:[],noRef:!raw};
       const dv=devs[key];
       if(raw)dv.spellings.set(raw,(dv.spellings.get(raw)||0)+1);
-      const rec={el,page:pi+1,role,loc:elLocation(el,pi),term:elTerminalLabel(el)};
+      const rec={el,page:pi+1,role,loc:elLocation(el,pi)};
       if(role==='coil')dv.coils.push(rec); else dv.contacts.push(rec);
     });
   });
@@ -678,15 +659,9 @@ function showRefPanel(){
     if(!dv.coils.length)warns.push('コイル未配置');
     if(dv.coils.length>1)warns.push(`コイルが${dv.coils.length}個`);
     if(dv.noRef)warns.push('デバイス未設定');
-    // 同じ役割・同じ端子番号の接点が2つ以上あれば、同じ物理接点を重複して
-    // 描いている可能性が高い(端子番号が無い接点は判定対象外)
-    const termCount={};
-    dv.contacts.forEach(c=>{ if(c.term)termCount[c.role+':'+c.term]=(termCount[c.role+':'+c.term]||0)+1; });
-    const dupTerms=Object.keys(termCount).filter(k=>termCount[k]>1).map(k=>k.split(':')[1]);
-    if(dupTerms.length)warns.push(`端子番号重複: ${dupTerms.join(', ')}`);
     // locは「2/B3」(ページ/区画)形式。図面枠が無いページはページ番号だけになる
     const badge=c=>`<span class="badge badge-${c.role==='contact_a'?'g':'b'}">`
-      +`${c.role==='contact_a'?'a':'b'}${c.term?`(${c.term})`:''} ${c.loc}</span>`;
+      +`${c.role==='contact_a'?'a':'b'} ${c.loc}</span>`;
     const coilTxt=dv.coils.length
       ? dv.coils.map(c=>`<span class="badge badge-p">${c.loc}</span>`).join(' ')
       : '<span class="badge" style="background:var(--rbg);color:var(--red)">未配置</span>';
@@ -709,18 +684,18 @@ function showRefPanel(){
 // 接点・コイルリファレンスをCSVで書き出す
 function exportRefCSV(devs){
   const esc=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
-  const lines=['デバイス,コイル位置,接点種別,端子番号,接点位置'];
+  const lines=['デバイス,コイル位置,接点種別,接点位置'];
   Object.keys(devs).sort().forEach(k=>{
     const dv=devs[k];
     const spells=[...dv.spellings.entries()].sort((a,b)=>b[1]-a[1]);
     const name=spells.length?spells[0][0]:'(デバイス未設定)';
     const coilLoc=dv.coils.map(c=>c.loc).join(' ');
     if(!dv.contacts.length){
-      lines.push([name,coilLoc,'','',''].map(esc).join(','));
+      lines.push([name,coilLoc,'',''].map(esc).join(','));
       return;
     }
     dv.contacts.forEach(c=>{
-      lines.push([name,coilLoc,c.role==='contact_a'?'a接点':'b接点',c.term||'',c.loc].map(esc).join(','));
+      lines.push([name,coilLoc,c.role==='contact_a'?'a接点':'b接点',c.loc].map(esc).join(','));
     });
   });
   dl(lines.join('\n'),'cross_reference.csv','text/csv');
