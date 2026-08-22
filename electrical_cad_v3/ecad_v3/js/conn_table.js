@@ -197,18 +197,28 @@ function showTBTable() {
   html += `<br>行をドラッグすると並べ替えできます。並べ替えた順で「番号を振り直す」と端子番号が1から振り直されます。</p>`;
 
   groups.forEach((list, dev) => {
+    // 型式は同じデバイスの端子すべてで揃う運用(プロパティ側で統一)なので、
+    // 全行に同じ文字を並べず台の見出しに1回だけ出す。揃っていない場合だけ
+    // 警告を出して気付けるようにする(古い図面や手作業で崩れたとき用)。
+    const models = [...new Set(list.map(r => r.tbModel).filter(Boolean))];
+    const modelTxt = models.length === 1
+      ? `<span style="color:var(--fg3);font-weight:400"> ${models[0]}</span>`
+      : models.length > 1
+        ? `<span style="color:var(--red);font-weight:400"> 型式が揃っていません（${models.join(' / ')}）</span>`
+        : `<span style="color:var(--fg4);font-weight:400"> 型式未設定</span>`;
     html += `<p style="font-size:11px;font-weight:600;margin:8px 0 3px">${dev}`
       + `<span style="color:var(--fg3);font-weight:400">（${list.length}点）</span>`
+      + modelTxt
       + `<button class="fp-btn" style="margin-left:8px;font-size:10px;padding:1px 8px"`
       + ` onclick="renumberTerminals('${String(dev).replace(/'/g, "\\'")}')">この順で番号を振り直す</button></p>`
       + `<table class="tbl"><tr><th style="width:22px"></th><th>No</th><th>端子番号</th>`
-      + `<th>型式</th><th>位置</th><th>接続線番</th></tr>`
+      + `<th>位置</th><th>接続線番</th></tr>`
       + list.map((r, i) =>
           `<tr draggable="true" data-elid="${r.el.id}"`
           + ` ondragstart="tbDragStart(event,'${r.el.id}')" ondragover="tbDragOver(event)"`
           + ` ondrop="tbDrop(event,'${r.el.id}')" ondragend="tbDragEnd(event)" style="cursor:grab">`
           + `<td style="color:var(--fg4);text-align:center">⋮⋮</td>`
-          + `<td>${i + 1}</td><td>${r.termNo}</td><td>${r.tbModel || '-'}</td><td>${r.loc}</td>`
+          + `<td>${i + 1}</td><td>${r.termNo}</td><td>${r.loc}</td>`
           + `<td>${r.conns.length
               ? r.conns.map(n => `<span class="badge badge-b">${n}</span>`).join(' ')
               : '<span style="color:var(--red)">未接続</span>'}</td></tr>`).join('')

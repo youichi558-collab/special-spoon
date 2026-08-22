@@ -789,6 +789,22 @@ function tbDrop(ev, targetId) {
   const dragId = _tbDragId;
   _tbDragId = null;
   if (!dragId || dragId === targetId) return;
+
+  // 端子台表はデバイス(TB1/TB2…)ごとにグループ分けして表示するが、tbOrderは
+  // 全端子の通し番号。デバイスを跨いでドロップすると、tbOrderだけ相手グループの
+  // 位置へ移るのにpartRefは変わらないため、表示は元のグループに残ったまま順序だけ
+  // 説明のつかない形で変わる。跨ぎは受け付けない。
+  const rows = collectTerminals();
+  const dragEl   = rows.find(r => String(r.el.id) === String(dragId))?.el;
+  const targetEl = rows.find(r => String(r.el.id) === String(targetId))?.el;
+  if (!dragEl || !targetEl) return;
+  const refOf = e => (e.partRef || '').trim() || '(デバイス未設定)';
+  if (refOf(dragEl) !== refOf(targetEl)) {
+    alert(`別の端子台へは移動できません（${refOf(dragEl)} → ${refOf(targetEl)}）。\n`
+        + `端子の所属を変えるときは、その端子のプロパティでデバイスを変更してください。`);
+    return;
+  }
+
   if (typeof pushH === 'function') pushH();
   reorderTerminal(dragId, targetId);
   if (typeof draw === 'function') draw();
