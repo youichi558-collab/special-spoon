@@ -196,5 +196,39 @@ console.log('【⑤js/dxf_export.js: customSyms出力でlineStyleがDXF線種名
   eq(calls.bL[0], null, '未指定(実線)ならlt=null(標準シンボルの既存出力を壊さない)');
 }
 
+// ------------------------------------------------------------------
+console.log('【⑥srPasteFromClipboard: 実際の貼り付けフロー本体でもlineStyleが残る】');
+console.log('  (前回の修正漏れ箇所。srWorldShapesForElを直しても、この後段の');
+console.log('   変換処理で改めてlineStyleが運ばれていなければ意味がない)');
+{
+  const pasteSandbox = { console, snapLineWidth: v => v, alert(){} };
+  vm.createContext(pasteSandbox);
+  vm.runInContext(
+    [grab('srWorldShapesForEl'), grab('srEffectiveLW'), grab('srXformPt'), grab('srXformAngle'),
+     grab('flattenSymbolElToShapes'), grab('srGridAlignShapes'), grab('srPasteFromClipboard')].join('\n'),
+    pasteSandbox
+  );
+  pasteSandbox.state = {
+    customSymbols: [],
+    clipboard: { els: [
+      { type:'fline', x1:0,y1:0,x2:10,y2:0, lineStyle:'dash' },
+      { type:'circle', x:0,y:0,r:5, lineStyle:'dot' },
+      { type:'arc', x:0,y:0,r:5, startA:0, endA:1, ccw:true, lineStyle:'dashdot' },
+      { type:'rect', x:0,y:0,w:5,h:5, lineStyle:'dash' },
+    ], wires: [] },
+  };
+  pasteSandbox.LAYERS = [];
+  pasteSandbox.SR_GRID = 5;
+  pasteSandbox._srShapes = [];
+  pasteSandbox.srFitToContent = () => {};
+  pasteSandbox.srRender = () => {};
+  pasteSandbox.srPasteFromClipboard();
+  const pasted = pasteSandbox._srShapes;
+  eq(pasted.find(s=>s.t==='L').lineStyle, 'dash', 'fline貼り付け: dashが残る');
+  eq(pasted.find(s=>s.t==='C').lineStyle, 'dot', 'circle貼り付け: dotが残る');
+  eq(pasted.find(s=>s.t==='A').lineStyle, 'dashdot', 'arc貼り付け: dashdotが残る');
+  eq(pasted.find(s=>s.t==='R').lineStyle, 'dash', 'rect貼り付け: dashが残る');
+}
+
 console.log(ng ? `\n${ng}件失敗` : '\n全て成功');
 process.exit(ng ? 1 : 0);

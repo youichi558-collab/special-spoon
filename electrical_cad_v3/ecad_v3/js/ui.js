@@ -1663,17 +1663,17 @@ function srPasteFromClipboard() {
       // 中途半端な太さを持っていると、そのままシンボルに残って配線と繋いだときに
       // 段差が出るため。未設定(レイヤー既定に従う)の場合は未設定のまま残す。
       const _lw = s.lineWidth != null ? snapLineWidth(s.lineWidth) : undefined;
-      if (s.t==='L') shapes.push({t:'L', x1:tx(s.x1),y1:ty(s.y1),x2:tx(s.x2),y2:ty(s.y2), lineWidth:_lw});
-      else if (s.t==='C') shapes.push({t:'C', cx:tx(s.cx),cy:ty(s.cy),r:Math.round(s.r*scale), lineWidth:_lw});
-      else if (s.t==='R') shapes.push({t:'R', x:tx(s.x),y:ty(s.y),w:Math.round(s.w*scale),h:Math.round(s.h*scale), lineWidth:_lw});
-      else if (s.t==='P' && s.pts) shapes.push({t:'P', pts:s.pts.map(p=>[tx(p[0]),ty(p[1])]), cl:s.cl, lineWidth:_lw});
+      if (s.t==='L') shapes.push({t:'L', x1:tx(s.x1),y1:ty(s.y1),x2:tx(s.x2),y2:ty(s.y2), lineWidth:_lw, lineStyle:s.lineStyle});
+      else if (s.t==='C') shapes.push({t:'C', cx:tx(s.cx),cy:ty(s.cy),r:Math.round(s.r*scale), lineWidth:_lw, lineStyle:s.lineStyle});
+      else if (s.t==='R') shapes.push({t:'R', x:tx(s.x),y:ty(s.y),w:Math.round(s.w*scale),h:Math.round(s.h*scale), lineWidth:_lw, lineStyle:s.lineStyle});
+      else if (s.t==='P' && s.pts) shapes.push({t:'P', pts:s.pts.map(p=>[tx(p[0]),ty(p[1])]), cl:s.cl, lineWidth:_lw, lineStyle:s.lineStyle});
       else if (s.t==='T') shapes.push({t:'T', text:s.text, x:tx(s.x), y:ty(s.y), fs:s.fs});
       else if (s.t==='A') {
         // 以前は弧を8本の直線に分解し、さらに各点を整数へ丸めていた。
         // 半径が小さい弧ほど丸め誤差が相対的に大きくなり、歪んで見える不具合があった。
         // 配置時の描画(symbols.js)は弧をネイティブでサポートしているので、
         // 分解せずそのまま持たせる(座標・半径は丸め、角度sa/eaは丸めない)。
-        shapes.push({t:'A', cx:tx(s.cx), cy:ty(s.cy), r:Math.round(s.r*scale), sa:s.sa, ea:s.ea, ccw:!!s.ccw, lineWidth:_lw});
+        shapes.push({t:'A', cx:tx(s.cx), cy:ty(s.cy), r:Math.round(s.r*scale), sa:s.sa, ea:s.ea, ccw:!!s.ccw, lineWidth:_lw, lineStyle:s.lineStyle});
       }
     });
   });
