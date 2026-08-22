@@ -725,11 +725,14 @@ function collectDeviceInfo() {
     ref = (ref || '').trim();
     if (!ref) return;
     const cur = map.get(ref) || { model:'', spec:'', terminals:'', volt:'' };
-    // 情報を持っている要素の値を優先して残す(空で上書きしない)
-    if (!cur.model     && src.partModel) cur.model     = src.partModel;
-    if (!cur.spec      && src.label)     cur.spec      = src.label;
-    if (!cur.terminals && src.terminals) cur.terminals = src.terminals;
-    if (!cur.volt      && src.partVolt)  cur.volt      = src.partVolt;
+    // 端子台(junction)の label は「端子番号」で、シンボルの label(仕様)とは別物。
+    // ここで拾ってしまうと、TB1の端子番号「1」がデバイスTB1の仕様として扱われ、
+    // デバイス引き継ぎで他の端子へ番号がコピーされて全部同じ番号になる。
+    const isJunction = src.type === 'junction';
+    if (!cur.model     && src.partModel)             cur.model     = src.partModel;
+    if (!cur.spec      && src.label && !isJunction)  cur.spec      = src.label;
+    if (!cur.terminals && src.terminals)             cur.terminals = src.terminals;
+    if (!cur.volt      && src.partVolt)              cur.volt      = src.partVolt;
     map.set(ref, cur);
   };
   pages.forEach(pg => {
@@ -740,8 +743,52 @@ function collectDeviceInfo() {
   return map;
 }
 
+// 端子台の端子でデバイス(TB1等)を入れ直したときに、その台の型式を引き継ぐ。
+// 端子台は「台」という実体を持たず、同じデバイス名の端子が集計時に1台として
+// 束ねられる作り。そのため型式を台ごとに1回書けば済むようにここで揃える。
+// 端子番号(label)は端子ごとに違うので絶対に引き継がないこと。
+function onJunctionRefChanged() {
+  const el = state.sel.els.size === 1
+    ? state.elements.find(e => state.sel.els.has(e.id)) : null;
+  if (!el || el.type !== 'junction') return;
+  const ref = document.getElementById('pp-jref')?.value.trim() || '';
+  if (!ref) return;
+  const info = collectDeviceInfo().get(ref);
+  el.partRef = ref;
+  if (!info || !info.model) { draw(); return; }   // 新規デバイスなら型式はそのまま
+  pushH();
+  el.partModel = info.model;
+  // 適用時に入力欄の値が要素へ書き戻されるため、欄も同時に更新する
+  const m = document.getElementById('pp-jmodel');
+  if (m) m.value = info.model;
+  draw();
+}
+
+// 端子台の型式を変えたら、同じデバイスの端子すべてに同じ型式を入れる。
+// 「デバイスで統一できるなら問題ない」(盛田さん)という要件に対応するもので、
+// TB1の端子が20個あっても型式の手入力は1回で済む。全ページを対象にする。
+function onJunctionModelChanged() {
+  const el = state.sel.els.size === 1
+    ? state.elements.find(e => state.sel.els.has(e.id)) : null;
+  if (!el || el.type !== 'junction') return;
+  const ref = (el.partRef || '').trim();
+  const model = document.getElementById('pp-jmodel')?.value.trim() || '';
+  el.partModel = model;
+  if (!ref) return;                              // デバイス未設定なら自分だけ
+  pushH();
+  let n = 0;
+  (state.pages || [{ elements: state.elements }]).forEach(pg => {
+    (pg.elements || []).forEach(e => {
+      if (e.type === 'junction' && (e.partRef || '').trim() === ref && e !== el) {
+        e.partModel = model; n++;
+      }
+    });
+  });
+  if (n) console.log(`[端子台] ${ref} の端子 ${n} 個に型式「${model}」を反映`);
+  draw();
+}
+
 function partRefOptionsHtml(current) {
-  // デバイス記号だけを並べる。型番などの補足は出さない
   // (デバイス記号は一意なので判別に不要で、かえって選びにくくなる)。
   return [...collectDeviceInfo().keys()]
     .sort((a, b) => a.localeCompare(b, 'ja', { numeric: true }))
@@ -2279,13 +2326,16 @@ function updateRightPanel() {
       // 既定はOFF。同じデバイスで複数ONにしてよい(かたまりごとの先頭に出す)。
       // 集計側(端子台表・部品表)はこのON/OFFを見ないので、何個表示しても
       // TB1は1台として扱われる。
-      html += `<div class="pp-row"><label>デバイス</label><input type="text" id="pp-jref" value="${el.partRef||''}" placeholder="例: TB1"></div>`;
+      html += `<div class="pp-row"><label>デバイス</label>`
+        + `<input type="text" id="pp-jref" list="pp-jref-list" value="${el.partRef||''}"`
+        + ` placeholder="例: TB1" onchange="onJunctionRefChanged()"></div>`
+        + `<datalist id="pp-jref-list">${partRefOptionsHtml(el.partRef)}</datalist>`;
       html += `<div class="pp-row"><label>デバイスを図面に表示</label><input type="checkbox" id="pp-jrefshow" ${(el.showDev!==undefined?el.showDev:true)?'checked':''}></div>`;
       html += `<div class="pp-row"><label>デバイス文字サイズ</label><input type="number" id="pp-jdfs" value="${el.devFs!==undefined?el.devFs:''}" placeholder="自動" min="4" max="48" step="1"></div>`;
       html += `<div class="pp-row"><label>デバイス文字色</label><input type="color" id="pp-jdcolor" value="${el.devColor||'#555555'}"></div>`;
       html += `<div class="pp-row"><label>デバイス位置X補正</label><input type="number" id="pp-jdox" value="${el.devOffX!==undefined?el.devOffX:''}" placeholder="自動" step="1"></div>`;
       html += `<div class="pp-row"><label>デバイス位置Y補正</label><input type="number" id="pp-jdoy" value="${el.devOffY!==undefined?el.devOffY:''}" placeholder="自動" step="1"></div>`;
-      html += `<div class="pp-row"><label>型式(BOM用)</label><input type="text" id="pp-jmodel" value="${el.partModel||''}" placeholder="例: 端子台 M4"></div>`;
+      html += `<div class="pp-row"><label>型式(BOM用)</label><input type="text" id="pp-jmodel" value="${el.partModel||''}" placeholder="例: 端子台 M4" onchange="onJunctionModelChanged()" title="同じデバイス(TB1等)の端子すべてに同じ型式が入ります。台ごとに1回書けば済みます"></div>`;
       html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-jlabel" value="${el.label||''}" placeholder="例: A, 1"></div>`;
       html += `<div class="pp-row"><label>端子番号文字サイズ</label><input type="number" id="pp-jlfs" value="${el.labelFs!==undefined?el.labelFs:''}" placeholder="自動" min="4" max="48" step="1"></div>`;
       html += `<div class="pp-row"><label>端子番号文字色</label><input type="color" id="pp-jlcolor" value="${el.labelColor||'#555555'}"></div>`;
