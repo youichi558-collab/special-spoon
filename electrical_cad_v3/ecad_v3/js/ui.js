@@ -402,19 +402,105 @@ function deletePart(ref) {
 // 部品と図記号は1対1ではない。種別コードを細分化したこともあり、
 // 対応する図記号が無い種別(plc/hmi/contactor等)では描けもしなかった。
 //
+// ============================================================
+// 端子番号の「名前付きグループ」対応（2026-08-22）
+// ------------------------------------------------------------
+// 【背景】盛田さんの指摘で判明した構造的な問題。
+// 部品DBの端子番号欄はフラットなカンマ区切り1本で、シンボルの端子点に頭から
+// 順に割り当てる仕様だった。ところが1つの型式が複数のシンボルに分かれて図面に
+// 現れる部品がある:
+//   ・電磁接触器 …… コイルシンボル(A1,A2) + 主接点シンボル(1,3,5,2,4,6) + 補助接点(13,14)
+//   ・ブレーカ …… 主回路(1〜6) + 補助スイッチ(11,12,14) + 警報スイッチ(91,92,94)
+//                  + 漏電動作出力(71,72,74)
+// フラット1本だと「A1,A2,1,3,5,2,4,6」が主接点シンボル(6点)に頭から入って
+// 「A1,A2,1,3,5,2」という無意味な並びになる。たまたまコイルシンボルに当てた
+// ときだけ正しく、それ以外は壊れていた。
+//
+// 【対応】端子番号欄を「名前:番号,番号 / 名前:番号,番号」形式にする。
+//   例) コイル:A1,A2 / 主回路:1,3,5,2,4,6 / 補助:13,14
+//   例) 主回路:1,2,3,4,5,6 / 補助:11,12,14 / 警報:91,92,94
+// 「:」が無い従来データは名前なしの単一グループとして扱う（後方互換）。
+// CSV・SQLiteの列は増やさない（terminals列の書き方が変わるだけ）ので、
+// 取り込み経路(catalog_db.py)は無改修で済む。
+// ============================================================
+
+// 端子番号欄を解析してグループの配列にする。
+// 戻り値: [{ name:'主回路', list:['1','2',...] }, ...]
+// 「:」を含まない場合は name:'' の1グループ（従来どおりの動作）。
+function parseTerminalGroups(str) {
+  const s = String(str || '').trim();
+  if (!s) return [];
+  // 「/」区切り。ただし従来データに「/」が入っている可能性を考えて、
+  // グループ名(「:」)が1つも無いときは分割せずそのまま1グループとする。
+  if (s.indexOf(':') < 0 && s.indexOf('：') < 0) {
+    return [{ name: '', list: s.split(',').map(x => x.trim()).filter(x => x) }];
+  }
+  return s.split('/').map(part => {
+    const t = part.trim();
+    if (!t) return null;
+    const m = t.match(/^([^:：]+)[:：](.*)$/);
+    const name = m ? m[1].trim() : '';
+    const body = m ? m[2] : t;
+    const list = body.split(',').map(x => x.trim()).filter(x => x);
+    if (!list.length) return null;
+    return { name, list };
+  }).filter(g => g);
+}
+
+// 選択中のシンボルの端子点の数を返す（グループ自動判定に使う）。
+// カスタムシンボル以外・端子未設定は0。
+function symTerminalCount(el) {
+  if (!el) return 0;
+  const cS = (state.customSymbols || []).find(s => s.type === el.type);
+  return (cS && cS.terminals) ? cS.terminals.length : 0;
+}
+
+// 割り当てるグループを決める。
+// シンボルの端子点数と一致するグループが1つだけならそれを自動採用する
+// （主回路6点 / 補助接点3点 のように数が違えば迷わない）。
+// 一致が0個または2個以上なら null を返し、呼び出し側で選ばせる。
+function pickTerminalGroup(groups, termCount) {
+  if (!groups.length) return null;
+  if (groups.length === 1) return groups[0];
+  if (!termCount) return null;
+  const hit = groups.filter(g => g.list.length === termCount);
+  return hit.length === 1 ? hit[0] : null;
+}
+
+// 割り当て待ちの情報（グループを選ばせている間の一時保持）
+let _pendingAssign = null;
+
+// グループ選択パネルを出す。選ぶと applyPartAssign() が呼ばれる。
+function askTerminalGroup(type, ref, groups) {
+  _pendingAssign = { type, ref, groups };
+  const box = document.getElementById('tg-list');
+  if (!box) {   // パネルが無い環境では先頭グループで進める（安全側）
+    applyPartAssign(0);
+    return;
+  }
+  document.getElementById('tg-ref').textContent = ref;
+  box.innerHTML = groups.map((g, i) =>
+    `<button class="fp-btn" style="display:block;width:100%;text-align:left;margin-bottom:4px"
+       onclick="applyPartAssign(${i})">${g.name || '(名前なし)'}　<span style="color:var(--fg3)">${g.list.join(',')}</span></button>`
+  ).join('');
+  openFP('term-group-p');
+}
+
+function applyPartAssign(idx) {
+  if (!_pendingAssign) return;
+  const { type, ref, groups } = _pendingAssign;
+  const g = groups[idx];
+  _pendingAssign = null;
+  closeFP('term-group-p');
+  if (g) doPlacePart(type, ref, g.list.join(','), g.name);
+}
+
 // 正しくは「シンボルを置いてから部品を割り当てる」。ここでは選択中の
 // シンボルに型番・端子番号・コイル電圧を書き込む。
 //
-// 【2026-08-22修正】盛田さんの指摘: 既に書いた図面（仕様欄に手書きでデバイス名・注記等を
-// 入力済み）に対して端子番号だけ足したくて部品DBをクリックしても、以下のel.labelへの
-// 無条件上書きのせいで仕様欄が丸ごと[電圧/電流/接点構成]に置き換わり、手書き内容が
-// 消えていた。「型番を割り当てるたびに全シンボル書き直しになるので使えない」という
-// 実害が出ていたバグ。型番・端子番号は元々「値がある時だけ」上書きする配慮があったのに
-// 仕様欄だけ無条件上書きだったのが原因。→ 仕様欄が空のときだけ自動入力するよう変更し、
-// 既に何か書かれている場合は一切触らない（過去のoutlineDxf破壊バグと同じ教訓: 割り当て系の
-// 操作は既存データを問答無用で上書きしない）。
+// 端子番号が名前付きグループ形式のときは、シンボルの端子点数から自動判定し、
+// 決まらなければ選択パネルを出す。
 function placePart(type, ref, terminals) {
-  const p = (state.customParts || []).find(x => x.ref === ref);
   const targets = state.elements.filter(e => state.sel.els.has(e.id) && e.type !== 'junction');
   if (!targets.length) {
     const hint = document.getElementById('s-hint');
@@ -424,6 +510,32 @@ function placePart(type, ref, terminals) {
         + `そのシンボルを選択した状態でこの部品をクリックしてください。`);
     return;
   }
+  const groups = parseTerminalGroups(terminals);
+  if (groups.length <= 1) {
+    doPlacePart(type, ref, groups.length ? groups[0].list.join(',') : '', '');
+    return;
+  }
+  // 選択中シンボルの端子点数（複数選択時は全部同じ数のときだけ自動判定に使う）
+  const counts = [...new Set(targets.map(symTerminalCount))];
+  const g = counts.length === 1 ? pickTerminalGroup(groups, counts[0]) : null;
+  if (g) doPlacePart(type, ref, g.list.join(','), g.name);
+  else askTerminalGroup(type, ref, groups);
+}
+
+// 実際に書き込む処理。
+//
+// 【2026-08-22修正】盛田さんの指摘: 既に書いた図面（仕様欄に手書きでデバイス名・注記等を
+// 入力済み）に対して端子番号だけ足したくて部品DBをクリックしても、以下のel.labelへの
+// 無条件上書きのせいで仕様欄が丸ごと[電圧/電流/接点構成]に置き換わり、手書き内容が
+// 消えていた。「型番を割り当てるたびに全シンボル書き直しになるので使えない」という
+// 実害が出ていたバグ。型番・端子番号は元々「値がある時だけ」上書きする配慮があったのに
+// 仕様欄だけ無条件上書きだったのが原因。→ 仕様欄が空のときだけ自動入力するよう変更し、
+// 既に何か書かれている場合は一切触らない（過去のoutlineDxf破壊バグと同じ教訓: 割り当て系の
+// 操作は既存データを問答無用で上書きしない）。
+function doPlacePart(type, ref, terminals, groupName) {
+  const p = (state.customParts || []).find(x => x.ref === ref);
+  const targets = state.elements.filter(e => state.sel.els.has(e.id) && e.type !== 'junction');
+  if (!targets.length) return;
   pushH();                         // 変更前の状態を履歴に積む
   let labelFilled = 0, labelSkipped = 0;
   targets.forEach(el => {
@@ -451,6 +563,7 @@ function placePart(type, ref, terminals) {
   const hint = document.getElementById('s-hint');
   if (hint) {
     let msg = `「${ref}」を${targets.length}個のシンボルに割り当てました`;
+    if (groupName) msg += `［端子:${groupName}］`;
     if (labelSkipped) msg += `（仕様欄は既存${labelSkipped}件を保護、未入力${labelFilled}件のみ自動入力）`;
     hint.textContent = msg;
   }

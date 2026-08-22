@@ -35,7 +35,16 @@ eval([
   pick(/function defaultPartVolt\([\s\S]*?\n\}/),
   pick(/function applyDefaultVolt\([\s\S]*?\n\}/),
   pick(/function collectDeviceInfo\([\s\S]*?\n\}/),
+  // 端子番号の名前付きグループ対応(2026-08-22)でplacePartが分割されたので、
+  // 付随する関数もここで読み込む
+  pick(/function parseTerminalGroups\([\s\S]*?\n\}/),
+  pick(/function symTerminalCount\([\s\S]*?\n\}/),
+  pick(/function pickTerminalGroup\([\s\S]*?\n\}/),
+  'let _pendingAssign = null;',
+  pick(/function askTerminalGroup\([\s\S]*?\n\}/),
+  pick(/function applyPartAssign\([\s\S]*?\n\}/),
   pick(/function placePart\([\s\S]*?\n\}/),
+  pick(/function doPlacePart\([\s\S]*?\n\}/),
   pick(/function applyGroupDevice\([\s\S]*?\n\}/),
 ].join('\n'));
 
