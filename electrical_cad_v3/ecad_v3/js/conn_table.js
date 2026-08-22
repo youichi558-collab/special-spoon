@@ -256,6 +256,50 @@ function buildTerminalBlockRows() {
   }));
 }
 
+// ================================================================
+// 図面への挿入: 端子台の並びに沿った簡易配置図
+// ----------------------------------------------------------------
+// 盛田さんの要望: 「メーカーの正式な配線図(上段/下段・型式併記)ほど作り込まなくて
+// いい。四角で囲って左に番号、右に線番を並べるだけの縦配置。残り(メーカー名・
+// 型式・設置場所の区切り等)は手書きで足す」というもの。
+// 並び順はtbOrder(端子台表で並べ替えた結果)に従い、線番は接続チェックと同じ
+// 座標近接判定(buildTerminalBlockRows経由)で自動的に埋める。
+// 生成するのはrect/text要素そのもの(type='rect'/'text')なので、他の作図要素と
+// 同じくDXF/PDF出力にそのまま乗る。BOM集計(collectBOMRows)はrect/textを
+// スキップリストで除外済みなので、この図が部品として二重計上されることはない。
+// ================================================================
+
+function insertTerminalBlockDiagram(dev) {
+  const rows = buildTerminalBlockRows().filter(r => r.tbRef === dev);
+  if (!rows.length) return;
+  if (typeof pushH === 'function') pushH();
+
+  const G = state.G || 10;
+  const boxW = G * 6;      // 端子1個分の箱の幅
+  const boxH = G * 2;      // 端子1個分の箱の高さ
+  const capH = G * 2;      // キャプション(デバイス名)の行の高さ
+
+  // 挿入位置は現在の画面中心(ワールド座標)。挿入後はドラッグで動かせる。
+  const cv = document.getElementById('cv');
+  const x0 = (cv.width  / 2 - state.pan.x) / state.zoom;
+  const y0 = (cv.height / 2 - state.pan.y) / state.zoom;
+
+  const layer = activeLayer();
+  const els = [];
+
+  els.push({ id: genId('el'), type:'text', x:x0, y:y0, text: String(dev), fs:12, layer });
+
+  rows.forEach((r, i) => {
+    const y = y0 + capH + i * boxH;
+    els.push({ id: genId('el'), type:'rect', x:x0, y, w:boxW, h:boxH, layer });
+    els.push({ id: genId('el'), type:'text', x:x0 + G*0.5,       y:y + boxH/2, text: r.termNo || '-', fs:9, layer });
+    els.push({ id: genId('el'), type:'text', x:x0 + boxW*0.55,   y:y + boxH/2, text: r.conns.length ? r.conns.join('/') : '', fs:9, layer });
+  });
+
+  state.elements.push(...els);
+  if (typeof draw === 'function') draw();
+}
+
 function showTBTable() {
   const rows = buildTerminalBlockRows();
   if (!rows.length) {
@@ -291,7 +335,10 @@ function showTBTable() {
       + `<span style="color:var(--fg3);font-weight:400">（${list.length}点）</span>`
       + modelTxt
       + `<button class="fp-btn" style="margin-left:8px;font-size:10px;padding:1px 8px"`
-      + ` onclick="renumberTerminals('${String(dev).replace(/'/g, "\\'")}')">この順で番号を振り直す</button></p>`
+      + ` onclick="renumberTerminals('${String(dev).replace(/'/g, "\\'")}')">この順で番号を振り直す</button>`
+      + `<button class="fp-btn" style="margin-left:4px;font-size:10px;padding:1px 8px"`
+      + ` onclick="insertTerminalBlockDiagram('${String(dev).replace(/'/g, "\\'")}')"`
+      + ` title="番号・線番を並べた簡易図を画面中央に挿入します(手書きで仕上げてください)">この配置で図を挿入</button></p>`
       + `<table class="tbl"><tr><th style="width:22px"></th><th>No</th><th>端子番号</th>`
       + `<th>位置</th><th>接続線番</th></tr>`
       + list.map((r, i) =>
