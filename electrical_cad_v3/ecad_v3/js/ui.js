@@ -1553,10 +1553,10 @@ function flattenSymbolElToShapes(el, cS) {
   (cS.shapes || []).forEach(s => {
     if (s.t === 'L') {
       const p1 = srXformPt(s.x1, s.y1, el), p2 = srXformPt(s.x2, s.y2, el);
-      out.push({ t:'L', x1:p1.x, y1:p1.y, x2:p2.x, y2:p2.y, lineWidth:s.lineWidth });
+      out.push({ t:'L', x1:p1.x, y1:p1.y, x2:p2.x, y2:p2.y, lineWidth:s.lineWidth, lineStyle:s.lineStyle });
     } else if (s.t === 'C') {
       const c = srXformPt(s.cx, s.cy, el);
-      out.push({ t:'C', cx:c.x, cy:c.y, r: s.r * sc, lineWidth:s.lineWidth });
+      out.push({ t:'C', cx:c.x, cy:c.y, r: s.r * sc, lineWidth:s.lineWidth, lineStyle:s.lineStyle });
     } else if (s.t === 'A') {
       const c = srXformPt(s.cx, s.cy, el);
       let sa = srXformAngle(s.sa, el), ea = srXformAngle(s.ea, el);
@@ -1564,18 +1564,20 @@ function flattenSymbolElToShapes(el, cS) {
       // 反転(flipH/flipVが奇数回)は弧の向きも反転させる。sa/eaの入れ替えだけでは
       // 足りず、回転方向(ccw)も一緒に反転させないと弧が反対側に描かれる。
       if (flipped) { const tmp = sa; sa = ea; ea = tmp; ccw = !ccw; }
-      out.push({ t:'A', cx:c.x, cy:c.y, r: s.r * sc, sa, ea, ccw, lineWidth:s.lineWidth });
+      out.push({ t:'A', cx:c.x, cy:c.y, r: s.r * sc, sa, ea, ccw, lineWidth:s.lineWidth, lineStyle:s.lineStyle });
     } else if (s.t === 'P' && s.pts) {
-      out.push({ t:'P', pts: s.pts.map(p => { const q = srXformPt(p[0], p[1], el); return [q.x, q.y]; }), cl: s.cl });
+      // 【2026-08-23修正】lineWidth/lineStyleがそもそも渡されておらず、ポリライン形状は
+      // 平坦化すると太さ・線種が既定値に戻ってしまっていた(ccw/lineStyle調査中に発見)
+      out.push({ t:'P', pts: s.pts.map(p => { const q = srXformPt(p[0], p[1], el); return [q.x, q.y]; }), cl: s.cl, lineWidth:s.lineWidth, lineStyle:s.lineStyle });
     } else if (s.t === 'R') {
       const p1 = srXformPt(s.x, s.y, el), p2 = srXformPt(s.x+s.w, s.y, el);
       const p3 = srXformPt(s.x+s.w, s.y+s.h, el), p4 = srXformPt(s.x, s.y+s.h, el);
       if ((el.rot||0) % 360 === 0) {
         const minX=Math.min(p1.x,p3.x), maxX=Math.max(p1.x,p3.x);
         const minY=Math.min(p1.y,p3.y), maxY=Math.max(p1.y,p3.y);
-        out.push({ t:'R', x:minX, y:minY, w:maxX-minX, h:maxY-minY, lineWidth:s.lineWidth });
+        out.push({ t:'R', x:minX, y:minY, w:maxX-minX, h:maxY-minY, lineWidth:s.lineWidth, lineStyle:s.lineStyle });
       } else {
-        out.push({ t:'P', pts:[[p1.x,p1.y],[p2.x,p2.y],[p3.x,p3.y],[p4.x,p4.y]], cl:true, lineWidth:s.lineWidth });
+        out.push({ t:'P', pts:[[p1.x,p1.y],[p2.x,p2.y],[p3.x,p3.y],[p4.x,p4.y]], cl:true, lineWidth:s.lineWidth, lineStyle:s.lineStyle });
       }
     } else if (s.t === 'T') {
       const p = srXformPt(s.x, s.y, el);
@@ -1599,15 +1601,18 @@ function srEffectiveLW(el) {
 }
 
 function srWorldShapesForEl(el) {
-  if (el.type === 'fline') return [{ t:'L', x1:el.x1, y1:el.y1, x2:el.x2, y2:el.y2, lineWidth:srEffectiveLW(el) }];
-  if (el.type === 'circle') return [{ t:'C', cx:el.x, cy:el.y, r:el.r||0, lineWidth:srEffectiveLW(el) }];
-  if (el.type === 'rect') return [{ t:'R', x:el.x, y:el.y, w:el.w||0, h:el.h||0, lineWidth:srEffectiveLW(el) }];
+  // 【2026-08-23修正】lineStyle(破線/点線/一点鎖線)を拾っていなかったバグ。
+  // 盛田さんの指摘(「点線と実線の違いは？」)で判明。lineWidthは拾うのにlineStyleは
+  // 無視していたため、点線で描いた線をシンボル登録すると実線として登録されていた。
+  if (el.type === 'fline') return [{ t:'L', x1:el.x1, y1:el.y1, x2:el.x2, y2:el.y2, lineWidth:srEffectiveLW(el), lineStyle:el.lineStyle }];
+  if (el.type === 'circle') return [{ t:'C', cx:el.x, cy:el.y, r:el.r||0, lineWidth:srEffectiveLW(el), lineStyle:el.lineStyle }];
+  if (el.type === 'rect') return [{ t:'R', x:el.x, y:el.y, w:el.w||0, h:el.h||0, lineWidth:srEffectiveLW(el), lineStyle:el.lineStyle }];
   if (el.type === 'triangle') return [
-    { t:'L', x1:el.x1, y1:el.y1, x2:el.x2, y2:el.y2, lineWidth:srEffectiveLW(el) },
-    { t:'L', x1:el.x2, y1:el.y2, x2:el.x3, y2:el.y3, lineWidth:srEffectiveLW(el) },
-    { t:'L', x1:el.x3, y1:el.y3, x2:el.x1, y2:el.y1, lineWidth:srEffectiveLW(el) },
+    { t:'L', x1:el.x1, y1:el.y1, x2:el.x2, y2:el.y2, lineWidth:srEffectiveLW(el), lineStyle:el.lineStyle },
+    { t:'L', x1:el.x2, y1:el.y2, x2:el.x3, y2:el.y3, lineWidth:srEffectiveLW(el), lineStyle:el.lineStyle },
+    { t:'L', x1:el.x3, y1:el.y3, x2:el.x1, y2:el.y1, lineWidth:srEffectiveLW(el), lineStyle:el.lineStyle },
   ];
-  if (el.type === 'arc') return [{ t:'A', cx:el.x, cy:el.y, r:el.r||0, sa:(el.startA||0)*180/Math.PI, ea:(el.endA||0)*180/Math.PI, ccw:!!el.ccw, lineWidth:srEffectiveLW(el) }];
+  if (el.type === 'arc') return [{ t:'A', cx:el.x, cy:el.y, r:el.r||0, sa:(el.startA||0)*180/Math.PI, ea:(el.endA||0)*180/Math.PI, ccw:!!el.ccw, lineWidth:srEffectiveLW(el), lineStyle:el.lineStyle }];
   if (el.type === 'text') return [{ t:'T', text:el.text||'', x:el.x, y:el.y, fs:el.fs||14 }];
   // 配置済みシンボル(カスタム/ライブラリ)インスタンス → 実際の配置で平坦化
   const cS = state.customSymbols.find(s => s.type === el.type);
@@ -1839,6 +1844,10 @@ function srDrawShape(c, s, color) {
   // 見た目の比率を保つ(拡大表示なのに線だけ細く見える/太く見えるのを防ぐ)。
   const lw = (s.lineWidth || 1.0) * _srZoom;
   c.save(); c.strokeStyle = color || '#222'; c.fillStyle = color || '#222';
+  // 【2026-08-23修正】図形ごとのlineStyle(破線/点線/一点鎖線)を登録パネルの
+  // プレビューにも反映する。以前はここで常に実線で描いていたため、点線を
+  // 登録してもパネル上は実線に見えており見た目だけでは気づけなかった
+  if (s.t!=='T') c.setLineDash(s.lineStyle==='dash'?[8*_srZoom/2,4*_srZoom/2]:s.lineStyle==='dot'?[2*_srZoom/2,4*_srZoom/2]:s.lineStyle==='dashdot'?[8*_srZoom/2,3*_srZoom/2,2*_srZoom/2,3*_srZoom/2]:[]);
   if (s.t==='L') {
     c.lineWidth = lw; c.beginPath(); c.moveTo(T(s.x1),TY(s.y1)); c.lineTo(T(s.x2),TY(s.y2)); c.stroke();
   } else if (s.t==='C') {

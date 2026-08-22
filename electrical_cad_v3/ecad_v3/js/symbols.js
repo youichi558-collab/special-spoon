@@ -38,6 +38,11 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc, lineStyle, lwOverride, symS
         // 持っていない(手描き・旧データ)場合は従来どおりの既定値。
         // ただしシンボル線幅の上書き指定があれば、それを最優先する。
         ctx.lineWidth = (lwOverride || s.lineWidth || (isSel ? _defLw * 3 : _defLw)) * sInv;
+        // 【2026-08-23修正】図形ごとのlineStyle(破線/点線/一点鎖線)を反映する。
+        // 以前はここで一切参照しておらず、登録パネル側を直しても配置済みシンボルの
+        // 点線は実線のまま描かれていた(ccwバグと同じ穴、盛田さんの指摘で発覚)。
+        // T(文字)にはlineStyleの概念が無いので対象外。
+        if (s.t !== 'T') applyLineStyle(ctx, s.lineStyle, zoom);
         if (s.t==='L') { ctx.beginPath(); ctx.moveTo(s.x1,s.y1); ctx.lineTo(s.x2,s.y2); ctx.stroke(); }
         else if (s.t==='C') { ctx.beginPath(); ctx.arc(s.cx,s.cy,s.r,0,Math.PI*2); ctx.stroke(); }
         else if (s.t==='A') { ctx.beginPath(); ctx.arc(s.cx,s.cy,s.r, s.sa*Math.PI/180, s.ea*Math.PI/180, !!s.ccw); ctx.stroke(); }
@@ -49,6 +54,7 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc, lineStyle, lwOverride, symS
         else if (s.t==='R') { ctx.strokeRect(s.x,s.y,s.w,s.h); }
         else if (s.t==='T') { ctx.font=`${s.fs||14}px sans-serif`; ctx.textAlign='center'; ctx.fillText(s.text,s.x,s.y); }
       });
+      ctx.setLineDash([]); // 次の描画(選択枠・後続シンボル等)に点線設定が漏れないよう必ず戻す
     } else {
       // フォールバック: 矩形+ラベル
       ctx.strokeRect(-cS.w/2,-cS.h/2,cS.w,cS.h);

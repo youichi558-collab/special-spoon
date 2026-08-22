@@ -83,7 +83,7 @@ console.log('【③srDrawShape: 登録パネルのプレビューがccwを使っ
   const arcCalls = [];
   const fakeCtx = {
     save(){}, restore(){}, beginPath(){}, stroke(){}, strokeRect(){}, fillText(){},
-    moveTo(){}, lineTo(){}, closePath(){},
+    moveTo(){}, lineTo(){}, closePath(){}, setLineDash(){},
     arc(cx, cy, r, sa, ea, ccw) { arcCalls.push({ cx, cy, r, sa, ea, ccw }); },
     set strokeStyle(v){}, set fillStyle(v){}, set lineWidth(v){}, set font(v){}, set textAlign(v){},
   };
@@ -104,7 +104,7 @@ console.log('【⑤js/symbols.js: 配置済みシンボルの本描画がccwを�
   const arcCalls = [];
   const fakeCtx = {
     save(){}, restore(){}, translate(){}, rotate(){}, scale(){}, beginPath(){}, stroke(){},
-    strokeRect(){}, fillText(){}, moveTo(){}, lineTo(){}, closePath(){},
+    strokeRect(){}, fillText(){}, moveTo(){}, lineTo(){}, closePath(){}, setLineDash(){},
     arc(cx, cy, r, sa, ea, ccw) { arcCalls.push({ ccw }); },
     set strokeStyle(v){}, set fillStyle(v){}, set lineWidth(v){}, set font(v){}, set textAlign(v){},
   };

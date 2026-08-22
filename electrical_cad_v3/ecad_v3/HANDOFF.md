@@ -53,11 +53,44 @@ DXF出力のどこでも`ccw=false`固定で扱われていた。
 **未確認**: 実機でこの3極ブレーカー接点シンボルを再度貼り付け・登録し、弧が正しい
 向き(左に膨らむ)になるか確認してもらうこと。
 
-**関連して見つかった別の穴(未修正)**: `srWorldShapesForEl`は`fline`要素から
-`lineStyle`(点線/実線等)を拾っていない。点線で描いた線を登録すると実線になる。
-今回のccwバグとは別件で、影響範囲は今回より広い(`symbols.js`の`drawSym`は
-シンボル全体に1つのlineStyleしか持たせられず、シンボル内の1本だけ点線、という
-表現が現状のフォーマットでは無理)。指示があれば対応。
+## 【解決済み】シンボル登録で線種(lineStyle: 破線/点線/一点鎖線)が実線になる(2026-08-23)
+
+**記録の訂正(盛田さん指摘)**: 直前まで、この不具合は「ccwバグの調査中にClaudeが
+副次的に見つけた別の穴」という書き方で記録していたが、これは不正確だった。実際には
+盛田さんが「点線と実線の違いは？」と明示的に指摘したのが発端であり、Claudeが能動的に
+見つけたのではなく**盛田さんからの直接の指摘**だった。「調査中に見つかった」という
+表現は指摘の重みを軽く見せてしまう書き方であり、実際の経緯どおりに訂正する。
+
+**原因**: `srWorldShapesForEl`(`js/ui.js`)は`fline`/`circle`/`rect`/`triangle`/`arc`から
+`lineWidth`は拾うのに`lineStyle`(破線/点線/一点鎖線)を一切拾っていなかった。同じ穴が
+`flattenSymbolElToShapes`(配置済みインスタンスの再フラット化)・`srDrawShape`
+(登録パネルのプレビュー)・`js/symbols.js`の`drawSym`(配置済みシンボルの本描画)・
+`js/dxf_export.js`のカスタムシンボルBLOCK出力にも存在し、登録パネルのプレビュー・
+実際の配置・DXF出力のすべてで点線が実線化していた。
+
+**修正(コミット済み)**:
+- `js/ui.js`: `srWorldShapesForEl`(各図形タイプにlineStyleを持たせる)・
+  `flattenSymbolElToShapes`(L/C/A/R/Pすべてに引き継ぐ。Pはlineスタイルどころか
+  lineWidthすら渡っていなかった別の漏れも合わせて修正)・`srDrawShape`
+  (プレビューでlineStyleに応じてsetLineDash)
+- `js/symbols.js`: `drawSym`で図形ごとに`applyLineStyle(ctx, s.lineStyle, zoom)`を適用。
+  以前の反省で書いた「シンボル全体に1つのlineStyleしか持たせられない」という認識は
+  誤りで、既存の`s.lineWidth`(図形ごとの太さ上書き)と全く同じパターンで図形ごとの
+  lineStyleも実装できた。ループ後は`ctx.setLineDash([])`で必ずリセットし、後続の
+  選択枠・他シンボル描画に破線設定が漏れないようにした
+- `js/dxf_export.js`: `bL`/`bC`/`bA`/`bR`/`bP`に線種(DXF線種名)を渡せる引数を追加
+  (省略時は従来通りで標準シンボルの出力に影響なし)。`customSyms.forEach`内で
+  `sh.lineStyle`を`resolveLT()`(2026-08-03のfline/wire用線種変換と共用)でDXF線種名に
+  変換して渡す。`LT_MAP`/`resolveLT`は元々ファイル後方(`eLine`付近)にあったが、
+  `customSyms.forEach`より前で呼ぶ必要があるため定義位置を前に移動した
+  (`const`は関数と違って巻き上げされず、実行順に呼ばないとTDZエラーになるため)
+- `tests/test_lineStyle_symbol.js`新設(23件)。`tests/test_arc_ccw.js`(fakeCtxに
+  `setLineDash`スタブ追加)・`tests/test_dxf_custom_arc.js`(sandboxに`resolveLT`
+  スタブ追加)も本修正に合わせて更新。全25ファイル通過
+
+**未確認**: 実機で点線・一点鎖線のfline/円/矩形/円弧をシンボル登録し、登録パネルの
+プレビュー・実際に配置したシンボル・DXF出力(TrueView)のすべてで線種が保持されているか
+確認してもらうこと。
 
 ## 【未解決・再現待ち】グループ化直後、オレンジ枠が一瞬range外まで大きく出る(2026-08-23)
 盛田さんが報告。個別にクリックして不要な図形を削除→残りを選択→グループ化(Gキー)、

@@ -332,10 +332,23 @@ function exportDXF(){
   p(0,'ENDBLK', 5,H_PPR_EBLK, 100,'AcDbEntity', 8,'0', 100,'AcDbBlockEnd');
 
   // シンボルブロック（AC1015サブクラスマーカー付き）
-  function bL(x1,y1,x2,y2){p(0,'LINE',5,nh(),100,'AcDbEntity',8,'0',100,'AcDbLine',10,x1.toFixed(3),20,(-y1).toFixed(3),30,'0.0',11,x2.toFixed(3),21,(-y2).toFixed(3),31,'0.0');}
-  function bC(cx,cy,r){p(0,'CIRCLE',5,nh(),100,'AcDbEntity',8,'0',100,'AcDbCircle',10,cx.toFixed(3),20,(-cy).toFixed(3),30,'0.0',40,r.toFixed(3));}
-  function bA(cx,cy,r,sa,ea){p(0,'ARC',5,nh(),100,'AcDbEntity',8,'0',100,'AcDbCircle',10,cx.toFixed(3),20,(-cy).toFixed(3),30,'0.0',40,r.toFixed(3),100,'AcDbArc',50,sa.toFixed(3),51,ea.toFixed(3));}
-  function bR(x1,y1,x2,y2){bL(x1,y1,x2,y1);bL(x2,y1,x2,y2);bL(x2,y2,x1,y2);bL(x1,y2,x1,y1);}
+  // 【2026-08-23修正】カスタムシンボルのshapesに持たせたlineStyle(破線/点線/一点鎖線)を
+  // BLOCK定義側にも反映できるよう、末尾に任意のlt(線種名)引数を追加。標準シンボル
+  // (symDefs)側の呼び出しはlt省略のままなので、実線前提の既存出力は変わらない。
+  function bL(x1,y1,x2,y2,lt){p(0,'LINE',5,nh(),100,'AcDbEntity',8,'0');if(lt)p(6,lt);p(100,'AcDbLine',10,x1.toFixed(3),20,(-y1).toFixed(3),30,'0.0',11,x2.toFixed(3),21,(-y2).toFixed(3),31,'0.0');}
+  function bC(cx,cy,r,lt){p(0,'CIRCLE',5,nh(),100,'AcDbEntity',8,'0');if(lt)p(6,lt);p(100,'AcDbCircle',10,cx.toFixed(3),20,(-cy).toFixed(3),30,'0.0',40,r.toFixed(3));}
+  function bA(cx,cy,r,sa,ea,lt){p(0,'ARC',5,nh(),100,'AcDbEntity',8,'0');if(lt)p(6,lt);p(100,'AcDbCircle',10,cx.toFixed(3),20,(-cy).toFixed(3),30,'0.0',40,r.toFixed(3),100,'AcDbArc',50,sa.toFixed(3),51,ea.toFixed(3));}
+  function bR(x1,y1,x2,y2,lt){bL(x1,y1,x2,y1,lt);bL(x2,y1,x2,y2,lt);bL(x2,y2,x1,y2,lt);bL(x1,y2,x1,y1,lt);}
+  // 【本命修正・2026-08-03】画面(draw.js)ではel.lineStyle/w.lineStyle('dash'/'dot'/'dashdot')で
+  // 個々の線を破線・点線・一点鎖線にできる(applyLineStyle)のに、DXF出力はこれを一切
+  // 参照しておらず、全ての線がBYLAYER(実質CONTINUOUS)で出力されていた。element/wireの
+  // lineStyleをDXF線種名に変換して各エンティティに明示的に付与する。
+  // 【2026-08-23追記】customSyms.forEach(このLT_MAP/resolveLTより前の行)からも呼ぶため、
+  // constのTDZを避けてbL/bC/bA/bRの直後(BLOCKSセクションの前)に置く。関数末尾の
+  // eLine等の近くに置いたままだと、customSyms.forEach実行時点でLT_MAPが未初期化のまま
+  // 参照されてReferenceErrorになる(実行順は宣言の巻き上げでは救えない、host順の問題)。
+  const LT_MAP = {dash:'DASHED',dashed:'DASHED',dot:'DOT',dotted:'DOT',dashdot:'DASHDOT'};
+  function resolveLT(styleVal){ return styleVal ? (LT_MAP[styleVal]||null) : null; }
   function bT(x,y,h,s){p(0,'TEXT',5,nh(),100,'AcDbEntity',8,'0',100,'AcDbText',10,x.toFixed(3),20,(-y).toFixed(3),30,'0.0',40,String(h),1,s,7,'STANDARD',72,1,11,x.toFixed(3),21,(-y).toFixed(3),31,'0.0',100,'AcDbText',73,0);}
 
   const symDefs = [
@@ -368,15 +381,20 @@ function exportDXF(){
 
   // カスタムシンボル(登録済みシンボル)のBLOCK定義。
   // cS.shapes(L/C/A/R/P/T)を、標準シンボルと同じbL/bC/bA/bR/bTヘルパーで描画する。
-  function bP(pts,closed){
-    for(let k=0;k<pts.length-1;k++) bL(pts[k][0],pts[k][1],pts[k+1][0],pts[k+1][1]);
-    if(closed && pts.length>2) bL(pts[pts.length-1][0],pts[pts.length-1][1],pts[0][0],pts[0][1]);
+  function bP(pts,closed,lt){
+    for(let k=0;k<pts.length-1;k++) bL(pts[k][0],pts[k][1],pts[k+1][0],pts[k+1][1],lt);
+    if(closed && pts.length>2) bL(pts[pts.length-1][0],pts[pts.length-1][1],pts[0][0],pts[0][1],lt);
   }
   customSyms.forEach((s,i)=>{
     p(0,'BLOCK', 5,custBlkH[i].b, 100,'AcDbEntity', 8,'0', 100,'AcDbBlockBegin', 2,s.type, 70,0, 10,'0.0', 20,'0.0', 30,'0.0', 3,s.type, 1,'');
     (s.shapes||[]).forEach(sh=>{
-      if(sh.t==='L') bL(sh.x1,sh.y1,sh.x2,sh.y2);
-      else if(sh.t==='C') bC(sh.cx,sh.cy,sh.r);
+      // 【2026-08-23修正】図形ごとのlineStyle(破線/点線/一点鎖線)をDXF線種名に変換して
+      // 渡す(resolveLT/LT_MAPはeLine側と共用、関数宣言の巻き上げで定義順に関係なく使える)。
+      // 以前はここで一切参照しておらず、点線で登録したシンボルもDXF上は実線に化けていた
+      // (画面側の描画バグと同じ穴、盛田さんの「点線と実線の違いは？」指摘で発覚)。
+      const lt = resolveLT(sh.lineStyle);
+      if(sh.t==='L') bL(sh.x1,sh.y1,sh.x2,sh.y2,lt);
+      else if(sh.t==='C') bC(sh.cx,sh.cy,sh.r,lt);
       else if(sh.t==='A') {
         // カスタムシンボルのshapesはcanvas角度(Y下向き、ccwで向き任意)で保持している。
         // symDefs(標準シンボル)はDXF規約(Y上向き・ARCは常にCCW)に合わせて角度を
@@ -387,10 +405,10 @@ function exportDXF(){
         const dxfAngDeg = a => ((-a)%360+360)%360;
         let sa=dxfAngDeg(sh.sa||0), ea=dxfAngDeg(sh.ea||0);
         if(!sh.ccw){const t=sa;sa=ea;ea=t;}
-        bA(sh.cx,sh.cy,sh.r,sa,ea);
+        bA(sh.cx,sh.cy,sh.r,sa,ea,lt);
       }
-      else if(sh.t==='R') bR(sh.x,sh.y,sh.x+sh.w,sh.y+sh.h);
-      else if(sh.t==='P' && sh.pts && sh.pts.length>1) bP(sh.pts, sh.cl);
+      else if(sh.t==='R') bR(sh.x,sh.y,sh.x+sh.w,sh.y+sh.h,lt);
+      else if(sh.t==='P' && sh.pts && sh.pts.length>1) bP(sh.pts, sh.cl, lt);
       else if(sh.t==='T') bT(sh.x,sh.y,sh.fs||14,sh.text||'');
     });
     p(0,'ENDBLK', 5,custBlkH[i].e, 100,'AcDbEntity', 8,'0', 100,'AcDbBlockEnd');
@@ -407,14 +425,6 @@ function exportDXF(){
   // 原点シフト用ヘルパー(X: 生値+offX、Y: 反転後の値+offY)
   const fx = v => (v+offX).toFixed(3);
   const fy = v => (-v+offY).toFixed(3);
-  // 【本命修正】画面(draw.js)ではel.lineStyle/w.lineStyle('dash'/'dot'/'dashdot')で
-  // 個々の線を破線・点線・一点鎖線にできる(applyLineStyle)のに、DXF出力はこれを一切
-  // 参照しておらず、全ての線がBYLAYER(実質CONTINUOUS)で出力されていた。盛田さんの図面では
-  // fline要素(配線エリアを囲む一点鎖線の枠など)がdashdot/dotで10本あり、これらが
-  // 全部実線に化けていた(2026-08-03)。element/wireのlineStyleをDXF線種名に変換して
-  // 各エンティティに明示的に付与する。
-  const LT_MAP = {dash:'DASHED',dashed:'DASHED',dot:'DOT',dotted:'DOT',dashdot:'DASHDOT'};
-  function resolveLT(styleVal){ return styleVal ? (LT_MAP[styleVal]||null) : null; }
   function eLine(layer,x1,y1,x2,y2,lt){
     p(0,'LINE',5,nh(),100,'AcDbEntity',8,layer,100,'AcDbLine');
     if(lt) p(6,lt);

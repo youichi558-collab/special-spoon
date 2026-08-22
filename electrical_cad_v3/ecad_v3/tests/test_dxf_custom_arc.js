@@ -42,6 +42,7 @@ function run(sh) {
     p: () => {},
     bL: () => {}, bC: () => {}, bR: () => {}, bP: () => {}, bT: () => {},
     bA: (cx, cy, r, sa, ea) => { calls.push({ sa, ea }); },
+    resolveLT: () => null,
     custBlkH: [{ b: 1, e: 2 }],
     customSyms: [{ type: 'test', shapes: [sh] }],
   };
