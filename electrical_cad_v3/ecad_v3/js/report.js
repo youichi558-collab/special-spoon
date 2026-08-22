@@ -3,12 +3,11 @@
 // 端子台表・接点Refを1つのパネル内タブとして切替表示する）
 // ================================================================
 const REPORT_TABS = [
-  { key:'bom',     label:'部品表',     call:'showBOM()' },
-  { key:'wire',    label:'線番表',     call:'wireNoTable()' },
-  { key:'termtbl', label:'端子表',     call:'showTerminalTable()' },
-  { key:'conntbl', label:'接続表',     call:'showConnTable()' },
-  { key:'tbtbl',   label:'端子台表',   call:'showTBTable()' },
-  { key:'ref',     label:'接点Ref',    call:'showRefPanel()' },
+  { key:'bom',     label:'部品表',       call:'showBOM()' },
+  { key:'wire',    label:'線番表',       call:'wireNoTable()' },
+  { key:'conntbl', label:'接続チェック', call:'showConnTable()' },
+  { key:'tbtbl',   label:'端子台表',     call:'showTBTable()' },
+  { key:'ref',     label:'接点Ref',      call:'showRefPanel()' },
 ];
 
 let _lastReportTab = 'bom'; // 帳票系タブが最後に表示していた種類を記憶(現状は参照専用、保存対象外)
@@ -839,76 +838,7 @@ function renumberTerminals(dev) {
 // ================================================================
 // 端子表（全部品の接続情報）
 // ================================================================
-function showTerminalTable() {
-  const skip = ['text','rect','circle','fline','dim','leader','angle_dim','wire'];
-  const els = state.elements.filter(el => !skip.includes(el.type));
-  if (!els.length) {
-    _reportOpen('termtbl', '端子表（接続情報）', '<p style="font-size:11px;color:var(--fg3)">部品がありません</p>', null);
-    return;
-  }
 
-  // 部品ごとに接続配線を集計
-  const connMap = {}; // elId -> [{wireNo, peerLabel, peerPartRef, termIdx}]
-  els.forEach(el => { connMap[el.id] = []; });
-
-  state.wires.forEach(w => {
-    const wNo = w.wireNo || '-';
-    if (w.fromElId && connMap[w.fromElId] !== undefined) {
-      const peer = state.elements.find(e => e.id === w.toElId);
-      connMap[w.fromElId].push({ wireNo: wNo, termIdx: w.fromTermIdx, peerRef: peer?.partRef || peer?.label || '-' });
-    }
-    if (w.toElId && connMap[w.toElId] !== undefined) {
-      const peer = state.elements.find(e => e.id === w.fromElId);
-      connMap[w.toElId].push({ wireNo: wNo, termIdx: w.toTermIdx, peerRef: peer?.partRef || peer?.label || '-' });
-    }
-  });
-
-  let html = `<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">部品数: ${els.length}</p>`;
-  html += `<table class="tbl"><tr><th>デバイス</th><th>仕様</th><th>種別</th><th>端子番号</th><th>接続線番</th><th>接続先</th></tr>`;
-  els.forEach(el => {
-    const conns = connMap[el.id] || [];
-    const termList = (el.terminals || '').split(',').map(t => t.trim()).filter(Boolean);
-    if (!conns.length) {
-      html += `<tr><td>${el.partRef||'-'}</td><td>${el.label||''}</td><td>${el.type}</td><td>${termList.join(', ')||'-'}</td><td>-</td><td>-</td></tr>`;
-    } else {
-      conns.forEach((c, i) => {
-        const termLabel = termList[c.termIdx] || (c.termIdx !== '' ? `T${c.termIdx}` : '-');
-        html += `<tr><td>${i===0?el.partRef||'-':''}</td><td>${i===0?el.label||'':''}</td><td>${i===0?el.type:''}</td><td>${termLabel}</td><td><span class="badge badge-b">${c.wireNo}</span></td><td>${c.peerRef}</td></tr>`;
-      });
-    }
-  });
-  html += '</table>';
-  _reportOpen('termtbl', '端子表（接続情報）', html, exportTerminalCSV);
-}
-
-function exportTerminalCSV() {
-  const skip = ['text','rect','circle','fline','dim','leader','angle_dim'];
-  const els = state.elements.filter(el => !skip.includes(el.type));
-  const rows = ['デバイス,仕様,種別,端子番号,接続線番,接続先'];
-  els.forEach(el => {
-    const termList = (el.terminals || '').split(',').map(t => t.trim()).filter(Boolean);
-    const conns = [];
-    state.wires.forEach(w => {
-      if (w.fromElId === el.id) {
-        const peer = state.elements.find(e => e.id === w.toElId);
-        conns.push({ wireNo: w.wireNo||'-', termIdx: w.fromTermIdx, peerRef: peer?.partRef||peer?.label||'-' });
-      }
-      if (w.toElId === el.id) {
-        const peer = state.elements.find(e => e.id === w.fromElId);
-        conns.push({ wireNo: w.wireNo||'-', termIdx: w.toTermIdx, peerRef: peer?.partRef||peer?.label||'-' });
-      }
-    });
-    if (!conns.length) {
-      rows.push(`${el.partRef||''},${el.label||''},${el.type},${termList.join('/')||''},-,-`);
-    } else {
-      conns.forEach((c, i) => {
-        const termLabel = termList[c.termIdx] || (c.termIdx !== '' ? `T${c.termIdx}` : '');
-        rows.push(`${i===0?el.partRef||'':''},${i===0?el.label||'':''},${i===0?el.type:''},${termLabel},${c.wireNo},${c.peerRef}`);
-      });
-    }
-  });
-  dl(rows.join('\n'), 'terminal_table.csv', 'text/csv');
-}
 
 
 

@@ -104,36 +104,117 @@ function _connSortRows(rows) {
 }
 
 // ----------------------------------------------------------------
-// 接続表(配線ごと: 線番・始点・始点端子・終点・終点端子)
+// 接続チェック（配線ごと: 線番・始点・始点端子・終点・終点端子）
+//
+// 【2026-08-22 統合】もともと「端子表」(report.js の showTerminalTable)と
+// この表がどちらも配線と端子の対応を出しており、主語が部品か配線かの違い
+// しかなかった。端子表は ①現在ページのみ ②端子台の端子(junction)が端子台表と
+// 重複 ③接続判定が fromElId 紐づけで他表と別方式 ④「種別」に内部名(coil等)が
+// 生で出る、という状態だったため、こちらへ統合した(盛田さんの提案)。
+// 部品ごとに見たい用途は並べ替え(部品順)で吸収する。
+//
+// 【この表の位置づけ】
+// 分岐のない1本線の「TB1-1 → MC1-13」は図面を見れば判るので、一覧にする価値は
+// 薄い(盛田さん指摘)。価値があるのは図面を見ても気づきにくい方:
+//   ・端点が端子から微妙にズレている配線(目視では繋がって見える。DXFインポート後に多い)
+//   ・線番が振られていない配線
+// よって問題のある行を先頭に集める。
+//
+// 【原理的にできないこと】
+// 分岐点は電気的に1点で、そこに集まる線は全部同電位。「どっちに繋がる線か」
+// という問い自体が成立しないため、分岐点経由の接続先は特定できない(0%)。
+// ページを跨ぐ接続も座標では追えない。盤製作用の配線リスト(どこにどう渡すか)は
+// 裏面接続図の範囲であり、展開接続図から自動で出せるものではない。
 // ----------------------------------------------------------------
+
+// 並べ替えモード: 'wire'=線番順(既定) / 'part'=部品順
+let _connSortMode = 'wire';
+
+function setConnSort(mode) {
+  _connSortMode = (mode === 'part') ? 'part' : 'wire';
+  showConnTable();
+}
+
+// 行に問題があるか。端子未特定(端点が端子から離れている)か線番未採番。
+function _connRowIssue(r) {
+  if (!r.from || !r.to) return '端子未特定';
+  if (!r.wireNo)        return '未採番';
+  return '';
+}
+
+function _connSortRows(rows) {
+  const nameOf = r => {
+    const f = _connFmtEnd(r.from);
+    return f.name === '-' ? '\uffff' : f.name;
+  };
+  rows.sort((a, b) => {
+    // 問題のある行を先頭へ(図面を見ても気づきにくいものから見せる)
+    const ai = _connRowIssue(a) ? 0 : 1, bi = _connRowIssue(b) ? 0 : 1;
+    if (ai !== bi) return ai - bi;
+    if (_connSortMode === 'part') {
+      const c = nameOf(a).localeCompare(nameOf(b), 'ja', { numeric: true });
+      if (c) return c;
+    }
+    return String(a.wireNo || '\uffff').localeCompare(String(b.wireNo || '\uffff'), 'ja', { numeric: true });
+  });
+  return rows;
+}
+
 function showConnTable() {
   const rows = _connSortRows(buildConnectionRows());
   if (!rows.length) {
-    _reportOpen('conntbl', '接続表', '<p style="font-size:11px;color:var(--fg3)">配線がありません</p>', null);
+    _reportOpen('conntbl', '接続チェック', '<p style="font-size:11px;color:var(--fg3)">配線がありません</p>', null);
     return;
   }
-  let unmatched = 0;
-  let html = `<table class="tbl"><tr><th>線番</th><th>ページ</th><th>始点</th><th>始点端子</th><th>終点</th><th>終点端子</th><th>レイヤー</th></tr>`;
+  let unmatched = 0, unnumbered = 0, branch = 0;
+  let body = '';
   rows.forEach(r => {
     const f = _connFmtEnd(r.from), t = _connFmtEnd(r.to);
+    const issue = _connRowIssue(r);
     if (!r.from || !r.to) unmatched++;
-    html += `<tr><td>${r.wireNo?`<span class="badge badge-b">${r.wireNo}</span>`:'<span style="color:var(--fg3)">未採番</span>'}</td><td>${r.page}</td><td>${f.name}</td><td>${f.term}</td><td>${t.name}</td><td>${t.term}</td><td>${r.layer}</td></tr>`;
+    if (!r.wireNo) unnumbered++;
+    if (f.name === '分岐点' || t.name === '分岐点') branch++;
+    body += `<tr${issue ? ' style="background:rgba(200,60,60,.10)"' : ''}>`
+      + `<td>${r.wireNo ? `<span class="badge badge-b">${r.wireNo}</span>` : '<span style="color:var(--red)">未採番</span>'}</td>`
+      + `<td>${r.page}</td><td>${f.name}</td><td>${f.term}</td><td>${t.name}</td><td>${t.term}</td>`
+      + `<td>${issue ? `<span style="color:var(--red)">${issue}</span>` : ''}</td><td>${r.layer}</td></tr>`;
   });
-  html += '</table>';
-  let msg = `<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">配線 全${rows.length}本`;
-  if (unmatched) msg += ` / <span style="color:var(--red);font-weight:600">端子未特定 ${unmatched}本</span>(許容誤差${CONN_TABLE_TOL}以内に端子なし。配線の端点が端子からズレている可能性があります)`;
+
+  const btn = (mode, label) =>
+    `<button class="fp-btn" style="font-size:10px;padding:1px 8px;${_connSortMode === mode ? 'font-weight:700' : ''}"`
+    + ` onclick="setConnSort('${mode}')">${label}</button>`;
+
+  let msg = `<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">`
+    + `全${state.pages.length}ページ集計。配線 ${rows.length}本`;
+  if (unmatched)  msg += ` / <span style="color:var(--red);font-weight:600">端子未特定 ${unmatched}本</span>`;
+  if (unnumbered) msg += ` / <span style="color:var(--red);font-weight:600">未採番 ${unnumbered}本</span>`;
+  msg += `<br>並べ替え: ${btn('wire', '線番順')} ${btn('part', '部品順')}`;
+  if (unmatched) {
+    msg += `<br>「端子未特定」は端点の${CONN_TABLE_TOL}以内に端子が無いもの。`
+      + `目視では繋がって見えても座標がズレている可能性があります（DXFインポート後に起きやすい）。`;
+  }
+  if (branch) {
+    msg += `<br><span style="color:var(--fg4)">分岐点を経由する配線が${branch}本あります。`
+      + `分岐点は電気的に1点で、そこに集まる線は全部同電位のため、その先どの端子に繋がるかは`
+      + `この表では特定できません（不具合ではありません）。</span>`;
+  }
   msg += `</p>`;
-  _reportOpen('conntbl', '接続表', msg + html, exportConnCSV);
+
+  const html = msg + `<table class="tbl"><tr><th>線番</th><th>ページ</th><th>始点</th><th>始点端子</th>`
+    + `<th>終点</th><th>終点端子</th><th>状態</th><th>レイヤー</th></tr>${body}</table>`;
+  _reportOpen('conntbl', '接続チェック', html, exportConnCSV);
 }
 
 function exportConnCSV() {
   const rows = _connSortRows(buildConnectionRows());
-  const csvRows = ['線番,ページ,始点,始点端子,終点,終点端子,レイヤー'];
+  const esc = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+  const csvRows = ['線番,ページ,始点,始点端子,終点,終点端子,状態,レイヤー'];
   rows.forEach(r => {
     const f = _connFmtEnd(r.from), t = _connFmtEnd(r.to);
-    csvRows.push(`${r.wireNo||''},${r.page},${f.name},${f.term},${t.name},${t.term},${r.layer}`);
+    csvRows.push([r.wireNo || '', r.page, f.name, f.term, t.name, t.term,
+                  _connRowIssue(r), r.layer].map(esc).join(','));
   });
-  dl(csvRows.join('\n'), 'connection_table.csv', 'text/csv');
+  dl(csvRows.join('\n'), 'connection_check.csv', 'text/csv');
 }
 
 // ----------------------------------------------------------------
