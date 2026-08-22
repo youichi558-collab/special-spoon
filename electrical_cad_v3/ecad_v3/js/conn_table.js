@@ -281,17 +281,27 @@ function insertTerminalBlockDiagram(dev) {
   // 図枠が無いページ(表紙等)ではsc=2を仮定する。
   const fr = state.page && state.page.frameObj;
   const sc = (fr && fr.sc) || 2;
+  const G  = state.G || 10;
+  // グリッドに乗るよう、実寸目標値をG単位に丸める(盛田さんの「箱の線をグリッドに
+  // のるようにできるか」への対応)。既定値(sc2)ではもともと5mm=G相当で丸め不要だが、
+  // scや将来グリッド幅が変わっても必ずグリッド上に乗るようにしておく。
+  const snapG = v => Math.round(v / G) * G;
   const mmPerRow = 5;
-  const boxW = 20 * sc;        // 端子1個分の箱の幅(20mm相当)
-  const boxH = mmPerRow * sc;  // 端子1個分の箱の高さ(5mm相当)
+  const boxW = Math.max(G, snapG(20 * sc));       // 端子1個分の箱の幅(20mm相当)
+  const boxH = Math.max(G, snapG(mmPerRow * sc)); // 端子1個分の箱の高さ(5mm相当)
   const capH = boxH;           // キャプション(デバイス名)の行の高さ
-  const colX = boxW * 0.5;     // 番号列と線番列の境界(中央で2分割)
+  // 番号列は狭く、線番列は広く(番号は1〜2桁が多いが、線番は「ESP12」等5文字級も
+  // あるため)。目安は番号列25%・線番列75%(≒1:3)。グリッドに乗せつつ、
+  // 極端な図枠サイズでも線番側が番号側より狭くならないようガードする。
+  let colX = Math.max(G, snapG(boxW * 0.25));
+  if (colX >= boxW - G) colX = Math.max(G, snapG(boxW * 0.5));  // 保険(狭すぎる図枠向け)
   const fs = 2.5 * sc;         // 文字サイズ(2.5mm相当。箱の高さの半分程度)
 
-  // 挿入位置は現在の画面中心(ワールド座標)。挿入後はドラッグで動かせる。
+  // 挿入位置は現在の画面中心(ワールド座標)。以後はドラッグで動かせる。
+  // グリッドに乗せるため、中心座標そのものもG単位に丸める。
   const cv = document.getElementById('cv');
-  const x0 = (cv.width  / 2 - state.pan.x) / state.zoom;
-  const y0 = (cv.height / 2 - state.pan.y) / state.zoom;
+  const x0 = snapG((cv.width  / 2 - state.pan.x) / state.zoom);
+  const y0 = snapG((cv.height / 2 - state.pan.y) / state.zoom);
 
   const layer = activeLayer();
   const els = [];

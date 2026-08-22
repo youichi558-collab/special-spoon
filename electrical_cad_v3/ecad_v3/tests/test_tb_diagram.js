@@ -133,7 +133,30 @@ const junctionOnlyCount = bomRows.filter(r => (r.refs || []).includes('TB1')).le
 eq(junctionOnlyCount, 1, 'TB1のBOM行は1つのまま(挿入した図が別部品として二重計上されない)');
 
 // ------------------------------------------------------------------
-console.log('【サイズ: 図面の実寸(mm)を基準にする(盛田さんの「30〜40行入れたい」への対応)】');
+console.log('【列幅: 番号列は狭く、線番列は広く(約1:3)】');
+eq(vLine.x1 - added.find(e => e.type === 'rect').x, 10, '番号列の幅は10(箱幅40の25%)');
+eq(added.find(e => e.type === 'rect').w - (vLine.x1 - added.find(e => e.type === 'rect').x), 30,
+   '線番列の幅は30(箱幅40の75%)。番号列の3倍');
+
+// ------------------------------------------------------------------
+console.log('【グリッドスナップ: 挿入位置がグリッドから外れていても箱の線はグリッドに乗る】');
+// 画面中心がグリッド(G=10)からズレる状況(半端なpan/zoom)を作る
+sandbox.state.pan = { x: 3, y: 7 };
+sandbox.state.zoom = 1;
+const beforeSnap = sandbox.state.elements.length;
+sandbox.insertTerminalBlockDiagram('TB1');
+const addedSnap = sandbox.state.elements.slice(beforeSnap);
+const rectSnap  = addedSnap.find(e => e.type === 'rect');
+const vLineSnap = addedSnap.filter(e => e.type === 'fline').find(f => f.x1 === f.x2);
+const hLinesSnap = addedSnap.filter(e => e.type === 'fline').filter(f => f.y1 === f.y2);
+const onGrid = v => v % 10 === 0;
+ok(onGrid(rectSnap.x) && onGrid(rectSnap.y), '外枠の左上角がグリッドに乗る');
+ok(onGrid(rectSnap.x + rectSnap.w) && onGrid(rectSnap.y + rectSnap.h), '外枠の右下角がグリッドに乗る');
+ok(onGrid(vLineSnap.x1), '縦の仕切り線もグリッドに乗る');
+ok(hLinesSnap.every(f => onGrid(f.y1)), '横の仕切り線もすべてグリッドに乗る');
+sandbox.state.pan = { x: 0, y: 0 };  // 元に戻す
+
+
 // 前回(固定world単位)は1行10mm(G*2=20 world単位)で、A3の作図領域(約160mm)に
 // 16行しか入らなかった。図枠のsc(mm→world換算率)を使い、紙面上で1行5mm相当に
 // 固定することで、既定のA3横(297×210・余白10・表題欄30、作図領域高さ約160mm)
