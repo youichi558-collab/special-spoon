@@ -322,8 +322,13 @@ function insertTerminalBlockDiagram(dev) {
 
   rows.forEach((r, i) => {
     const y = top + i * boxH;
-    els.push({ id: genId('el'), type:'text', x:x0 + boxW*0.08,      y:y + boxH/2, text: r.termNo || '-', fs, layer });
-    els.push({ id: genId('el'), type:'text', x:x0 + colX + boxW*0.08, y:y + boxH/2, text: r.conns.length ? r.conns.join('/') : '', fs, layer });
+    // type='text'はdrawTextEl()でtextBaseline='alphabetic'固定(el.yはベースライン=
+    // 文字の下端で、中心ではない)。番号・線番はどちらも数字/英大文字で下に
+    // はみ出す部分(g,p,y等のディセンダ)が無いため、字高のだいたい半分(0.35em
+    // 相当)だけベースラインを下げれば見た目の中心が行の中心に乗る。
+    const ty = y + boxH/2 + fs*0.35;
+    els.push({ id: genId('el'), type:'text', x:x0 + boxW*0.08,        y:ty, text: r.termNo || '-', fs, layer });
+    els.push({ id: genId('el'), type:'text', x:x0 + colX + boxW*0.08, y:ty, text: r.conns.length ? r.conns.join('/') : '', fs, layer });
   });
 
   state.elements.push(...els);

@@ -105,7 +105,20 @@ ok(row1Term.x < vLine.x1, '番号のテキストは縦の仕切り線より左�
 ok(row1Wire.x > vLine.x1, '線番のテキストは縦の仕切り線より右にある');
 
 // ------------------------------------------------------------------
-console.log('【縦配置: 各行が上から下へ順番に並ぶ】');
+console.log('【文字位置: 行の見た目の中心に来るようベースラインを補正】');
+// type='text'はdrawTextEl()でtextBaseline='alphabetic'固定(el.yは文字の下端)。
+// y=行の中心のまま置くと文字が中心より上に見えてしまうため、字高の0.35em分
+// だけベースラインを下げて見た目の中心を行の中心に合わせている。
+const rowTopY = added.find(e => e.type === 'rect').y;   // 表全体の上端
+const rectAll = added.find(e => e.type === 'rect');
+const boxHUsed = rectAll.h / termTexts.length;
+const term1Text = termTexts.find(t => t.text === '1');
+const fsUsed = term1Text.fs;
+const rawCenterY = rowTopY + boxHUsed / 2;
+ok(term1Text.y > rawCenterY, 'ベースラインは行の幾何中心より下にずらしてある(補正が効いている)');
+eq(term1Text.y - rawCenterY, fsUsed * 0.35, '補正量は文字サイズの0.35倍');
+
+
 const termYs = ['1','2','3'].map(n => termTexts.find(t => t.text === n).y);
 ok(termYs[0] < termYs[1] && termYs[1] < termYs[2], '番号1→2→3が上から下の順で並ぶ');
 eq(new Set(termTexts.map(t => t.x)).size, 1, '番号列のx座標は全行で同じ(横には並ばない)');
