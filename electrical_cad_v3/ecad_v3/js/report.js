@@ -757,17 +757,95 @@ function showTerminals() {
   const groups = groupTerminalsByDevice(rows);
   let html = `<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">`
     + `全${state.pages.length}ページ集計。端子は${rows.length}点、端子台は${groups.size}台。`
-    + `位置は「ページ/区画」で表示します(例: 2/B3)。</p>`;
+    + `位置は「ページ/区画」で表示します(例: 2/B3)。`
+    + `<br>行をドラッグすると並べ替えできます。並べ替えた順で「番号を振り直す」と端子番号が1から振り直されます。</p>`;
   groups.forEach((list, dev) => {
     html += `<p style="font-size:11px;font-weight:600;margin:8px 0 3px">${dev}`
-      + `<span style="color:var(--fg3);font-weight:400">（${list.length}点）</span></p>`;
-    html += `<table class="tbl"><tr><th>No</th><th>端子番号</th><th>型式</th><th>位置</th></tr>`
+      + `<span style="color:var(--fg3);font-weight:400">（${list.length}点）</span>`
+      + `<button class="fp-btn" style="margin-left:8px;font-size:10px;padding:1px 8px"`
+      + ` onclick="renumberTerminals('${String(dev).replace(/'/g, "\\'")}')">この順で番号を振り直す</button></p>`;
+    html += `<table class="tbl" data-tbdev="${dev}"><tr><th style="width:22px"></th><th>No</th><th>端子番号</th><th>型式</th><th>位置</th></tr>`
       + list.map((r, i) =>
-        `<tr><td>${i + 1}</td><td>${r.el.label || ''}</td>`
+        `<tr draggable="true" data-elid="${r.el.id}"`
+        + ` ondragstart="tbDragStart(event,'${r.el.id}')" ondragover="tbDragOver(event)"`
+        + ` ondrop="tbDrop(event,'${r.el.id}')" ondragend="tbDragEnd(event)"`
+        + ` style="cursor:grab">`
+        + `<td style="color:var(--fg4);text-align:center">⋮⋮</td>`
+        + `<td>${i + 1}</td><td>${r.el.label || ''}</td>`
         + `<td>${r.el.partModel || ''}</td><td>${r.loc}</td></tr>`).join('')
       + `</table>`;
   });
   _reportOpen('term', '端子台一覧', html, exportTermCSV);
+}
+
+// ================================================================
+// 端子表での並べ替えと番号の振り直し（2026-08-22）
+// ----------------------------------------------------------------
+// 盛田さんの要望:
+//   「デバイスだけ指定しとけばあとは自動番号振りして、端子表で並びを変えたら
+//     その順番で番号振り直せるか？」
+// 図面上の位置からは並び順を決められない（ページを跨ぐ・同じページでも書いた
+// 位置で先頭が変わる）ため、端子表を並び順の正とする。並べ替えた結果は
+// el.tbOrder に保存し、collectTerminals() がそれに従って並べる。
+//
+// 番号の振り直しは「表示されている順に1から」振る単機能。これで
+//   ・新規の端子台に一気に番号を振る
+//   ・途中に端子を挿入して以降を繰り上げる
+//   ・端子台ごと番号を振り直す
+// のいずれもまかなえる。
+// ================================================================
+
+let _tbDragId = null;
+
+function tbDragStart(ev, elId) {
+  _tbDragId = elId;
+  if (ev.dataTransfer) { ev.dataTransfer.effectAllowed = 'move'; }
+  if (ev.currentTarget && ev.currentTarget.style) ev.currentTarget.style.opacity = '0.4';
+}
+
+function tbDragOver(ev) {
+  ev.preventDefault();
+  if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move';
+}
+
+function tbDragEnd(ev) {
+  if (ev.currentTarget && ev.currentTarget.style) ev.currentTarget.style.opacity = '';
+  _tbDragId = null;
+}
+
+// ドラッグした端子を、落とした先の端子の位置へ移動する。
+function tbDrop(ev, targetId) {
+  ev.preventDefault();
+  const dragId = _tbDragId;
+  _tbDragId = null;
+  if (!dragId || dragId === targetId) return;
+  if (typeof pushH === 'function') pushH();
+  reorderTerminal(dragId, targetId);
+  if (typeof draw === 'function') draw();
+  showTerminals();          // 並べ替え後の順で描き直す
+}
+
+// 並び順の実処理。現在の並びの中で dragId を targetId の位置へ差し込み、
+// 全端子に tbOrder を振り直す（欠番や重複が残らないようにするため）。
+function reorderTerminal(dragId, targetId) {
+  const rows = collectTerminals();
+  const from = rows.findIndex(r => String(r.el.id) === String(dragId));
+  const to   = rows.findIndex(r => String(r.el.id) === String(targetId));
+  if (from < 0 || to < 0) return;
+  const moved = rows.splice(from, 1)[0];
+  rows.splice(to, 0, moved);
+  rows.forEach((r, i) => { r.el.tbOrder = i; });
+}
+
+// 指定デバイスの端子番号を、表示されている順に1から振り直す。
+function renumberTerminals(dev) {
+  const groups = groupTerminalsByDevice(collectTerminals());
+  const list = groups.get(dev);
+  if (!list || !list.length) return;
+  if (typeof pushH === 'function') pushH();
+  list.forEach((r, i) => { r.el.label = String(i + 1); });
+  if (typeof draw === 'function') draw();
+  showTerminals();
 }
 
 function exportTermCSV() {

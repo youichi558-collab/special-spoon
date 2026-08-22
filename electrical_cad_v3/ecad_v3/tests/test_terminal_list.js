@@ -86,5 +86,65 @@ vm.runInContext([
 ].join('\n'), sb2);
 eq(sb2.collectTerminals().length, 0, '●分岐点しか無ければ0点');
 
+
+// ------------------------------------------------------------------
+// 並べ替えと番号の振り直し（2026-08-22追加）
+// ------------------------------------------------------------------
+// 盛田さんの要望「デバイスだけ指定しとけばあとは自動番号振りして、端子表で
+// 並びを変えたらその順番で番号振り直せるか？」に対する実装の検証。
+//
+// 元データにidが無いので、テスト用にidを振ってから検証する。
+let _n = 0;
+state.pages.forEach(pg => pg.elements.forEach(e => { e.id = 'e' + (++_n); }));
+
+sandbox.pushed = 0;
+vm.runInContext([
+  'let _tbDragId = null;',
+  'function pushH(){ pushed++; }',
+  'function draw(){}',
+  'function exportTermCSV(){}',
+  pick(/function reorderTerminal\([\s\S]*?\n\}/),
+  pick(/function renumberTerminals\([\s\S]*?\n\}/),
+].join('\n'), sandbox);
+
+const ids = () => sandbox.collectTerminals().map(r => r.el.id);
+const labelsOf = dev => sandbox.groupTerminalsByDevice(sandbox.collectTerminals())
+  .get(dev).map(r => r.el.label);
+
+console.log('\n【reorderTerminal: 表での並べ替え】');
+// 前段のテストで付いた tbOrder を消して素の状態に戻す
+state.pages.forEach(pg => pg.elements.forEach(e => { delete e.tbOrder; }));
+eq(ids(), ['e1', 'e2', 'e5', 'e6', 'e7'], '並べ替え前はページ順→配置順');
+
+// e5(2ページ目のTB1端子「3」)を先頭(e1の位置)へドラッグした想定
+sandbox.reorderTerminal('e5', 'e1');
+eq(ids(), ['e5', 'e1', 'e2', 'e6', 'e7'], 'ページをまたいで先頭へ移動できる');
+eq(sandbox.collectTerminals().map(r => r.el.tbOrder), [0, 1, 2, 3, 4],
+   '全端子に連番のtbOrderが振り直される(欠番・重複なし)');
+
+sandbox.reorderTerminal('e5', 'e6');   // 後ろ方向へ
+eq(ids(), ['e1', 'e2', 'e6', 'e5', 'e7'], '後ろ方向へも移動できる');
+
+console.log('\n【renumberTerminals: 並べ替えた順で番号を振り直す】');
+state.pages.forEach(pg => pg.elements.forEach(e => { delete e.tbOrder; }));
+sandbox.reorderTerminal('e5', 'e1');           // TB1を 3→1→2 の並びにする
+eq(labelsOf('TB1'), ['3', '1', '2'], '振り直す前は並びと端子番号が不一致');
+
+sandbox.pushed = 0;
+sandbox.renumberTerminals('TB1');
+eq(labelsOf('TB1'), ['1', '2', '3'], '表示順どおり1から振り直される');
+eq(sandbox.groupTerminalsByDevice(sandbox.collectTerminals()).get('TB1').map(r => r.el.id),
+   ['e5', 'e1', 'e2'], '並び順自体は変わらない(番号だけ振り直す)');
+eq(sandbox.pushed, 1, '履歴が積まれる(undoで戻せる)');
+
+console.log('\n【他のデバイスに影響しない】');
+eq(labelsOf('TB2'), ['1'], 'TB1を振り直してもTB2は変わらない');
+eq(labelsOf('(デバイス未設定)'), ['X'], 'デバイス未設定の端子も勝手に振り直さない');
+
+console.log('\n【存在しないデバイスを指定しても壊れない】');
+sandbox.pushed = 0;
+sandbox.renumberTerminals('存在しないTB');
+eq(sandbox.pushed, 0, '対象が無ければ何もしない(履歴も積まない)');
+
 console.log(ng === 0 ? '\n全て成功' : `\n${ng}件失敗`);
 process.exit(ng === 0 ? 0 : 1);
