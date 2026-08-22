@@ -274,10 +274,19 @@ function insertTerminalBlockDiagram(dev) {
   if (!rows.length) return;
   if (typeof pushH === 'function') pushH();
 
-  const G = state.G || 10;
-  const boxW = G * 6;      // 端子1個分の箱の幅
-  const boxH = G * 2;      // 端子1個分の箱の高さ
-  const capH = G * 2;      // キャプション(デバイス名)の行の高さ
+  // サイズは「図面上の実寸(mm)」を基準に決める。world単位はmm×sc(図枠の拡大率)
+  // なので、sc倍しておけば紙面上の見た目の大きさが図枠のスケールによらず一定になる。
+  // 目標は1端子=5mm。既定のA3横(297×210・余白10・表題欄30)なら作図領域の高さは
+  // 約160mmなので、5mm/行で32行入る(盛田さんの「30〜40行入れたい」に収まる数)。
+  // 図枠が無いページ(表紙等)ではsc=2を仮定する。
+  const fr = state.page && state.page.frameObj;
+  const sc = (fr && fr.sc) || 2;
+  const mmPerRow = 5;
+  const boxW = 20 * sc;        // 端子1個分の箱の幅(20mm相当)
+  const boxH = mmPerRow * sc;  // 端子1個分の箱の高さ(5mm相当)
+  const capH = boxH;           // キャプション(デバイス名)の行の高さ
+  const colX = boxW * 0.5;     // 番号列と線番列の境界(中央で2分割)
+  const fs = 2.5 * sc;         // 文字サイズ(2.5mm相当。箱の高さの半分程度)
 
   // 挿入位置は現在の画面中心(ワールド座標)。挿入後はドラッグで動かせる。
   const cv = document.getElementById('cv');
@@ -286,14 +295,25 @@ function insertTerminalBlockDiagram(dev) {
 
   const layer = activeLayer();
   const els = [];
+  const totalH = boxH * rows.length;
+  const top = y0 + capH;
 
-  els.push({ id: genId('el'), type:'text', x:x0, y:y0, text: String(dev), fs:12, layer });
+  els.push({ id: genId('el'), type:'text', x:x0, y:y0, text: String(dev), fs:fs*1.3, layer });
+
+  // 外枠(端子台全体の1つの箱)
+  els.push({ id: genId('el'), type:'rect', x:x0, y:top, w:boxW, h:totalH, layer });
+  // 行の区切り(横線。端子と端子の間)
+  for (let i = 1; i < rows.length; i++) {
+    const y = top + i * boxH;
+    els.push({ id: genId('el'), type:'fline', x1:x0, y1:y, x2:x0+boxW, y2:y, layer });
+  }
+  // 番号列と線番列の区切り(縦線。全高を貫通させる)
+  els.push({ id: genId('el'), type:'fline', x1:x0+colX, y1:top, x2:x0+colX, y2:top+totalH, layer });
 
   rows.forEach((r, i) => {
-    const y = y0 + capH + i * boxH;
-    els.push({ id: genId('el'), type:'rect', x:x0, y, w:boxW, h:boxH, layer });
-    els.push({ id: genId('el'), type:'text', x:x0 + G*0.5,       y:y + boxH/2, text: r.termNo || '-', fs:9, layer });
-    els.push({ id: genId('el'), type:'text', x:x0 + boxW*0.55,   y:y + boxH/2, text: r.conns.length ? r.conns.join('/') : '', fs:9, layer });
+    const y = top + i * boxH;
+    els.push({ id: genId('el'), type:'text', x:x0 + boxW*0.08,      y:y + boxH/2, text: r.termNo || '-', fs, layer });
+    els.push({ id: genId('el'), type:'text', x:x0 + colX + boxW*0.08, y:y + boxH/2, text: r.conns.length ? r.conns.join('/') : '', fs, layer });
   });
 
   state.elements.push(...els);

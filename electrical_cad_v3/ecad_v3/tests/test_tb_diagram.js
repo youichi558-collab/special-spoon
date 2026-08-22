@@ -54,9 +54,10 @@ sandbox.state = {
 };
 sandbox.state.elements = sandbox.state.pages[0].elements;
 sandbox.state.wires = sandbox.state.pages[0].wires;
+sandbox.state.page = sandbox.state.pages[0];   // 実アプリのstate.pageゲッターに相当
 
 // ------------------------------------------------------------------
-console.log('【insertTerminalBlockDiagram: 端子3個ぶんの箱とキャプションを生成】');
+console.log('【insertTerminalBlockDiagram: 端子3個ぶんの表構造(外枠+仕切り線)を生成】');
 const before = sandbox.state.elements.length;
 sandbox._pushed = 0;
 sandbox.insertTerminalBlockDiagram('TB1');
@@ -68,13 +69,27 @@ const caption = added.find(e => e.type === 'text' && e.text === 'TB1');
 ok(caption, 'デバイス名(TB1)がキャプションとして入る');
 
 const rects = added.filter(e => e.type === 'rect');
-eq(rects.length, 3, '端子3個ぶんの箱(rect)ができる');
+eq(rects.length, 1, '外枠は1つの箱(rect)だけ(端子ごとにバラバラの箱を積まない)');
+
+const flines = added.filter(e => e.type === 'fline');
+// 横の仕切り線(行と行の間、端子3個なら2本) + 縦の仕切り線(番号/線番の境界、1本)
+eq(flines.length, 3, '横の仕切り線2本+縦の仕切り線1本、計3本');
+
+const vLine = flines.find(f => f.x1 === f.x2);
+const hLines = flines.filter(f => f.y1 === f.y2);
+ok(vLine, '縦線(x1===x2)が1本ある');
+eq(hLines.length, 2, '横線(y1===y2)が2本ある(端子3個の間仕切り)');
 
 const texts = added.filter(e => e.type === 'text' && e.text !== 'TB1');
-eq(texts.length, 6, '各箱に番号+線番の2テキストずつ、計6個');
+eq(texts.length, 6, '各行に番号+線番の2テキストずつ、計6個');
 
 // ------------------------------------------------------------------
-console.log('【中身: 左に番号、右に線番】');
+console.log('【縦線は表の全高を貫通する】');
+ok(vLine.y1 === rects[0].y && vLine.y2 === rects[0].y + rects[0].h,
+   '縦の仕切り線が外枠の上端から下端まで通っている(途中で切れていない)');
+
+// ------------------------------------------------------------------
+console.log('【中身: 左に番号、右に線番、縦線を挟んで両側に分かれる】');
 const termTexts = texts.filter(t => ['1','2','3'].includes(t.text));
 eq(termTexts.map(t => t.text), ['1','2','3'], '番号が上から1,2,3の順で入る(tbOrder順)');
 
@@ -86,12 +101,14 @@ const row1Term = termTexts.find(t => t.text === '1');
 const row1Wire = wireTexts.find(t => t.text === 'W101');
 ok(row1Term.y === row1Wire.y, '同じ端子の番号と線番は同じ行(同じy)に並ぶ');
 ok(row1Term.x < row1Wire.x, '番号が左、線番が右に配置される');
+ok(row1Term.x < vLine.x1, '番号のテキストは縦の仕切り線より左にある');
+ok(row1Wire.x > vLine.x1, '線番のテキストは縦の仕切り線より右にある');
 
 // ------------------------------------------------------------------
-console.log('【縦配置: 箱が上から下へ積み上がる】');
-const ys = rects.map(r => r.y).sort((a, b) => a - b);
-ok(ys[0] < ys[1] && ys[1] < ys[2], '箱が縦方向に順番に並ぶ');
-eq(new Set(rects.map(r => r.x)).size, 1, '箱のx座標は全部同じ(横には並ばない)');
+console.log('【縦配置: 各行が上から下へ順番に並ぶ】');
+const termYs = ['1','2','3'].map(n => termTexts.find(t => t.text === n).y);
+ok(termYs[0] < termYs[1] && termYs[1] < termYs[2], '番号1→2→3が上から下の順で並ぶ');
+eq(new Set(termTexts.map(t => t.x)).size, 1, '番号列のx座標は全行で同じ(横には並ばない)');
 
 // ------------------------------------------------------------------
 console.log('【挿入位置: 画面中心(ワールド座標)から始まる】');
@@ -114,6 +131,45 @@ const hasTB1AsPart = bomRows.some(r => (r.refs || []).includes('TB1'));
 // 追加したrect/textが"別の部品"として増えていないかだけを見る。
 const junctionOnlyCount = bomRows.filter(r => (r.refs || []).includes('TB1')).length;
 eq(junctionOnlyCount, 1, 'TB1のBOM行は1つのまま(挿入した図が別部品として二重計上されない)');
+
+// ------------------------------------------------------------------
+console.log('【サイズ: 図面の実寸(mm)を基準にする(盛田さんの「30〜40行入れたい」への対応)】');
+// 前回(固定world単位)は1行10mm(G*2=20 world単位)で、A3の作図領域(約160mm)に
+// 16行しか入らなかった。図枠のsc(mm→world換算率)を使い、紙面上で1行5mm相当に
+// 固定することで、既定のA3横(297×210・余白10・表題欄30、作図領域高さ約160mm)
+// なら5mm/行で32行入るようにした(30〜40行の範囲に収まる)。
+sandbox.state.pages[0].frameObj = { sc: 2, wMM: 297, hMM: 210, mg: 10, thMM: 30 };
+sandbox.insertTerminalBlockDiagram('TB1');
+const added2 = sandbox.state.elements.slice(-(3 /*横線+縦線*/ + 1 /*外枠*/ + 6 /*テキスト*/ + 1 /*キャプション*/));
+const rect2 = added2.find(e => e.type === 'rect');
+eq(rect2.h / 3, 10, '1行の高さは10 world単位(=sc2×5mm)。3行で合計30');
+
+// 作図領域(約160mm)に収まる行数を計算し、目標の30〜40行の範囲にあることを確認
+const drawHmm = (210 - 10*2 - 30);           // innerH(mm) - 表題欄(mm)
+const rowsPerSheet = drawHmm / 5;            // 5mm/行
+ok(rowsPerSheet >= 30 && rowsPerSheet <= 40,
+   `既定A3横で1枚に入る行数が30〜40の範囲(実際: ${rowsPerSheet}行)`);
+
+// 図枠が大きい(A1等)ほど、同じ実寸(5mm/行)を保ったまま1枚に入る行数が増える
+sandbox.state.pages[0].frameObj = { sc: 2, wMM: 841, hMM: 594, mg: 10, thMM: 30 };
+const beforeA1 = sandbox.state.elements.length;
+sandbox.insertTerminalBlockDiagram('TB1');
+const rectA1 = sandbox.state.elements.slice(beforeA1).find(e => e.type === 'rect');
+eq(rectA1.h, rect2.h, '図枠のサイズが変わっても1行の実寸(world単位)は変わらない(scが同じなら)');
+
+// scが違う図枠(縮尺が変わる)なら、1行のworld単位サイズも比例して変わる
+sandbox.state.pages[0].frameObj = { sc: 4, wMM: 297, hMM: 210, mg: 10, thMM: 30 };
+const beforeSc4 = sandbox.state.elements.length;
+sandbox.insertTerminalBlockDiagram('TB1');
+const rectSc4 = sandbox.state.elements.slice(beforeSc4).find(e => e.type === 'rect');
+eq(rectSc4.h, rect2.h * 2, 'scが2倍(sc4)なら1行のworld単位も2倍(紙面上の実寸は変わらない)');
+
+// 図枠が無いページ(表紙等)ではsc=2を仮定してフォールバックする
+sandbox.state.pages[0].frameObj = null;
+const beforeNoFrame = sandbox.state.elements.length;
+sandbox.insertTerminalBlockDiagram('TB1');
+const rectNoFrame = sandbox.state.elements.slice(beforeNoFrame).find(e => e.type === 'rect');
+eq(rectNoFrame.h, rect2.h, '図枠が無ければsc=2を仮定し、既定A3と同じ実寸になる');
 
 console.log(ng ? `\n${ng}件失敗` : '\n全て成功');
 process.exit(ng ? 1 : 0);
