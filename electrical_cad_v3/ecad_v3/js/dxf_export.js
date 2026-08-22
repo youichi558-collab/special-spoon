@@ -377,7 +377,18 @@ function exportDXF(){
     (s.shapes||[]).forEach(sh=>{
       if(sh.t==='L') bL(sh.x1,sh.y1,sh.x2,sh.y2);
       else if(sh.t==='C') bC(sh.cx,sh.cy,sh.r);
-      else if(sh.t==='A') bA(sh.cx,sh.cy,sh.r,sh.sa,sh.ea);
+      else if(sh.t==='A') {
+        // カスタムシンボルのshapesはcanvas角度(Y下向き、ccwで向き任意)で保持している。
+        // symDefs(標準シンボル)はDXF規約(Y上向き・ARCは常にCCW)に合わせて角度を
+        // 手作業で選んであるためそのままでよいが、こちらは実際に描いたarc要素由来
+        // なので、単体arc要素のDXF出力(603〜608行目)と同じ規則で変換が必要:
+        //   ①Y反転(canvas Y下向き→DXF Y上向き)のため角度を反転
+        //   ②DXF ARCは常にCCW前提なので、元がccw=false(時計回り)ならsa/eaを入れ替える
+        const dxfAngDeg = a => ((-a)%360+360)%360;
+        let sa=dxfAngDeg(sh.sa||0), ea=dxfAngDeg(sh.ea||0);
+        if(!sh.ccw){const t=sa;sa=ea;ea=t;}
+        bA(sh.cx,sh.cy,sh.r,sa,ea);
+      }
       else if(sh.t==='R') bR(sh.x,sh.y,sh.x+sh.w,sh.y+sh.h);
       else if(sh.t==='P' && sh.pts && sh.pts.length>1) bP(sh.pts, sh.cl);
       else if(sh.t==='T') bT(sh.x,sh.y,sh.fs||14,sh.text||'');

@@ -40,7 +40,7 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc, lineStyle, lwOverride, symS
         ctx.lineWidth = (lwOverride || s.lineWidth || (isSel ? _defLw * 3 : _defLw)) * sInv;
         if (s.t==='L') { ctx.beginPath(); ctx.moveTo(s.x1,s.y1); ctx.lineTo(s.x2,s.y2); ctx.stroke(); }
         else if (s.t==='C') { ctx.beginPath(); ctx.arc(s.cx,s.cy,s.r,0,Math.PI*2); ctx.stroke(); }
-        else if (s.t==='A') { ctx.beginPath(); ctx.arc(s.cx,s.cy,s.r, s.sa*Math.PI/180, s.ea*Math.PI/180, false); ctx.stroke(); }
+        else if (s.t==='A') { ctx.beginPath(); ctx.arc(s.cx,s.cy,s.r, s.sa*Math.PI/180, s.ea*Math.PI/180, !!s.ccw); ctx.stroke(); }
         else if (s.t==='P' && s.pts && s.pts.length) {
           ctx.beginPath(); ctx.moveTo(s.pts[0][0],s.pts[0][1]);
           for (let k=1;k<s.pts.length;k++) ctx.lineTo(s.pts[k][0],s.pts[k][1]);

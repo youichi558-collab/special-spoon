@@ -1560,8 +1560,11 @@ function flattenSymbolElToShapes(el, cS) {
     } else if (s.t === 'A') {
       const c = srXformPt(s.cx, s.cy, el);
       let sa = srXformAngle(s.sa, el), ea = srXformAngle(s.ea, el);
-      if (flipped) { const tmp = sa; sa = ea; ea = tmp; }
-      out.push({ t:'A', cx:c.x, cy:c.y, r: s.r * sc, sa, ea, lineWidth:s.lineWidth });
+      let ccw = !!s.ccw;
+      // 反転(flipH/flipVが奇数回)は弧の向きも反転させる。sa/eaの入れ替えだけでは
+      // 足りず、回転方向(ccw)も一緒に反転させないと弧が反対側に描かれる。
+      if (flipped) { const tmp = sa; sa = ea; ea = tmp; ccw = !ccw; }
+      out.push({ t:'A', cx:c.x, cy:c.y, r: s.r * sc, sa, ea, ccw, lineWidth:s.lineWidth });
     } else if (s.t === 'P' && s.pts) {
       out.push({ t:'P', pts: s.pts.map(p => { const q = srXformPt(p[0], p[1], el); return [q.x, q.y]; }), cl: s.cl });
     } else if (s.t === 'R') {
@@ -1604,7 +1607,7 @@ function srWorldShapesForEl(el) {
     { t:'L', x1:el.x2, y1:el.y2, x2:el.x3, y2:el.y3, lineWidth:srEffectiveLW(el) },
     { t:'L', x1:el.x3, y1:el.y3, x2:el.x1, y2:el.y1, lineWidth:srEffectiveLW(el) },
   ];
-  if (el.type === 'arc') return [{ t:'A', cx:el.x, cy:el.y, r:el.r||0, sa:(el.startA||0)*180/Math.PI, ea:(el.endA||0)*180/Math.PI, lineWidth:srEffectiveLW(el) }];
+  if (el.type === 'arc') return [{ t:'A', cx:el.x, cy:el.y, r:el.r||0, sa:(el.startA||0)*180/Math.PI, ea:(el.endA||0)*180/Math.PI, ccw:!!el.ccw, lineWidth:srEffectiveLW(el) }];
   if (el.type === 'text') return [{ t:'T', text:el.text||'', x:el.x, y:el.y, fs:el.fs||14 }];
   // 配置済みシンボル(カスタム/ライブラリ)インスタンス → 実際の配置で平坦化
   const cS = state.customSymbols.find(s => s.type === el.type);
@@ -1665,7 +1668,7 @@ function srPasteFromClipboard() {
         // 半径が小さい弧ほど丸め誤差が相対的に大きくなり、歪んで見える不具合があった。
         // 配置時の描画(symbols.js)は弧をネイティブでサポートしているので、
         // 分解せずそのまま持たせる(座標・半径は丸め、角度sa/eaは丸めない)。
-        shapes.push({t:'A', cx:tx(s.cx), cy:ty(s.cy), r:Math.round(s.r*scale), sa:s.sa, ea:s.ea, lineWidth:_lw});
+        shapes.push({t:'A', cx:tx(s.cx), cy:ty(s.cy), r:Math.round(s.r*scale), sa:s.sa, ea:s.ea, ccw:!!s.ccw, lineWidth:_lw});
       }
     });
   });
@@ -1847,7 +1850,7 @@ function srDrawShape(c, s, color) {
     c.fillText(s.text, T(s.x), TY(s.y));
   } else if (s.t==='A') {
     c.lineWidth = lw; c.beginPath();
-    c.arc(T(s.cx),TY(s.cy),Math.max(1,s.r*_srZoom), (s.sa||0)*Math.PI/180, (s.ea||0)*Math.PI/180, false);
+    c.arc(T(s.cx),TY(s.cy),Math.max(1,s.r*_srZoom), (s.sa||0)*Math.PI/180, (s.ea||0)*Math.PI/180, !!s.ccw);
     c.stroke();
   } else if (s.t==='P' && s.pts && s.pts.length) {
     c.lineWidth = lw; c.beginPath();
@@ -2054,7 +2057,7 @@ function saveCustomSymbol() {
     _srShapes.forEach(s => {
       if (s.t==='L') { tctx.beginPath(); tctx.moveTo(s.x1,s.y1); tctx.lineTo(s.x2,s.y2); tctx.stroke(); }
       else if (s.t==='C') { tctx.beginPath(); tctx.arc(s.cx,s.cy,s.r,0,Math.PI*2); tctx.stroke(); }
-      else if (s.t==='A') { tctx.beginPath(); tctx.arc(s.cx,s.cy,s.r,(s.sa||0)*Math.PI/180,(s.ea||0)*Math.PI/180,false); tctx.stroke(); }
+      else if (s.t==='A') { tctx.beginPath(); tctx.arc(s.cx,s.cy,s.r,(s.sa||0)*Math.PI/180,(s.ea||0)*Math.PI/180,!!s.ccw); tctx.stroke(); }
       else if (s.t==='R') { tctx.strokeRect(s.x,s.y,s.w,s.h); }
       else if (s.t==='P' && s.pts && s.pts.length) {
         tctx.beginPath(); tctx.moveTo(s.pts[0][0],s.pts[0][1]);
@@ -2099,7 +2102,7 @@ function generateSymPreview(shapes, bbox) {
   shapes.forEach(s => {
     if (s.t==='L') { tctx.beginPath(); tctx.moveTo(s.x1,s.y1); tctx.lineTo(s.x2,s.y2); tctx.stroke(); }
     else if (s.t==='C') { tctx.beginPath(); tctx.arc(s.cx,s.cy,s.r,0,Math.PI*2); tctx.stroke(); }
-    else if (s.t==='A') { tctx.beginPath(); tctx.arc(s.cx,s.cy,s.r,(s.sa||0)*Math.PI/180,(s.ea||0)*Math.PI/180,false); tctx.stroke(); }
+    else if (s.t==='A') { tctx.beginPath(); tctx.arc(s.cx,s.cy,s.r,(s.sa||0)*Math.PI/180,(s.ea||0)*Math.PI/180,!!s.ccw); tctx.stroke(); }
     else if (s.t==='R') { tctx.strokeRect(s.x,s.y,s.w,s.h); }
     else if (s.t==='P' && s.pts && s.pts.length) {
       tctx.beginPath(); tctx.moveTo(s.pts[0][0],s.pts[0][1]);
