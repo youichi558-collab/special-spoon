@@ -2267,11 +2267,28 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>半径</label><input type="number" id="pp-jr" value="${el.r||2}" min="1" max="30" step="1"></div>`;
     html += `<div class="pp-row"><label>見た目</label><select id="pp-jstyle"><option value="dot"${(el.style||'dot')==='dot'?' selected':''}>●塗りつぶし</option><option value="circle"${el.style==='circle'?' selected':''}>○白丸</option><option value="dbl"${el.style==='dbl'?' selected':''}>◎二重丸</option></select></div>`;
     if (isTerm) {
+      // 【2026-08-22】盛田さんの「端子番号がうまく書けない」「調整が効かない」への対応。
+      // 位置補正XYはあったが文字サイズ・色が無く、重なったり読めなかったりしても
+      // 調整できなかった。シンボル側と同じ devFs/devColor/labelFs/labelColor を持たせる。
+      //
+      // デバイス表示ON/OFFは、盛田さんの書き方に合わせるためのもの。
+      // 「TB1-1,TB1-2 と全部書くと見づらいので TB1-1,-2 と書く」という運用で、
+      // 全端子にTB1が出ると邪魔になる。先頭の端子だけONにして「TB1 1, 2, 3」と
+      // 出す。ページを跨ぐ・同じページでも書いた位置で先頭が変わるため、
+      // どれを先頭とみなすかは機械的に決められない。よって自動判定はせず手動。
+      // 既定はOFF。同じデバイスで複数ONにしてよい(かたまりごとの先頭に出す)。
+      // 集計側(端子台表・部品表)はこのON/OFFを見ないので、何個表示しても
+      // TB1は1台として扱われる。
       html += `<div class="pp-row"><label>デバイス</label><input type="text" id="pp-jref" value="${el.partRef||''}" placeholder="例: TB1"></div>`;
+      html += `<div class="pp-row"><label>デバイスを図面に表示</label><input type="checkbox" id="pp-jrefshow" ${(el.showDev!==undefined?el.showDev:true)?'checked':''}></div>`;
+      html += `<div class="pp-row"><label>デバイス文字サイズ</label><input type="number" id="pp-jdfs" value="${el.devFs!==undefined?el.devFs:''}" placeholder="自動" min="4" max="48" step="1"></div>`;
+      html += `<div class="pp-row"><label>デバイス文字色</label><input type="color" id="pp-jdcolor" value="${el.devColor||'#555555'}"></div>`;
       html += `<div class="pp-row"><label>デバイス位置X補正</label><input type="number" id="pp-jdox" value="${el.devOffX!==undefined?el.devOffX:''}" placeholder="自動" step="1"></div>`;
       html += `<div class="pp-row"><label>デバイス位置Y補正</label><input type="number" id="pp-jdoy" value="${el.devOffY!==undefined?el.devOffY:''}" placeholder="自動" step="1"></div>`;
       html += `<div class="pp-row"><label>型式(BOM用)</label><input type="text" id="pp-jmodel" value="${el.partModel||''}" placeholder="例: 端子台 M4"></div>`;
       html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-jlabel" value="${el.label||''}" placeholder="例: A, 1"></div>`;
+      html += `<div class="pp-row"><label>端子番号文字サイズ</label><input type="number" id="pp-jlfs" value="${el.labelFs!==undefined?el.labelFs:''}" placeholder="自動" min="4" max="48" step="1"></div>`;
+      html += `<div class="pp-row"><label>端子番号文字色</label><input type="color" id="pp-jlcolor" value="${el.labelColor||'#555555'}"></div>`;
       html += `<div class="pp-row"><label>端子番号位置X補正</label><input type="number" id="pp-jlox" value="${el.labelOffX!==undefined?el.labelOffX:''}" placeholder="自動" step="1"></div>`;
       html += `<div class="pp-row"><label>端子番号位置Y補正</label><input type="number" id="pp-jloy" value="${el.labelOffY!==undefined?el.labelOffY:''}" placeholder="自動" step="1"></div>`;
     }
@@ -2686,6 +2703,8 @@ function applyRightPanel() {
     const val = e ? e.value : '';
     return val || cur;
   };
+  // チェックボックスの状態を読む（欄が無ければfalse）
+  const chk = id => { const e = document.getElementById(id); return e ? !!e.checked : false; };
   if (el && el.type === 'junction') {
     if (v('pp-jx')!=='') { el.x = parseFloat(v('pp-jx')); el.y = parseFloat(v('pp-jy')); }
     if (v('pp-jr')!=='') el.r = Math.max(1, parseFloat(v('pp-jr')));
@@ -2694,6 +2713,11 @@ function applyRightPanel() {
       el.label     = v('pp-jlabel');
       el.partRef   = v('pp-jref');
       el.partModel = v('pp-jmodel');
+      el.showDev   = !!chk('pp-jrefshow');
+      if (v('pp-jdfs')!=='')   el.devFs = parseFloat(v('pp-jdfs'));     else delete el.devFs;
+      if (v('pp-jlfs')!=='')   el.labelFs = parseFloat(v('pp-jlfs'));   else delete el.labelFs;
+      el.devColor   = v('pp-jdcolor') || undefined;
+      el.labelColor = v('pp-jlcolor') || undefined;
       if (v('pp-jdox')!=='') el.devOffX = parseFloat(v('pp-jdox')); else delete el.devOffX;
       if (v('pp-jdoy')!=='') el.devOffY = parseFloat(v('pp-jdoy')); else delete el.devOffY;
       if (v('pp-jlox')!=='') el.labelOffX = parseFloat(v('pp-jlox')); else delete el.labelOffX;
@@ -2702,6 +2726,8 @@ function applyRightPanel() {
       // 分岐点(●)には端子情報は不要
       delete el.label; delete el.partRef; delete el.partModel;
       delete el.devOffX; delete el.devOffY; delete el.labelOffX; delete el.labelOffY;
+      delete el.showDev; delete el.devFs; delete el.labelFs;
+      delete el.devColor; delete el.labelColor;
     }
     el.layer = vLayer(el.layer);
   } else if (el && el.type === 'text') {
@@ -2845,7 +2871,7 @@ function applyRightPanel() {
 // まとめて他のシンボルへ複製できるようにする。1個コピー→複数選択へまとめて貼り付け、も可能。
 const DEVICE_PROP_KEYS = [
   'label','labelAlign','labelColor','labelFs','labelOffX','labelOffY',
-  'partRef','devHide','devFs','devColor','devOffX','devOffY',
+  'partRef','devHide','showDev','devFs','devColor','devOffX','devOffY',
   'partModel','partVolt','showModel','modelFs','modelColor','modelOffX','modelOffY',
   'textRot',
 ];

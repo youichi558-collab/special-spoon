@@ -625,12 +625,16 @@ function exportDXF(){
         eCircle(layer,el.x,el.y,el.r||5);
         if(jStyle==='dbl') eCircle(layer,el.x,el.y,(el.r||5)*0.55);
       }
-      if(el.label && el.style!=='dot') eText(layer,el.x+(el.r||5)+4+(el.labelOffX||0),el.y+(el.labelOffY||0),11,el.label);
-      // デバイス表示(端子台のTB1等)。draw.jsのdrawJunctionElと同じ条件・位置式
-      // (state.showPartRef && !dot)。従来DXF出力に一切存在せず、画面には出るのに
-      // DXFに出ないというギャップの一因だった(2026-08-03)。
-      if(state.showPartRef && el.partRef && el.style!=='dot'){
-        eText(layer, el.x+(el.devOffX||0), el.y-(el.r||5)-6+(el.devOffY||0), 10, el.partRef);
+      // 端子番号。文字サイズは端子ごとの指定(labelFs)があればそれを使う。
+      // 「作業画面に表示されているものがそのまま出力される」の原則により、
+      // draw.jsのdrawJunctionElと同じ条件・位置・サイズにする(2026-08-22)。
+      if(el.label && el.style!=='dot') eText(layer,el.x+(el.r||5)+4+(el.labelOffX||0),el.y+(el.labelOffY||0),el.labelFs||11,el.label);
+      // デバイス表示(端子台のTB1等)。draw.jsのdrawJunctionElと同じ条件・位置式。
+      // 従来DXF出力に一切存在せず、画面には出るのにDXFに出ないというギャップの
+      // 一因だった(2026-08-03)。
+      // 2026-08-22: 端子は el.showDev がONのものだけ出すよう画面側と揃えた。
+      if(state.showPartRef && el.partRef && el.style!=='dot' && (el.showDev!==undefined?el.showDev:true)){
+        eText(layer, el.x+(el.devOffX||0), el.y-(el.r||5)-6+(el.devOffY||0), el.devFs||10, el.partRef);
       }
     } else if(el.type==='triangle'){
       eLine(layer,el.x1,el.y1,el.x2,el.y2);

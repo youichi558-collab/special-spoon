@@ -430,21 +430,34 @@ function drawJunctionEl(el, sel, lc) {
   ctx.restore();
 
   // 端子番号ラベル(常時表示、図面を読むための必須情報。分岐点(●)には表示しない)
+  // 文字サイズ・色は端子ごとに指定できる(未指定なら従来どおり11px・レイヤー色)。
+  // 盛田さんの「端子番号がうまく書けない=調整が効かない」への対応(2026-08-22)。
   if (el.label && style !== 'dot') {
     ctx.save();
-    ctx.fillStyle = c;
-    ctx.font = `${11/state.zoom}px sans-serif`;
+    ctx.fillStyle = el.labelColor || c;
+    ctx.font = `${(el.labelFs || 11)/state.zoom}px sans-serif`;
     ctx.textAlign = 'left';
     const lx = el.x + r + 4/state.zoom + (el.labelOffX||0);
     const ly = el.y + 4/state.zoom + (el.labelOffY||0);
     ctx.fillText(el.label, lx, ly);
     ctx.restore();
   }
-  // デバイス(TB1等、デバイス表示ON時のみ。分岐点(●)には表示しない)
-  if (state.showPartRef && !state.pdfSkipText && el.partRef && style !== 'dot') {
+  // デバイス(TB1等)。分岐点(●)には表示しない。
+  //
+  // 端子は el.showDev がONのものだけ出す(既定OFF)。盛田さんの書き方:
+  // 「TB1-1,TB1-2 と全部書くと見づらいので TB1-1,-2 と書く」に合わせ、
+  // かたまりの先頭だけONにして「TB1 1, 2, 3」と読ませるため。
+  // ページを跨ぐ・同じページでも書いた位置で先頭が変わるので自動判定はしない。
+  // 集計側(端子台表・部品表)はこのフラグを見ないため、表示が何個でもTB1は1台。
+  //
+  // 【後方互換】showDev が未定義の端子は従来どおり表示する。既定OFFにすると
+  // 既存図面のデバイス名が黙って消えてしまうため。新規に置いた端子には
+  // tools.js で showDev:false を明示的に入れている。
+  const showDev = (el.showDev !== undefined) ? el.showDev : true;
+  if (state.showPartRef && !state.pdfSkipText && el.partRef && style !== 'dot' && showDev) {
     ctx.save();
-    ctx.fillStyle = state.darkMode ? '#4da3ff' : '#1d6fb5';
-    ctx.font = `bold ${10/state.zoom}px sans-serif`;
+    ctx.fillStyle = el.devColor || (state.darkMode ? '#4da3ff' : '#1d6fb5');
+    ctx.font = `bold ${(el.devFs || 10)/state.zoom}px sans-serif`;
     ctx.textAlign = 'center';
     const dx = el.x + (el.devOffX||0);
     const dy = el.y - r - 6/state.zoom + (el.devOffY||0);

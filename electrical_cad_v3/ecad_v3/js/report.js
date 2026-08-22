@@ -5,7 +5,6 @@
 const REPORT_TABS = [
   { key:'bom',     label:'部品表',     call:'showBOM()' },
   { key:'wire',    label:'線番表',     call:'wireNoTable()' },
-  { key:'term',    label:'端子台一覧', call:'showTerminals()' },
   { key:'termtbl', label:'端子表',     call:'showTerminalTable()' },
   { key:'conntbl', label:'接続表',     call:'showConnTable()' },
   { key:'tbtbl',   label:'端子台表',   call:'showTBTable()' },
@@ -701,19 +700,22 @@ function exportRefCSV(devs){
   });
   dl(lines.join('\n'),'cross_reference.csv','text/csv');
 }
-// 端子台一覧。
+// 端子台の端子を集める共通ヘルパー。「端子台表」(showTBTable)から使う。
 //
-// 【2026-08-22 作り直し】盛田さんの指摘で判明した不具合。
-// 旧実装は state.elements から type==='terminal' のシンボルだけを拾っていたが、
-// 実際に図面へ配置している端子台の端子は type==='junction' かつ
-// style==='circle'(○) / 'dbl'(◎) のもの。つまり全く別のものを集計しており、
-// 端子を何個置いても「端子台がありません」と出る状態だった。
-// さらに旧実装は state.elements(=現在のページ)しか見ておらず、ページを
-// またぐ端子台に対応していなかった。
+// 【2026-08-22】もともと「端子台一覧」と「端子台表」という2つのタブが
+// どちらも○/◎の端子を集計しており、完全に重複していた。盛田さんの
+// 「端子台、端子表、端子台表とわけがわからん」「不要なものはなくせ」との
+// 指摘を受け、接続線番と未接続チェックを持つ「端子台表」に一本化し、
+// 「端子台一覧」タブは廃止した。ここに残した収集・グループ化の処理は
+// そのとき端子台表へ引き継いだもの。
+//
+// なお旧「端子台一覧」は type==='terminal' のシンボルを拾っており、実際に
+// 配置している端子(type==='junction' の circle/dbl)を1件も拾えていなかった。
+// さらに現在ページしか見ておらずページをまたぐ端子台にも未対応だった。
 //
 // 端子台は「TB1という1台に端子が複数」という構造なので、デバイス(partRef)で
-// グループ化して表示する。並び順は tbOrder(端子表で並べ替えた結果)があれば
-// それに従い、無ければ従来どおりページ順→配置順とする(既存図面との互換)。
+// グループ化する。並び順は tbOrder(端子台表で並べ替えた結果)があればそれに
+// 従い、無ければページ順→配置順とする(既存図面との互換)。
 function collectTerminals() {
   const out = [];
   state.pages.forEach((pg, pi) => {
@@ -746,46 +748,14 @@ function groupTerminalsByDevice(rows) {
   return g;
 }
 
-function showTerminals() {
-  const rows = collectTerminals();
-  if (!rows.length) {
-    _reportOpen('term', '端子台一覧',
-      '<p style="font-size:11px;color:var(--fg3)">端子台の端子がありません。'
-      + '<br>接続点を「○白丸」または「◎二重丸」にすると端子台の端子として扱われます。</p>', null);
-    return;
-  }
-  const groups = groupTerminalsByDevice(rows);
-  let html = `<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">`
-    + `全${state.pages.length}ページ集計。端子は${rows.length}点、端子台は${groups.size}台。`
-    + `位置は「ページ/区画」で表示します(例: 2/B3)。`
-    + `<br>行をドラッグすると並べ替えできます。並べ替えた順で「番号を振り直す」と端子番号が1から振り直されます。</p>`;
-  groups.forEach((list, dev) => {
-    html += `<p style="font-size:11px;font-weight:600;margin:8px 0 3px">${dev}`
-      + `<span style="color:var(--fg3);font-weight:400">（${list.length}点）</span>`
-      + `<button class="fp-btn" style="margin-left:8px;font-size:10px;padding:1px 8px"`
-      + ` onclick="renumberTerminals('${String(dev).replace(/'/g, "\\'")}')">この順で番号を振り直す</button></p>`;
-    html += `<table class="tbl" data-tbdev="${dev}"><tr><th style="width:22px"></th><th>No</th><th>端子番号</th><th>型式</th><th>位置</th></tr>`
-      + list.map((r, i) =>
-        `<tr draggable="true" data-elid="${r.el.id}"`
-        + ` ondragstart="tbDragStart(event,'${r.el.id}')" ondragover="tbDragOver(event)"`
-        + ` ondrop="tbDrop(event,'${r.el.id}')" ondragend="tbDragEnd(event)"`
-        + ` style="cursor:grab">`
-        + `<td style="color:var(--fg4);text-align:center">⋮⋮</td>`
-        + `<td>${i + 1}</td><td>${r.el.label || ''}</td>`
-        + `<td>${r.el.partModel || ''}</td><td>${r.loc}</td></tr>`).join('')
-      + `</table>`;
-  });
-  _reportOpen('term', '端子台一覧', html, exportTermCSV);
-}
-
 // ================================================================
-// 端子表での並べ替えと番号の振り直し（2026-08-22）
+// 端子台表での並べ替えと番号の振り直し（2026-08-22）
 // ----------------------------------------------------------------
 // 盛田さんの要望:
 //   「デバイスだけ指定しとけばあとは自動番号振りして、端子表で並びを変えたら
 //     その順番で番号振り直せるか？」
 // 図面上の位置からは並び順を決められない（ページを跨ぐ・同じページでも書いた
-// 位置で先頭が変わる）ため、端子表を並び順の正とする。並べ替えた結果は
+// 位置で先頭が変わる）ため、端子台表を並び順の正とする。並べ替えた結果は
 // el.tbOrder に保存し、collectTerminals() がそれに従って並べる。
 //
 // 番号の振り直しは「表示されている順に1から」振る単機能。これで
@@ -822,7 +792,7 @@ function tbDrop(ev, targetId) {
   if (typeof pushH === 'function') pushH();
   reorderTerminal(dragId, targetId);
   if (typeof draw === 'function') draw();
-  showTerminals();          // 並べ替え後の順で描き直す
+  showTBTable();            // 並べ替え後の順で描き直す
 }
 
 // 並び順の実処理。現在の並びの中で dragId を targetId の位置へ差し込み、
@@ -845,21 +815,9 @@ function renumberTerminals(dev) {
   if (typeof pushH === 'function') pushH();
   list.forEach((r, i) => { r.el.label = String(i + 1); });
   if (typeof draw === 'function') draw();
-  showTerminals();
+  showTBTable();
 }
 
-function exportTermCSV() {
-  const rows = collectTerminals();
-  const groups = groupTerminalsByDevice(rows);
-  const esc = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
-  const lines = ['デバイス,No,端子番号,型式,位置'];
-  groups.forEach((list, dev) => {
-    list.forEach((r, i) => {
-      lines.push([dev, i + 1, r.el.label || '', r.el.partModel || '', r.loc].map(esc).join(','));
-    });
-  });
-  dl(lines.join('\n'), 'terminals.csv', 'text/csv');
-}
 
 
 // ================================================================

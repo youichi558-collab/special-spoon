@@ -501,7 +501,13 @@ const junctionTool = {
   onDown(wx, wy) {
     const p = getAllSnapPoints(wx, wy);
     pushH();
-    state.elements.push({ id: genId('el'), type:'junction', x:p.x, y:p.y, r: state.junctionR || 2, style: state.junctionStyle || 'dot', layer: activeLayer() });
+    const _jst = state.junctionStyle || 'dot';
+    const _jn = { id: genId('el'), type:'junction', x:p.x, y:p.y, r: state.junctionR || 2, style: _jst, layer: activeLayer() };
+    // 端子台の端子(○/◎)は既定でデバイス名を出さない。盛田さんの書き方
+    // 「TB1 1, 2, 3」に合わせ、かたまりの先頭だけ手動でONにしてもらう。
+    // (未定義=従来どおり表示、なので新規分は明示的にfalseを入れる)
+    if (_jst === 'circle' || _jst === 'dbl') _jn.showDev = false;
+    state.elements.push(_jn);
     draw();
   },
   onMove(wx, wy) {

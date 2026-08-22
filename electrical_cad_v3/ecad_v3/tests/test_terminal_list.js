@@ -1,4 +1,4 @@
-// 端子台一覧の作り直しテスト
+// 端子台表(旧「端子台一覧」から一本化)のテスト
 //   node tests/test_terminal_list.js
 //
 // 【背景】盛田さんの指摘で判明した不具合。
@@ -50,7 +50,6 @@ vm.runInContext([
   'function elLocation(el, pageIdx) { return String(pageIdx + 1); }',   // 区画計算は本テストの対象外
   pick(/function collectTerminals\(\)[\s\S]*?\n\}/),
   pick(/function groupTerminalsByDevice\([\s\S]*?\n\}/),
-  pick(/function showTerminals\(\)[\s\S]*?\n\}/),
 ].join('\n'), sandbox);
 
 console.log('【collectTerminals: 端子の収集】');
@@ -102,7 +101,7 @@ vm.runInContext([
   'let _tbDragId = null;',
   'function pushH(){ pushed++; }',
   'function draw(){}',
-  'function exportTermCSV(){}',
+  'function showTBTable(){}',
   pick(/function reorderTerminal\([\s\S]*?\n\}/),
   pick(/function renumberTerminals\([\s\S]*?\n\}/),
 ].join('\n'), sandbox);

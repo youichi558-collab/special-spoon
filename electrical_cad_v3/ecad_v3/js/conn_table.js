@@ -137,65 +137,94 @@ function exportConnCSV() {
 }
 
 // ----------------------------------------------------------------
-// 端子台表: junction(style=circle/dbl、端子台の端子)を対象に、
-// 各端子番号にどの線番が繋がっているかを一覧化する(分岐点●は対象外)
+// 端子台表
+//
+// 【2026-08-22 一本化】もともと「端子台一覧」(report.js の showTerminals)と
+// この「端子台表」がどちらも○/◎の端子を集計しており完全に重複していた。
+// 盛田さんの「端子台、端子表、端子台表とわけがわからん」「不要なものは
+// なくせ」との指摘を受け、接続線番と未接続チェックを持つこちらに一本化した。
+//
+// 並び順は el.tbOrder(この表で並べ替えた結果)に従う。図面上の位置からは
+// 並び順を決められない(ページを跨ぐ・同じページでも書いた位置で先頭が
+// 変わる)ため、この表を並び順の正とする。収集とグループ化は report.js の
+// collectTerminals() / groupTerminalsByDevice() を共用する。
 // ----------------------------------------------------------------
-function buildTerminalBlockRows() {
-  if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
-  const rows = [];
-  state.pages.forEach((pg, pi) => {
-    const pname = pg.name || ('Sheet'+(pi+1));
-    (pg.elements || []).forEach(el => {
-      if (el.type !== 'junction') return;
-      if (!(el.style === 'circle' || el.style === 'dbl')) return; // 分岐点は対象外
 
-      const conns = new Set();
-      (pg.wires || []).forEach(w => {
-        const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
-        [pts[0], pts[pts.length-1]].forEach(p => {
-          if (Math.hypot(p.x-el.x, p.y-el.y) <= CONN_TABLE_TOL) conns.add(w.wireNo || '未採番');
-        });
-      });
-
-      rows.push({
-        page: pname,
-        tbRef: el.partRef || '(デバイス未設定)',
-        tbModel: el.partModel || '',
-        termNo: el.label || '-',
-        conns: [...conns],
-      });
+// 端子に繋がっている線番を集める
+function _tbConnsOf(el, pg) {
+  const conns = new Set();
+  (pg.wires || []).forEach(w => {
+    const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
+    [pts[0], pts[pts.length-1]].forEach(p => {
+      if (Math.hypot(p.x-el.x, p.y-el.y) <= CONN_TABLE_TOL) conns.add(w.wireNo || '未採番');
     });
   });
-  return rows;
+  return [...conns];
 }
 
-function _tbSortRows(rows) {
-  rows.sort((a,b) => (a.tbRef+'|'+String(a.termNo)).localeCompare(b.tbRef+'|'+String(b.termNo),'ja',{numeric:true}));
-  return rows;
+function buildTerminalBlockRows() {
+  if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
+  return collectTerminals().map(r => ({
+    el:      r.el,
+    page:    state.pages[r.page]?.name || ('Sheet' + (r.page + 1)),
+    loc:     r.loc,
+    tbRef:   r.el.partRef || '(デバイス未設定)',
+    tbModel: r.el.partModel || '',
+    termNo:  r.el.label || '-',
+    conns:   _tbConnsOf(r.el, state.pages[r.page] || {}),
+  }));
 }
 
 function showTBTable() {
-  const rows = _tbSortRows(buildTerminalBlockRows());
+  const rows = buildTerminalBlockRows();
   if (!rows.length) {
-    _reportOpen('tbtbl', '端子台表', '<p style="font-size:11px;color:var(--fg3)">端子台の端子(○/◎)が配置されていません</p>', null);
+    _reportOpen('tbtbl', '端子台表',
+      '<p style="font-size:11px;color:var(--fg3)">端子台の端子がありません。'
+      + '<br>接続点を「○白丸」または「◎二重丸」にすると端子台の端子として扱われます。</p>', null);
     return;
   }
-  let unconn = 0;
-  let html = `<table class="tbl"><tr><th>端子台</th><th>型式</th><th>端子番号</th><th>ページ</th><th>接続線番</th></tr>`;
+  // デバイスごとにまとめる(並び順は collectTerminals の順=tbOrder順を保つ)
+  const groups = new Map();
   rows.forEach(r => {
-    if (!r.conns.length) unconn++;
-    html += `<tr><td>${r.tbRef}</td><td>${r.tbModel||'-'}</td><td>${r.termNo}</td><td>${r.page}</td><td>${r.conns.length?r.conns.map(n=>`<span class="badge badge-b">${n}</span>`).join(' '):'<span style="color:var(--red)">未接続</span>'}</td></tr>`;
+    if (!groups.has(r.tbRef)) groups.set(r.tbRef, []);
+    groups.get(r.tbRef).push(r);
   });
-  html += '</table>';
-  let msg = `<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">端子 全${rows.length}点`;
-  if (unconn) msg += ` / <span style="color:var(--red);font-weight:600">未接続 ${unconn}点</span>`;
-  msg += `</p>`;
-  _reportOpen('tbtbl', '端子台表', msg + html, exportTBCSV);
+
+  const unconn = rows.filter(r => !r.conns.length).length;
+  let html = `<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">`
+    + `全${state.pages.length}ページ集計。端子${rows.length}点 / 端子台${groups.size}台`;
+  if (unconn) html += ` / <span style="color:var(--red);font-weight:600">未接続 ${unconn}点</span>`;
+  html += `<br>行をドラッグすると並べ替えできます。並べ替えた順で「番号を振り直す」と端子番号が1から振り直されます。</p>`;
+
+  groups.forEach((list, dev) => {
+    html += `<p style="font-size:11px;font-weight:600;margin:8px 0 3px">${dev}`
+      + `<span style="color:var(--fg3);font-weight:400">（${list.length}点）</span>`
+      + `<button class="fp-btn" style="margin-left:8px;font-size:10px;padding:1px 8px"`
+      + ` onclick="renumberTerminals('${String(dev).replace(/'/g, "\\'")}')">この順で番号を振り直す</button></p>`
+      + `<table class="tbl"><tr><th style="width:22px"></th><th>No</th><th>端子番号</th>`
+      + `<th>型式</th><th>位置</th><th>接続線番</th></tr>`
+      + list.map((r, i) =>
+          `<tr draggable="true" data-elid="${r.el.id}"`
+          + ` ondragstart="tbDragStart(event,'${r.el.id}')" ondragover="tbDragOver(event)"`
+          + ` ondrop="tbDrop(event,'${r.el.id}')" ondragend="tbDragEnd(event)" style="cursor:grab">`
+          + `<td style="color:var(--fg4);text-align:center">⋮⋮</td>`
+          + `<td>${i + 1}</td><td>${r.termNo}</td><td>${r.tbModel || '-'}</td><td>${r.loc}</td>`
+          + `<td>${r.conns.length
+              ? r.conns.map(n => `<span class="badge badge-b">${n}</span>`).join(' ')
+              : '<span style="color:var(--red)">未接続</span>'}</td></tr>`).join('')
+      + `</table>`;
+  });
+  _reportOpen('tbtbl', '端子台表', html, exportTBCSV);
 }
 
 function exportTBCSV() {
-  const rows = _tbSortRows(buildTerminalBlockRows());
-  const csv = ['端子台,型式,端子番号,ページ,接続線番'];
-  rows.forEach(r => csv.push(`${r.tbRef},${r.tbModel},${r.termNo},${r.page},"${r.conns.join('/')}"`));
+  const rows = buildTerminalBlockRows();
+  const esc = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+  const csv = ['端子台,No,端子番号,型式,位置,接続線番'];
+  const seen = {};
+  rows.forEach(r => {
+    seen[r.tbRef] = (seen[r.tbRef] || 0) + 1;
+    csv.push([r.tbRef, seen[r.tbRef], r.termNo, r.tbModel, r.loc, r.conns.join('/')].map(esc).join(','));
+  });
   dl(csv.join('\n'), 'terminal_block_table.csv', 'text/csv');
 }
