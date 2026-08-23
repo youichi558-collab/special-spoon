@@ -1649,8 +1649,21 @@ function srPasteFromClipboard() {
   // コピー元より大幅に小さいシンボルが登録されてしまっていた。
   // 配置時の描画(symbols.js)はshapes座標をそのまま使う1:1描画なので、
   // ここで等倍にすることでコピー元と同じ大きさになる。
-  const tx = wx => Math.round(wx - cx);
-  const ty = wy => Math.round(wy - cy);
+  // 【2026-08-23修正】以前はtx/tyが各点ごとにMath.roundしていた。cx/cyは選択範囲の
+  // 中心なので一般に整数にならず、その結果「端点1つあたり最大±0.5単位の誤差が
+  // 独立に乗る」状態だった。×印のような短い斜め線は4端点がそれぞれ別方向にずれる
+  // ため、角度も長さも目に見えて変わってしまう(盛田さん報告「✕の部分がズレてる」)。
+  //
+  // これは1672〜1675行のコメントにある「各点を整数へ丸めていて歪んでいた」不具合と
+  // 全く同じもので、弧だけ対処して直線・矩形・ポリラインが直し残されていた。
+  //
+  // 対策: 丸めるのは「平行移動量」だけにする。全点を同じ整数量だけ動かすので、
+  // 図形どうしの相対位置も個々の図形の形状も一切変わらない。元の座標が整数なら
+  // 結果も整数のままなので、後段のsrGridAlignShapes(グリッドに乗る点の数を数える)
+  // も従来どおり機能する。
+  const ox = Math.round(cx), oy = Math.round(cy);
+  const tx = wx => wx - ox;
+  const ty = wy => wy - oy;
   const scale = 1;
 
   // 変換してSR形式に
@@ -1664,16 +1677,18 @@ function srPasteFromClipboard() {
       // 段差が出るため。未設定(レイヤー既定に従う)の場合は未設定のまま残す。
       const _lw = s.lineWidth != null ? snapLineWidth(s.lineWidth) : undefined;
       if (s.t==='L') shapes.push({t:'L', x1:tx(s.x1),y1:ty(s.y1),x2:tx(s.x2),y2:ty(s.y2), lineWidth:_lw, lineStyle:s.lineStyle});
-      else if (s.t==='C') shapes.push({t:'C', cx:tx(s.cx),cy:ty(s.cy),r:Math.round(s.r*scale), lineWidth:_lw, lineStyle:s.lineStyle});
-      else if (s.t==='R') shapes.push({t:'R', x:tx(s.x),y:ty(s.y),w:Math.round(s.w*scale),h:Math.round(s.h*scale), lineWidth:_lw, lineStyle:s.lineStyle});
+      // 半径・幅・高さもMath.roundしない。中心/左上は整数量だけ平行移動しているので、
+      // ここを丸めると円が最大0.5単位太ったり細ったりして元の図形と一致しなくなる。
+      else if (s.t==='C') shapes.push({t:'C', cx:tx(s.cx),cy:ty(s.cy),r:s.r*scale, lineWidth:_lw, lineStyle:s.lineStyle});
+      else if (s.t==='R') shapes.push({t:'R', x:tx(s.x),y:ty(s.y),w:s.w*scale,h:s.h*scale, lineWidth:_lw, lineStyle:s.lineStyle});
       else if (s.t==='P' && s.pts) shapes.push({t:'P', pts:s.pts.map(p=>[tx(p[0]),ty(p[1])]), cl:s.cl, lineWidth:_lw, lineStyle:s.lineStyle});
       else if (s.t==='T') shapes.push({t:'T', text:s.text, x:tx(s.x), y:ty(s.y), fs:s.fs});
       else if (s.t==='A') {
         // 以前は弧を8本の直線に分解し、さらに各点を整数へ丸めていた。
         // 半径が小さい弧ほど丸め誤差が相対的に大きくなり、歪んで見える不具合があった。
         // 配置時の描画(symbols.js)は弧をネイティブでサポートしているので、
-        // 分解せずそのまま持たせる(座標・半径は丸め、角度sa/eaは丸めない)。
-        shapes.push({t:'A', cx:tx(s.cx), cy:ty(s.cy), r:Math.round(s.r*scale), sa:s.sa, ea:s.ea, ccw:!!s.ccw, lineWidth:_lw, lineStyle:s.lineStyle});
+        // 分解せずそのまま持たせる(丸めは一切しない。半径の丸めも2026-08-23に撤廃)。
+        shapes.push({t:'A', cx:tx(s.cx), cy:ty(s.cy), r:s.r*scale, sa:s.sa, ea:s.ea, ccw:!!s.ccw, lineWidth:_lw, lineStyle:s.lineStyle});
       }
     });
   });
