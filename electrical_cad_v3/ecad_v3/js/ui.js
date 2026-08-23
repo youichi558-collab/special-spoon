@@ -7,10 +7,6 @@
 // デバイス名・型番・文字サイズ/位置を全部手打ちし直すのが非効率、という指摘への対応。
 // シンボルの種類(type)に関係なく、この一式だけをコピー→他のシンボルへまとめて貼り付けできる。
 let deviceClipboard = null;
-// 端子(junction)専用のコピー貼付け用クリップボード(2026-08-23)。
-// deviceClipboardと別にする理由: 対象フィールドが違う(デバイス識別情報を
-// 含まない)ため、混同すると意図しないフィールドが貼り付けられる事故になる。
-let junctionClipboard = null;
 
 // ----------------------------------------------------------------
 // リボンタブ
@@ -2385,20 +2381,7 @@ function updateRightPanel() {
       <button class="pp-apply" onclick="applyGroupMove()">移動適用</button>
       ${groupBtn}
       ${isGrouped ? groupDevicePropsHtml(selGroups[0], selGroups.length) : ''}
-      ${deviceClipboard ? `<button class="pp-apply" onclick="pasteDeviceProps()" title="コピー済みのデバイス名・型番・仕様・文字設定を、選択中の全シンボルへまとめて貼り付けます(形が違うシンボル同士でもOK)">選択中の${state.sel.els.size}個へデバイス/型式/仕様を貼り付け</button>` : ''}
-      ${(() => {
-        // 【2026-08-23】端子(junction)の見た目コピー・貼り付けは、当初
-        // isTermブロック(単一の端子を選んだときのパネル)にしかボタンを
-        // 置いていなかった。複数選択すると別のこのパネルに切り替わるため、
-        // 「コピーしたのに貼り付ける場所がどこにも無い」状態になっていた
-        // (盛田さん「コピーはどうなった？」)。一般要素のpasteDevicePropsと
-        // 同じ場所に、端子用のボタンも追加する。選択に端子が1つも無ければ
-        // 出しても無意味なので、含まれるときだけ表示する。
-        if (!junctionClipboard) return '';
-        const selJCount = state.elements.filter(e => state.sel.els.has(e.id) && e.type === 'junction').length;
-        if (!selJCount) return '';
-        return `<button class="pp-apply" onclick="pasteJunctionProps()" title="コピー済みの端子の見た目(色・サイズ・位置補正)を、選択中の端子へまとめて貼り付けます">選択中の端子${selJCount}個へ見た目を貼り付け</button>`;
-      })()}
+      ${deviceClipboard ? `<button class="pp-apply" onclick="pasteDeviceProps()" title="コピー済みのデバイス名・型番・仕様・文字設定を、選択中の全要素(端子含む)へまとめて貼り付けます(種類が違ってもOK)">選択中の${state.sel.els.size}個へデバイス/型式/仕様を貼り付け</button>` : ''}
     `;
     document.getElementById('gp-x').addEventListener('change', function() {
       document.getElementById('gp-dx').value = +this.value - gx;
@@ -2438,20 +2421,14 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>半径</label><input type="number" id="pp-jr" value="${el.r||2}" min="1" max="30" step="1"></div>`;
     html += `<div class="pp-row"><label>見た目</label><select id="pp-jstyle"><option value="dot"${(el.style||'dot')==='dot'?' selected':''}>●塗りつぶし</option><option value="circle"${el.style==='circle'?' selected':''}>○白丸</option><option value="dbl"${el.style==='dbl'?' selected':''}>◎二重丸</option></select></div>`;
     if (isTerm) {
-      // 【2026-08-23】盛田さん「端子台プロパティにもコピー貼付けがいる」への対応。
-      // 一般要素側(2026-08-03)と同じ考え方だが、対象フィールドは絞ってある:
-      //   ・partRef/partModel/panelZone(デバイス識別情報)は含めない。
-      //     これらは既にonJunctionRefChanged(デバイス名を打つと引き継ぐ)で
-      //     扱う仕組みがあり、コピー貼り付けで混ぜると別デバイスの端子に
-      //     device名を誤って上書きする事故になりやすい
-      //   ・label(端子番号)は絶対に含めない。端子ごとに違う値であり、
-      //     貼り付けで上書きすると全部同じ番号になってしまう
-      //     (collectDeviceInfo/onJunctionRefChangedと同じ注意点)
-      // 対象は表示ON/OFFと、色・サイズ・位置補正(見た目)のみ。異なるデバイス間で
-      // 「見た目だけ揃える」ための機能として割り切っている。
+      // 【2026-08-23・最終形】盛田さん「シンボルと同じにしろと言ったはずだが？」。
+      // 端子専用の別実装(copyJunctionProps等、フィールドを絞ったもの)を
+      // 一度作ったが撤廃し、一般要素と全く同じ copyDeviceProps/pasteDeviceProps
+      // をそのまま使う。label(端子番号)も貼り付け対象に含まれる点は把握した上での
+      // 判断(端子番号の重複は既存の重複警告機能で検出できる)。
       html += `<div class="pp-row" style="gap:6px">
-        <button onclick="copyJunctionProps()" title="この端子の表示ON/OFF・文字色・サイズ・位置補正をコピーします(デバイス名・型式・端子番号は含みません)" style="flex:1;font-size:11px;padding:3px 6px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">端子の見た目をコピー</button>
-        <button onclick="pasteJunctionProps()" title="コピーした見た目を、選択中の端子(複数可)へまとめて貼り付けます" style="flex:1;font-size:11px;padding:3px 6px;background:${junctionClipboard?'var(--accent,#1d6fb5)':'var(--bg3)'};border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:${junctionClipboard?'#fff':'var(--fg)'}"${junctionClipboard?'':' disabled'}>貼り付け</button>
+        <button onclick="copyDeviceProps()" title="このシンボルのデバイス名・型番・仕様・文字設定を丸ごとコピーします" style="flex:1;font-size:11px;padding:3px 6px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">デバイス/型式/仕様をコピー</button>
+        <button onclick="pasteDeviceProps()" title="コピーした内容を、選択中の要素(複数可・種類が違ってもOK)へまとめて貼り付けます" style="flex:1;font-size:11px;padding:3px 6px;background:${deviceClipboard?'var(--accent,#1d6fb5)':'var(--bg3)'};border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:${deviceClipboard?'#fff':'var(--fg)'}"${deviceClipboard?'':' disabled'}>貼り付け</button>
       </div>`;
       // 【2026-08-23】一般要素側(◆デバイス/◆型式/◆仕様)と揃えた。盛田さん
       // 「その辺の項目はシンボルプロパティと合わせた方が良さそうだがどう思う？」
@@ -3133,48 +3110,29 @@ function applyRightPanel() {
 // デバイス/型式/仕様の書式コピー・貼り付け(2026-08-03追加)。
 // シンボルの種類(type)が変わっても、デバイス名・型番・文字サイズ/色/位置一式を
 // まとめて他のシンボルへ複製できるようにする。1個コピー→複数選択へまとめて貼り付け、も可能。
+//
+// 【2026-08-23】端子(junction)にも同じ機能が必要という要望が出て、当初は
+// 対象フィールドを絞った専用実装(JUNCTION_PROP_KEYS/copyJunctionProps/
+// pasteJunctionProps)を別に用意した。しかし盛田さん「シンボルと同じにしろと
+// 言ったはずだが？」の指示で、専用実装は撤廃してこの共通実装(DEVICE_PROP_KEYS/
+// copyDeviceProps/pasteDeviceProps)を端子にもそのまま使うことにした。
+// labelフィールドは端子では「端子番号」を意味するため、端子どうしの貼り付けでは
+// 全端子が同じ番号になる点は把握した上での判断(端子番号の重複は既存の
+// 重複警告機能で検出できる)。
 const DEVICE_PROP_KEYS = [
   'label','labelAlign','labelColor','labelFs','labelOffX','labelOffY',
   'partRef','devHide','showDev','devFs','devColor','devOffX','devOffY',
   'partModel','partVolt','showModel','modelFs','modelColor','modelOffX','modelOffY',
-  'textRot',
+  'panelZone','textRot',
 ];
-// 端子(junction)の見た目コピー・貼り付け(2026-08-23)。対象は表示ON/OFFと
-// 色・サイズ・位置補正のみ。デバイス識別情報(partRef/partModel/panelZone)と
-// label(端子番号)は意図的に含めない(上のHTML生成部のコメント参照)。
-const JUNCTION_PROP_KEYS = [
-  'showDev','devFs','devColor','devOffX','devOffY',
-  'labelFs','labelColor','labelOffX','labelOffY',
-];
-function copyJunctionProps() {
-  const rp = document.getElementById('rp-body');
-  const el = rp._el;
-  if (!el || el.type !== 'junction') { alert('コピー元の端子を1つ選択してください'); return; }
-  applyRightPanel(); // パネルの未確定編集を先に反映してからコピーする
-  junctionClipboard = {};
-  JUNCTION_PROP_KEYS.forEach(k => { if (el[k] !== undefined) junctionClipboard[k] = el[k]; });
-  updateRightPanel();
-}
-function pasteJunctionProps() {
-  if (!junctionClipboard) { alert('先に「コピー」で端子の見た目をコピーしてください'); return; }
-  const targets = state.sel.els.size
-    ? state.elements.filter(e => state.sel.els.has(e.id) && e.type === 'junction')
-    : (document.getElementById('rp-body')._el?.type === 'junction' ? [document.getElementById('rp-body')._el] : []);
-  if (!targets.length) { alert('貼り付け先の端子を選択してください'); return; }
-  pushH();
-  targets.forEach(el => {
-    JUNCTION_PROP_KEYS.forEach(k => {
-      if (junctionClipboard[k] === undefined) delete el[k]; else el[k] = junctionClipboard[k];
-    });
-  });
-  draw();
-  updateRightPanel();
-}
 
 function copyDeviceProps() {
   const rp = document.getElementById('rp-body');
   const el = rp._el;
-  if (!el || el.type === 'junction') { alert('コピー元のシンボルを1つ選択してください'); return; }
+  // 【2026-08-23】以前はel.type==='junction'を弾いて端子専用の別実装
+  // (copyJunctionProps)を用意していたが、盛田さん「シンボルと同じにしろと
+  // 言ったはずだが？」の指示で撤廃し、端子もこの関数をそのまま使う。
+  if (!el) { alert('コピー元の要素を1つ選択してください'); return; }
   applyRightPanel(); // パネルの未確定編集を先に反映してからコピーする
   deviceClipboard = {};
   DEVICE_PROP_KEYS.forEach(k => { if (el[k] !== undefined) deviceClipboard[k] = el[k]; });
@@ -3182,10 +3140,14 @@ function copyDeviceProps() {
 }
 function pasteDeviceProps() {
   if (!deviceClipboard) { alert('先に「コピー」でデバイス/型式/仕様をコピーしてください'); return; }
+  // 【2026-08-23】端子(junction)も貼り付け対象に含める(上のcopyDevicePropsと同じ理由)。
+  // labelフィールドは端子では「端子番号」を意味するため、端子どうしの貼り付けでは
+  // 全端子が同じ番号になる。この点は把握した上で、盛田さんの指示どおりシンボルと
+  // 完全に同じ挙動にする(端子番号の重複は既存の重複警告機能で検出できる)。
   const targets = state.sel.els.size
-    ? state.elements.filter(e => state.sel.els.has(e.id) && e.type !== 'junction')
+    ? state.elements.filter(e => state.sel.els.has(e.id))
     : (document.getElementById('rp-body')._el ? [document.getElementById('rp-body')._el] : []);
-  if (!targets.length) { alert('貼り付け先のシンボルを選択してください'); return; }
+  if (!targets.length) { alert('貼り付け先の要素を選択してください'); return; }
   pushH();
   targets.forEach(el => {
     DEVICE_PROP_KEYS.forEach(k => {

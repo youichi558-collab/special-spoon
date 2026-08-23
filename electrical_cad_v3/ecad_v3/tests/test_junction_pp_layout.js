@@ -6,6 +6,13 @@
 // (中身)と文字色/サイズ/位置補正(見た目調整)が混在して並んでいたのを、一般要素
 // (シンボル)側と同じ pp-group(常時表示) + pp-details(折りたたみ)構造に揃えた。
 //
+// 【コピー貼り付けの経緯・重要】当初はコピー貼り付けを端子専用の別実装
+// (JUNCTION_PROP_KEYS等、フィールドを絞ったもの)にしていたが、盛田さん
+// 「シンボルと同じにしろと言ったはずだが？」の指示で撤廃し、一般要素と全く
+// 同じ copyDeviceProps/pasteDeviceProps をそのまま使うことになった。
+// このテストも、端子のパネルに出るボタンが copyDeviceProps()/pasteDeviceProps()
+// を呼んでいること(端子専用の関数が復活していないこと)を検証する。
+//
 // このテストは updateRightPanel 全体をevalするのではなく、対象箇所(isTermブロック)
 // を含む生成ロジックをそのまま切り出して検証する。IDはすべて既存のまま
 // (pp-jref/pp-jdfs/pp-jlabel等)なので、保存側(applyRightPanel)は変更していない。
@@ -50,7 +57,7 @@ const sandbox = {
   junctionTermOptionsHtml: () => '',
   colorCodeBtns: () => '',
   _escAttr: s => String(s),
-  junctionClipboard: null,
+  deviceClipboard: null,
 };
 sandbox.state.elements = sandbox.state.pages[0].elements;
 sandbox.state.page = sandbox.state.pages[0];
@@ -76,6 +83,12 @@ const groupCount = (html.match(/class="pp-group"/g) || []).length;
 ok(groupCount >= 3, `pp-groupが3つ以上ある(実際${groupCount})`);
 const detailsCount = (html.match(/class="pp-details"/g) || []).length;
 ok(detailsCount === 2, `pp-detailsが2つ(デバイス用・端子番号用)ある(実際${detailsCount})`);
+
+console.log('【コピー貼り付けボタンはシンボルと完全に共通(端子専用の別実装ではない)】');
+ok(html.includes('copyDeviceProps()'), '端子のコピーボタンはcopyDeviceProps()を呼ぶ');
+ok(html.includes('pasteDeviceProps()'), '端子の貼り付けボタンはpasteDeviceProps()を呼ぶ');
+ok(!html.includes('copyJunctionProps') && !html.includes('pasteJunctionProps'),
+   '端子専用の別関数(copyJunctionProps/pasteJunctionProps)は使われていない');
 
 console.log('【既存IDがすべて残っている(保存側は無修正で動く)】');
 ['pp-jref','pp-jrefshow','pp-jzone','pp-jdfs','pp-jdcolor','pp-jdox','pp-jdoy',
