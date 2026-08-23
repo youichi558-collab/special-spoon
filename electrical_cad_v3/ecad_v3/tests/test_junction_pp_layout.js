@@ -48,6 +48,7 @@ const sandbox = {
   LAYERS: [{ name: '1' }],
   partRefOptionsHtml: () => '',
   junctionTermOptionsHtml: () => '',
+  colorCodeBtns: () => '',
   _escAttr: s => String(s),
 };
 sandbox.state.elements = sandbox.state.pages[0].elements;
@@ -79,6 +80,20 @@ console.log('【既存IDがすべて残っている(保存側は無修正で動�
 ['pp-jref','pp-jrefshow','pp-jzone','pp-jdfs','pp-jdcolor','pp-jdox','pp-jdoy',
  'pp-jmodel','pp-jlabel','pp-jlfs','pp-jlcolor','pp-jlox','pp-jloy']
   .forEach(id => ok(html.includes(`id="${id}"`), `${id} が存在する`));
+
+console.log('【色欄は一般要素側と同じ構成(ピッカー+コード入力+プリセット)】');
+console.log('  ← 最初はピッカーだけで移植が不完全だった(盛田さん「プロパティの');
+console.log('    色の出し方違くないか？」で発覚)');
+ok(html.includes('id="pp-jdcolorcode"'), 'デバイス色: 16進コード入力欄がある');
+ok(html.includes('id="pp-jlcolorcode"'), '端子番号色: 16進コード入力欄がある');
+ok(/id="pp-jdcolor"[^>]*type="color"/.test(html) || /type="color"[^>]*id="pp-jdcolor"/.test(html),
+   'デバイス色: カラーピッカーがある');
+ok(html.includes("syncColorCode('pp-jdcolor','pp-jdcolorcode')"),
+   'デバイス色: ピッカー変更でコード欄に同期する');
+ok(html.includes("syncColorPicker('pp-jdcolorcode','pp-jdcolor')"),
+   'デバイス色: コード欄変更でピッカーに同期する');
+ok(html.includes("syncColorCode('pp-jlcolor','pp-jlcolorcode')"),
+   '端子番号色: ピッカー変更でコード欄に同期する');
 
 console.log('【値が正しく反映されている】');
 ok(html.includes('value="TB1"'), 'デバイス名の値');
