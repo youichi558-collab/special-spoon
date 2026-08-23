@@ -2386,6 +2386,19 @@ function updateRightPanel() {
       ${groupBtn}
       ${isGrouped ? groupDevicePropsHtml(selGroups[0], selGroups.length) : ''}
       ${deviceClipboard ? `<button class="pp-apply" onclick="pasteDeviceProps()" title="コピー済みのデバイス名・型番・仕様・文字設定を、選択中の全シンボルへまとめて貼り付けます(形が違うシンボル同士でもOK)">選択中の${state.sel.els.size}個へデバイス/型式/仕様を貼り付け</button>` : ''}
+      ${(() => {
+        // 【2026-08-23】端子(junction)の見た目コピー・貼り付けは、当初
+        // isTermブロック(単一の端子を選んだときのパネル)にしかボタンを
+        // 置いていなかった。複数選択すると別のこのパネルに切り替わるため、
+        // 「コピーしたのに貼り付ける場所がどこにも無い」状態になっていた
+        // (盛田さん「コピーはどうなった？」)。一般要素のpasteDevicePropsと
+        // 同じ場所に、端子用のボタンも追加する。選択に端子が1つも無ければ
+        // 出しても無意味なので、含まれるときだけ表示する。
+        if (!junctionClipboard) return '';
+        const selJCount = state.elements.filter(e => state.sel.els.has(e.id) && e.type === 'junction').length;
+        if (!selJCount) return '';
+        return `<button class="pp-apply" onclick="pasteJunctionProps()" title="コピー済みの端子の見た目(色・サイズ・位置補正)を、選択中の端子へまとめて貼り付けます">選択中の端子${selJCount}個へ見た目を貼り付け</button>`;
+      })()}
     `;
     document.getElementById('gp-x').addEventListener('change', function() {
       document.getElementById('gp-dx').value = +this.value - gx;
