@@ -132,11 +132,17 @@ PLCの端子は各ページに散らばる(X0は対応する押ボタンの隣�
 形式で記入)、○にデバイス=PLC1・型式=その型番を入れて、①端子台表に出ないこと
 ②端子番号がリストから選べること ③部品表にPLC1が1台で出ること、を確認してもらう。
 
-**【インバータの種別コードが無い】**: `PART_TYPE_CODES`にインバータに該当する
-コードが存在しない(`servo`はサーボアンプ)。富士ALPHA7等を登録するときに
-どうするか未決。`servo`で代用するか`inverter`を新設するか、盛田さんに要確認。
-新設する場合は4箇所セットで修正(`PART_TYPE_CODES`/`PART_TYPE_LABELS`/
-`PART_TYPE_ORDER`/`index.html`のセレクタとヘルプ文言)＋`DEVICE_PART_TYPES`にも追加。
+**【インバータの種別コード `inverter` を新設した】**(盛田さん指示、2026-08-23)。
+サーボアンプ(`servo`)とは別物として分ける。4箇所セット＋`DEVICE_PART_TYPES`の
+計5箇所を修正済み: `PART_TYPE_CODES`/`PART_TYPE_LABELS`/`PART_TYPE_ORDER`
+(以上`js/ui.js`)/`index.html`のセレクタとCSV取込ヘルプ文言/`DEVICE_PART_TYPES`
+(`js/report.js`)。これで富士ALPHA7等を登録でき、その端子は端子台表に出ない。
+
+**種別コードを追加するときの注意**: 上記のとおり修正箇所が5箇所に散っており、
+過去に漏れの前例がある。`tests/test_device_terminal.js`に**4箇所の同期を検証する
+テストを入れた**ので、種別を足したらこのテストを回すこと(どれか1箇所でも漏れると
+failする。PART_TYPE_ORDERを抜くと3件、index.htmlのセレクタを抜くと1件failすることを
+実際に確認済み)。
 
 ---
 

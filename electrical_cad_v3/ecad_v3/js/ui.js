@@ -1435,7 +1435,7 @@ function parseCSVLine(line) {
   out.push(cur);
   return out.map(s => s.trim());
 }
-const PART_TYPE_CODES = ['contactor','starter','coil','timer','thermal','sw_no','sw_nc','pb','pb_lamp','pb_estop','selector','selector_key','selector_lamp','selector_pb','lever','lamp','breaker','fuse','transformer','terminal','servo','servo_motor','motor','plc','plc_unit','hmi','option'];
+const PART_TYPE_CODES = ['contactor','starter','coil','timer','thermal','sw_no','sw_nc','pb','pb_lamp','pb_estop','selector','selector_key','selector_lamp','selector_pb','lever','lamp','breaker','fuse','transformer','terminal','inverter','servo','servo_motor','motor','plc','plc_unit','hmi','option'];
 function bulkImportParts() {
   const raw = document.getElementById('pr-csv').value;
   const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -3465,12 +3465,15 @@ const PART_TYPE_LABELS = {
   selector: 'セレクタ', selector_key: '鍵付セレクタ', selector_lamp: '照光セレクタ',
   selector_pb: 'セレクタ押ボタン', lever: 'モノレバー', lamp: 'ランプ・表示灯',
   breaker: 'ブレーカ', fuse: 'ヒューズ', transformer: 'トランス', terminal: '端子台',
+  // インバータとサーボアンプは別物なので分ける(2026-08-23、盛田さん指示で新設)。
+  // どちらも端子が図面に散らばる装置なのでDEVICE_PART_TYPES(report.js)にも入れる。
+  inverter: 'インバータ',
   servo: 'サーボアンプ', servo_motor: 'サーボモータ', motor: 'モーター',
   plc: 'PLC(シーケンサ)', plc_unit: 'PLC増設ユニット', hmi: 'タッチパネル・表示器',
   option: '増設ユニット等(付属品)',
   '': '(種別未設定)',
 };
-const PART_TYPE_ORDER = ['breaker','contactor','starter','thermal','coil','timer','sw_no','sw_nc','pb','pb_lamp','pb_estop','selector','selector_key','selector_lamp','selector_pb','lever','lamp','servo','servo_motor','motor','plc','plc_unit','hmi','terminal','fuse','transformer','option'];
+const PART_TYPE_ORDER = ['breaker','contactor','starter','thermal','coil','timer','sw_no','sw_nc','pb','pb_lamp','pb_estop','selector','selector_key','selector_lamp','selector_pb','lever','lamp','inverter','servo','servo_motor','motor','plc','plc_unit','hmi','terminal','fuse','transformer','option'];
 // 折りたたみ状態。2026-08-19よりメーカーを第一階層、種別を第二階層とする2段構造に変更。
 // キーはメーカー名(第一階層)、または「メーカー名\u0000種別」(第二階層)。
 // 既定は全部閉じた状態。検索中は無視して全部展開する。リロードごとにリセット(永続化なし)。

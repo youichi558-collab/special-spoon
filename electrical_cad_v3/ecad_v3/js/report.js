@@ -768,7 +768,9 @@ function exportRefCSV(devs){
 // 部品表(collectBOMRows)はもともとjunctionもpartRefで集計しているので、
 // ○に PLC1 と入れれば○が何個あってもPLC1は1台として型番付きで出る。
 // こちらは変更不要。
-const DEVICE_PART_TYPES = ['plc', 'plc_unit', 'hmi', 'servo'];
+// 2026-08-23: inverter(インバータ)は盛田さんの指示でこの日に新設した種別。
+// サーボアンプ(servo)とは別物として分けている。
+const DEVICE_PART_TYPES = ['plc', 'plc_unit', 'hmi', 'inverter', 'servo'];
 
 function isDeviceTerminal(el) {
   const model = (el && el.partModel || '').trim();

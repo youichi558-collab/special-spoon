@@ -61,6 +61,7 @@ function makeSandbox(customParts, pages) {
 const PARTS = [
   { ref: 'FX3U-32MR', type: 'plc',       terminals: '入力:X0,X1,X2,COM/出力:Y0,Y1,COM' },
   { ref: 'MR-J5-10G', type: 'servo',     terminals: 'L1,L2,L3,U,V,W' },
+  { ref: 'FRN0.4E3S', type: 'inverter',  terminals: '主回路:L1,L2,L3,U,V,W/制御:FWD,REV,CM' },
   { ref: 'GT2103',    type: 'hmi',       terminals: 'SD,RD,SG' },
   { ref: 'FX3U-16EX', type: 'plc_unit',  terminals: 'X20,X21,COM' },
   { ref: '端子台 M4',  type: 'terminal',  terminals: '' },
@@ -81,16 +82,18 @@ console.log('【装置(PLC等)の端子は端子台表に出さない】');
     J('SV1',  'MR-J5-10G', 'U'),
     J('GOT1', 'GT2103',    'SD'),
     J('PLC1', 'FX3U-16EX', 'X20'),
+    J('INV1', 'FRN0.4E3S', 'U'),
   ] }];
   const s = makeSandbox(PARTS, pages);
   const devs = [...s.groupTerminalsByDevice(s.collectTerminals()).keys()];
-  eq(devs, ['TB1'], '端子台TB1だけが残り、PLC1/SV1/GOT1は除外される');
+  eq(devs, ['TB1'], '端子台TB1だけが残り、PLC1/SV1/GOT1/INV1は除外される');
   eq(s.collectTerminals().length, 2, '端子数はTB1の2件のみ');
 
   ok(s.isDeviceTerminal(J('PLC1','FX3U-32MR','X0')),  'plc は装置端子');
   ok(s.isDeviceTerminal(J('PLC1','FX3U-16EX','X20')), 'plc_unit は装置端子');
   ok(s.isDeviceTerminal(J('SV1','MR-J5-10G','U')),    'servo は装置端子');
   ok(s.isDeviceTerminal(J('GOT1','GT2103','SD')),     'hmi は装置端子');
+  ok(s.isDeviceTerminal(J('INV1','FRN0.4E3S','U')),   'inverter は装置端子');
   ok(!s.isDeviceTerminal(J('TB1','端子台 M4','1')),    'terminal は端子台(除外しない)');
   ok(!s.isDeviceTerminal(J('MC1','S-T21','A1')),       'contactor は端子台扱いのまま');
 }
@@ -156,6 +159,47 @@ console.log('【型式が無ければ候補は空(従来どおり自由入力)�
   const el2 = J('TB1', '端子台 M4', '');
   const s2 = makeSandbox(PARTS, [{ elements: [el2] }]);
   eq(s2.junctionTermOptionsHtml(el2), '', '端子番号を持たない部品なら候補は空');
+}
+
+// ------------------------------------------------------------------
+console.log('【種別コードが4箇所すべてで揃っている】');
+console.log('  種別を1つ足すとPART_TYPE_CODES / PART_TYPE_LABELS / PART_TYPE_ORDER /');
+console.log('  index.html(セレクタ・CSVヘルプ)を直す必要がある。過去に漏れの前例あり');
+{
+  const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
+
+  const codes = JSON.parse('[' +
+    uiSrc.match(/const PART_TYPE_CODES = \[([^\]]*)\]/)[1].replace(/'/g, '"') + ']');
+  const order = JSON.parse('[' +
+    uiSrc.match(/const PART_TYPE_ORDER = \[([^\]]*)\]/)[1].replace(/'/g, '"') + ']');
+  const labelsBlock = uiSrc.match(/const PART_TYPE_LABELS = \{[\s\S]*?\n\};/)[0];
+  const labelKeys = [...labelsBlock.matchAll(/(\w+):\s*'/g)].map(m => m[1]);
+
+  const missing = (list, name) => codes.filter(c => !list.includes(c))
+    .forEach(c => { ng++; console.log(`  NG ${name} に ${c} が無い`); });
+
+  missing(labelKeys, 'PART_TYPE_LABELS');
+  missing(order,     'PART_TYPE_ORDER');
+  ok(codes.every(c => labelKeys.includes(c)), 'PART_TYPE_LABELS が全コードを網羅');
+  ok(codes.every(c => order.includes(c)),     'PART_TYPE_ORDER が全コードを網羅');
+  eq(order.length, codes.length, 'PART_TYPE_ORDER の件数が PART_TYPE_CODES と一致');
+
+  codes.forEach(c => {
+    if (!html.includes(`<option value="${c}">`)) {
+      ng++; console.log(`  NG index.html のセレクタに ${c} が無い`);
+    }
+    if (!html.includes(`${c}(`)) {
+      ng++; console.log(`  NG index.html のCSVヘルプ文言に ${c} が無い`);
+    }
+  });
+  ok(true, `index.html のセレクタ・ヘルプ文言を全${codes.length}コードについて確認`);
+
+  // 装置系は必ず正規のコードであること(綴り間違いの検出)
+  const devTypes = JSON.parse('[' +
+    reportSrc.match(/const DEVICE_PART_TYPES = \[([^\]]*)\]/)[1].replace(/'/g, '"') + ']');
+  devTypes.forEach(t => ok(codes.includes(t),
+    `DEVICE_PART_TYPES の ${t} は正規の種別コード`));
+  ok(devTypes.includes('inverter'), 'インバータが装置端子の対象に入っている');
 }
 
 console.log(ng ? `\n${ng}件失敗` : '\n全て成功');
