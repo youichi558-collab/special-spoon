@@ -6,8 +6,34 @@
 // ================================================================
 
 const AUTOSAVE_KEY = 'ecad_autosave';
+// 【2026-08-23 追加】前世代の退避先。
+// オートセーブは保存先が1つしかなく、しかも中身が空でも無条件に上書きしていた。
+// そのため「何らかの理由で画面が一瞬空になる → その状態で自動保存が走る」だけで
+// 図面が完全に失われた(実際に発生。復旧不能)。
+// 対策は2つ:
+//   ①空のデータで、中身のある既存データを上書きしない(下の doAutosave)
+//   ②中身のあるデータを書くときは、直前の版をこのキーへ退避しておく
+// ②があれば①をすり抜けるケース(徐々に消える等)でも1世代前に戻せる。
+const AUTOSAVE_PREV_KEY = 'ecad_autosave_prev';
 let _asTimer = null;
 let _asDisabled = false; // 容量超過などで無効化された場合true
+
+// 図面の中身の量(要素＋配線の総数)。空かどうかの判定に使う。
+function _asContentCount(pages) {
+  if (!Array.isArray(pages)) return 0;
+  return pages.reduce((n, pg) =>
+    n + ((pg && pg.elements ? pg.elements.length : 0))
+      + ((pg && pg.wires    ? pg.wires.length    : 0)), 0);
+}
+
+// 保存済みデータの中身の量。壊れていれば -1(判定不能)を返す。
+function _asStoredCount(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return 0;
+    return _asContentCount(JSON.parse(raw).pages);
+  } catch (e) { return -1; }
+}
 
 function scheduleAutosave() {
   if (_asDisabled) return;
@@ -20,6 +46,22 @@ function doAutosave() {
   clearTimeout(_asTimer); _asTimer = null;
   try {
     _syncCurrentPage();
+
+    // 【最優先の保護】中身が空なら、中身のある既存データを絶対に潰さない。
+    // 描画エラーや操作ミスで一時的に空になっただけの可能性があり、
+    // ここで上書きすると復旧手段が無くなる。
+    const nowCount = _asContentCount(state.pages);
+    if (nowCount === 0) {
+      const storedCount = _asStoredCount(AUTOSAVE_KEY);
+      if (storedCount > 0) {
+        const h = document.getElementById('s-hint');
+        if (h) h.textContent =
+          `⚠ 図面が空のため自動保存を中止しました（前回分 ${storedCount}個を保持）。`
+          + `意図せず消えた場合はリロードすると復元されます`;
+        return;
+      }
+    }
+
     const data = {
       version: 2,
       autosave: true,
@@ -39,6 +81,20 @@ function doAutosave() {
       // showPartRefは2026-08-07にトグル廃止・常時表示化したため保存しない
       // (保存しても読込側で無視するので実害はないが、混乱防止のため削除)
     };
+
+    // 中身のあるデータを書く前に、直前の版を退避しておく(1世代前まで戻せる)。
+    // 容量超過のときは退避を諦めて本体の保存を優先する。
+    if (nowCount > 0) {
+      try {
+        const prev = localStorage.getItem(AUTOSAVE_KEY);
+        if (prev && _asStoredCount(AUTOSAVE_KEY) > 0) {
+          localStorage.setItem(AUTOSAVE_PREV_KEY, prev);
+        }
+      } catch (e) {
+        try { localStorage.removeItem(AUTOSAVE_PREV_KEY); } catch (_) {}
+      }
+    }
+
     localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
   } catch (e) {
     // QuotaExceededError等 → 以後の自動保存を停止し一度だけ通知
@@ -51,6 +107,21 @@ function doAutosave() {
 function restoreAutosave() {
   let raw = null;
   try { raw = localStorage.getItem(AUTOSAVE_KEY); } catch (e) { return; }
+
+  // 【2026-08-23 追加】現行の自動保存が「空」で、1世代前に中身があるなら
+  // そちらから復元する。空で上書きされてしまった事故から救うため。
+  let usedPrev = false;
+  try {
+    const nowCount = raw ? _asContentCount(JSON.parse(raw).pages) : 0;
+    if (nowCount === 0) {
+      const prevRaw = localStorage.getItem(AUTOSAVE_PREV_KEY);
+      if (prevRaw && _asContentCount(JSON.parse(prevRaw).pages) > 0) {
+        raw = prevRaw;
+        usedPrev = true;
+      }
+    }
+  } catch (e) { /* 判定に失敗したら通常どおり現行を使う */ }
+
   if (!raw) return;
   try {
     const d = JSON.parse(raw);
@@ -86,11 +157,26 @@ function restoreAutosave() {
     const ts = t ? ` (${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}保存)` : '';
     setTimeout(() => {
       const h = document.getElementById('s-hint');
-      if (h) h.textContent = `前回の作業を自動復元しました${ts}`;
+      if (!h) return;
+      h.textContent = usedPrev
+        ? `⚠ 直近の自動保存が空だったため、1世代前から復元しました${ts}。`
+          + `内容を確認してJSONファイルに保存してください`
+        : `前回の作業を自動復元しました${ts}`;
     }, 0);
   } catch (e) {
-    // 破損データは削除して通常起動（毎回復元失敗するのを防ぐ）
-    try { localStorage.removeItem(AUTOSAVE_KEY); } catch (_) {}
+    // 【2026-08-23 変更】以前はここで自動保存を削除していたが、破損データでも
+    // 中身が読み出せる可能性があるのに消してしまうと復旧手段が完全に無くなる。
+    // 削除せず「破損」キーへ退避し、現行キーだけ空にして通常起動する。
+    try {
+      const broken = localStorage.getItem(AUTOSAVE_KEY);
+      if (broken) localStorage.setItem('ecad_autosave_broken', broken);
+      localStorage.removeItem(AUTOSAVE_KEY);
+    } catch (_) {}
+    setTimeout(() => {
+      const h = document.getElementById('s-hint');
+      if (h) h.textContent = '⚠ 自動保存データが壊れていたため復元できませんでした'
+        + '（データは ecad_autosave_broken に退避してあります）';
+    }, 0);
   }
 }
 
