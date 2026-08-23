@@ -276,7 +276,39 @@ function hitTestJunction(wx, wy) {
     if (el.type !== 'junction') continue;
     const lay = LAYERS.find(l => l.name === el.layer);
     if (lay && lay.locked) continue;
-    if (Math.hypot(wx - el.x, wy - el.y) < (el.r || 5) + R) return el;
+    const r = el.r || 5;
+    if (Math.hypot(wx - el.x, wy - el.y) < r + R) return el;
+
+    // 【2026-08-23】文字(端子番号・デバイス名)をクリックしても選択できるようにする。
+    // シンボル側は2026-08-03の修正(hitTest内、devOffX等)で既に対応済みだったが、
+    // 端子(junction)は取り残されていた。盛田さん「文字にヒット判定がない、
+    // なぜ同じになっていないのか」。端子は本体が小さい丸1つで、文字は
+    // labelOffX/devOffX等でそこから離れた位置に出ることが多いので、
+    // これが無いと複数の端子を選ぶ操作(コピー貼り付けの貼り付け先選択を含む)が
+    // 事実上できなかった。draw.jsのdrawJunctionElと全く同じ位置式・同じ揃えで
+    // ヒット領域を計算する(文字幅はhitTest側と同じ概算式を使う)。
+    if (lay && !lay.visible) continue;
+    if (el.style === 'dot') continue; // 分岐点(●)には文字が出ないので対象外
+    if (el.label) {
+      const fs = Math.round(el.labelFs || 11);
+      const lx = el.x + r + 4/state.zoom + (el.labelOffX||0);
+      const ly = el.y + 4/state.zoom + (el.labelOffY||0);
+      const lines = String(el.label).split('\n');
+      for (let li=0; li<lines.length; li++) {
+        const ln = lines[li]; if (!ln) continue;
+        const w = Math.max(10, ln.length*fs*0.55);
+        const cy = ly + li*Math.round(fs*1.25);
+        if (wx>=lx-R && wx<=lx+w+R && wy>=cy-fs-R && wy<=cy+R) return el;
+      }
+    }
+    const showDev = (el.showDev !== undefined) ? el.showDev : true;
+    if (state.showPartRef && el.partRef && showDev) {
+      const fs = Math.round(el.devFs || 10);
+      const dx = el.x + (el.devOffX||0);
+      const dy = el.y - r - 6/state.zoom + (el.devOffY||0);
+      const w  = Math.max(10, String(el.partRef).length*fs*0.55);
+      if (Math.abs(wx-dx)<=w/2+R && wy>=dy-fs-R && wy<=dy+R) return el;
+    }
   }
   return null;
 }
