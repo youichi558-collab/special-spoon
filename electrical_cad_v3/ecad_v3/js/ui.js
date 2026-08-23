@@ -765,9 +765,10 @@ function onJunctionRefChanged() {
     if (m) m.value = info.model;
   }
   if (info.zone) {
+    // 2026-08-23: セレクトからチェックボックスに変更したので checked を立てる
     el.panelZone = info.zone;
     const z = document.getElementById('pp-jzone');
-    if (z) z.value = info.zone;
+    if (z) z.checked = (info.zone === '外');
   }
   draw();
 }
@@ -861,7 +862,9 @@ function onPartRefChanged() {
   if (info.spec)      { el.label     = info.spec;      setVal('pp-label',     info.spec); }
   if (info.terminals) { el.terminals = info.terminals; setVal('pp-term',      info.terminals); }
   if (info.volt)      { el.partVolt  = info.volt; }
-  if (info.zone)      { el.panelZone = info.zone;      setVal('pp-zone',      info.zone); }
+  if (info.zone)      { el.panelZone = info.zone;
+                        const _z = document.getElementById('pp-zone');
+                        if (_z) _z.checked = (info.zone === '外'); }
   el.partRef = ref;
 
   // コイル電圧は型番によって選択肢が変わるので、欄ごと作り直してから値を入れる
@@ -2438,10 +2441,10 @@ function updateRightPanel() {
       html += `<div class="pp-row"><label>デバイス位置X補正</label><input type="number" id="pp-jdox" value="${el.devOffX!==undefined?el.devOffX:''}" placeholder="自動" step="1"></div>`;
       html += `<div class="pp-row"><label>デバイス位置Y補正</label><input type="number" id="pp-jdoy" value="${el.devOffY!==undefined?el.devOffY:''}" placeholder="自動" step="1"></div>`;
       html += `<div class="pp-row"><label>型式(BOM用)</label><input type="text" id="pp-jmodel" value="${el.partModel||''}" placeholder="例: 端子台 M4" onchange="onJunctionModelChanged()" title="同じデバイス(TB1等)の端子すべてに同じ型式が入ります。台ごとに1回書けば済みます"></div>`;
-      html += `<div class="pp-row"><label>手配区分</label><select id="pp-jzone" title="部品手配の範囲(盤内で組む/盤外に設置する)。部品表で分けて集計できます">`
-        + `<option value=""${!el.panelZone?' selected':''}>盤内</option>`
-        + `<option value="外"${el.panelZone==='外'?' selected':''}>盤外</option>`
-        + `</select></div>`;
+      // 【2026-08-23】盤内/盤外の2択セレクトから「対象外」チェックに変更。
+      // 既定が盤内なので実質フラグ1つで足り、選ばせる必要が無かった。
+      // 内部表現(el.panelZone: 未設定 or '外')は変えていないので既存データも読める。
+      html += `<div class="pp-row"><label>部品表の対象外</label><input type="checkbox" id="pp-jzone"${el.panelZone==='外'?' checked':''} title="チェックすると部品表に集計されません。現地調達品など、この図面で手配しないものに使います"></div>`;
       // 【2026-08-23】端子番号は候補リスト付きにする。部品DBの端子番号欄
       // (カタログCSV 6列目)に登録されている端子を datalist で出す。
       // PLC・インバータ・サーボアンプは端子数が多く(X0〜X15/COM 等)、
@@ -2576,10 +2579,7 @@ function updateRightPanel() {
       + ` placeholder="例: MC1, NFB1" onchange="onPartRefChanged()"></div>`
       + `<datalist id="pp-partref-list">${partRefOptionsHtml(el.partRef)}</datalist>`;
     html += `<div class="pp-row"><label>デバイスを図面に表示</label><input type="checkbox" id="pp-devhide"${el.devHide?'':' checked'} title="3極品等、同じデバイスを複数のシンボルに分けて配置する場合に使います。デバイス名は全部の要素に同じ値を入れつつ、文字はどれか1つだけに絞れます"></div>`;
-    html += `<div class="pp-row"><label>手配区分</label><select id="pp-zone" title="部品手配の範囲(盤内で組む/盤外に設置する)。部品表で分けて集計できます">`
-      + `<option value=""${!el.panelZone?' selected':''}>盤内</option>`
-      + `<option value="外"${el.panelZone==='外'?' selected':''}>盤外</option>`
-      + `</select></div>`;
+    html += `<div class="pp-row"><label>部品表の対象外</label><input type="checkbox" id="pp-zone"${el.panelZone==='外'?' checked':''} title="チェックすると部品表に集計されません。現地調達品など、この図面で手配しないものに使います"></div>`;
     html += `<details class="pp-details" style="border-left:4px solid ${devC}"><summary>デバイス表示の詳細（色・サイズ・位置）</summary>`;
     html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-dfs" value="${el.devFs||11}" step="1" min="6" max="32" oninput="previewDeviceOff()"></div>`;
     html += `<div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="color" id="pp-dcolor" value="${el.devColor||'#1d6fb5'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('pp-dcolor','pp-dcolorcode');previewDeviceOff()"><input type="text" id="pp-dcolorcode" value="${el.devColor||'#1d6fb5'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-dcolorcode','pp-dcolor');previewDeviceOff()">${colorCodeBtns('pp-dcolorcode','pp-dcolor')}</div></div>`;
@@ -2881,7 +2881,7 @@ function applyRightPanel() {
       el.label     = v('pp-jlabel');
       el.partRef   = v('pp-jref');
       el.partModel = v('pp-jmodel');
-      el.panelZone = v('pp-jzone') || undefined;
+      el.panelZone = document.getElementById('pp-jzone')?.checked ? '外' : undefined;
       el.showDev   = !!chk('pp-jrefshow');
       if (v('pp-jdfs')!=='')   el.devFs = parseFloat(v('pp-jdfs'));     else delete el.devFs;
       if (v('pp-jlfs')!=='')   el.labelFs = parseFloat(v('pp-jlfs'));   else delete el.labelFs;
@@ -2988,7 +2988,7 @@ function applyRightPanel() {
     el.labelAlign = v('pp-lalign') || undefined;
     el.partRef   = v('pp-partref');
     el.devHide   = !document.getElementById('pp-devhide')?.checked;
-    el.panelZone = v('pp-zone') || undefined;
+    el.panelZone = document.getElementById('pp-zone')?.checked ? '外' : undefined;
     el.partModel = v('pp-partmodel');
     { const pv = document.getElementById('pp-partvolt');
       if (pv) el.partVolt = pv.value || undefined; else applyDefaultVolt(el); }

@@ -494,7 +494,9 @@ function collectBOMRows(){
     if(spells.length>1)ws.push(`${ref}に表記ゆれ(${spells.map(s=>s[0]).join(' / ')})`);
     if(models.length>1)ws.push(`${ref}に型番が複数(${models.join(' / ')})`);
     if(volts.length>1)ws.push(`${ref}にコイル電圧が複数(${volts.join(' / ')})`);
-    if(zones.length>1)ws.push(`${ref}に手配区分が複数(${zones.map(z=>z||'盤内').join(' / ')})`);
+    // 2026-08-23: 「手配区分が複数」→「対象外の設定が食い違う」に言い換え。
+    // 同じデバイスなのに一部だけ対象外になっているのは設定ミスの可能性が高い。
+    if(zones.length>1)ws.push(`${ref}は対象外の設定が食い違っています`);
     if(!model)ws.push('型番未設定');
     if(ws.length)row.warn=row.warn?`${row.warn}｜${ws.join('｜')}`:ws.join('｜');
   });
@@ -519,11 +521,23 @@ function collectBOMRowsLegacy(){
   return Object.values(counts);
 }
 // 部品表の表示対象の絞り込み(2026-08-23)。
-// 盤内/盤外に分けて表示するだけでなく、対象外を「書かない」選択ができるように
-// した(盛田さん「部品表を作った場合対象外は書かない選択肢が取れるかだな」)。
-// 盤外品を別途手配する場合など、盤内だけの部品表を出したい場面がある。
-// 画面の表示とCSV出力の両方に効く(片方だけ効くと出力を信用できなくなるため)。
-const _bomZone = { in: true, out: true, noRef: true };
+//
+// 【経緯】もとは「盤内/盤外」の2択で、部品表も盤内・盤外のセクションに分けていた。
+// しかし盛田さんの指摘で見直した:
+//   ・既定が盤内なので、選ばせる必要が無い。実質フラグ1つで足りる
+//   ・「盤外」という言い方も実態に合わない。要は部品表に載せるかどうか
+// そこで「部品表の対象外」チェック1つに整理した(盛田さん「盤内、盤外と選ぶ必要が
+// あるか？盤外だけわかればいいのでは？盤外という文字もいまいちだ対象外とかに
+// ならんか？」)。
+//
+// なお、盤内/盤外という区分自体も盛田さんの指示ではなく、Claudeが勝手に立てた
+// 要件だった(一次情報で確認済み)。同じことを繰り返さないよう、この節に機能を
+// 足すときは必ず盛田さんの発言を確認すること。
+//
+// 内部表現(el.panelZone: 未設定 or '外')は変えていないので既存データも読める。
+//
+// 絞り込みは画面の表示とCSV出力の両方に効く(片方だけ効くと出力を信用できなくなる)。
+const _bomZone = { excluded: false, noRef: true };
 
 function setBOMZone(key, on) {
   _bomZone[key] = !!on;
@@ -534,7 +548,7 @@ function setBOMZone(key, on) {
 function _bomFilterRows(rows) {
   return rows.filter(r => {
     if (r.noRef) return _bomZone.noRef;
-    return (r.zone || '') === '外' ? _bomZone.out : _bomZone.in;
+    return (r.zone || '') === '外' ? _bomZone.excluded : true;
   });
 }
 
@@ -552,10 +566,9 @@ function showBOM(){
   const head=`<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">全${state.pages.length}ページ集計・${devTotal} 台`
     +(noRefTotal?`　<span style="color:var(--red)">デバイス未設定 ${noRefTotal} 個</span>`:'')
     +`<br>数量はデバイス単位の台数です。構成数は接点・端子を含む図形の個数です。`
-    +`手配区分は盤内(盤内で組む部品)/盤外(現地・盤外に設置する部品)。プロパティの「手配区分」で設定します。</p>`
+    +`プロパティで「部品表の対象外」にした部品は既定では集計されません。</p>`
     +`<p style="margin-bottom:6px;padding:5px 6px;background:var(--bg2);border-radius:3px">`
-    +`<span style="font-size:11px;color:var(--fg2);margin-right:8px">表示する区分:</span>`
-    +cb('in','盤内')+cb('out','盤外')+cb('noRef','デバイス未設定')
+    +cb('excluded','対象外の部品も含める')+cb('noRef','デバイス未設定を含める')
     +(hidden?`<span style="font-size:11px;color:var(--red)">（${hidden}台を非表示中・CSVにも出ません）</span>`:'')
     +`</p>`;
   // 部品表でもコイル電圧を変えられるようにする(プロパティとどちらでも変更できる)。
@@ -576,8 +589,11 @@ function showBOM(){
   // 分けるようにできると良い」への対応)。noRef(デバイス未設定)は区分の対象外
   // として最後にまとめて出す。
   const withNoRefIdx = rows.map((r,i)=>({r,i}));
-  const zoneRows  = z => withNoRefIdx.filter(({r})=>!r.noRef && (r.zone||'')===z);
-  const noRefRows = withNoRefIdx.filter(({r})=>r.noRef);
+  // 2026-08-23: 盤内/盤外のセクション分けは廃止(そもそも不要な区分だった)。
+  // 対象外の部品を含めているときだけ、区別できるよう別セクションにする。
+  const mainRows     = withNoRefIdx.filter(({r})=>!r.noRef && (r.zone||'')!=='外');
+  const excludedRows = withNoRefIdx.filter(({r})=>!r.noRef && (r.zone||'')==='外');
+  const noRefRows    = withNoRefIdx.filter(({r})=>r.noRef);
   const rowHtml = ({r,i}) =>
     `<tr${r.noRef?' style="background:var(--rbg)"':''}>`
     +`<td>${r.label}${r.warn?` <span style="color:var(--red);font-size:10px">⚠${r.warn}</span>`:''}</td>`
@@ -595,8 +611,8 @@ function showBOM(){
   };
   let html = rows.length
     ? head
-      + section('盤内', zoneRows(''))
-      + section('盤外', zoneRows('外'))
+      + section('部品表', mainRows)
+      + section('部品表の対象外', excludedRows)
       + section('デバイス未設定', noRefRows)
     : '<p style="font-size:11px;color:var(--fg3)">配置されたシンボルがありません</p>';
   _reportOpen('bom', '部品表 (BOM)', html, exportBOMCSV);
@@ -615,8 +631,8 @@ function exportBOMCSV(){
   // 画面の絞り込みをCSVにも必ず適用する。画面と出力が食い違うと
   // 出力を信用できなくなるため(2026-08-23)。
   const rows=_bomFilterRows(collectBOMRows());
-  dl(['型番/名称,コイル電圧,種別,JIS規格,デバイス,手配区分,数量(台),構成数,備考',
-      ...rows.map(r=>`${r.label},${r.volt||''},${r.type},${r.jis},"${r.noRef?'未設定':r.refs.join('/')}",${r.noRef?'':(r.zone==='外'?'盤外':'盤内')},${r.count},${r.parts},${r.warn||''}`)
+  dl(['型番/名称,コイル電圧,種別,JIS規格,デバイス,対象外,数量(台),構成数,備考',
+      ...rows.map(r=>`${r.label},${r.volt||''},${r.type},${r.jis},"${r.noRef?'未設定':r.refs.join('/')}",${r.zone==='外'?'対象外':''},${r.count},${r.parts},${r.warn||''}`)
      ].join('\n'),'bom.csv','text/csv');
 }
 // 要素の役割を判定する。

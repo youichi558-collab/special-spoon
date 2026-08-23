@@ -1,13 +1,16 @@
 // 手配区分(盤内/盤外)の部品表(BOM)集計テスト
 //   node tests/test_bom_zone.js
 //
-// 【背景】盛田さんの「盤内外の区別」は設置場所の一般的な括りではなく単純な
-// 盤内/盤外の2値でよく、単位はデバイス(部品全般)。目的は「部品手配の範囲が
-// わかる」こと。プロパティに「手配区分」を追加し、BOMで盤内/盤外を分けて
-// 集計するようにした。
+// 【背景・2026-08-23に仕様変更】
+// もとは「手配区分(盤内/盤外)」という2択で、BOMも盤内・盤外のセクションに
+// 分けていた。しかしこの区分自体が盛田さんの指示ではなくClaudeが勝手に立てた
+// 要件だったことが一次情報で判明し、盛田さんの指摘で整理し直した:
+//   「盤内、盤外と選ぶ必要があるか？盤外だけわかればいいのでは？
+//     盤外という文字もいまいちだ対象外とかにならんか？」
+// → 「部品表の対象外」チェック1つに変更。既定は対象外を集計しない。
 //
-// el.panelZone: 未設定(undefined/'')=盤内(既定)、'外'=盤外。
-// 型番が同じでも手配区分が違えば別部品として行を分ける(コイル電圧と同じ扱い)。
+// el.panelZone の内部表現は変えていない(未設定=通常、'外'=対象外)ので、
+// 既存データはそのまま読める。
 
 const fs = require('fs');
 const vm = require('vm');
@@ -73,27 +76,28 @@ eq(hw1bRows.length, 1, 'PB1とPB2は代表zoneが一致するため同じ行に�
 const hw1bRow = hw1bRows[0];
 eq(hw1bRow.count, 2, '合算した台数は2');
 eq(hw1bRow.zone, '外', '代表zoneは外');
-ok(hw1bRow.warn.includes('手配区分が複数'), 'PB2側の手配区分の食い違いが警告として出る');
+ok(hw1bRow.warn.includes('対象外の設定が食い違'), 'PB2側の設定の食い違いが警告として出る');
 ok(hw1bRow.warn.includes('PB2'), '警告にどのデバイス(PB2)の話かが分かる');
 
 // ------------------------------------------------------------------
 console.log('【showBOM: 盤内/盤外でセクション分けして表示】');
 sandbox.showBOM();
 const body = domEls['report-body'].innerHTML;
-ok(body.includes('盤内'), '盤内セクションの見出しがある');
-ok(body.includes('盤外'), '盤外セクションの見出しがある');
-ok(body.indexOf('盤内') < body.indexOf('盤外'), '盤内セクションが盤外より先に出る');
+const _sec = (b, name) => b.includes(`margin:10px 0 3px">${name}`);
+ok(_sec(body, '部品表'), '部品表セクションの見出しがある');
+ok(!_sec(body, '部品表の対象外'), '既定では対象外セクションは出ない(集計しないため)');
+ok(body.includes('非表示中'), '対象外を隠している旨が出る');
 
 // ------------------------------------------------------------------
-console.log('【CSV出力: 手配区分列がある】');
+console.log('【CSV出力: 対象外列がある】');
 domEls['report-csv-btn'].onclick();
 const header = lastCsv.content.split('\n')[0];
-ok(header.includes('手配区分'), 'CSVヘッダーに手配区分列がある');
-ok(lastCsv.content.includes('盤外'), 'CSV本文に「盤外」が出力される');
-ok(lastCsv.content.includes('盤内'), 'CSV本文に「盤内」が出力される(zone未設定の行)');
+ok(header.includes('対象外'), 'CSVヘッダーに対象外列がある');
+ok(!lastCsv.content.includes('HW1B-M1P10B'), '既定では対象外の部品はCSVに出ない');
+ok(lastCsv.content.includes('S-T10'), '通常の部品はCSVに出る');
 
 // ------------------------------------------------------------------
-console.log('【デバイス未設定行は手配区分の対象外】');
+console.log('【デバイス未設定行は区分の対象外】');
 sandbox.state.pages[0].elements.push({ id:6, type:'coil', partModel:'謎の部品' }); // partRefなし
 const rows2 = sandbox.collectBOMRows();
 const noRefRow = rows2.find(r => r.noRef);
@@ -101,61 +105,57 @@ ok(noRefRow, 'デバイス未設定の行が存在する');
 ok(noRefRow.zone === undefined, 'デバイス未設定の行にzoneフィールドは無い');
 
 // ------------------------------------------------------------------
-// 表示区分の絞り込み(2026-08-23)
+// 「部品表の対象外」の絞り込み(2026-08-23)
 // 盛田さん「部品表を作った場合対象外は書かない選択肢が取れるかだな」への対応。
-// 盤外品を別途手配する場合など、盤内だけの部品表を出したい場面がある。
+// 現地調達品など、この図面で手配しないものを部品表から外せるようにした。
 // 【重要】画面とCSVの両方に効かなければならない。片方だけだと、画面で絞ったのに
 // CSVには全部入っている(またはその逆)という状態になり、出力を信用できなくなる。
-console.log('【表示区分の絞り込み: 盤外を外す】');
+const _sec2 = (b, name) => b.includes(`margin:10px 0 3px">${name}`);
+
+console.log('【既定: 対象外は集計しない】');
 {
-  sandbox.setBOMZone('out', false);
   const body = domEls['report-body'].innerHTML;
-  // 絞り込みのチェックボックスにも「盤内」「盤外」の文字が入るので、
-  // セクション見出し(margin:10px 0 3px)に限定して判定する
-  const hasSection = (b, name) => b.includes(`margin:10px 0 3px">${name}`);
-  ok(hasSection(body, '盤内'),  '盤内セクションは残る');
-  ok(!hasSection(body, '盤外'), '盤外セクションが出なくなる');
-  ok(body.includes('非表示中'), '非表示にした台数が画面に出る(黙って減らさない)');
+  ok(_sec2(body, '部品表'), '通常の部品は出る');
+  ok(!_sec2(body, '部品表の対象外'), '対象外セクションは出ない');
+  ok(body.includes('非表示中'), '隠している台数が画面に出る(黙って減らさない)');
 
   domEls['report-csv-btn'].onclick();
-  ok(!lastCsv.content.includes('盤外'), 'CSVからも盤外が消える');
-  ok(lastCsv.content.includes('盤内'),  'CSVに盤内は残る');
+  ok(!lastCsv.content.includes('HW1B-M1P10B'), 'CSVにも対象外は出ない');
+  ok(lastCsv.content.includes('S-T10'), 'CSVに通常の部品は出る');
 }
 
-console.log('【表示区分の絞り込み: 盤内を外す】');
+console.log('【対象外も含める: 別セクションで区別できる】');
 {
-  sandbox.setBOMZone('out', true);
-  sandbox.setBOMZone('in', false);
+  sandbox.setBOMZone('excluded', true);
   const body = domEls['report-body'].innerHTML;
-  const hasSection = (b, name) => b.includes(`margin:10px 0 3px">${name}`);
-  ok(!hasSection(body, '盤内'), '盤内セクションが出なくなる');
-  ok(hasSection(body, '盤外'),  '盤外セクションは残る');
+  ok(_sec2(body, '部品表'), '通常の部品セクションがある');
+  ok(_sec2(body, '部品表の対象外'), '対象外セクションが出る');
+  ok(body.indexOf('margin:10px 0 3px">部品表<') < body.indexOf('margin:10px 0 3px">部品表の対象外'),
+     '通常の部品が先、対象外が後');
 
   domEls['report-csv-btn'].onclick();
-  ok(lastCsv.content.includes('盤外'),  'CSVに盤外は残る');
-  const lines = lastCsv.content.split('\n').slice(1).filter(l => l.trim());
-  ok(lines.every(l => !l.includes(',盤内,')), 'CSV本文に盤内の行が1件も無い');
+  ok(lastCsv.content.includes('HW1B-M1P10B'), 'CSVにも対象外が出る');
+  ok(lastCsv.content.includes('対象外'), 'CSVで対象外と分かる印が付く');
 }
 
-console.log('【表示区分の絞り込み: デバイス未設定を外す】');
+console.log('【デバイス未設定の絞り込み】');
 {
-  sandbox.setBOMZone('in', true);
   sandbox.setBOMZone('noRef', false);
   const body = domEls['report-body'].innerHTML;
-  ok(!body.includes('margin:10px 0 3px">デバイス未設定'),
-     'デバイス未設定セクションが出なくなる');
+  ok(!_sec2(body, 'デバイス未設定'), 'デバイス未設定セクションが出なくなる');
 
   domEls['report-csv-btn'].onclick();
   ok(!lastCsv.content.includes('謎の部品'), 'CSVからもデバイス未設定の行が消える');
 }
 
-console.log('【既定は全部表示】');
+console.log('【内部表現は変えていない(既存データの互換)】');
 {
   sandbox.setBOMZone('noRef', true);
-  const body = domEls['report-body'].innerHTML;
-  const hasSection = (b, name) => b.includes(`margin:10px 0 3px">${name}`);
-  ok(hasSection(body, '盤内') && hasSection(body, '盤外'), '既定では盤内・盤外とも出る');
-  ok(!body.includes('非表示中'), '全部表示のときは非表示の注記が出ない');
+  const rows3 = sandbox.collectBOMRows();
+  const ex = rows3.find(r => r.model === 'HW1B-M1P10B');
+  eq(ex.zone, '外', "対象外は従来どおり panelZone:'外' で表現される");
+  const normal = rows3.find(r => r.model === 'S-T10');
+  eq(normal.zone, '', '通常の部品は空文字のまま');
 }
 
 console.log(ng ? `\n${ng}件失敗` : '\n全て成功');
