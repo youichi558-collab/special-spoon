@@ -3116,14 +3116,23 @@ function applyRightPanel() {
 // pasteJunctionProps)を別に用意した。しかし盛田さん「シンボルと同じにしろと
 // 言ったはずだが？」の指示で、専用実装は撤廃してこの共通実装(DEVICE_PROP_KEYS/
 // copyDeviceProps/pasteDeviceProps)を端子にもそのまま使うことにした。
+//
+// 【重要・項目(DEVICE_PROP_KEYS)自体は変更していない】盛田さんの指示は
+// 「コピーの仕組みをシンボルと同じにしろ」であって「項目を変えろ」ではない
+// (盛田さん「項目を変えろとは一言も言ってないぞ？」)。統一の過程で一度
+// panelZoneをこの配列に追加してしまったが、これはシンボル側の既存の挙動まで
+// 意図せず変えてしまう誤りだったため撤回した。DEVICE_PROP_KEYSは2026-08-03
+// 時点の項目のまま、変更していない。
+//
 // labelフィールドは端子では「端子番号」を意味するため、端子どうしの貼り付けでは
 // 全端子が同じ番号になる点は把握した上での判断(端子番号の重複は既存の
-// 重複警告機能で検出できる)。
+// 重複警告機能で検出できる)。この点は項目自体の話ではなく、シンボルと同じ
+// 項目セットを使った結果として自然に生じる挙動。
 const DEVICE_PROP_KEYS = [
   'label','labelAlign','labelColor','labelFs','labelOffX','labelOffY',
   'partRef','devHide','showDev','devFs','devColor','devOffX','devOffY',
   'partModel','partVolt','showModel','modelFs','modelColor','modelOffX','modelOffY',
-  'panelZone','textRot',
+  'textRot',
 ];
 
 function copyDeviceProps() {

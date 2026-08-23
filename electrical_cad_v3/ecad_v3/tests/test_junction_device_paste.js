@@ -74,7 +74,22 @@ console.log('【DEVICE_PROP_KEYSに端子専用の除外は無い(labelもpartRe
   ok(s.DEVICE_PROP_KEYS.includes('label'),    'label(端子では端子番号)が含まれる');
   ok(s.DEVICE_PROP_KEYS.includes('partRef'),  'partRef(デバイス名)が含まれる');
   ok(s.DEVICE_PROP_KEYS.includes('partModel'),'partModel(型式)が含まれる');
-  ok(s.DEVICE_PROP_KEYS.includes('panelZone'),'panelZone(対象外)が含まれる');
+}
+
+console.log('【DEVICE_PROP_KEYSの項目自体は変更していない(2026-08-03時点のまま)】');
+console.log('  ← 盛田さん「項目を変えろとは一言も言ってないぞ？」。統一の過程で');
+console.log('    panelZoneを一度足してしまったが、シンボル側の挙動まで意図せず');
+console.log('    変えてしまう誤りだったので撤回した。');
+{
+  const s = makeSandbox();
+  ok(!s.DEVICE_PROP_KEYS.includes('panelZone'),
+     'panelZone(対象外)は含まれない(足すのは指示されていなかった)');
+  eq(s.DEVICE_PROP_KEYS, [
+    'label','labelAlign','labelColor','labelFs','labelOffX','labelOffY',
+    'partRef','devHide','showDev','devFs','devColor','devOffX','devOffY',
+    'partModel','partVolt','showModel','modelFs','modelColor','modelOffX','modelOffY',
+    'textRot',
+  ], 'DEVICE_PROP_KEYSが2026-08-03時点と完全に同じ項目・同じ順序');
 }
 
 console.log('【copyDeviceProps: 端子からもコピーできる(以前は明示的に弾いていた)】');
