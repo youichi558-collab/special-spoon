@@ -1435,12 +1435,26 @@ function parseCSVLine(line) {
   out.push(cur);
   return out.map(s => s.trim());
 }
-const PART_TYPE_CODES = ['contactor','starter','coil','timer','thermal','sw_no','sw_nc','pb','pb_lamp','pb_estop','selector','selector_key','selector_lamp','selector_pb','lever','lamp','breaker','fuse','transformer','terminal','inverter','servo','servo_motor','motor','plc','plc_unit','hmi','option'];
+const PART_TYPE_CODES = ['contactor','starter','coil','timer','thermal','pb','pb_lamp','pb_estop','selector','selector_key','selector_lamp','selector_pb','lever','contact_unit','lamp','breaker','fuse','transformer','terminal','inverter','servo','servo_motor','motor','plc','plc_unit','hmi','option'];
+
+// 廃止した種別コード（2026-08-23）。
+// sw_no(a接点)/sw_nc(b接点) は「接点構成」であって部品の分類ではないため廃止した。
+// 接点構成は型式の中に含まれる（IDEC HW1B-M1P10 の P10 が 1a を表す）。
+//
+// 【自動変換はしない】これらは正式な種別コード(pb/selector系)が追加される前に
+// 押ボタン・セレクタを暫定流用で登録したもので、実体はコンタクトユニットではない。
+// 機械的に contact_unit へ置き換えると押ボタンがコンタクトユニットとして
+// 登録されてしまう。人が中身を見て分類し直す必要がある。
+//
+// 取り込みは従来どおり通す（ここで弾くと既存CSVが再取込できなくなる）が、
+// 件数を数えて「要再分類」として知らせる。
+const LEGACY_PART_TYPES = { sw_no: 'a接点', sw_nc: 'b接点' };
 function bulkImportParts() {
   const raw = document.getElementById('pr-csv').value;
   const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   let added = 0, skipped = 0, updated = 0;
   const errors = [];
+  const legacyRows = [];   // 廃止した種別(sw_no/sw_nc)で登録されている行。要再分類
   lines.forEach((line, i) => {
     // ヘッダー行らしき行はスキップ（「型番」「maker」等の文字を含む、または種別列が既知コードでない）
     if (/型番|メーカー|maker|ref/i.test(line)) return;
@@ -1450,8 +1464,15 @@ function bulkImportParts() {
     const [maker, ref, type, volt, amp, terminals, contacts, note, source] = cols;
     if (!ref) { errors.push(`${i+1}行目: 型番が空です`); skipped++; return; }
     if (type && !PART_TYPE_CODES.includes(type)) {
-      errors.push(`${i+1}行目: 種別「${type}」が不正です（${PART_TYPE_CODES.join('/')}のいずれか）`);
-      skipped++; return;
+      // 廃止した種別(sw_no/sw_nc)は弾かずに通す。ここで弾くと、これらで
+      // 登録済みのCSV(IDEC ø22の16型番等)が再取込できなくなるため。
+      // 中身の分類し直しは人がやる必要があるので、件数だけ数えて後で知らせる。
+      if (LEGACY_PART_TYPES[type]) {
+        legacyRows.push(`${i+1}行目: ${ref}（現在の種別: ${LEGACY_PART_TYPES[type]}）`);
+      } else {
+        errors.push(`${i+1}行目: 種別「${type}」が不正です（${PART_TYPE_CODES.join('/')}のいずれか）`);
+        skipped++; return;
+      }
     }
     // 種別が空欄の場合、以前は coil に強制していたが、それだとPLC・タッチパネル等の
     // 「該当種別なし」で登録した部品が全部リレーコイル扱いになってしまうため、
@@ -1477,6 +1498,17 @@ function bulkImportParts() {
   if (updated) msg += `・更新${updated}件`;
   if (skipped) msg += `・スキップ${skipped}件`;
   if (errors.length) msg += `\n\n【エラー詳細】\n${errors.join('\n')}`;
+  if (legacyRows.length) {
+    // 2026-08-23: sw_no/sw_nc は廃止した種別。取り込みは通すが、実体に合わせて
+    // 分類し直してもらう必要がある(押ボタンなら pb、セレクタなら selector、
+    // 接点ブロック単体なら contact_unit)。自動変換すると誤分類になるためしない。
+    msg += `\n\n【要再分類 ${legacyRows.length}件】\n`
+        + `a接点/b接点は「接点構成」であって部品の分類ではないため、種別から廃止しました。\n`
+        + `接点構成は型式の中に含まれます(例: IDEC HW1B-M1P10 の P10 が 1a)。\n`
+        + `下記は実体に合わせて種別を選び直してください。\n`
+        + `　押ボタン → pb / セレクタ → selector / 接点ブロック単体 → contact_unit\n\n`
+        + legacyRows.join('\n');
+  }
   alert(msg);
   if (added || updated) document.getElementById('pr-csv').value = '';
 }
@@ -3459,11 +3491,17 @@ const PART_TYPE_LABELS = {
   // 型番自体が変わる別部品なので分けている(S-T21 と MSO-T21 等)。
   contactor: '電磁接触器', starter: '電磁開閉器(サーマル一体)',
   coil: 'リレーコイル', timer: 'タイマ', thermal: 'サーマルリレー',
-  sw_no: 'a接点', sw_nc: 'b接点',
   // 操作機器。押ボタンとセレクタはa接点/b接点とは別物なので専用コードにした。
   pb: '押ボタン', pb_lamp: '照光押ボタン', pb_estop: '非常停止',
   selector: 'セレクタ', selector_key: '鍵付セレクタ', selector_lamp: '照光セレクタ',
-  selector_pb: 'セレクタ押ボタン', lever: 'モノレバー', lamp: 'ランプ・表示灯',
+  selector_pb: 'セレクタ押ボタン', lever: 'モノレバー',
+  // コンタクトユニット(接点ブロック単体)。押ボタン・セレクタ共通の発注単位で、
+  // 改造や接点追加のときに単体で購入する(IDEC HW-CNP10等)。
+  // カタログの呼び方をそのまま使う(通称は誤解のもと、2026-08-23 盛田さん判断)。
+  // 旧 sw_no(a接点)/sw_nc(b接点) を置き換えたもの。a接点/b接点は接点構成であって
+  // 部品の分類ではなく、型式の中(HW1B-M1P10のP10部分)に含まれるため種別で持たない。
+  contact_unit: 'コンタクトユニット',
+  lamp: 'ランプ・表示灯',
   breaker: 'ブレーカ', fuse: 'ヒューズ', transformer: 'トランス', terminal: '端子台',
   // インバータとサーボアンプは別物なので分ける(2026-08-23、盛田さん指示で新設)。
   // どちらも端子が図面に散らばる装置なのでDEVICE_PART_TYPES(report.js)にも入れる。
@@ -3473,7 +3511,7 @@ const PART_TYPE_LABELS = {
   option: '増設ユニット等(付属品)',
   '': '(種別未設定)',
 };
-const PART_TYPE_ORDER = ['breaker','contactor','starter','thermal','coil','timer','sw_no','sw_nc','pb','pb_lamp','pb_estop','selector','selector_key','selector_lamp','selector_pb','lever','lamp','inverter','servo','servo_motor','motor','plc','plc_unit','hmi','terminal','fuse','transformer','option'];
+const PART_TYPE_ORDER = ['breaker','contactor','starter','thermal','coil','timer','pb','pb_lamp','pb_estop','selector','selector_key','selector_lamp','selector_pb','lever','contact_unit','lamp','inverter','servo','servo_motor','motor','plc','plc_unit','hmi','terminal','fuse','transformer','option'];
 // 折りたたみ状態。2026-08-19よりメーカーを第一階層、種別を第二階層とする2段構造に変更。
 // キーはメーカー名(第一階層)、または「メーカー名\u0000種別」(第二階層)。
 // 既定は全部閉じた状態。検索中は無視して全部展開する。リロードごとにリセット(永続化なし)。
@@ -3582,7 +3620,11 @@ function renderPartsTable2(parts) {
       const list = groups[t];
       const key = mk + '\u0000' + t;
       const collapsed = !searching && _isCollapsed(key);
-      const label = PART_TYPE_LABELS[t] || t;
+      // 2026-08-23: 廃止した種別(sw_no/sw_nc)で登録されたままの部品は、
+      // 生のコードではなく「a接点(要再分類)」のように表示して、直す必要が
+      // あることが一覧を見ただけで分かるようにする。
+      const label = PART_TYPE_LABELS[t]
+        || (LEGACY_PART_TYPES[t] ? `${LEGACY_PART_TYPES[t]}（要再分類）` : t);
       return `<div class="parts-cat" style="margin-left:8px">
         <div onclick="togglePartsCategory('${mk.replace(/'/g,"\\'")}','${t}')" style="display:flex;justify-content:space-between;align-items:center;padding:4px;cursor:pointer;background:var(--bg2);border-radius:3px;margin-top:3px">
           <span style="font-size:10px;color:var(--fg2)">${label}（${list.length}）</span>

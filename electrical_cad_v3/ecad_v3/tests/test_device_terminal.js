@@ -202,5 +202,38 @@ console.log('  index.html(セレクタ・CSVヘルプ)を直す必要がある�
   ok(devTypes.includes('inverter'), 'インバータが装置端子の対象に入っている');
 }
 
+// ------------------------------------------------------------------
+console.log('【廃止した種別(sw_no/sw_nc)の扱い】');
+{
+  const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
+  const codes = JSON.parse('[' +
+    uiSrc.match(/const PART_TYPE_CODES = \[([^\]]*)\]/)[1].replace(/'/g, '"') + ']');
+  const legacyBlock = uiSrc.match(/const LEGACY_PART_TYPES = \{[^}]*\}/)[0];
+
+  ok(!codes.includes('sw_no'), 'sw_no は部品DBの種別から外れている');
+  ok(!codes.includes('sw_nc'), 'sw_nc は部品DBの種別から外れている');
+  ok(codes.includes('contact_unit'), 'contact_unit が種別に入っている');
+  ok(!html.includes('value="sw_no"'), 'index.htmlのセレクタからsw_noが消えている');
+  ok(!html.includes('value="sw_nc"'), 'index.htmlのセレクタからsw_ncが消えている');
+
+  ok(legacyBlock.includes('sw_no') && legacyBlock.includes('sw_nc'),
+     'LEGACY_PART_TYPES に旧コードが登録され、取込は通る(既存CSVが再取込できなくならない)');
+  ok(uiSrc.includes('LEGACY_PART_TYPES[type]'),
+     'CSV取込で旧コードを弾かずに要再分類として扱う');
+  ok(uiSrc.includes('要再分類'), '旧コードの部品は「要再分類」と表示される');
+
+  // 自動変換していないこと(IDECのsw_noは実際には押ボタン等なので、機械的に
+  // contact_unitへ変換すると誤分類になる)
+  ok(!/sw_no'?\s*:\s*'contact_unit/.test(uiSrc) && !/sw_no.*→.*contact_unit/.test(uiSrc),
+     'sw_no→contact_unit の自動変換はしていない(誤分類防止)');
+
+  // 図面側のシンボル種別としては残っていること(既存図面の接点が壊れないため)
+  const dataSrc = fs.readFileSync(__dirname + '/../js/data.js', 'utf8');
+  ok(dataSrc.includes('sw_no:') && dataSrc.includes('sw_nc:'),
+     '図面のシンボル種別としてのsw_no/sw_ncは残っている(既存図面の互換)');
+  ok(dataSrc.includes("contactType:'a'") || dataSrc.includes('contactType: \'a\''),
+     'contactType(接点Refが使う)も残っている');
+}
+
 console.log(ng ? `\n${ng}件失敗` : '\n全て成功');
 process.exit(ng ? 1 : 0);
