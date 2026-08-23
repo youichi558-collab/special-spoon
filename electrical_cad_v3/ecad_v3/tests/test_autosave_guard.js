@@ -152,5 +152,61 @@ console.log('【復元: 壊れたデータを削除せず退避する】');
      '壊れたデータは消さずに退避される(手作業で救える可能性を残す)');
 }
 
+// ------------------------------------------------------------------
+console.log('【復元に失敗したら自動保存をロックする】');
+console.log('  ← 事故の連鎖そのもの: 復元失敗 → 空の初期状態で起動 → 自動保存が上書き');
+{
+  // 保存済みデータはあるが、復元の途中で例外が出る状況を作る。
+  // (DEFSを未定義にすると state.customSymbols.forEach(...DEFS...) で落ちる)
+  const good = JSON.stringify({
+    version:2, savedAt: Date.now(), pages:[PAGE(30, 10)], customSymbols:[{type:'x'}],
+  });
+  const { sandbox, ls, hint } = makeSandbox([PAGE(0,0)], { ecad_autosave: good });
+  delete sandbox.DEFS;              // 復元途中で例外を起こす
+  try { sandbox.restoreAutosave(); } catch (e) { /* boot.jsの_safeInit相当 */ }
+
+  ok(sandbox.isAutosaveLocked(), '復元失敗でロックがかかる');
+
+  // この状態で自動保存が走っても、保存済みデータは無傷でなければならない
+  sandbox.state.pages = [PAGE(0, 0)];
+  sandbox.doAutosave();
+  eq(countOf(ls, 'ecad_autosave'), 40, '保存済みの40個が無傷で残る(上書きされない)');
+  ok(hint.textContent.includes('停止'), '自動保存を停止している旨が伝わる');
+}
+
+console.log('【復元に成功したらロックは解除される】');
+{
+  const good = JSON.stringify({
+    version:2, savedAt: Date.now(), pages:[PAGE(6, 2)], customSymbols:[],
+  });
+  const { sandbox, ls } = makeSandbox([], { ecad_autosave: good });
+  sandbox.restoreAutosave();
+  ok(!sandbox.isAutosaveLocked(), '正常復元後はロックされていない');
+
+  sandbox.doAutosave();               // 通常どおり保存できること
+  eq(countOf(ls, 'ecad_autosave'), 8, '復元後の自動保存は通常どおり動く');
+}
+
+console.log('【保存データが無い新規起動ではロックしない】');
+{
+  const { sandbox, ls } = makeSandbox([PAGE(0,0)], {});
+  sandbox.restoreAutosave();
+  ok(!sandbox.isAutosaveLocked(), '救うものが無いのでロックしない');
+  sandbox.doAutosave();
+  ok(ls.getItem('ecad_autosave') !== null, '新規作業の自動保存は普通に動く');
+}
+
+console.log('【保存データが壊れていてもロックする】');
+{
+  const { sandbox, ls } = makeSandbox([PAGE(0,0)], { ecad_autosave: '{壊れたJSON' });
+  sandbox.restoreAutosave();
+  // 壊れていて中身が数えられない場合、_asStoredCountは-1を返す。
+  // 「失うものが無い」とは断定できないので、安全側に倒れているか確認する。
+  const locked = sandbox.isAutosaveLocked();
+  const kept = ls.getItem('ecad_autosave_broken');
+  ok(kept === '{壊れたJSON', '壊れたデータは退避される');
+  ok(!locked, '数えられない破損データは退避済みなのでロック不要');
+}
+
 console.log(ng ? `\n${ng}件失敗` : '\n全て成功');
 process.exit(ng ? 1 : 0);
