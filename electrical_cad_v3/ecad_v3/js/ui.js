@@ -2421,9 +2421,17 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>半径</label><input type="number" id="pp-jr" value="${el.r||2}" min="1" max="30" step="1"></div>`;
     html += `<div class="pp-row"><label>見た目</label><select id="pp-jstyle"><option value="dot"${(el.style||'dot')==='dot'?' selected':''}>●塗りつぶし</option><option value="circle"${el.style==='circle'?' selected':''}>○白丸</option><option value="dbl"${el.style==='dbl'?' selected':''}>◎二重丸</option></select></div>`;
     if (isTerm) {
-      // 【2026-08-22】盛田さんの「端子番号がうまく書けない」「調整が効かない」への対応。
-      // 位置補正XYはあったが文字サイズ・色が無く、重なったり読めなかったりしても
-      // 調整できなかった。シンボル側と同じ devFs/devColor/labelFs/labelColor を持たせる。
+      // 【2026-08-23】一般要素側(◆デバイス/◆型式/◆仕様)と揃えた。盛田さん
+      // 「その辺の項目はシンボルプロパティと合わせた方が良さそうだがどう思う？」
+      // 「はい」。中身(常に使うもの)は枠の直下に、見た目調整(色・サイズ・位置)は
+      // ▸詳細に畳んで隠す。端子は「仕様」に相当するものが無く、代わりに
+      // 「端子番号」グループを置く。IDはすべて既存のまま(pp-jref等)なので
+      // 保存側(applyRightPanel)は変更不要。
+      //
+      // 【2026-08-22の経緯、引き続き有効】盛田さんの「端子番号がうまく書けない」
+      // 「調整が効かない」への対応。位置補正XYはあったが文字サイズ・色が無く、
+      // 重なったり読めなかったりしても調整できなかった。シンボル側と同じ
+      // devFs/devColor/labelFs/labelColor を持たせている。
       //
       // デバイス表示ON/OFFは、盛田さんの書き方に合わせるためのもの。
       // 「TB1-1,TB1-2 と全部書くと見づらいので TB1-1,-2 と書く」という運用で、
@@ -2433,33 +2441,47 @@ function updateRightPanel() {
       // 既定はOFF。同じデバイスで複数ONにしてよい(かたまりごとの先頭に出す)。
       // 集計側(端子台表・部品表)はこのON/OFFを見ないので、何個表示しても
       // TB1は1台として扱われる。
+      const jDevC = el.devColor||(state.darkMode?'#4da3ff':'#1d6fb5');
+      html += `<div class="pp-group" style="border-left:4px solid ${jDevC}"><div class="pp-group-cap" style="color:${jDevC}">◆ デバイス</div>`;
       html += `<div class="pp-row"><label>デバイス</label>`
         + `<input type="text" id="pp-jref" list="pp-jref-list" value="${el.partRef||''}"`
         + ` placeholder="例: TB1" onchange="onJunctionRefChanged()"></div>`
         + `<datalist id="pp-jref-list">${partRefOptionsHtml(el.partRef)}</datalist>`;
       html += `<div class="pp-row"><label>デバイスを図面に表示</label><input type="checkbox" id="pp-jrefshow" ${(el.showDev!==undefined?el.showDev:true)?'checked':''}></div>`;
-      html += `<div class="pp-row"><label>デバイス文字サイズ</label><input type="number" id="pp-jdfs" value="${el.devFs!==undefined?el.devFs:''}" placeholder="自動" min="4" max="48" step="1"></div>`;
-      html += `<div class="pp-row"><label>デバイス文字色</label><input type="color" id="pp-jdcolor" value="${el.devColor||'#555555'}"></div>`;
-      html += `<div class="pp-row"><label>デバイス位置X補正</label><input type="number" id="pp-jdox" value="${el.devOffX!==undefined?el.devOffX:''}" placeholder="自動" step="1"></div>`;
-      html += `<div class="pp-row"><label>デバイス位置Y補正</label><input type="number" id="pp-jdoy" value="${el.devOffY!==undefined?el.devOffY:''}" placeholder="自動" step="1"></div>`;
-      html += `<div class="pp-row"><label>型式(BOM用)</label><input type="text" id="pp-jmodel" value="${el.partModel||''}" placeholder="例: 端子台 M4" onchange="onJunctionModelChanged()" title="同じデバイス(TB1等)の端子すべてに同じ型式が入ります。台ごとに1回書けば済みます"></div>`;
       // 【2026-08-23】盤内/盤外の2択セレクトから「対象外」チェックに変更。
       // 既定が盤内なので実質フラグ1つで足り、選ばせる必要が無かった。
       // 内部表現(el.panelZone: 未設定 or '外')は変えていないので既存データも読める。
       html += `<div class="pp-row"><label>部品表の対象外</label><input type="checkbox" id="pp-jzone"${el.panelZone==='外'?' checked':''} title="チェックすると部品表に集計されません。現地調達品など、この図面で手配しないものに使います"></div>`;
+      html += `<details class="pp-details" style="border-left:4px solid ${jDevC}"><summary>デバイス表示の詳細（色・サイズ・位置）</summary>`;
+      html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-jdfs" value="${el.devFs!==undefined?el.devFs:''}" placeholder="自動" min="4" max="48" step="1" oninput="previewJDeviceOff()"></div>`;
+      html += `<div class="pp-row"><label>色</label><input type="color" id="pp-jdcolor" value="${el.devColor||'#555555'}" oninput="previewJDeviceOff()"></div>`;
+      html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-jdox" value="${el.devOffX!==undefined?el.devOffX:''}" placeholder="自動" step="1" oninput="previewJDeviceOff()"></div>`;
+      html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-jdoy" value="${el.devOffY!==undefined?el.devOffY:''}" placeholder="自動" step="1" oninput="previewJDeviceOff()"></div>`;
+      html += `<div class="pp-row"><button onclick="resetJDeviceOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button></div>`;
+      html += `</details></div>`;
+
+      html += `<div class="pp-group" style="border-left:4px solid var(--fg3)"><div class="pp-group-cap" style="color:var(--fg3)">◆ 型式</div>`;
+      html += `<div class="pp-row"><label>型番(BOM用)</label><input type="text" id="pp-jmodel" value="${el.partModel||''}" placeholder="例: 端子台 M4" onchange="onJunctionModelChanged()" title="同じデバイス(TB1等)の端子すべてに同じ型式が入ります。台ごとに1回書けば済みます"></div>`;
+      html += `</div>`;
+
       // 【2026-08-23】端子番号は候補リスト付きにする。部品DBの端子番号欄
       // (カタログCSV 6列目)に登録されている端子を datalist で出す。
       // PLC・インバータ・サーボアンプは端子数が多く(X0〜X15/COM 等)、
       // 全部手打ちさせると打ち間違いのもとになるため。
       // 名前付きグループ形式("入力:X0,X1/出力:Y0,Y1")にも対応(parseTerminalGroups)。
       // 部品DBに無い型式・型式未設定なら候補は空になり、従来どおり自由入力。
+      const jLblC = el.labelColor||'#555555';
+      html += `<div class="pp-group" style="border-left:4px solid ${jLblC}"><div class="pp-group-cap" style="color:${jLblC}">◆ 端子番号</div>`;
       html += `<div class="pp-row"><label>端子番号</label>`
         + `<input type="text" id="pp-jlabel" list="pp-jlabel-list" value="${el.label||''}" placeholder="例: A, 1"></div>`
         + `<datalist id="pp-jlabel-list">${junctionTermOptionsHtml(el)}</datalist>`;
-      html += `<div class="pp-row"><label>端子番号文字サイズ</label><input type="number" id="pp-jlfs" value="${el.labelFs!==undefined?el.labelFs:''}" placeholder="自動" min="4" max="48" step="1"></div>`;
-      html += `<div class="pp-row"><label>端子番号文字色</label><input type="color" id="pp-jlcolor" value="${el.labelColor||'#555555'}"></div>`;
-      html += `<div class="pp-row"><label>端子番号位置X補正</label><input type="number" id="pp-jlox" value="${el.labelOffX!==undefined?el.labelOffX:''}" placeholder="自動" step="1"></div>`;
-      html += `<div class="pp-row"><label>端子番号位置Y補正</label><input type="number" id="pp-jloy" value="${el.labelOffY!==undefined?el.labelOffY:''}" placeholder="自動" step="1"></div>`;
+      html += `<details class="pp-details" style="border-left:4px solid ${jLblC}"><summary>端子番号表示の詳細（色・サイズ・位置）</summary>`;
+      html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-jlfs" value="${el.labelFs!==undefined?el.labelFs:''}" placeholder="自動" min="4" max="48" step="1" oninput="previewJLabelOff()"></div>`;
+      html += `<div class="pp-row"><label>色</label><input type="color" id="pp-jlcolor" value="${el.labelColor||'#555555'}" oninput="previewJLabelOff()"></div>`;
+      html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-jlox" value="${el.labelOffX!==undefined?el.labelOffX:''}" placeholder="自動" step="1" oninput="previewJLabelOff()"></div>`;
+      html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-jloy" value="${el.labelOffY!==undefined?el.labelOffY:''}" placeholder="自動" step="1" oninput="previewJLabelOff()"></div>`;
+      html += `<div class="pp-row"><button onclick="resetJLabelOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button></div>`;
+      html += `</details></div>`;
     }
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
   } else if (el && el.type === 'text') {
@@ -2766,6 +2788,45 @@ function previewScale() {
 }
 
 // デバイスの位置・サイズをその場でプレビューする
+// 【2026-08-23】端子(junction)のプロパティを一般要素側と揃えるにあたり、
+// previewDeviceOff/resetDeviceOff等と同じパターンが4組(端子のデバイス・
+// 端子番号の、それぞれプレビュー・リセット)必要になった。丸写しは保守性が
+// 落ちるので汎用化する。既存のpreviewDeviceOff等はリスクを避けるため変更せず
+// 残し、この新設分だけで使う(一般要素側の呼び出し元を今回は一切触っていない)。
+//
+// ids: {ox,oy,fs,color} のDOM要素ID。fields: 対応するelのフィールド名。
+function _previewTextStyle(ids, fields) {
+  const rp = document.getElementById('rp-body');
+  const el = rp?._el;
+  if (!el) return;
+  const g = id => document.getElementById(id);
+  const ox = g(ids.ox), oy = g(ids.oy), fs = g(ids.fs), color = g(ids.color);
+  if (ox)    el[fields.ox]    = ox.value    !== '' ? parseInt(ox.value)  : undefined;
+  if (oy)    el[fields.oy]    = oy.value    !== '' ? parseInt(oy.value)  : undefined;
+  if (fs)    el[fields.fs]    = parseInt(fs.value) || undefined;
+  if (color) el[fields.color] = color.value || undefined;
+  drawWithoutSel();
+}
+function _resetTextOffset(ids, fields) {
+  const rp = document.getElementById('rp-body');
+  const el = rp?._el;
+  if (!el) return;
+  el[fields.ox] = undefined;
+  el[fields.oy] = undefined;
+  const ox = document.getElementById(ids.ox), oy = document.getElementById(ids.oy);
+  if (ox) ox.value = '';
+  if (oy) oy.value = '';
+  drawWithoutSel();
+}
+const _J_DEV_IDS    = { ox:'pp-jdox', oy:'pp-jdoy', fs:'pp-jdfs', color:'pp-jdcolor' };
+const _J_DEV_FIELDS = { ox:'devOffX', oy:'devOffY', fs:'devFs',   color:'devColor'  };
+const _J_LBL_IDS    = { ox:'pp-jlox', oy:'pp-jloy', fs:'pp-jlfs', color:'pp-jlcolor' };
+const _J_LBL_FIELDS = { ox:'labelOffX', oy:'labelOffY', fs:'labelFs', color:'labelColor' };
+function previewJDeviceOff() { _previewTextStyle(_J_DEV_IDS, _J_DEV_FIELDS); }
+function resetJDeviceOff()   { _resetTextOffset(_J_DEV_IDS, _J_DEV_FIELDS); }
+function previewJLabelOff()  { _previewTextStyle(_J_LBL_IDS, _J_LBL_FIELDS); }
+function resetJLabelOff()    { _resetTextOffset(_J_LBL_IDS, _J_LBL_FIELDS); }
+
 function previewDeviceOff() {
   const rp = document.getElementById('rp-body');
   const el = rp?._el;
