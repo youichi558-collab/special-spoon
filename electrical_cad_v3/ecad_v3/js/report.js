@@ -740,12 +740,50 @@ function exportRefCSV(devs){
 // 端子台は「TB1という1台に端子が複数」という構造なので、デバイス(partRef)で
 // グループ化する。並び順は tbOrder(端子台表で並べ替えた結果)があればそれに
 // 従い、無ければページ順→配置順とする(既存図面との互換)。
+// ----------------------------------------------------------------
+// 装置(PLC・インバータ・サーボアンプ・タッチパネル)の端子かどうかの判定
+// ----------------------------------------------------------------
+// 【2026-08-23】盛田さんの指摘:
+//   「端子台記号は同じだがPLC,インバーター,サーボアンプは部品要素だが
+//     端子番号をどう扱うのかが疑問」
+//   「端子台表には出さないな、端子台ではないから」
+//
+// これらは図面上は端子台と同じ○/◎で描くが、意味が違う。
+//   端子台TB1の○ = 「端子台という部品の端子1個」
+//   PLC1の○      = 「PLC1という1台の装置の接続点(X0等)」
+// 展開接続図ではPLCの端子は各ページに散らばって描かれる(X0は対応する押ボタンの
+// 隣、Y0は負荷の隣)。物理的には1台なのに図面上は何十箇所にも分かれる。
+//
+// 判定方法として検討したもの:
+//   案1 図面ごとにグループでシンボル登録 → 端子の組み合わせが図面ごとに違うので
+//        毎回登録が必要になり運用に乗らない(盛田さん「毎回シンボル登録は大変」)
+//   案2 端子に「装置端子」フラグを持たせる → デバイス名で分かっているのに
+//        人が二重に指定する手間が残る
+//   案3(採用) 部品DBの種別から自動判定 → 新しい入力項目も操作も増えない
+//
+// 型式(el.partModel)で部品DBを引き、種別が装置系なら装置端子とみなす。
+// 型式が空、または部品DBに無い場合は従来どおり端子台として扱うので、
+// 既存図面の挙動は変わらない(後方互換)。
+//
+// 部品表(collectBOMRows)はもともとjunctionもpartRefで集計しているので、
+// ○に PLC1 と入れれば○が何個あってもPLC1は1台として型番付きで出る。
+// こちらは変更不要。
+const DEVICE_PART_TYPES = ['plc', 'plc_unit', 'hmi', 'servo'];
+
+function isDeviceTerminal(el) {
+  const model = (el && el.partModel || '').trim();
+  if (!model) return false;
+  const p = (state.customParts || []).find(x => x.ref === model);
+  return !!p && DEVICE_PART_TYPES.includes(p.type);
+}
+
 function collectTerminals() {
   const out = [];
   state.pages.forEach((pg, pi) => {
     (pg.elements || []).forEach(el => {
       if (el.type !== 'junction') return;
       if (el.style !== 'circle' && el.style !== 'dbl') return;  // ●分岐点は端子ではない
+      if (isDeviceTerminal(el)) return;  // PLC等の装置の端子は端子台ではない
       out.push({ el, page: pi, loc: elLocation(el, pi) });
     });
   });

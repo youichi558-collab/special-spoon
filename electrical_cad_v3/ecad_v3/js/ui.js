@@ -803,6 +803,40 @@ function partRefOptionsHtml(current) {
     .map(ref => `<option value="${_escAttr(ref)}"></option>`).join('');
 }
 
+// 端子(junction)の端子番号の候補リスト。
+// 【2026-08-23】PLC・インバータ・サーボアンプは端子数が多いので、型式が
+// 部品DBにあればその端子番号欄から候補を出す。名前付きグループ形式
+// ("入力:X0,X1,COM/出力:Y0,Y1,COM")なら、グループ名を説明として添える。
+// 同じデバイスの他の端子で既に使われている番号には印を付けて、重複に
+// 気づけるようにする(禁止はしない。COM等は複数箇所に出るのが普通のため)。
+function junctionTermOptionsHtml(el) {
+  const model = (el && el.partModel || '').trim();
+  if (!model) return '';
+  const p = (state.customParts || []).find(x => x.ref === model);
+  if (!p || !p.terminals) return '';
+
+  // 同じデバイスで使用済みの端子番号を集める(自分自身は除く)
+  const ref = (el.partRef || '').trim();
+  const used = new Set();
+  if (ref) {
+    (state.pages || []).forEach(pg => (pg.elements || []).forEach(e => {
+      if (e === el) return;
+      if (e.type !== 'junction') return;
+      if ((e.partRef || '').trim() !== ref) return;
+      const v = (e.label || '').trim();
+      if (v) used.add(v);
+    }));
+  }
+
+  const out = [];
+  (typeof parseTerminalGroups === 'function' ? parseTerminalGroups(p.terminals) : [])
+    .forEach(g => g.list.forEach(t => {
+      const note = [g.name, used.has(t) ? '使用済み' : ''].filter(x => x).join(' / ');
+      out.push(`<option value="${_escAttr(t)}">${_escAttr(note)}</option>`);
+    }));
+  return out.join('');
+}
+
 // デバイスを選び直したら、そのデバイスの型番・仕様・端子番号を引き継ぐ。
 // 【重要】型式の表示ON/OFF(showModel)は引き継がない。MC1は図面上に複数あるが
 // 型番を出すのは代表の1つだけなので、引き継ぐと全部に型番が出てしまう。
@@ -2376,7 +2410,15 @@ function updateRightPanel() {
         + `<option value=""${!el.panelZone?' selected':''}>盤内</option>`
         + `<option value="外"${el.panelZone==='外'?' selected':''}>盤外</option>`
         + `</select></div>`;
-      html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-jlabel" value="${el.label||''}" placeholder="例: A, 1"></div>`;
+      // 【2026-08-23】端子番号は候補リスト付きにする。部品DBの端子番号欄
+      // (カタログCSV 6列目)に登録されている端子を datalist で出す。
+      // PLC・インバータ・サーボアンプは端子数が多く(X0〜X15/COM 等)、
+      // 全部手打ちさせると打ち間違いのもとになるため。
+      // 名前付きグループ形式("入力:X0,X1/出力:Y0,Y1")にも対応(parseTerminalGroups)。
+      // 部品DBに無い型式・型式未設定なら候補は空になり、従来どおり自由入力。
+      html += `<div class="pp-row"><label>端子番号</label>`
+        + `<input type="text" id="pp-jlabel" list="pp-jlabel-list" value="${el.label||''}" placeholder="例: A, 1"></div>`
+        + `<datalist id="pp-jlabel-list">${junctionTermOptionsHtml(el)}</datalist>`;
       html += `<div class="pp-row"><label>端子番号文字サイズ</label><input type="number" id="pp-jlfs" value="${el.labelFs!==undefined?el.labelFs:''}" placeholder="自動" min="4" max="48" step="1"></div>`;
       html += `<div class="pp-row"><label>端子番号文字色</label><input type="color" id="pp-jlcolor" value="${el.labelColor||'#555555'}"></div>`;
       html += `<div class="pp-row"><label>端子番号位置X補正</label><input type="number" id="pp-jlox" value="${el.labelOffX!==undefined?el.labelOffX:''}" placeholder="自動" step="1"></div>`;
