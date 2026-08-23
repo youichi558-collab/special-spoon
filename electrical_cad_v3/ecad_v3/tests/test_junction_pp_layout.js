@@ -50,6 +50,7 @@ const sandbox = {
   junctionTermOptionsHtml: () => '',
   colorCodeBtns: () => '',
   _escAttr: s => String(s),
+  junctionClipboard: null,
 };
 sandbox.state.elements = sandbox.state.pages[0].elements;
 sandbox.state.page = sandbox.state.pages[0];

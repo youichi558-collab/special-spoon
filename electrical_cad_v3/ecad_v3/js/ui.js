@@ -7,6 +7,10 @@
 // デバイス名・型番・文字サイズ/位置を全部手打ちし直すのが非効率、という指摘への対応。
 // シンボルの種類(type)に関係なく、この一式だけをコピー→他のシンボルへまとめて貼り付けできる。
 let deviceClipboard = null;
+// 端子(junction)専用のコピー貼付け用クリップボード(2026-08-23)。
+// deviceClipboardと別にする理由: 対象フィールドが違う(デバイス識別情報を
+// 含まない)ため、混同すると意図しないフィールドが貼り付けられる事故になる。
+let junctionClipboard = null;
 
 // ----------------------------------------------------------------
 // リボンタブ
@@ -2421,6 +2425,21 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>半径</label><input type="number" id="pp-jr" value="${el.r||2}" min="1" max="30" step="1"></div>`;
     html += `<div class="pp-row"><label>見た目</label><select id="pp-jstyle"><option value="dot"${(el.style||'dot')==='dot'?' selected':''}>●塗りつぶし</option><option value="circle"${el.style==='circle'?' selected':''}>○白丸</option><option value="dbl"${el.style==='dbl'?' selected':''}>◎二重丸</option></select></div>`;
     if (isTerm) {
+      // 【2026-08-23】盛田さん「端子台プロパティにもコピー貼付けがいる」への対応。
+      // 一般要素側(2026-08-03)と同じ考え方だが、対象フィールドは絞ってある:
+      //   ・partRef/partModel/panelZone(デバイス識別情報)は含めない。
+      //     これらは既にonJunctionRefChanged(デバイス名を打つと引き継ぐ)で
+      //     扱う仕組みがあり、コピー貼り付けで混ぜると別デバイスの端子に
+      //     device名を誤って上書きする事故になりやすい
+      //   ・label(端子番号)は絶対に含めない。端子ごとに違う値であり、
+      //     貼り付けで上書きすると全部同じ番号になってしまう
+      //     (collectDeviceInfo/onJunctionRefChangedと同じ注意点)
+      // 対象は表示ON/OFFと、色・サイズ・位置補正(見た目)のみ。異なるデバイス間で
+      // 「見た目だけ揃える」ための機能として割り切っている。
+      html += `<div class="pp-row" style="gap:6px">
+        <button onclick="copyJunctionProps()" title="この端子の表示ON/OFF・文字色・サイズ・位置補正をコピーします(デバイス名・型式・端子番号は含みません)" style="flex:1;font-size:11px;padding:3px 6px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">端子の見た目をコピー</button>
+        <button onclick="pasteJunctionProps()" title="コピーした見た目を、選択中の端子(複数可)へまとめて貼り付けます" style="flex:1;font-size:11px;padding:3px 6px;background:${junctionClipboard?'var(--accent,#1d6fb5)':'var(--bg3)'};border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:${junctionClipboard?'#fff':'var(--fg)'}"${junctionClipboard?'':' disabled'}>貼り付け</button>
+      </div>`;
       // 【2026-08-23】一般要素側(◆デバイス/◆型式/◆仕様)と揃えた。盛田さん
       // 「その辺の項目はシンボルプロパティと合わせた方が良さそうだがどう思う？」
       // 「はい」。中身(常に使うもの)は枠の直下に、見た目調整(色・サイズ・位置)は
@@ -3107,6 +3126,38 @@ const DEVICE_PROP_KEYS = [
   'partModel','partVolt','showModel','modelFs','modelColor','modelOffX','modelOffY',
   'textRot',
 ];
+// 端子(junction)の見た目コピー・貼り付け(2026-08-23)。対象は表示ON/OFFと
+// 色・サイズ・位置補正のみ。デバイス識別情報(partRef/partModel/panelZone)と
+// label(端子番号)は意図的に含めない(上のHTML生成部のコメント参照)。
+const JUNCTION_PROP_KEYS = [
+  'showDev','devFs','devColor','devOffX','devOffY',
+  'labelFs','labelColor','labelOffX','labelOffY',
+];
+function copyJunctionProps() {
+  const rp = document.getElementById('rp-body');
+  const el = rp._el;
+  if (!el || el.type !== 'junction') { alert('コピー元の端子を1つ選択してください'); return; }
+  applyRightPanel(); // パネルの未確定編集を先に反映してからコピーする
+  junctionClipboard = {};
+  JUNCTION_PROP_KEYS.forEach(k => { if (el[k] !== undefined) junctionClipboard[k] = el[k]; });
+  updateRightPanel();
+}
+function pasteJunctionProps() {
+  if (!junctionClipboard) { alert('先に「コピー」で端子の見た目をコピーしてください'); return; }
+  const targets = state.sel.els.size
+    ? state.elements.filter(e => state.sel.els.has(e.id) && e.type === 'junction')
+    : (document.getElementById('rp-body')._el?.type === 'junction' ? [document.getElementById('rp-body')._el] : []);
+  if (!targets.length) { alert('貼り付け先の端子を選択してください'); return; }
+  pushH();
+  targets.forEach(el => {
+    JUNCTION_PROP_KEYS.forEach(k => {
+      if (junctionClipboard[k] === undefined) delete el[k]; else el[k] = junctionClipboard[k];
+    });
+  });
+  draw();
+  updateRightPanel();
+}
+
 function copyDeviceProps() {
   const rp = document.getElementById('rp-body');
   const el = rp._el;
