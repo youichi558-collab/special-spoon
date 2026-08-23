@@ -2414,8 +2414,10 @@ function updateRightPanel() {
   if (el && el.type === 'junction') {
     const isTerm = (el.style === 'circle' || el.style === 'dbl'); // 白丸/二重丸のみ端子台の端子として扱う
     html += `<p style="font-size:10px;font-weight:600;color:var(--fg4);padding:6px 10px 2px">${isTerm ? '端子台の端子' : '接続点(分岐点)'}</p>`;
-    html += `<div class="pp-row"><label>X</label><input type="number" id="pp-jx" value="${Math.round(el.x*1000)/1000}" step="any"></div>`;
-    html += `<div class="pp-row"><label>Y</label><input type="number" id="pp-jy" value="${Math.round(el.y*1000)/1000}" step="any"></div>`;
+    // 【2026-08-23】X/Yの手入力欄は削除した(盛田さん判断)。端子・分岐点とも
+    // 配線の端点にスナップして置くもので、座標を手打ちで直す場面が無い。
+    // 動かすならドラッグの方が早い。半径と見た目は描くときに頻繁に触るので残す。
+    // 端子(○/◎)・分岐点(●)の共通部分なので、削除は両方に効く。
     html += `<div class="pp-row"><label>半径</label><input type="number" id="pp-jr" value="${el.r||2}" min="1" max="30" step="1"></div>`;
     html += `<div class="pp-row"><label>見た目</label><select id="pp-jstyle"><option value="dot"${(el.style||'dot')==='dot'?' selected':''}>●塗りつぶし</option><option value="circle"${el.style==='circle'?' selected':''}>○白丸</option><option value="dbl"${el.style==='dbl'?' selected':''}>◎二重丸</option></select></div>`;
     if (isTerm) {
@@ -2874,14 +2876,13 @@ function applyRightPanel() {
   // チェックボックスの状態を読む（欄が無ければfalse）
   const chk = id => { const e = document.getElementById(id); return e ? !!e.checked : false; };
   if (el && el.type === 'junction') {
-    if (v('pp-jx')!=='') { el.x = parseFloat(v('pp-jx')); el.y = parseFloat(v('pp-jy')); }
     if (v('pp-jr')!=='') el.r = Math.max(1, parseFloat(v('pp-jr')));
     if (v('pp-jstyle')!=='') el.style = v('pp-jstyle');
     if (el.style === 'circle' || el.style === 'dbl') {
       el.label     = v('pp-jlabel');
       el.partRef   = v('pp-jref');
       el.partModel = v('pp-jmodel');
-      el.panelZone = document.getElementById('pp-jzone')?.checked ? '外' : undefined;
+      el.panelZone = chk('pp-jzone') ? '外' : undefined;
       el.showDev   = !!chk('pp-jrefshow');
       if (v('pp-jdfs')!=='')   el.devFs = parseFloat(v('pp-jdfs'));     else delete el.devFs;
       if (v('pp-jlfs')!=='')   el.labelFs = parseFloat(v('pp-jlfs'));   else delete el.labelFs;
@@ -2988,7 +2989,7 @@ function applyRightPanel() {
     el.labelAlign = v('pp-lalign') || undefined;
     el.partRef   = v('pp-partref');
     el.devHide   = !document.getElementById('pp-devhide')?.checked;
-    el.panelZone = document.getElementById('pp-zone')?.checked ? '外' : undefined;
+    el.panelZone = chk('pp-zone') ? '外' : undefined;
     el.partModel = v('pp-partmodel');
     { const pv = document.getElementById('pp-partvolt');
       if (pv) el.partVolt = pv.value || undefined; else applyDefaultVolt(el); }
