@@ -100,5 +100,63 @@ const noRefRow = rows2.find(r => r.noRef);
 ok(noRefRow, 'デバイス未設定の行が存在する');
 ok(noRefRow.zone === undefined, 'デバイス未設定の行にzoneフィールドは無い');
 
+// ------------------------------------------------------------------
+// 表示区分の絞り込み(2026-08-23)
+// 盛田さん「部品表を作った場合対象外は書かない選択肢が取れるかだな」への対応。
+// 盤外品を別途手配する場合など、盤内だけの部品表を出したい場面がある。
+// 【重要】画面とCSVの両方に効かなければならない。片方だけだと、画面で絞ったのに
+// CSVには全部入っている(またはその逆)という状態になり、出力を信用できなくなる。
+console.log('【表示区分の絞り込み: 盤外を外す】');
+{
+  sandbox.setBOMZone('out', false);
+  const body = domEls['report-body'].innerHTML;
+  // 絞り込みのチェックボックスにも「盤内」「盤外」の文字が入るので、
+  // セクション見出し(margin:10px 0 3px)に限定して判定する
+  const hasSection = (b, name) => b.includes(`margin:10px 0 3px">${name}`);
+  ok(hasSection(body, '盤内'),  '盤内セクションは残る');
+  ok(!hasSection(body, '盤外'), '盤外セクションが出なくなる');
+  ok(body.includes('非表示中'), '非表示にした台数が画面に出る(黙って減らさない)');
+
+  domEls['report-csv-btn'].onclick();
+  ok(!lastCsv.content.includes('盤外'), 'CSVからも盤外が消える');
+  ok(lastCsv.content.includes('盤内'),  'CSVに盤内は残る');
+}
+
+console.log('【表示区分の絞り込み: 盤内を外す】');
+{
+  sandbox.setBOMZone('out', true);
+  sandbox.setBOMZone('in', false);
+  const body = domEls['report-body'].innerHTML;
+  const hasSection = (b, name) => b.includes(`margin:10px 0 3px">${name}`);
+  ok(!hasSection(body, '盤内'), '盤内セクションが出なくなる');
+  ok(hasSection(body, '盤外'),  '盤外セクションは残る');
+
+  domEls['report-csv-btn'].onclick();
+  ok(lastCsv.content.includes('盤外'),  'CSVに盤外は残る');
+  const lines = lastCsv.content.split('\n').slice(1).filter(l => l.trim());
+  ok(lines.every(l => !l.includes(',盤内,')), 'CSV本文に盤内の行が1件も無い');
+}
+
+console.log('【表示区分の絞り込み: デバイス未設定を外す】');
+{
+  sandbox.setBOMZone('in', true);
+  sandbox.setBOMZone('noRef', false);
+  const body = domEls['report-body'].innerHTML;
+  ok(!body.includes('margin:10px 0 3px">デバイス未設定'),
+     'デバイス未設定セクションが出なくなる');
+
+  domEls['report-csv-btn'].onclick();
+  ok(!lastCsv.content.includes('謎の部品'), 'CSVからもデバイス未設定の行が消える');
+}
+
+console.log('【既定は全部表示】');
+{
+  sandbox.setBOMZone('noRef', true);
+  const body = domEls['report-body'].innerHTML;
+  const hasSection = (b, name) => b.includes(`margin:10px 0 3px">${name}`);
+  ok(hasSection(body, '盤内') && hasSection(body, '盤外'), '既定では盤内・盤外とも出る');
+  ok(!body.includes('非表示中'), '全部表示のときは非表示の注記が出ない');
+}
+
 console.log(ng ? `\n${ng}件失敗` : '\n全て成功');
 process.exit(ng ? 1 : 0);

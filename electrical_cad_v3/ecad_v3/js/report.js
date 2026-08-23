@@ -518,14 +518,46 @@ function collectBOMRowsLegacy(){
   });
   return Object.values(counts);
 }
+// 部品表の表示対象の絞り込み(2026-08-23)。
+// 盤内/盤外に分けて表示するだけでなく、対象外を「書かない」選択ができるように
+// した(盛田さん「部品表を作った場合対象外は書かない選択肢が取れるかだな」)。
+// 盤外品を別途手配する場合など、盤内だけの部品表を出したい場面がある。
+// 画面の表示とCSV出力の両方に効く(片方だけ効くと出力を信用できなくなるため)。
+const _bomZone = { in: true, out: true, noRef: true };
+
+function setBOMZone(key, on) {
+  _bomZone[key] = !!on;
+  showBOM();
+}
+
+// 絞り込みを適用する。CSV出力も必ずこれを通すこと。
+function _bomFilterRows(rows) {
+  return rows.filter(r => {
+    if (r.noRef) return _bomZone.noRef;
+    return (r.zone || '') === '外' ? _bomZone.out : _bomZone.in;
+  });
+}
+
 function showBOM(){
-  const rows=collectBOMRows();
+  const allRows=collectBOMRows();
+  const rows=_bomFilterRows(allRows);
   const devTotal=rows.filter(r=>!r.noRef).reduce((s,r)=>s+r.count,0);
   const noRefTotal=rows.filter(r=>r.noRef).reduce((s,r)=>s+r.count,0);
+  // 絞り込みで隠している件数。黙って減っていると出力を誤解するので必ず出す。
+  const hidden=allRows.filter(r=>!rows.includes(r)).reduce((s,r)=>s+r.count,0);
+  const cb=(key,label)=>`<label style="margin-right:10px;font-size:11px;cursor:pointer">`
+    +`<input type="checkbox"${_bomZone[key]?' checked':''} `
+    +`onchange="setBOMZone('${key}',this.checked)" style="vertical-align:-1px;margin-right:3px">`
+    +`${label}</label>`;
   const head=`<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">全${state.pages.length}ページ集計・${devTotal} 台`
     +(noRefTotal?`　<span style="color:var(--red)">デバイス未設定 ${noRefTotal} 個</span>`:'')
     +`<br>数量はデバイス単位の台数です。構成数は接点・端子を含む図形の個数です。`
-    +`手配区分は盤内(盤内で組む部品)/盤外(現地・盤外に設置する部品)。プロパティの「手配区分」で設定します。</p>`;
+    +`手配区分は盤内(盤内で組む部品)/盤外(現地・盤外に設置する部品)。プロパティの「手配区分」で設定します。</p>`
+    +`<p style="margin-bottom:6px;padding:5px 6px;background:var(--bg2);border-radius:3px">`
+    +`<span style="font-size:11px;color:var(--fg2);margin-right:8px">表示する区分:</span>`
+    +cb('in','盤内')+cb('out','盤外')+cb('noRef','デバイス未設定')
+    +(hidden?`<span style="font-size:11px;color:var(--red)">（${hidden}台を非表示中・CSVにも出ません）</span>`:'')
+    +`</p>`;
   // 部品表でもコイル電圧を変えられるようにする(プロパティとどちらでも変更できる)。
   // 変更するとその行に属する要素すべてに反映され、型番＋電圧で行がまとめ直される。
   window._bomRows = rows;
@@ -580,7 +612,9 @@ function setBOMVolt(idx, volt){
   showBOM();   // 型番＋電圧でまとめ直す
 }
 function exportBOMCSV(){
-  const rows=collectBOMRows();
+  // 画面の絞り込みをCSVにも必ず適用する。画面と出力が食い違うと
+  // 出力を信用できなくなるため(2026-08-23)。
+  const rows=_bomFilterRows(collectBOMRows());
   dl(['型番/名称,コイル電圧,種別,JIS規格,デバイス,手配区分,数量(台),構成数,備考',
       ...rows.map(r=>`${r.label},${r.volt||''},${r.type},${r.jis},"${r.noRef?'未設定':r.refs.join('/')}",${r.noRef?'':(r.zone==='外'?'盤外':'盤内')},${r.count},${r.parts},${r.warn||''}`)
      ].join('\n'),'bom.csv','text/csv');
