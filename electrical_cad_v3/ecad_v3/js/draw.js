@@ -432,13 +432,22 @@ function drawJunctionEl(el, sel, lc) {
   // 端子番号ラベル(常時表示、図面を読むための必須情報。分岐点(●)には表示しない)
   // 文字サイズ・色は端子ごとに指定できる(未指定なら従来どおり11px・レイヤー色)。
   // 盛田さんの「端子番号がうまく書けない=調整が効かない」への対応(2026-08-22)。
+  //
+  // 【2026-08-23修正】以前はここだけ文字サイズ・位置オフセットを/state.zoomで
+  // 割っていて、画面をズームしても文字が拡大縮小しない(常に画面上で一定サイズ)
+  // 作りになっていた。しかしシンボル側(devFs/labelFs等)・寸法線・グループ表示は
+  // いずれも「文字サイズはズームで割らない」設計で統一されており(該当コメント
+  // 参照)、端子だけが違う挙動になっていた。盛田さん「文字関係、図面の拡縮で
+  // おかしくなってる」で発覚。ズームすると端子の文字だけ他と見た目の変化の
+  // 仕方が食い違って見えていた。シンボル側と同じ扱いに揃える(半径rも元々
+  // ズーム換算していない世界座標のままなので、この修正でrとの整合も取れる)。
   if (el.label && style !== 'dot') {
     ctx.save();
     ctx.fillStyle = el.labelColor || c;
-    ctx.font = `${(el.labelFs || 11)/state.zoom}px sans-serif`;
+    ctx.font = `${el.labelFs || 11}px sans-serif`;
     ctx.textAlign = 'left';
-    const lx = el.x + r + 4/state.zoom + (el.labelOffX||0);
-    const ly = el.y + 4/state.zoom + (el.labelOffY||0);
+    const lx = el.x + r + 4 + (el.labelOffX||0);
+    const ly = el.y + 4 + (el.labelOffY||0);
     ctx.fillText(el.label, lx, ly);
     ctx.restore();
   }
@@ -457,10 +466,11 @@ function drawJunctionEl(el, sel, lc) {
   if (state.showPartRef && !state.pdfSkipText && el.partRef && style !== 'dot' && showDev) {
     ctx.save();
     ctx.fillStyle = el.devColor || (state.darkMode ? '#4da3ff' : '#1d6fb5');
-    ctx.font = `bold ${(el.devFs || 10)/state.zoom}px sans-serif`;
+    // 【2026-08-23修正】上の端子番号と同じ理由でズーム割り算を撤廃。
+    ctx.font = `bold ${el.devFs || 10}px sans-serif`;
     ctx.textAlign = 'center';
     const dx = el.x + (el.devOffX||0);
-    const dy = el.y - r - 6/state.zoom + (el.devOffY||0);
+    const dy = el.y - r - 6 + (el.devOffY||0);
     ctx.fillText(el.partRef, dx, dy);
     ctx.restore();
   }

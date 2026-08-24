@@ -289,10 +289,12 @@ function hitTestJunction(wx, wy) {
     // ヒット領域を計算する(文字幅はhitTest側と同じ概算式を使う)。
     if (lay && !lay.visible) continue;
     if (el.style === 'dot') continue; // 分岐点(●)には文字が出ないので対象外
+    // 【2026-08-23修正】draw.js側でズーム割り算を撤廃したため、ここも合わせる。
+    // 位置がズレると「見えているのにクリックできない」逆効果になるため必ず一致させる。
     if (el.label) {
       const fs = Math.round(el.labelFs || 11);
-      const lx = el.x + r + 4/state.zoom + (el.labelOffX||0);
-      const ly = el.y + 4/state.zoom + (el.labelOffY||0);
+      const lx = el.x + r + 4 + (el.labelOffX||0);
+      const ly = el.y + 4 + (el.labelOffY||0);
       const lines = String(el.label).split('\n');
       for (let li=0; li<lines.length; li++) {
         const ln = lines[li]; if (!ln) continue;
@@ -305,7 +307,7 @@ function hitTestJunction(wx, wy) {
     if (state.showPartRef && el.partRef && showDev) {
       const fs = Math.round(el.devFs || 10);
       const dx = el.x + (el.devOffX||0);
-      const dy = el.y - r - 6/state.zoom + (el.devOffY||0);
+      const dy = el.y - r - 6 + (el.devOffY||0);
       const w  = Math.max(10, String(el.partRef).length*fs*0.55);
       if (Math.abs(wx-dx)<=w/2+R && wy>=dy-fs-R && wy<=dy+R) return el;
     }

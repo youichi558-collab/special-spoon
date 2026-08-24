@@ -124,10 +124,14 @@ console.log('【draw.jsの描画式と一致していること(回帰防止)】'
 {
   const drawSrc = fs.readFileSync(__dirname + '/../js/draw.js', 'utf8');
   const drawFn = drawSrc.slice(drawSrc.indexOf('function drawJunctionEl('), drawSrc.indexOf('function drawJunctionEl(') + 3000);
-  ok(drawFn.includes('el.x + r + 4/state.zoom + (el.labelOffX||0)'),
+  ok(drawFn.includes('el.x + r + 4 + (el.labelOffX||0)'),
      '端子番号の位置式が現在もdraw.js側と同じ(前提が崩れていない)');
-  ok(drawFn.includes('el.y - r - 6/state.zoom + (el.devOffY||0)'),
+  ok(drawFn.includes('el.y - r - 6 + (el.devOffY||0)'),
      'デバイス名の位置式が現在もdraw.js側と同じ(前提が崩れていない)');
+  // 【2026-08-23】文字サイズがズームで割られていないことも回帰防止として確認する。
+  // 盛田さん「文字関係、図面の拡縮でおかしくなってる」で発覚した不具合そのもの。
+  ok(!drawFn.includes('(el.labelFs || 11)/state.zoom') && !drawFn.includes('(el.devFs || 10)/state.zoom'),
+     '端子の文字サイズがズームで割られていない(シンボル側と同じ、ズームしても見た目のサイズ比が変わらない)');
 }
 
 console.log(ng ? `\n${ng}件失敗` : '\n全て成功');
