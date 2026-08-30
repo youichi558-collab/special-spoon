@@ -84,7 +84,14 @@ const selectTool = {
       if (!e.shiftKey) { state.sel.els.clear(); state.sel.wires.clear(); }
       state.elements.forEach(el => { if (inBox(el, sx, sy, ex, ey, crossing)) state.sel.els.add(el.id); });
       state.wires.forEach(w => { if (wireInBox(w, sx, sy, ex, ey, crossing)) state.sel.wires.add(w.id); });
-      expandSelToGroups();
+      // グループの一部が矩形に掛かると、矩形の外にある残りの要素も選択に入る。
+      // 黙って広がると「グループ化したら枠が囲った範囲より大きい」ことになるので、
+      // 広がったことと選択の総数を知らせる。
+      const _added = expandSelToGroups();
+      const _hint = document.getElementById('s-hint');
+      if (_hint) _hint.textContent = _added
+        ? `グループに合わせて選択を拡張しました（範囲外 +${_added}要素 / 合計 ${state.sel.els.size + state.sel.wires.size}要素）`
+        : '';
       state.mouse.selboxing = false;
       updateRightPanel();
       updateResizeHandles();

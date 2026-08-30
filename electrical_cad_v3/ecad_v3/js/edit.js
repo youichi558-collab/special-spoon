@@ -981,8 +981,12 @@ function flipSel(axis) {
 // グループ操作
 // ----------------------------------------------------------------
 // 選択をグループ全体に拡張（クリック・範囲選択後に呼ぶ）
+// 追加した要素数を返す。範囲選択では、ドラッグした矩形の外にある要素まで黙って
+// 選択に入ることがある(掛かった相手がグループなら残り全部が付いてくる)ので、
+// 呼び出し側がその事実を画面に出せるようにしている。
 function expandSelToGroups() {
   const groups = state.page.groups || [];
+  let added = 0;
   let changed = true;
   while (changed) {
     changed = false;
@@ -990,11 +994,12 @@ function expandSelToGroups() {
       const hit = g.elIds.some(id => state.sel.els.has(id)) ||
                   g.wireIds.some(id => state.sel.wires.has(id));
       if (hit) {
-        g.elIds.forEach(id => { if (!state.sel.els.has(id))    { state.sel.els.add(id);    changed = true; } });
-        g.wireIds.forEach(id => { if (!state.sel.wires.has(id)) { state.sel.wires.add(id); changed = true; } });
+        g.elIds.forEach(id => { if (!state.sel.els.has(id))    { state.sel.els.add(id);    changed = true; added++; } });
+        g.wireIds.forEach(id => { if (!state.sel.wires.has(id)) { state.sel.wires.add(id); changed = true; added++; } });
       }
     });
   }
+  return added;
 }
 
 function applyGroupMove() {
@@ -1029,17 +1034,45 @@ function convertSelectedToJunction() {
   alert(`${targets.length}個の円を端子(${style === 'dbl' ? '◎' : style === 'dot' ? '●' : '○'})に変換しました。`);
 }
 
+// グループ化すると解体されてしまう既存グループを返す。
+// groupSelected() は選択に1要素でも掛かった既存グループを丸ごと捨てるので、
+// 範囲選択が部品外形図グループの端に少し掛かっただけでも、その外形図グループは
+// 解体され、グループが持つデバイス記号・型番(部品表にも出る値)まで消える。
+// 黙って壊さないよう、ここで対象を洗い出して呼び出し側で確認を出す。
+function groupsDissolvedBy(sel, groups) {
+  return (groups || []).filter(g =>
+    (g.elIds   || []).some(id => sel.els.has(id)) ||
+    (g.wireIds || []).some(id => sel.wires.has(id))
+  );
+}
+
+// 解体される既存グループの確認メッセージ。グループ名(デバイス記号・型番)が
+// 付いていればそれを出す。無ければ要素数で示す。
+function dissolveGroupsMessage(dissolved) {
+  const names = dissolved.map(g =>
+    [g.partRef, g.partModel].filter(Boolean).join(' ') ||
+    `名前なし(${(g.elIds||[]).length + (g.wireIds||[]).length}要素)`
+  );
+  return `選択に既存グループが ${dissolved.length}個 含まれています:\n  ${names.join('\n  ')}\n\n` +
+         'グループ化すると、これらは解体されて1つの新しいグループにまとまります。\n' +
+         'グループが持っているデバイス記号・型番(部品表に出る値)は失われます。\n' +
+         '※グループの一部が選択に掛かると、残りの要素も自動で選択に入ります。\n' +
+         '  そのため、囲んだ範囲より広い範囲がグループになることがあります。\n\n' +
+         '続けますか？';
+}
+
 function groupSelected() {
   const elIds   = [...state.sel.els];
   const wireIds = [...state.sel.wires];
   if (!elIds.length && !wireIds.length) return;
-  pushH();
   state.page.groups = state.page.groups || [];
+  // 既存グループを黙って解体しない。掛かっているものがあれば中身を示して確認する。
+  const dissolved = groupsDissolvedBy(state.sel, state.page.groups);
+  if (dissolved.length && typeof confirm === 'function' &&
+      !confirm(dissolveGroupsMessage(dissolved))) return;
+  pushH();
   // 既存グループに含まれるメンバーを一旦解除してから新グループを作る
-  state.page.groups = state.page.groups.filter(g =>
-    !g.elIds.some(id => state.sel.els.has(id)) &&
-    !g.wireIds.some(id => state.sel.wires.has(id))
-  );
+  state.page.groups = state.page.groups.filter(g => !dissolved.includes(g));
   state.page.groups.push({ id: genId('g'), elIds, wireIds });
   draw();
 }

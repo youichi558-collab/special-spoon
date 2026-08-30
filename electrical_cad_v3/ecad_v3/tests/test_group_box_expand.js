@@ -19,6 +19,13 @@
 //
 // 実際に edit.js の expandSelToGroups / groupSelected と draw.js の drawGroupBoxes を
 // 動かして、描かれる枠(strokeRect)の座標で検証する。
+//
+// 【対応(2026-08-30)】選択の仕様(範囲選択でもグループ全体が選ばれる)はAutoCADと
+// 同じ挙動なので変えない。代わりに、
+//  ① 既存グループを黙って解体しない(groupSelected が確認を出す)。解体されると
+//     グループが持つデバイス記号・型番が部品表ごと消えるため、こちらの方が実害が大きい
+//  ② 範囲選択で選択が矩形の外へ広がったら、その件数を画面(s-hint)に出す
+// を入れた。下の【再現】節は「確認で『はい』を選んだ場合」の挙動として残してある。
 
 const fs = require('fs');
 const vm = require('vm');
@@ -35,6 +42,8 @@ const editSrc = fs.readFileSync(__dirname + '/../js/edit.js', 'utf8');
 const drawSrc = fs.readFileSync(__dirname + '/../js/draw.js', 'utf8');
 const fnSrc = [
   cut(editSrc, 'function expandSelToGroups('),
+  cut(editSrc, 'function groupsDissolvedBy('),
+  cut(editSrc, 'function dissolveGroupsMessage('),
   cut(editSrc, 'function groupSelected('),
   cut(drawSrc, 'function drawGroupBoxes('),
 ].join('\n');
@@ -56,8 +65,9 @@ function makePage() {
   };
 }
 
-function makeSandbox(page) {
+function makeSandbox(page, confirmAnswer) {
   const rects = [];
+  const confirms = [];
   const fakeCtx = {
     save(){}, restore(){}, beginPath(){}, fill(){}, stroke(){}, fillText(){}, arc(){},
     setLineDash(){}, strokeRect(x,y,w,h){ rects.push({x,y,w,h}); },
@@ -69,13 +79,19 @@ function makeSandbox(page) {
     sel: { els:new Set(), wires:new Set() },
     zoom: 1, darkMode: false, pdfSkipText: true,
   };
+  let pushed = 0;
   const sandbox = {
     console, ctx: fakeCtx, state,
-    genId: p => p + '_test', pushH(){}, draw(){},
+    genId: p => p + '_test_' + (++sandbox._n), pushH(){ pushed++; }, draw(){},
+    // 確認ダイアログ。既定は「はい」(従来どおり進む)
+    confirm: msg => { confirms.push(msg); return confirmAnswer !== false; },
   };
+  sandbox._n = 0;
   vm.createContext(sandbox);
   vm.runInContext(fnSrc, sandbox);
   sandbox._rects = rects;
+  sandbox._confirms = confirms;
+  Object.defineProperty(sandbox, '_pushed', { get: () => pushed });
   return sandbox;
 }
 
@@ -143,6 +159,56 @@ console.log('\n【枠の計算自体は正しい(bboxのバグではない)】')
   ok(Math.abs(r.x - (10-6)) < 1e-9 && Math.abs(r.y - (10-6)) < 1e-9 &&
      Math.abs(r.w - (50+12)) < 1e-9 && Math.abs(r.h - (60+12)) < 1e-9,
      'メンバーの座標どおりの枠(pad 6)が描かれる');
+}
+
+console.log('\n【修正: 拡張した要素数を返す(画面に知らせるため)】');
+{
+  const sb = makeSandbox(makePage());
+  boxSelect(sb, 0, 0, 100, 100, false);
+  ok(sb.expandSelToGroups() === 2, '矩形の外から入った要素数(g1b・g1c の2件)を返す');
+  ok(sb.expandSelToGroups() === 0, '既に拡張済みなら0(同じ通知を繰り返さない)');
+}
+{
+  const sb = makeSandbox(makePage());
+  sb.state.page.groups = [];
+  boxSelect(sb, 0, 0, 100, 100, false);
+  ok(sb.expandSelToGroups() === 0, 'グループが無ければ0(通知を出さない)');
+}
+
+console.log('\n【修正: 既存グループを黙って解体しない】');
+{
+  const sb = makeSandbox(makePage());
+  boxSelect(sb, 0, 0, 100, 100, true);
+  sb.groupSelected();
+  ok(sb._confirms.length === 1, '掛かっている既存グループがあれば確認が出る');
+  const m = sb._confirms[0];
+  ok(m.includes('既存グループが 1個'), '解体される既存グループの数を伝える');
+  ok(m.includes('デバイス記号・型番'), '失われる値(部品表に出る)を伝える');
+  ok(m.includes('囲んだ範囲より広い範囲がグループになる'), '枠が大きくなる理由も伝える');
+}
+{
+  const sb = makeSandbox(makePage());
+  sb.state.page.groups[0].partRef = 'MC1';
+  sb.state.page.groups[0].partModel = 'MSO-T12';
+  boxSelect(sb, 0, 0, 100, 100, true);
+  sb.groupSelected();
+  ok(sb._confirms[0].includes('MC1 MSO-T12'), 'グループ名(デバイス記号・型番)を出す');
+}
+{
+  const sb = makeSandbox(makePage(), false);   // 確認で「いいえ」
+  boxSelect(sb, 0, 0, 100, 100, true);
+  sb.groupSelected();
+  ok(sb.state.page.groups.length === 1 && sb.state.page.groups[0].id === 'g1',
+     'キャンセルすれば既存グループはそのまま残る');
+  ok(sb._pushed === 0, 'キャンセル時は履歴(pushH)も積まない');
+}
+{
+  const sb = makeSandbox(makePage());
+  sb.state.page.groups = [];                    // 既存グループ無し
+  boxSelect(sb, 0, 0, 100, 100, true);
+  sb.groupSelected();
+  ok(sb._confirms.length === 0, '解体するものが無ければ確認は出さない(普段は邪魔しない)');
+  ok(sb.state.page.groups.length === 1 && sb._pushed === 1, '通常のグループ化は従来どおり');
 }
 
 console.log(ng ? `\n失敗 ${ng}件` : '\n全て成功');
