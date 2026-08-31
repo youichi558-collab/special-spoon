@@ -1006,12 +1006,27 @@ function expandSelToGroups() {
 // ステータスバーの文字は小さく見落としやすいので、広がったときだけ色と太字で
 // 目立たせ、件数も残す(グループ化の確認メッセージでも使う)。
 // 自分が出したヒント以外(自動保存の警告など)は消さない。
+// 通知の文面。「範囲外 +N要素」では何が起きたのか伝わらないので、
+// 起きたことをそのまま書く。グループ名(デバイス記号・型番)があれば出す。
+function selExpandMessage(added, dissolved, total) {
+  const names = (dissolved || [])
+    .map(g => [g.partRef, g.partModel].filter(Boolean).join(' '))
+    .filter(Boolean);
+  const who = names.length === 1 ? `グループ「${names[0]}」`
+            : (dissolved || []).length === 1 ? 'グループ'
+            : `${(dissolved || []).length}個のグループ`;
+  return `▲ ${who}の一部を選んだので、同じグループの残り${added}要素も一緒に選ばれました`
+       + `（選択は合計${total}要素）`;
+}
+
 function noteSelExpand(added) {
   state.selExpanded = added || 0;
   const h = (typeof document === 'undefined') ? null : document.getElementById('s-hint');
   if (!h) return;
   if (added) {
-    h.textContent = `▲ グループに合わせて選択を拡張しました（囲んだ範囲の外から +${added}要素 / 合計 ${state.sel.els.size + state.sel.wires.size}要素）`;
+    h.textContent = selExpandMessage(added,
+      groupsDissolvedBy(state.sel, state.page.groups),
+      state.sel.els.size + state.sel.wires.size);
     // ステータスバー(#sb)の地色は --acc(ライト:濃い青 / ダーク:明るい水色)で、
     // テーマによって明暗が逆転する。その上に文字色だけ変えても読めないので、
     // 自前の地色を持つ白いチップにする(色はテーマ変数を使わず固定)。
@@ -1084,9 +1099,9 @@ function dissolveGroupsMessage(dissolved, expanded) {
     `名前なし(${(g.elIds||[]).length + (g.wireIds||[]).length}要素)`
   );
   const exp = expanded
-    ? `※この選択は、囲んだ範囲の外から ${expanded}要素 が自動で追加されています。\n` +
-      '  グループの一部が掛かると残りも選択に入るためで、グループ枠は\n' +
-      '  囲んだ範囲より大きくなります。\n'
+    ? `※グループの一部を選んだため、同じグループの残り ${expanded}要素 も\n` +
+      '  一緒に選ばれています。そのため、新しいグループの枠は\n' +
+      '  マウスで囲んだ範囲より大きくなります。\n'
     : '';
   return `選択に既存グループが ${dissolved.length}個 含まれています:\n  ${names.join('\n  ')}\n\n` +
          'グループ化すると、これらは解体されて1つの新しいグループにまとまります。\n' +

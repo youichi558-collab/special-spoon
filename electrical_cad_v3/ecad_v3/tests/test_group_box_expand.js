@@ -42,6 +42,7 @@ const editSrc = fs.readFileSync(__dirname + '/../js/edit.js', 'utf8');
 const drawSrc = fs.readFileSync(__dirname + '/../js/draw.js', 'utf8');
 const fnSrc = [
   cut(editSrc, 'function expandSelToGroups('),
+  cut(editSrc, 'function selExpandMessage('),
   cut(editSrc, 'function noteSelExpand('),
   cut(editSrc, 'function groupsDissolvedBy('),
   cut(editSrc, 'function dissolveGroupsMessage('),
@@ -186,6 +187,18 @@ console.log('\n【修正: 拡張の通知(noteSelExpand)】');
   sb.noteSelExpand(0);
   ok(sb.state.selExpanded === 0, '拡張が無ければ0に戻る');
 }
+{
+  // 文面: 「範囲外 +N要素」では何のことか分からないので、起きたことをそのまま書く
+  const sb = makeSandbox(makePage());
+  const g = sb.state.page.groups[0];
+  ok(sb.selExpandMessage(12, [{...g, partRef:'MC1'}], 15) ===
+     '▲ グループ「MC1」の一部を選んだので、同じグループの残り12要素も一緒に選ばれました（選択は合計15要素）',
+     'グループ名が付いていれば名前を出す');
+  ok(sb.selExpandMessage(12, [g], 15).startsWith('▲ グループの一部を選んだので'),
+     '名前が無ければ「グループ」とだけ言う');
+  ok(sb.selExpandMessage(20, [g, g], 25).startsWith('▲ 2個のグループの一部を選んだので'),
+     '複数なら個数を言う');
+}
 
 console.log('\n【修正: 既存グループを黙って解体しない】');
 {
@@ -198,7 +211,7 @@ console.log('\n【修正: 既存グループを黙って解体しない】');
   ok(m.includes('デバイス記号・型番'), '失われる値(部品表に出る)を伝える');
   ok(!m.includes('自動で追加'), '拡張が無い場合は拡張の説明を出さない');
   const m2 = sb.dissolveGroupsMessage(sb.groupsDissolvedBy(sb.state.sel, sb.state.page.groups), 2);
-  ok(m2.includes('囲んだ範囲の外から 2要素'), '拡張があれば件数と理由を確認メッセージにも出す');
+  ok(m2.includes('同じグループの残り 2要素'), '拡張があれば件数と理由を確認メッセージにも出す');
 }
 {
   const sb = makeSandbox(makePage());
