@@ -107,6 +107,10 @@ function getGroupBounds(els, wires) {
   els.forEach(el => {
     if (el.type==='rect') { minX=Math.min(minX,el.x); minY=Math.min(minY,el.y); maxX=Math.max(maxX,el.x+el.w); maxY=Math.max(maxY,el.y+el.h); }
     else if (el.type==='circle') { minX=Math.min(minX,el.x-el.r); minY=Math.min(minY,el.y-el.r); maxX=Math.max(maxX,el.x+el.r); maxY=Math.max(maxY,el.y+el.r); }
+    // 円弧: el.x/el.y は弧の中心点で、弧そのものは半径分ずれた位置にある。
+    // 分岐が無いと下のシンボル扱い(中心の周り±10)になり、何も描かれていない
+    // 場所までハンドルの箱が伸びる。draw.js の arcBounds と同じ範囲を使う。
+    else if (el.type==='arc') { const ab=arcBounds(el); minX=Math.min(minX,ab.minX); minY=Math.min(minY,ab.minY); maxX=Math.max(maxX,ab.maxX); maxY=Math.max(maxY,ab.maxY); }
     else if (el.x1!=null) { const bx=el.bx??el.x2,by=el.by??el.y2; minX=Math.min(minX,el.x1,el.x2,bx); minY=Math.min(minY,el.y1,el.y2,by); maxX=Math.max(maxX,el.x1,el.x2,bx); maxY=Math.max(maxY,el.y1,el.y2,by); }
     else if (el.x!=null) {
       if (el.type==='text') { const tw=(el.text||'').length*(el.fs||14)*0.6,th=(el.fs||14); minX=Math.min(minX,el.x); minY=Math.min(minY,el.y-th); maxX=Math.max(maxX,el.x+tw); maxY=Math.max(maxY,el.y); }

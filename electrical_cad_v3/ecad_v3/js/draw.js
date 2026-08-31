@@ -393,6 +393,38 @@ function drawTriEl(el, sel, lc, lay) {
   ctx.setLineDash([]); ctx.restore();
 }
 
+// 円弧が実際に占める範囲(バウンディングボックス)。
+// 円弧の el.x/el.y は「弧の中心点」であって弧の上ではない。半径が大きいと
+// 中心は画面に見えている弧からかなり離れた位置になるため、中心点を基準に
+// 箱を作ると、何も描かれていない場所まで選択範囲が伸びてしまう
+// (2026-08-30、盛田さん報告のハンドルのずれの原因)。
+// ctx.arc(x,y,r,startA,endA,ccw) と同じ角度の約束で、弧の両端点と、
+// 弧が実際に通る上下左右の頂点(0/90/180/270度)だけを含めて求める。
+// resize.js の getGroupBounds(ハンドルの箱)と draw.js の drawGroupBoxes
+// (グループ枠)の両方がこれを使い、2つの箱が食い違わないようにする。
+function arcBounds(el) {
+  const cx = el.x, cy = el.y, r = el.r || 0;
+  const TAU = Math.PI * 2;
+  const a0 = el.startA || 0, a1 = el.endA || 0;
+  const norm = a => ((a % TAU) + TAU) % TAU;
+  const full = Math.abs(a1 - a0) >= TAU - 1e-9;   // 全周(実質は円)
+  const s = norm(a0);
+  const sweep = full ? TAU : (el.ccw ? norm(s - norm(a1)) : norm(norm(a1) - s));
+  // 角度aが弧の通り道に含まれるか(進む向きはccwで決まる)
+  const inSweep = a => {
+    if (full) return true;
+    const d = el.ccw ? norm(s - norm(a)) : norm(norm(a) - s);
+    return d <= sweep + 1e-9;
+  };
+  const xs = [cx + r*Math.cos(a0), cx + r*Math.cos(a1)];
+  const ys = [cy + r*Math.sin(a0), cy + r*Math.sin(a1)];
+  [0, Math.PI/2, Math.PI, Math.PI*1.5].forEach(a => {
+    if (inSweep(a)) { xs.push(cx + r*Math.cos(a)); ys.push(cy + r*Math.sin(a)); }
+  });
+  return { minX: Math.min(...xs), minY: Math.min(...ys),
+           maxX: Math.max(...xs), maxY: Math.max(...ys) };
+}
+
 function drawArcEl(el, sel, lc, lay) {
   ctx.save();
   const c  = lc;
@@ -1071,7 +1103,11 @@ function drawGroupBoxes() {
       addP(el.x1, el.y1); addP(el.x2, el.y2); addP(el.x3, el.y3);
       addP(el.cx, el.cy); addP(el.bx, el.by);
       if (el.w != null) addP(el.x + el.w, el.y + (el.h||0));
-      if (el.r != null) {
+      if (el.type === 'arc') {
+        // 円弧は中心ではなく弧そのものの範囲を使う(中心は弧から離れている)
+        const ab = arcBounds(el);
+        addP(ab.minX, ab.minY); addP(ab.maxX, ab.maxY);
+      } else if (el.r != null) {
         addP(el.x+el.r, el.y); addP(el.x-el.r, el.y);
         addP(el.x, el.y+el.r); addP(el.x, el.y-el.r);
       }
