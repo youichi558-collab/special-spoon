@@ -42,6 +42,7 @@ const editSrc = fs.readFileSync(__dirname + '/../js/edit.js', 'utf8');
 const drawSrc = fs.readFileSync(__dirname + '/../js/draw.js', 'utf8');
 const fnSrc = [
   cut(editSrc, 'function expandSelToGroups('),
+  cut(editSrc, 'function noteSelExpand('),
   cut(editSrc, 'function groupsDissolvedBy('),
   cut(editSrc, 'function dissolveGroupsMessage('),
   cut(editSrc, 'function groupSelected('),
@@ -175,6 +176,17 @@ console.log('\n【修正: 拡張した要素数を返す(画面に知らせる�
   ok(sb.expandSelToGroups() === 0, 'グループが無ければ0(通知を出さない)');
 }
 
+console.log('\n【修正: 拡張の通知(noteSelExpand)】');
+{
+  const sb = makeSandbox(makePage());
+  boxSelect(sb, 0, 0, 100, 100, false);
+  sb.noteSelExpand(sb.expandSelToGroups());
+  ok(sb.state.selExpanded === 2, '拡張件数をstateに残す(グループ化の確認でも使う)');
+  sb.state.sel.els.clear();
+  sb.noteSelExpand(0);
+  ok(sb.state.selExpanded === 0, '拡張が無ければ0に戻る');
+}
+
 console.log('\n【修正: 既存グループを黙って解体しない】');
 {
   const sb = makeSandbox(makePage());
@@ -184,7 +196,9 @@ console.log('\n【修正: 既存グループを黙って解体しない】');
   const m = sb._confirms[0];
   ok(m.includes('既存グループが 1個'), '解体される既存グループの数を伝える');
   ok(m.includes('デバイス記号・型番'), '失われる値(部品表に出る)を伝える');
-  ok(m.includes('囲んだ範囲より広い範囲がグループになる'), '枠が大きくなる理由も伝える');
+  ok(!m.includes('自動で追加'), '拡張が無い場合は拡張の説明を出さない');
+  const m2 = sb.dissolveGroupsMessage(sb.groupsDissolvedBy(sb.state.sel, sb.state.page.groups), 2);
+  ok(m2.includes('囲んだ範囲の外から 2要素'), '拡張があれば件数と理由を確認メッセージにも出す');
 }
 {
   const sb = makeSandbox(makePage());

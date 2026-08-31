@@ -28,7 +28,9 @@ const selectTool = {
     }
     if (el)   state.sel.els.add(el.id);
     if (wire) state.sel.wires.add(wire.id);
-    expandSelToGroups();
+    // クリックでグループの一員を選ぶと、グループ全体が選択に入る。
+    // 何要素増えたのかを画面に出す(範囲選択と同じ扱い)。
+    noteSelExpand(expandSelToGroups());
 
     state.mouse.dragging  = true;
     state.mouse.dragMoved = false;
@@ -87,11 +89,7 @@ const selectTool = {
       // グループの一部が矩形に掛かると、矩形の外にある残りの要素も選択に入る。
       // 黙って広がると「グループ化したら枠が囲った範囲より大きい」ことになるので、
       // 広がったことと選択の総数を知らせる。
-      const _added = expandSelToGroups();
-      const _hint = document.getElementById('s-hint');
-      if (_hint) _hint.textContent = _added
-        ? `グループに合わせて選択を拡張しました（範囲外 +${_added}要素 / 合計 ${state.sel.els.size + state.sel.wires.size}要素）`
-        : '';
+      noteSelExpand(expandSelToGroups());
       state.mouse.selboxing = false;
       updateRightPanel();
       updateResizeHandles();

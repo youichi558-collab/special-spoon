@@ -1002,6 +1002,28 @@ function expandSelToGroups() {
   return added;
 }
 
+// 選択がグループに合わせて広がったことを画面に出す。
+// ステータスバーの文字は小さく見落としやすいので、広がったときだけ色と太字で
+// 目立たせ、件数も残す(グループ化の確認メッセージでも使う)。
+// 自分が出したヒント以外(自動保存の警告など)は消さない。
+function noteSelExpand(added) {
+  state.selExpanded = added || 0;
+  const h = (typeof document === 'undefined') ? null : document.getElementById('s-hint');
+  if (!h) return;
+  if (added) {
+    h.textContent = `▲ グループに合わせて選択を拡張しました（囲んだ範囲の外から +${added}要素 / 合計 ${state.sel.els.size + state.sel.wires.size}要素）`;
+    h.style.color = '#f59e0b';   // グループ枠と同じオレンジ
+    h.style.opacity = '1';
+    h.style.fontSize = '12px';
+    h.style.fontWeight = 'bold';
+    state._selExpandHint = true;
+  } else if (state._selExpandHint) {
+    h.textContent = '';
+    h.style.color = ''; h.style.opacity = ''; h.style.fontSize = ''; h.style.fontWeight = '';
+    state._selExpandHint = false;
+  }
+}
+
 function applyGroupMove() {
   const dx = +document.getElementById('gp-dx')?.value || 0;
   const dy = +document.getElementById('gp-dy')?.value || 0;
@@ -1048,17 +1070,20 @@ function groupsDissolvedBy(sel, groups) {
 
 // 解体される既存グループの確認メッセージ。グループ名(デバイス記号・型番)が
 // 付いていればそれを出す。無ければ要素数で示す。
-function dissolveGroupsMessage(dissolved) {
+function dissolveGroupsMessage(dissolved, expanded) {
   const names = dissolved.map(g =>
     [g.partRef, g.partModel].filter(Boolean).join(' ') ||
     `名前なし(${(g.elIds||[]).length + (g.wireIds||[]).length}要素)`
   );
+  const exp = expanded
+    ? `※この選択は、囲んだ範囲の外から ${expanded}要素 が自動で追加されています。\n` +
+      '  グループの一部が掛かると残りも選択に入るためで、グループ枠は\n' +
+      '  囲んだ範囲より大きくなります。\n'
+    : '';
   return `選択に既存グループが ${dissolved.length}個 含まれています:\n  ${names.join('\n  ')}\n\n` +
          'グループ化すると、これらは解体されて1つの新しいグループにまとまります。\n' +
          'グループが持っているデバイス記号・型番(部品表に出る値)は失われます。\n' +
-         '※グループの一部が選択に掛かると、残りの要素も自動で選択に入ります。\n' +
-         '  そのため、囲んだ範囲より広い範囲がグループになることがあります。\n\n' +
-         '続けますか？';
+         exp + '\n続けますか？';
 }
 
 function groupSelected() {
@@ -1069,7 +1094,7 @@ function groupSelected() {
   // 既存グループを黙って解体しない。掛かっているものがあれば中身を示して確認する。
   const dissolved = groupsDissolvedBy(state.sel, state.page.groups);
   if (dissolved.length && typeof confirm === 'function' &&
-      !confirm(dissolveGroupsMessage(dissolved))) return;
+      !confirm(dissolveGroupsMessage(dissolved, state.selExpanded))) return;
   pushH();
   // 既存グループに含まれるメンバーを一旦解除してから新グループを作る
   state.page.groups = state.page.groups.filter(g => !dissolved.includes(g));
