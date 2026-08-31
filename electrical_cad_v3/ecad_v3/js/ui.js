@@ -2294,6 +2294,10 @@ function switchPage(idx) {
   state.pages[state.currentPage].frameObj = state.frameObj;
   state.currentPage = idx;
   state.sel.els.clear(); state.sel.wires.clear();
+  // 選択ボックス(リサイズハンドル)も消す。選択を消しただけでは
+  // state.resizeHandles に前のページのハンドルが残り、移動先のページに
+  // 選択ボックスだけが描かれてしまう。
+  updateResizeHandles();
   renderPageTabs(); draw(); updateRightPanel();
 }
 

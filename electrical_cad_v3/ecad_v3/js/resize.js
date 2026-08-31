@@ -79,7 +79,17 @@ function calcGroupHandles() {
 }
 
 // canvas上にハンドルを描画（draw.jsから呼ぶ）
+// 選択中の要素にハンドルが出ていること自体が選択の表示なので、選択が空なら
+// ハンドルも無い。state.resizeHandles は updateResizeHandles() を呼んだときしか
+// 更新されないため、ページ切り替えや削除で呼び忘れがあると、前のページの
+// ハンドルがそのまま描かれ続ける(2026-08-30、他ページに選択ボックスが残る不具合)。
+// 呼び出し側を直すだけでなく、ここでも選択の有無を見て取りこぼしを止める。
+function hasSelection() {
+  return !!(state.sel && (state.sel.els.size || state.sel.wires.size));
+}
+
 function drawResizeHandlesOnCanvas() {
+  if (!hasSelection()) return;
   if (!state.resizeHandles || !state.resizeHandles.length) return;
   const z = state.zoom;
   state.resizeHandles.forEach(h => {
@@ -97,6 +107,9 @@ function drawResizeHandlesOnCanvas() {
 
 // ハンドルのヒットテスト（ワールド座標）
 function hitResizeHandle(wx, wy) {
+  // 残ったハンドルが見えないまま当たり判定だけ生きていると、別ページの
+  // 要素をリサイズしてしまうので、描画と同じ条件で弾く。
+  if (!hasSelection()) return null;
   if (!state.resizeHandles) return null;
   const R = 8 / state.zoom;
   return state.resizeHandles.find(h => Math.abs(wx-h.wx)<R && Math.abs(wy-h.wy)<R) || null;

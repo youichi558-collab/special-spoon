@@ -679,6 +679,7 @@ function delSel() {
   // 中身が空になったグループはグループごと削除する。
   pruneGroups(state.page);
   state.sel.els.clear(); state.sel.wires.clear();
+  updateResizeHandles();   // 消した要素のハンドルが残らないようにする
   draw(); updateRightPanel();
 }
 
