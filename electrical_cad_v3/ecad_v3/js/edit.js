@@ -1012,14 +1012,22 @@ function noteSelExpand(added) {
   if (!h) return;
   if (added) {
     h.textContent = `▲ グループに合わせて選択を拡張しました（囲んだ範囲の外から +${added}要素 / 合計 ${state.sel.els.size + state.sel.wires.size}要素）`;
-    h.style.color = '#f59e0b';   // グループ枠と同じオレンジ
+    // ステータスバー(#sb)の地色は --acc(ライト:濃い青 / ダーク:明るい水色)で、
+    // テーマによって明暗が逆転する。その上に文字色だけ変えても読めないので、
+    // 自前の地色を持つ白いチップにする(色はテーマ変数を使わず固定)。
+    h.style.background = '#fff8e8';
+    h.style.color = '#6d3410';
+    h.style.padding = '1px 8px';
+    h.style.borderRadius = '3px';
     h.style.opacity = '1';
     h.style.fontSize = '12px';
     h.style.fontWeight = 'bold';
     state._selExpandHint = true;
   } else if (state._selExpandHint) {
     h.textContent = '';
-    h.style.color = ''; h.style.opacity = ''; h.style.fontSize = ''; h.style.fontWeight = '';
+    h.style.background = ''; h.style.color = ''; h.style.padding = '';
+    h.style.borderRadius = ''; h.style.opacity = ''; h.style.fontSize = '';
+    h.style.fontWeight = '';
     state._selExpandHint = false;
   }
 }
