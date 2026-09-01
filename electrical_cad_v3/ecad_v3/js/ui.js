@@ -1226,11 +1226,27 @@ async function catalogResetPartsDb() {
     }));
     state.hiddenBuiltinRefs = state.hiddenBuiltinRefs || [];
     renderPartsAll();
-    await partsDb.writeNow();
-    setMsg(`部品DBを${rows.length}件で作り直しました`
+    // 【2026-09-01】保存の成否を必ず確認してから結果を伝える。
+    // 以前はここで writeNow() の戻り値を見ずに「作り直しました」と出していたため、
+    // 保存が空振りしても画面には全件が並び成功のalertまで出て、次の起動で
+    // 元の件数に戻る、という形で作り直しが丸ごと失われていた
+    // (2026-08-20の作り直しが実際にこれで消えている。605件→168件)。
+    const saved = await partsDb.writeNow();
+    if (!saved) {
+      const msg = `部品DBをファイルに保存できませんでした。\n\n`
+        + `画面上は${rows.length}件になっていますが、この状態は保存されていません。\n`
+        + `このまま閉じると元の内容に戻ります。\n\n`
+        + `「部品登録」パネルの📂開く で部品DBファイルを開き直してから、`
+        + `もう一度この操作をしてください。`
+        + (backup ? `\n\n直前の内容は「${backup}」に退避済みです。` : '');
+      setMsg('保存できませんでした（画面上だけ変わっています）');
+      alert(msg);
+      return;
+    }
+    setMsg(`部品DBを${rows.length}件で作り直しました（保存済み）`
       + (backup ? `（バックアップ: ${backup}）` : '')
       + (d.truncated ? `　※カタログは${d.total}件ありますが上限まで取り込みました` : ''));
-    alert(`部品DBを${rows.length}件で作り直しました。`
+    alert(`部品DBを${rows.length}件で作り直し、ファイルに保存しました。`
       + (backup ? `\n\n以前の内容は「${backup}」に退避してあります。` : ''));
   } catch (e) {
     setMsg('エラー: ' + (e.message || e));

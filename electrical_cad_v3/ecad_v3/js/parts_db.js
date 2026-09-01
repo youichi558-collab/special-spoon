@@ -145,9 +145,14 @@ const partsDb = (() => {
     } catch (e) { if (e.name !== 'AbortError') alert('作成エラー: ' + e.message); }
   }
 
+  // 戻り値は「本当にファイルへ書けたか」。
+  // 2026-09-01: catalogResetPartsDb() がこの戻り値を見ずに
+  // 「605件で作り直しました」と成功のalertを出していたため、保存が空振りしても
+  // 画面には605件が並び、次の起動で168件に戻る、という形で作り直しが消えていた。
+  // 呼び出し側が成否を判断できないと、同じことがまた起きる。
   async function writeNow() {
-    if (!fileHandle) return;
-    if (saveLocked) return;   // 読めていない/件数が激減した状態では書かない
+    if (!fileHandle) return false;
+    if (saveLocked) return false;   // 読めていない/件数が激減した状態では書かない
     const now = state.customParts.length;
     // 件数が大きく減ったまま書くと、ファイル側の控えも同時に失われて戻せなくなる。
     // 自動で判断せず、必ず人に聞く。断られたらロックして以後も書かない。
@@ -159,22 +164,24 @@ const partsDb = (() => {
         + `[キャンセル] 保存せず、部品DBの自動保存を停止する`);
       if (!ok) {
         lockSaving(`部品DBの件数が ${lastGoodCount} → ${now} に減ったため保存を止めました`);
-        return;
+        return false;
       }
     }
     try {
       if (!(await ensurePermission(fileHandle, 'readwrite'))) {
         lockSaving('部品DBファイルへの書込み許可がありません');
-        return;
+        return false;
       }
       const writable = await fileHandle.createWritable();
       await writable.write(JSON.stringify({ customParts: state.customParts, hiddenBuiltinRefs: state.hiddenBuiltinRefs }, null, 2));
       await writable.close();
       lastGoodCount = now;
       setStatus(`部品DB: ${fileHandle.name} (${now}件・保存済み)`);
+      return true;
     } catch (e) {
       // 書けなかったことを黙って流さない。次の変更でまた同じ失敗をするだけなので止める。
       lockSaving(`部品DBを保存できませんでした(${e.message})`);
+      return false;
     }
   }
 
