@@ -54,6 +54,7 @@ const sandbox = {
   draw: () => {}, saveSymbolsToStorage: () => {},
   requestAnimationFrame: () => {},
   console,
+  escH: require('./_esch.js').escH,   // 実体は js/state.js のもの
 };
 vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync(__dirname + '/../js/pin_editor.js', 'utf8'), sandbox);

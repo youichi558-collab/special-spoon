@@ -39,6 +39,7 @@ const sandbox = {
     createElement: () => stub(),
   },
   console,
+  escH: require('./_esch.js').escH,   // 実体は js/state.js のもの
   state: {
     sel: { els: new Set([1]), wires: new Set() },
     wires: [],

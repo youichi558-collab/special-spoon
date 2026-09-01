@@ -156,3 +156,30 @@ function genId(prefix) {
   return prefix + '_' + Date.now().toString(36) + '_' + (_idSeq++).toString(36)
        + Math.random().toString(36).slice(2, 6);
 }
+
+
+// ================================================================
+// escH — innerHTML に文字列を埋め込むときのHTMLエスケープ
+//
+// 部品名・型番・メーカー名・端子番号・ページ名・シンボル名などは
+// 外部から入ってくる文字列(カタログCSV、DXF、他所で作られた図面ファイル、
+// 盛田さんの手入力)で、`<` や `"` が含まれ得る。これらを
+// `list.innerHTML = \`...${name}...\`` の形でそのまま入れると、
+// 良くて表示が崩れ(型番の `<` 以降が消える)、悪ければ onerror 付きの
+// <img> 等として実行される。
+//
+// 使い方: `${escH(p.name)}` のように、テンプレート文字列の穴に必ずかぶせる。
+// 属性値に入れる場合も同じ(`"` をエスケープするので value="${escH(v)}" で足りる)。
+// ================================================================
+function escH(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { escH, genId };
+}

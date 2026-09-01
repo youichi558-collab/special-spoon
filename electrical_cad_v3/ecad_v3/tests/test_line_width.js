@@ -10,6 +10,7 @@ const di=fs.readFileSync(__dirname+'/../js/dxf_import.js','utf8');
 const pick=(src,re)=>{const m=src.match(re);if(!m)throw new Error('見つからない:'+re);return m[0];};
 // constはevalのスコープから出ないのでvarに置き換えて読み込む(実コードは変えない)
 eval([
+  require('./_esch.js').escHSrc,          // 実体は js/state.js のもの
   pick(ui,/const LINE_WIDTHS = \[[\s\S]*?\];/).replace('const','var'),
   pick(ui,/const DEFAULT_LINE_WIDTH = [\d.]+;/).replace('const','var'),
   pick(ui,/function snapLineWidth\([\s\S]*?\n\}/),

@@ -276,10 +276,10 @@ function wireNoTable(msg){
     html += `<tr ${title}>` +
       `<td>${chk}</td>` +
       `<td style="white-space:nowrap">${upBtn}${downBtn}</td>` +
-      `<td><input type="text" value="${r.wireNo}" placeholder="未採番" ` +
+      `<td><input type="text" value="${escH(r.wireNo)}" placeholder="未採番" ` +
       `onchange="applyNetWireNo(${r.pageIdx},[${r.idxs.join(',')}],this.value)" ` +
       `style="width:80px;font-size:11px;padding:2px 4px;border:1px solid ${r.conflict?'#f59e0b':'var(--bd2)'};border-radius:3px;background:var(--bg2);color:var(--fg)"></td>` +
-      `<td>${r.pname}</td>` +
+      `<td>${escH(r.pname)}</td>` +
       `<td><span class="badge ${badgeCls}">${r.idxs.length}</span></td>` +
       `<td>${delBtn}</td>` +
       `</tr>`;
@@ -578,10 +578,10 @@ function showBOM(){
     if (r.noRef || !r.model) return '<td style="color:var(--fg3)">-</td>';
     const opts = (typeof partVoltOptions === 'function') ? partVoltOptions(r.model) : [];
     if (!opts.length) return '<td style="color:var(--fg3)">-</td>';
-    if (opts.length === 1) return `<td style="color:var(--fg2)">${opts[0]}</td>`;
+    if (opts.length === 1) return `<td style="color:var(--fg2)">${escH(opts[0])}</td>`;
     const cur = r.volt && opts.includes(r.volt) ? r.volt : opts[0];
     return `<td><select onchange="setBOMVolt(${i}, this.value)" style="font-size:11px">`
-      + opts.map(o => `<option value="${o}"${o === cur ? ' selected' : ''}>${o}</option>`).join('')
+      + opts.map(o => `<option value="${escH(o)}"${o === cur ? ' selected' : ''}>${escH(o)}</option>`).join('')
       + `</select></td>`;
   };
   // rowsのindexはCSV/setBOMVolt等で使うため、絶対indexを保ったまま盤内/盤外で
@@ -596,11 +596,11 @@ function showBOM(){
   const noRefRows    = withNoRefIdx.filter(({r})=>r.noRef);
   const rowHtml = ({r,i}) =>
     `<tr${r.noRef?' style="background:var(--rbg)"':''}>`
-    +`<td>${r.label}${r.warn?` <span style="color:var(--red);font-size:10px">⚠${r.warn}</span>`:''}</td>`
+    +`<td>${escH(r.label)}${r.warn?` <span style="color:var(--red);font-size:10px">⚠${escH(r.warn)}</span>`:''}</td>`
     +voltCell(r,i)
-    +`<td>${r.type}</td><td style="color:var(--acc)">${r.jis}</td>`
-    +`<td style="font-size:10px;color:var(--fg3)">${r.noRef?'<span style="color:var(--red)">未設定</span>':(r.refs.join(', ')||'-')}</td>`
-    +`<td style="font-weight:600">${r.count}</td><td style="color:var(--fg3)">${r.parts}</td></tr>`;
+    +`<td>${escH(r.type)}</td><td style="color:var(--acc)">${escH(r.jis)}</td>`
+    +`<td style="font-size:10px;color:var(--fg3)">${r.noRef?'<span style="color:var(--red)">未設定</span>':(escH(r.refs.join(', '))||'-')}</td>`
+    +`<td style="font-weight:600">${r.count}</td><td style="color:var(--fg3)">${escH(r.parts)}</td></tr>`;
   const section = (title, list) => {
     if (!list.length) return '';
     const cnt = list.reduce((s,{r})=>s+r.count,0);
@@ -735,12 +735,12 @@ function showRefPanel(){
     if(dv.noRef)warns.push('デバイス未設定');
     // locは「2/B3」(ページ/区画)形式。図面枠が無いページはページ番号だけになる
     const badge=c=>`<span class="badge badge-${c.role==='contact_a'?'g':'b'}">`
-      +`${c.role==='contact_a'?'a':'b'} ${c.loc}</span>`;
+      +`${c.role==='contact_a'?'a':'b'} ${escH(c.loc)}</span>`;
     const coilTxt=dv.coils.length
-      ? dv.coils.map(c=>`<span class="badge badge-p">${c.loc}</span>`).join(' ')
+      ? dv.coils.map(c=>`<span class="badge badge-p">${escH(c.loc)}</span>`).join(' ')
       : '<span class="badge" style="background:var(--rbg);color:var(--red)">未配置</span>';
-    return `<tr><td><b>${name}</b>${warns.length
-        ?`<br><span style="color:var(--red);font-size:10px">⚠ ${warns.join(' / ')}</span>`:''}</td>`
+    return `<tr><td><b>${escH(name)}</b>${warns.length
+        ?`<br><span style="color:var(--red);font-size:10px">⚠ ${escH(warns.join(' / '))}</span>`:''}</td>`
       +`<td>${coilTxt}</td>`
       +`<td>${dv.contacts.map(badge).join(' ')||'なし'}</td>`
       +`<td>${dv.contacts.length}</td></tr>`;

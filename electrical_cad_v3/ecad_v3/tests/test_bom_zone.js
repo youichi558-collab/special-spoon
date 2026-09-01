@@ -30,6 +30,7 @@ let lastCsv = null;
 const sandbox = {
   document: { getElementById: id => domEls[id] || null },
   console,
+  escH: require('./_esch.js').escH,   // 実体は js/state.js のもの
   window: {},
   openFP: () => {}, closeFP: () => {},
   draw: () => {}, pushH: () => {},

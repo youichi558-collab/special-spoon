@@ -21,6 +21,14 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 PORT = 8080
 
+# 待ち受けるアドレス。
+# 既定は 127.0.0.1(このPCからのみ)。以前は '' (= 全インターフェース)だったため、
+# 同一LAN上の別PCから図面・部品データ・カタログDBが読める状態になっていた。
+# このCADは1台のPCでローカルに使う道具なので、外に出す理由が無い。
+# どうしてもLANの別PCから開きたい場合だけ、環境変数で明示的に広げる:
+#   set ECAD_HOST=0.0.0.0  &&  py server.py
+HOST = os.environ.get('ECAD_HOST', '127.0.0.1')
+
 # ----------------------------------------------------------------------------
 # カタログDB(任意機能・2026-08-20)
 #
@@ -100,10 +108,12 @@ class Handler(SimpleHTTPRequestHandler):
             db = catalog_db.CatalogDB()
             if action == 'stats':
                 self._send_json({'ok': True, 'available': True, **db.stats()})
-            elif action == 'setdir':
-                path = db.set_csv_dir(q.get('path', ''))
-                db.build(verbose=True)
-                self._send_json({'ok': True, 'available': True, 'csv_dir': path, **db.stats()})
+            # setdir(カタログCSVフォルダの設定)はHTTPからは受け付けない。
+            # サーバー上の任意のフォルダをGET一発で指定できてしまい、
+            # 画面からは一度も呼んでいなかった(取り込みは /api/catalog/import が
+            # ブラウザで読んだCSVの中身を送る方式)。
+            # 設定を変えたいときはコマンドラインから:
+            #   py tools/catalog_db/catalog_db.py setdir <フォルダ>
             elif action == 'rebuild':
                 if not db.is_configured():
                     self._send_json({'ok': False, 'available': True,
@@ -187,7 +197,10 @@ class Handler(SimpleHTTPRequestHandler):
 def main():
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     print(f"電気回路図エディタ サーバー起動: http://localhost:{PORT}")
-    httpd = HTTPServer(('', PORT), Handler)
+    if HOST not in ('127.0.0.1', 'localhost', '::1'):
+        print(f"警告: {HOST} で待ち受けています。同一LAN上の別PCから図面・部品データが"
+              f"見える状態です(ECAD_HOSTを外すと このPCからのみ になります)")
+    httpd = HTTPServer((HOST, PORT), Handler)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

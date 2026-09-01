@@ -46,6 +46,7 @@ const sandbox = {
   applyDefaultVolt: () => {},
   partsDb: { scheduleSave: () => {}, writeNow: async () => {} },
   console,
+  escH: require('./_esch.js').escH,   // 実体は js/state.js のもの
 };
 sandbox.window = sandbox;
 vm.createContext(sandbox);
