@@ -3654,8 +3654,11 @@ function renderPartsFloat() {
   _lastPartsQuery = '';
   const searchEl = document.getElementById('part-search2');
   if (searchEl) searchEl.value = '';
-  renderMakerTabs();
-  renderPartsTable2(applyPartsFilters());
+  // 中身の描画は renderPartsAll に任せる。ここで renderMakerTabs+renderPartsTable2 を
+  // 直接呼ぶ形だと renderPartsAll と二重管理になり、片方だけ更新し忘れる
+  // (2026-09-01: 件数表示を renderPartsAll に足したのに、パネルを開く経路は
+  //  こちらを通るため表示されない、という不具合を実際に出した)
+  renderPartsAll();
 }
 // メーカー別タブ(全て/三菱電機/...)。増える一方の部品DBを軸2つ(種別・メーカー)で
 // 絞れるようにする(2026-08-17、種別グループ化だけでは「三菱だけ見たい」に対応できないため)。
