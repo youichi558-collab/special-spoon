@@ -30,20 +30,8 @@ const partsDb = (() => {
   }
 
   // 部品DBが保存されていないことは、閉じたパネルの中ではなく画面で伝える。
-  // 消えてから気づく類の不具合なので、目に入る場所に出し続ける。
-  function setBanner(msg) {
-    let el = document.getElementById('parts-db-banner');
-    if (!msg) { if (el) el.remove(); return; }
-    if (!el) {
-      el = document.createElement('div');
-      el.id = 'parts-db-banner';
-      el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:100000;'
-        + 'background:#a11;color:#fff;font-size:12px;line-height:1.5;padding:6px 12px;'
-        + 'text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.45)';
-      document.body.appendChild(el);
-    }
-    el.textContent = msg;
-  }
+  // 帯そのものの実装は state.js の showTopBanner に置いてある(複数箇所で使うため)。
+  function setBanner(msg) { showTopBanner('parts-db-banner', msg); }
 
   // 保存を止める。ファイルには一切触らないので、中身は無傷のまま残る。
   function lockSaving(reason) {

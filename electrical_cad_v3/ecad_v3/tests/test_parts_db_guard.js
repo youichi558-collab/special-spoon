@@ -30,6 +30,12 @@ const eq = (a, b, m) => {
 const ok = (cond, m) => { if (!cond) { ng++; console.log('  NG', m); } else console.log('  OK', m); };
 
 const SRC = fs.readFileSync(__dirname + '/../js/parts_db.js', 'utf8');
+const BANNER_SRC = (() => {
+  const m = fs.readFileSync(__dirname + '/../js/state.js', 'utf8')
+    .match(/function showTopBanner\([\s\S]*?\n\}/);
+  if (!m) throw new Error('js/state.js に showTopBanner が見つかりません');
+  return m[0];
+})();
 const mkParts = n => Array.from({ length: n }, (_, i) => ({ ref: 'P' + i, maker: 'M' }));
 
 // 偽のファイルハンドル。content がディスク上の中身に相当する。
@@ -64,7 +70,7 @@ function load(handle, initialParts, confirmAnswer) {
     document: {
       querySelectorAll: () => [],
       getElementById: () => sandbox._banner || null,
-      createElement: () => ({ style: {}, id: '', textContent: '',
+      createElement: () => ({ style: {}, id: '', textContent: '', setAttribute() {},
                               remove() { sandbox._banner = null; } }),
       body: { appendChild: el => { sandbox._banner = el; } },
     },
@@ -87,6 +93,9 @@ function load(handle, initialParts, confirmAnswer) {
     renderPartsAll: () => {},
   };
   vm.createContext(sandbox);
+  // parts_db.js は警告の帯を state.js の showTopBanner に任せている。
+  // コピーを置くと本体を直したときにテストだけ古い挙動を見続けるので、実ソースから取る。
+  vm.runInContext(BANNER_SRC, sandbox);
   vm.runInContext(SRC, sandbox);
   // `const partsDb` はトップレベルのconstなのでサンドボックスのプロパティにならない。
   // 他のテスト(test_terminal_label.js等)と同じく、式を評価して取り出す。

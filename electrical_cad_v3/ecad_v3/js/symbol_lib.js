@@ -9,8 +9,20 @@ const symLib = (() => {
   let filtered = [];
   let previewEntry = null;
   let previewShapes = [];
-  let favorites = JSON.parse(localStorage.getItem('symLibFav') || '[]');
-  let recent = JSON.parse(localStorage.getItem('symLibRecent') || '[]');
+  // 【2026-09-01】以前はここが try/catch 無しだった。保存データが壊れていると
+  // このIIFEのトップレベルで例外が出て symbolLib 自体が undefined になり、
+  // シンボルライブラリ機能が丸ごと起動しなくなる。壊れていたら空で始める。
+  function loadJsonList(key) {
+    try {
+      const v = JSON.parse(localStorage.getItem(key) || '[]');
+      return Array.isArray(v) ? v : [];
+    } catch (e) {
+      console.warn(`[symbol_lib] ${key} が壊れていたため空で開始します`, e);
+      return [];
+    }
+  }
+  let favorites = loadJsonList('symLibFav');
+  let recent = loadJsonList('symLibRecent');
   let activeTab = 'list'; // 'list' | 'fav' | 'recent'
   let thumbObserver = null;
 
@@ -472,7 +484,9 @@ const symLib = (() => {
   }
 
   function saveFavorites() {
-    localStorage.setItem('symLibFav', JSON.stringify(favorites));
+    // 容量超過等で失敗しても、お気に入り以降の画面更新まで巻き添えにしない
+    try { localStorage.setItem('symLibFav', JSON.stringify(favorites)); }
+    catch (e) { console.warn('[symbol_lib] お気に入りを保存できませんでした', e); }
     const countEl = document.getElementById('symFavCount');
     if (countEl) countEl.textContent = `(${favorites.length}件)`;
     const tabBtn = document.getElementById('symTabFav');

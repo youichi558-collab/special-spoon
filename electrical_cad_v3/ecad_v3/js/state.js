@@ -180,6 +180,35 @@ function escH(s) {
     .replace(/'/g, '&#39;');
 }
 
+// ================================================================
+// showTopBanner — 「保存できていない」類の警告を画面上部に出し続ける
+//
+// この種の不具合は、気づかないまま作業を続けて、閉じたときに初めて
+// 失われたと分かる。だから小さなステータス欄ではなく、必ず目に入る場所に
+// 出し続ける必要がある(2026-09-01の部品DB消失の教訓)。
+//
+// id ごとに1本ずつ。msg に空文字・null を渡すと消える。
+// 実装を1箇所に置くのは、同じ帯を複数のファイルが別々に作らないため。
+// ================================================================
+function showTopBanner(id, msg) {
+  if (typeof document === 'undefined') return;
+  let el = document.getElementById(id);
+  if (!msg) { if (el) el.remove(); return; }
+  if (!el) {
+    el = document.createElement('div');
+    el.id = id;
+    el.style.cssText = 'position:fixed;left:0;right:0;z-index:100000;'
+      + 'background:#a11;color:#fff;font-size:12px;line-height:1.5;padding:6px 12px;'
+      + 'text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.45)';
+    // 既に出ている帯の下に積む(2つ同時に出ても隠れないように)
+    const above = document.querySelectorAll('[data-topbanner]').length;
+    el.style.top = (above * 30) + 'px';
+    el.setAttribute('data-topbanner', '1');
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { escH, genId };
+  module.exports = { escH, genId, showTopBanner };
 }

@@ -3475,8 +3475,29 @@ function initLayFloat() {}
 // ----------------------------------------------------------------
 // シンボルフローティングパネル
 // ----------------------------------------------------------------
+// カスタムシンボルをlocalStorageへ保存する。
+//
+// 【2026-09-01】以前は catch(e) {} で握りつぶしていた。localStorageが容量超過
+// (QuotaExceededError)すると、登録したシンボルが無言で保存されず、閉じた時点で
+// 消える。図面の自動保存(ecad_autosave)と同じlocalStorageを共有しているので、
+// 図面が大きくなるほど起こりやすい。autosave.js 側は容量超過を検知して自動保存を
+// 止め画面に出すのに、こちらだけ何も出さない状態だった。
+// 部品DB消失(2026-08-20)と同じ「無言で保存できていない」性質なので、必ず知らせる。
+//
+// 戻り値は保存できたかどうか。
 function saveSymbolsToStorage() {
-  try { localStorage.setItem('ecad_customSymbols', JSON.stringify(state.customSymbols)); } catch(e) {}
+  try {
+    localStorage.setItem('ecad_customSymbols', JSON.stringify(state.customSymbols));
+    showTopBanner('sym-save-banner', '');   // 直った場合は帯を消す
+    return true;
+  } catch (e) {
+    showTopBanner('sym-save-banner',
+      '⚠ 登録シンボルを保存できませんでした'
+      + (e && e.name === 'QuotaExceededError' ? '（ブラウザの保存容量が一杯です）' : `（${e && e.message || e}）`)
+      + '。いま登録したシンボルは、このタブを閉じると消えます。'
+      + '図面を「JSONファイルに保存」してから、不要なページを整理してください');
+    return false;
+  }
 }
 
 function loadSymbolsFromStorage() {
