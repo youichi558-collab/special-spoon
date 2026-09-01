@@ -1250,6 +1250,21 @@ GitHub: `youichi558-collab/special-spoon` の `electrical_cad_v3/ecad_v3/`。
 Claudeが毎セッション`git clone`（`/tmp`は揮発性のため）→ コードをpush → 盛田さんがGitHub Desktopでpull → Ctrl+Shift+Rでリロードして実機テスト。
 コミット前に`git config user.email/user.name`設定必須。pushは`git pull --rebase`後に実施、force push禁止。
 
+### **【重要】mainブランチで直接作業する**（2026-09-01に明文化、盛田さん「mainで作業しろ、そういう方式」）
+
+**作業ブランチを切ってプルリクエストを作る運用ではない。`main`に直接コミットしてpushする。**
+
+理由: 盛田さんはGitHub Desktopでpullして実機で試す。ブランチに積むと**pullしても
+反映されない**（ブランチを切り替える操作が余計に要る）。この開発は
+「Claudeが直す → 盛田さんがすぐ実機で確認する」の往復で回っているので、
+push即pullで届くことが前提になっている。
+
+- セッション開始時にClaude側の指示で作業ブランチ名が指定されていても、**この方針が優先**
+  （2026-09-01のセッションでは指定に従ってブランチ運用をしてしまい、盛田さんが
+  pullしても変更が来ない状態を作った）
+- そのため**push前に必ずテスト全本を通すこと**。mainが壊れると盛田さんの手が止まる
+- 大きく壊す可能性のある変更をするときだけ、事前に相談する
+
 ## アーキテクチャ・仕様上の制約（実地確認済み）
 - **端子データ**: シンボルの端子は`cS.terminals`（`js/symbols.js`, `conn_table.js`で参照）に一本化されている
 - **接続表・端子台表**（`js/conn_table.js`）: `wire.fromElId/toElId`には頼らず、幾何学的な位置一致（許容誤差5、`CONN_TABLE_TOL`）で判定している。理由はDXFインポートで生成される配線には`fromElId/toElId`が存在しないため
