@@ -357,7 +357,23 @@ function allParts() {
     ...state.customParts.map(p => ({ ...p, custom:true })),
   ];
 }
-function renderPartsAll()  { renderMakerTabs(); renderPartsTable2(applyPartsFilters()); }
+function renderPartsAll()  { renderMakerTabs(); renderPartsTable2(applyPartsFilters()); renderPartsDbCount(); }
+
+// 部品DBパネルの見出しに件数を常時出す。
+// 2026-09-01: 約440型番が欠落していたのに気づくのが遅れた原因の一つが
+// 「合計件数がどこにも出ていない」ことだった。開けば必ず目に入る場所に出す。
+// 保存できていない状態(partsDb.isLocked)も、ここで分かるようにしておく。
+function renderPartsDbCount() {
+  const el = document.getElementById('prt-float-count');
+  if (!el) return;
+  const n = state.customParts ? state.customParts.length : 0;
+  const locked = (typeof partsDb !== 'undefined' && partsDb.isLocked && partsDb.isLocked());
+  el.textContent = locked ? `${n}件・未保存` : `${n}件`;
+  el.style.color = locked ? 'var(--red)' : 'var(--fg3)';
+  el.title = locked
+    ? '部品DBファイルに保存できていません。「部品登録」パネルの📂開く で開き直してください'
+    : '登録済みのカスタム部品の件数（標準部品は含みません）';
+}
 // filterParts は下で定義
 // 標準部品(BUILTIN_PARTS)を一覧から非表示にする（コード埋め込みのため削除は不可、非表示扱いのみ）
 function hideBuiltinPart(ref) {
