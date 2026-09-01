@@ -1200,13 +1200,26 @@ async function catalogResetPartsDb() {
 
     const noType = rows.filter(r => !r.type).length;
     const now = state.customParts.length;
+    // 【2026-09-01】外形図DXFは作り直しで丸ごと消えていた(2回目の消失)。
+    // カタログには存在しないデータなので、refで突き合わせて必ず引き継ぐ。
+    // 何が残り何が消えるかを、押す前に数字で見せる。
+    const catalogRefs = new Set(rows.map(r => r.ref));
+    const withDxf = state.customParts.filter(p => p.outlineDxf);
+    const keptDxf = withDxf.filter(p => catalogRefs.has(p.ref)).length;
+    const lostDxf = withDxf.length - keptDxf;
+    const dropped = state.customParts.filter(p => !catalogRefs.has(p.ref)).map(p => p.ref);
     if (!confirm(
       `部品DBの中身を破棄し、カタログDBの${rows.length}件で作り直します。\n\n`
       + `　現在の部品DB: ${now}件 → 破棄されます\n`
       + `　作り直し後　: ${rows.length}件\n`
       + (noType ? `　うち種別が空欄: ${noType}件\n` : '')
-      + `\n手作業で登録した部品・外形図DXFの紐付けもすべて失われます。\n`
-      + `実行前に現在の内容をバックアップファイルへ書き出します。\n\n`
+      + (keptDxf ? `\n外形図DXFの紐付け ${keptDxf}件は引き継ぎます。\n` : '')
+      + (lostDxf ? `⚠ ただし、カタログに無い部品に付いた外形図 ${lostDxf}件は失われます。\n` : '')
+      + (dropped.length
+          ? `⚠ カタログに無い部品 ${dropped.length}件が削除されます:\n`
+            + `　${dropped.slice(0, 8).join(', ')}${dropped.length > 8 ? ` ほか${dropped.length - 8}件` : ''}\n`
+          : '')
+      + `\n実行前に現在の内容をバックアップファイルへ書き出します。\n\n`
       + `続けますか？`)) return;
 
     setMsg('バックアップ中...');
@@ -1219,11 +1232,13 @@ async function catalogResetPartsDb() {
     }
 
     setMsg('作り直し中...');
-    state.customParts = rows.map(r => ({
+    // 作り直しでも外形図DXFは捨てない。carryOutlineDxf を必ず通す。
+    const prevByRef = new Map(state.customParts.map(p => [p.ref, p]));
+    state.customParts = rows.map(r => carryOutlineDxf({
       maker: r.maker || '', ref: r.ref, type: r.type || '',
       volt: r.volt || '', amp: r.amp || '', terminals: r.terminals || '',
       contacts: r.contacts || '', note: r.note || '', source: r.source || '', custom: true,
-    }));
+    }, prevByRef.get(r.ref)));
     state.hiddenBuiltinRefs = state.hiddenBuiltinRefs || [];
     renderPartsAll();
     // 【2026-09-01】保存の成否を必ず確認してから結果を伝える。
@@ -1243,10 +1258,13 @@ async function catalogResetPartsDb() {
       alert(msg);
       return;
     }
-    setMsg(`部品DBを${rows.length}件で作り直しました（保存済み）`
+    setMsg(`部品DBを${rows.length}件で作り直しました（保存済み`
+      + (keptDxf ? `・外形図${keptDxf}件を引き継ぎ` : '')
+      + `）`
       + (backup ? `（バックアップ: ${backup}）` : '')
       + (d.truncated ? `　※カタログは${d.total}件ありますが上限まで取り込みました` : ''));
     alert(`部品DBを${rows.length}件で作り直し、ファイルに保存しました。`
+      + (keptDxf ? `\n外形図DXFの紐付け${keptDxf}件は引き継いでいます。` : '')
       + (backup ? `\n\n以前の内容は「${backup}」に退避してあります。` : ''));
   } catch (e) {
     setMsg('エラー: ' + (e.message || e));
@@ -1307,6 +1325,26 @@ function _escAttr(s) {
     .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
 
+// ----------------------------------------------------------------
+// carryOutlineDxf — 外形図DXFの紐付けを新しい部品データへ引き継ぐ
+//
+// 外形図DXFはカタログにもCSVにも列が無く、盛田さんが手で1件ずつ紐付けたデータ。
+// 部品データを新しい内容で置き換えるとき、意識して引き継がないと必ず消える。
+//
+// **これで2回消している**:
+//   2026-08-19 CSV一括登録(bulkImportParts)が Object.assign で丸ごと上書きしていた
+//   2026-09-01 カタログDBからの作り直し(catalogResetPartsDb)が丸ごと置き換えていた
+//              (1回目の修正が、隣の経路に反映されていなかった)
+//
+// 部品データを置き換える処理を新しく書くときは、必ずここを通すこと。
+// ----------------------------------------------------------------
+function carryOutlineDxf(newPart, oldPart) {
+  if (!oldPart || !newPart) return newPart;
+  if (oldPart.outlineDxf     !== undefined) newPart.outlineDxf     = oldPart.outlineDxf;
+  if (oldPart.outlineDxfName !== undefined) newPart.outlineDxfName = oldPart.outlineDxfName;
+  return newPart;
+}
+
 // 検索結果の1件だけを部品DBに追加する。
 // 外形図DXFは盛田さんが手で紐付けたものなので、上書き時も必ず引き継ぐ
 // (CSV一括登録で全件消えた事故と同じ轍を踏まないこと)。
@@ -1321,10 +1359,9 @@ function catalogAddToParts(idx) {
   const existing = state.customParts.find(p => p.ref === r.ref);
   if (existing) {
     if (!confirm(`「${r.ref}」は既に部品DBにあります。カタログの内容で上書きしますか？\n（外形図DXFの紐付けは保持されます）`)) return;
-    const keepDxf = existing.outlineDxf, keepDxfName = existing.outlineDxfName;
+    const prev = { ...existing };
     Object.assign(existing, part);
-    if (keepDxf !== undefined)     existing.outlineDxf     = keepDxf;
-    if (keepDxfName !== undefined) existing.outlineDxfName = keepDxfName;
+    carryOutlineDxf(existing, prev);
   } else {
     state.customParts.push(part);
   }
@@ -1516,13 +1553,10 @@ function bulkImportParts() {
     const existing = state.customParts.find(p => p.ref === ref);
     if (existing) {
       // 外形図DXFはCSVに列が無いため、Object.assignで丸ごと上書きすると
-      // 手作業で紐付けた外形図が消えてしまう(実際に消失事故が起きた)。
-      // 単品登録のsaveCusPartと同じく、既存の外形図は必ず引き継ぐ。2026-08-19
-      const keepDxf     = existing.outlineDxf;
-      const keepDxfName = existing.outlineDxfName;
+      // 手作業で紐付けた外形図が消えてしまう(実際に消失事故が起きた。2026-08-19)
+      const prev = { ...existing };
       Object.assign(existing, part);
-      if (keepDxf !== undefined)     existing.outlineDxf     = keepDxf;
-      if (keepDxfName !== undefined) existing.outlineDxfName = keepDxfName;
+      carryOutlineDxf(existing, prev);
       updated++;
     }
     else { state.customParts.push(part); added++; }
