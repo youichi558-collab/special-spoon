@@ -8,6 +8,7 @@ const ui=fs.readFileSync(__dirname+'/../js/ui.js','utf8');
 const pick=re=>{const m=ui.match(re);if(!m)throw new Error('見つからない:'+re);return m[0];};
 global.draw=()=>{}; global.pushH=()=>{}; global.updateRightPanel=()=>{};
 global._escAttr=s=>String(s==null?'':s);
+global.escH=require('./_esch.js').escH;   // 実体は js/state.js のもの
 global.partRefOptionsHtml=()=>'';
 global.colorCodeBtns=()=>'';
 const fields={};

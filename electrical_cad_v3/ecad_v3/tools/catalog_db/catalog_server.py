@@ -20,7 +20,9 @@ API:
     GET /stats
     GET /rebuild                        CSVを読み直してDBを作り直す
 
-応答はJSON。CORSを許可してあるので、別のローカルWebアプリからも直接叩ける。
+応答はJSON。同じPCのローカルWebアプリ(http://localhost:*)からは直接叩ける。
+待ち受けは既定で 127.0.0.1(このPCからのみ)。LANの別PCから使いたい場合だけ
+--host 0.0.0.0 を明示的に付ける。
 """
 import json
 import os
@@ -32,6 +34,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import catalog_db  # noqa: E402
 
 DEFAULT_PORT = 8090
+DEFAULT_HOST = '127.0.0.1'
+
+# CORSを許す送信元。以前は '*' で、LAN内の任意のページから叩けた。
+# 実際の用途は「同じPCの別のローカルツール」なので localhost だけで足りる。
+ALLOWED_ORIGIN_PREFIXES = ('http://localhost:', 'http://127.0.0.1:',
+                           'http://localhost', 'http://127.0.0.1')
 _db = catalog_db.CatalogDB()
 
 
@@ -41,7 +49,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Content-Length', str(len(body)))
-        self.send_header('Access-Control-Allow-Origin', '*')
+        origin = self.headers.get('Origin') or ''
+        if origin.startswith(ALLOWED_ORIGIN_PREFIXES):
+            self.send_header('Access-Control-Allow-Origin', origin)
+            self.send_header('Vary', 'Origin')
         self.send_header('Cache-Control', 'no-store')
         self.end_headers()
         self.wfile.write(body)
@@ -78,14 +89,20 @@ def main():
     port = DEFAULT_PORT
     if '--port' in sys.argv:
         port = int(sys.argv[sys.argv.index('--port') + 1])
+    host = DEFAULT_HOST
+    if '--host' in sys.argv:
+        host = sys.argv[sys.argv.index('--host') + 1]
     if not _db.is_configured():
         print('警告: カタログCSVフォルダが未設定です。'
               ' python catalog_db.py setdir <フォルダ> で設定してください', file=sys.stderr)
     else:
         _db.ensure_built(verbose=True)
     print(f'カタログDBサーバー起動: http://localhost:{port}/search?q=...')
+    if host not in ('127.0.0.1', 'localhost', '::1'):
+        print(f'警告: {host} で待ち受けています。LAN上の別PCからカタログDBが'
+              f'読める状態です', file=sys.stderr)
     try:
-        HTTPServer(('', port), Handler).serve_forever()
+        HTTPServer((host, port), Handler).serve_forever()
     except KeyboardInterrupt:
         pass
 

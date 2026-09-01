@@ -190,7 +190,7 @@ function peUpdateList() {
   el.innerHTML = _peTerms.map((t, i) =>
     `<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">`
     + `<span>P${i}: (${t.x}, ${t.y})</span>`
-    + `<input type="text" value="${(t.label||'').replace(/"/g,'&quot;')}" placeholder="端子番号(例:A1)" style="width:70px;font-size:11px" onchange="peSetTermLabel(${i}, this.value)">`
+    + `<input type="text" value="${escH(t.label)}" placeholder="端子番号(例:A1)" style="width:70px;font-size:11px" onchange="peSetTermLabel(${i}, this.value)">`
     + `<span onclick="_peTerms.splice(${i},1);peUpdateList();peRender()" style="cursor:pointer;color:var(--red)">×</span>`
     + `</div>`
   ).join('');

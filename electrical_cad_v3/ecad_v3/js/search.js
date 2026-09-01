@@ -13,10 +13,8 @@
     catch(e){ return String(s ?? '').toLowerCase(); }
   }
 
-  function escHtml(s){
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
-                    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
+  // 全体共通(state.js の escH)に寄せる。同じ処理を複数箇所に置かない。
+  const escHtml = s => escH(s);
 
   // 全ページから検索対象レコードを収集
   function collectSearchIndex(){

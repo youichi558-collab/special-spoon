@@ -110,21 +110,21 @@ function renderLayers() {
         <td style="padding:4px 4px" onclick="event.stopPropagation()">
           <select style="font-size:10px;padding:2px 3px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px;width:80px"
             onchange="LAYERS[${i}].lineDash=this.value;draw()">
-            ${['solid','dashed','dotted','dashdot'].map(d=>`<option value="${d}"${(l.lineDash||'solid')===d?' selected':''}>${dashLabels[d]}</option>`).join('')}
+            ${['solid','dashed','dotted','dashdot'].map(d=>`<option value="${escH(d)}"${(l.lineDash||'solid')===d?' selected':''}>${dashLabels[d]}</option>`).join('')}
           </select>
         </td>
         <td style="padding:4px 4px" onclick="event.stopPropagation()">
-          <input type="number" min="0.5" max="10" step="0.5" value="${l.lineWidth||1}"
+          <input type="number" min="0.5" max="10" step="0.5" value="${escH(l.lineWidth||1)}"
             style="width:80px;font-size:12px;padding:2px 4px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
             onchange="LAYERS[${i}].lineWidth=parseFloat(this.value)||1;draw()">
         </td>
         <td style="padding:4px 4px" onclick="event.stopPropagation()">
-          <input type="number" min="6" max="72" step="1" placeholder="個別" ${l.fontSize!=null?`value="${l.fontSize}"`:''}
+          <input type="number" min="6" max="72" step="1" placeholder="個別" ${l.fontSize!=null?`value="${escH(l.fontSize)}"`:''}
             style="width:80px;font-size:12px;padding:2px 4px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
             onchange="applyLayerFontSize(${i},this.value)" oninput="if(!this.value){applyLayerFontSize(${i},null)}">
         </td>
         <td style="padding:4px 4px" onclick="event.stopPropagation()">
-          <input type="text" placeholder="属性（例:200V）" value="${l.attr||''}"
+          <input type="text" placeholder="属性（例:200V）" value="${escH(l.attr||'')}"
             style="width:90px;font-size:11px;padding:2px 4px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:2px"
             onchange="LAYERS[${i}].attr=this.value">
         </td>
@@ -141,7 +141,7 @@ function renderLayers() {
     const activeLayer = LAYERS.find(l => l.active);
     const activeName = activeLayer?.name || '';
     sel.innerHTML = LAYERS.map(l =>
-      `<option value="${l.name}" ${l.name===activeName?'selected':''}>${l.name}</option>`
+      `<option value="${escH(l.name)}" ${l.name===activeName?'selected':''}>${escH(l.name)}</option>`
     ).join('');
     const colorBox = document.getElementById('qb-layer-color');
     if (colorBox) colorBox.style.background = activeLayer?.color || '#888';
@@ -357,7 +357,23 @@ function allParts() {
     ...state.customParts.map(p => ({ ...p, custom:true })),
   ];
 }
-function renderPartsAll()  { renderMakerTabs(); renderPartsTable2(applyPartsFilters()); }
+function renderPartsAll()  { renderMakerTabs(); renderPartsTable2(applyPartsFilters()); renderPartsDbCount(); }
+
+// 部品DBパネルの見出しに件数を常時出す。
+// 2026-09-01: 約440型番が欠落していたのに気づくのが遅れた原因の一つが
+// 「合計件数がどこにも出ていない」ことだった。開けば必ず目に入る場所に出す。
+// 保存できていない状態(partsDb.isLocked)も、ここで分かるようにしておく。
+function renderPartsDbCount() {
+  const el = document.getElementById('prt-float-count');
+  if (!el) return;
+  const n = state.customParts ? state.customParts.length : 0;
+  const locked = (typeof partsDb !== 'undefined' && partsDb.isLocked && partsDb.isLocked());
+  el.textContent = locked ? `${n}件・未保存` : `${n}件`;
+  el.style.color = locked ? 'var(--red)' : 'var(--fg3)';
+  el.title = locked
+    ? '部品DBファイルに保存できていません。「部品登録」パネルの📂開く で開き直してください'
+    : '登録済みのカスタム部品の件数（標準部品は含みません）';
+}
 // filterParts は下で定義
 // 標準部品(BUILTIN_PARTS)を一覧から非表示にする（コード埋め込みのため削除は不可、非表示扱いのみ）
 function hideBuiltinPart(ref) {
@@ -384,8 +400,8 @@ function showHiddenBuiltinParts() {
   resultEl.style.display = 'block';
   resultEl.innerHTML = refs.length
     ? refs.map(ref => `<div style="display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--bg4);padding:2px 0">
-        <span>${ref}</span>
-        <span onclick="unhideBuiltinPart('${ref}')" style="color:var(--acc);cursor:pointer;text-decoration:underline">再表示する</span>
+        <span>${escH(ref)}</span>
+        <span onclick="unhideBuiltinPart('${_escAttr(ref)}')" style="color:var(--acc);cursor:pointer;text-decoration:underline">再表示する</span>
       </div>`).join('')
     : '非表示の標準部品はありません。';
 }
@@ -481,7 +497,7 @@ function askTerminalGroup(type, ref, groups) {
   document.getElementById('tg-ref').textContent = ref;
   box.innerHTML = groups.map((g, i) =>
     `<button class="fp-btn" style="display:block;width:100%;text-align:left;margin-bottom:4px"
-       onclick="applyPartAssign(${i})">${g.name || '(名前なし)'}　<span style="color:var(--fg3)">${g.list.join(',')}</span></button>`
+       onclick="applyPartAssign(${i})">${escH(g.name || '(名前なし)')}　<span style="color:var(--fg3)">${escH(g.list.join(','))}</span></button>`
   ).join('');
   openFP('term-group-p');
 }
@@ -906,15 +922,15 @@ function groupDevicePropsHtml(g, count) {
       <input type="checkbox" id="gp-showmodel"${g.showModel===false?'':' checked'} title="型番の描画だけを切ります。値は保持されるので部品表には出ます。密集した箇所で1つだけ書いて他は省略する、といった使い方ができます"></div>
     <details class="pp-details"><summary>文字の詳細（サイズ・色・位置）</summary>
       <div class="pp-row"><label>サイズ</label>
-        <input type="number" id="gp-devfs" value="${g.devFs||11}" step="1" min="6" max="32"></div>
+        <input type="number" id="gp-devfs" value="${escH(g.devFs||11)}" step="1" min="6" max="32"></div>
       <div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
-        <input type="color" id="gp-devcolor" value="${g.devColor||'#333333'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('gp-devcolor','gp-devcolorcode')">
-        <input type="text" id="gp-devcolorcode" value="${g.devColor||'#333333'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('gp-devcolorcode','gp-devcolor')">
+        <input type="color" id="gp-devcolor" value="${escH(g.devColor||'#333333')}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('gp-devcolor','gp-devcolorcode')">
+        <input type="text" id="gp-devcolorcode" value="${escH(g.devColor||'#333333')}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('gp-devcolorcode','gp-devcolor')">
         ${colorCodeBtns('gp-devcolorcode','gp-devcolor')}</div></div>
       <div class="pp-row"><label>位置X補正</label>
-        <input type="number" id="gp-devox" value="${g.devOffX!==undefined?g.devOffX:''}" placeholder="自動" step="5"></div>
+        <input type="number" id="gp-devox" value="${escH(g.devOffX!==undefined?g.devOffX:'')}" placeholder="自動" step="5"></div>
       <div class="pp-row"><label>位置Y補正</label>
-        <input type="number" id="gp-devoy" value="${g.devOffY!==undefined?g.devOffY:''}" placeholder="自動" step="5"></div>
+        <input type="number" id="gp-devoy" value="${escH(g.devOffY!==undefined?g.devOffY:'')}" placeholder="自動" step="5"></div>
     </details>
     <button class="pp-apply" onclick="applyGroupDevice()">デバイスを適用</button>`;
 }
@@ -967,7 +983,7 @@ function lineWidthOptions(cur) {
   return vals.map(v => {
     const lbl = v === DEFAULT_LINE_WIDTH ? `${v}（標準）`
               : (LINE_WIDTHS.includes(v) ? String(v) : `${v}（規格外）`);
-    return `<option value="${v}"${c === v ? ' selected' : ''}>${lbl}</option>`;
+    return `<option value="${escH(v)}"${c === v ? ' selected' : ''}>${lbl}</option>`;
   }).join('');
 }
 
@@ -1264,9 +1280,9 @@ async function catalogSearch() {
   }
 }
 
-function _esc(s) {
-  return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-}
+// 全体共通のHTMLエスケープ(state.js の escH)への別名。
+// 呼び出し箇所が多いのでこの名前は残すが、実装は1箇所に寄せてある。
+function _esc(s) { return escH(s); }
 // onclick属性の中に埋め込むパス用。Windowsのパスは「\」を含むので必ずエスケープする
 // (G:\マイドライブ\... がそのままJS文字列に入ると壊れるため)。
 function _escAttr(s) {
@@ -1312,7 +1328,7 @@ async function refreshPendingCsvList() {
     const data = await res.json();
     const files = data.files || [];
     sel.innerHTML = files.length
-      ? files.map(f => `<option value="${f}">${f}</option>`).join('')
+      ? files.map(f => `<option value="${escH(f)}">${escH(f)}</option>`).join('')
       : '<option value="">(登録待ちCSVはありません)</option>';
   } catch (e) {
     sel.innerHTML = '<option value="">(サーバー未対応・start.batを最新版で起動してください)</option>';
@@ -2067,7 +2083,7 @@ function srUpdateTermList() {
   el.innerHTML = _srTerms.map((t,i) =>
     `<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">`
     + `<span>T${i}: (${t.x}, ${t.y})</span>`
-    + `<input type="text" value="${(t.label||'').replace(/"/g,'&quot;')}" placeholder="端子番号(例:A1)" style="width:70px;font-size:11px" onchange="srSetTermLabel(${i}, this.value)">`
+    + `<input type="text" value="${escH(t.label)}" placeholder="端子番号(例:A1)" style="width:70px;font-size:11px" onchange="srSetTermLabel(${i}, this.value)">`
     + `<span onclick="_srTerms.splice(${i},1);srUpdateTermList();srRender()" style="cursor:pointer;color:var(--red)">×</span>`
     + `</div>`
   ).join('');
@@ -2256,7 +2272,7 @@ function delCusSym(type) {
 function renderPageTabs() {
   const el = document.getElementById('page-tabs'); if (!el) return;
   el.innerHTML = state.pages.map((p,i) =>
-    `<div class="page-tab${i===state.currentPage?' active':''}" draggable="true" onclick="switchPage(${i})" ondblclick="renamePage(${i})" ondragstart="pageDragStart(event,${i})" ondragover="pageDragOver(event)" ondrop="pageDrop(event,${i})" style="display:flex;align-items:center;gap:4px" title="ドラッグで並び替え／ダブルクリックで名前変更">${p.name||('Sheet'+(i+1))}${p.dirty?'<span style="color:var(--red);font-size:10px">●</span>':''}${state.pages.length>1?`<span onclick="event.stopPropagation();deletePage(${i})" style="font-size:10px;color:var(--fg3);cursor:pointer;line-height:1" title="削除">×</span>`:''}</div>`
+    `<div class="page-tab${i===state.currentPage?' active':''}" draggable="true" onclick="switchPage(${i})" ondblclick="renamePage(${i})" ondragstart="pageDragStart(event,${i})" ondragover="pageDragOver(event)" ondrop="pageDrop(event,${i})" style="display:flex;align-items:center;gap:4px" title="ドラッグで並び替え／ダブルクリックで名前変更">${escH(p.name||('Sheet'+(i+1)))}${p.dirty?'<span style="color:var(--red);font-size:10px">●</span>':''}${state.pages.length>1?`<span onclick="event.stopPropagation();deletePage(${i})" style="font-size:10px;color:var(--fg3);cursor:pointer;line-height:1" title="削除">×</span>`:''}</div>`
   ).join('') + `<div class="page-tab-add" onclick="addPage()">＋</div>`;
 }
 
@@ -2374,8 +2390,8 @@ function updateRightPanel() {
       : `<button class="pp-apply" onclick="groupSelected();updateRightPanel()">グループ化 (G)</button>`;
     rp.innerHTML = `
       <p style="font-size:10px;font-weight:600;color:var(--fg4);padding:6px 10px 2px">${label}</p>
-      <div class="pp-row"><label>X (左端)</label><input type="number" id="gp-x" value="${gx}" step="any"></div>
-      <div class="pp-row"><label>Y (上端)</label><input type="number" id="gp-y" value="${gy}" step="any"></div>
+      <div class="pp-row"><label>X (左端)</label><input type="number" id="gp-x" value="${escH(gx)}" step="any"></div>
+      <div class="pp-row"><label>Y (上端)</label><input type="number" id="gp-y" value="${escH(gy)}" step="any"></div>
       <div class="pp-row"><label>幅</label><span style="padding:2px 0;color:var(--fg2)">${gw}</span></div>
       <div class="pp-row"><label>高さ</label><span style="padding:2px 0;color:var(--fg2)">${gh}</span></div>
       <hr style="margin:6px 10px;border-color:var(--border)">
@@ -2398,15 +2414,15 @@ function updateRightPanel() {
 
   if (!el && !wire) {
     // 選択なし → 保存ファイル名 + 図面枠プロパティ
-    let html = `<div class="pp-row"><label>保存ファイル名</label><input type="text" id="rp-savename" value="${state.saveFileName}" placeholder="例: 制御盤A回路図" onchange="state.saveFileName=this.value.trim()"></div>`;
+    let html = `<div class="pp-row"><label>保存ファイル名</label><input type="text" id="rp-savename" value="${escH(state.saveFileName)}" placeholder="例: 制御盤A回路図" onchange="state.saveFileName=this.value.trim()"></div>`;
     if (state.frameObj) {
       const f = state.frameObj;
       html += `<p style="font-size:10px;font-weight:600;color:var(--fg4);padding:6px 10px 2px">図面枠プロパティ</p>
-        <div class="pp-row"><label>図面名称</label><input type="text" id="fp-title"  value="${f.title||''}"></div>
-        <div class="pp-row"><label>図面番号</label><input type="text" id="fp-drawno" value="${f.drawno||''}"></div>
-        <div class="pp-row"><label>作成者</label><input type="text" id="fp-author"  value="${f.author||''}"></div>
-        <div class="pp-row"><label>日付</label><input type="text" id="fp-date"   value="${f.date||''}"></div>
-        <div class="pp-row"><label>改訂番号</label><input type="text" id="fp-rev"    value="${f.rev||''}"></div>
+        <div class="pp-row"><label>図面名称</label><input type="text" id="fp-title"  value="${escH(f.title||'')}"></div>
+        <div class="pp-row"><label>図面番号</label><input type="text" id="fp-drawno" value="${escH(f.drawno||'')}"></div>
+        <div class="pp-row"><label>作成者</label><input type="text" id="fp-author"  value="${escH(f.author||'')}"></div>
+        <div class="pp-row"><label>日付</label><input type="text" id="fp-date"   value="${escH(f.date||'')}"></div>
+        <div class="pp-row"><label>改訂番号</label><input type="text" id="fp-rev"    value="${escH(f.rev||'')}"></div>
         <button class="pp-apply" onclick="applyFrameProps()">適用</button>`;
     }
     rp.innerHTML = html; return;
@@ -2422,7 +2438,7 @@ function updateRightPanel() {
     // 配線の端点にスナップして置くもので、座標を手打ちで直す場面が無い。
     // 動かすならドラッグの方が早い。半径と見た目は描くときに頻繁に触るので残す。
     // 端子(○/◎)・分岐点(●)の共通部分なので、削除は両方に効く。
-    html += `<div class="pp-row"><label>半径</label><input type="number" id="pp-jr" value="${el.r||2}" min="1" max="30" step="1"></div>`;
+    html += `<div class="pp-row"><label>半径</label><input type="number" id="pp-jr" value="${escH(el.r||2)}" min="1" max="30" step="1"></div>`;
     html += `<div class="pp-row"><label>見た目</label><select id="pp-jstyle"><option value="dot"${(el.style||'dot')==='dot'?' selected':''}>●塗りつぶし</option><option value="circle"${el.style==='circle'?' selected':''}>○白丸</option><option value="dbl"${el.style==='dbl'?' selected':''}>◎二重丸</option></select></div>`;
     if (isTerm) {
       // 【2026-08-23・最終形】盛田さん「シンボルと同じにしろと言ったはずだが？」。
@@ -2457,7 +2473,7 @@ function updateRightPanel() {
       const jDevC = el.devColor||(state.darkMode?'#4da3ff':'#1d6fb5');
       html += `<div class="pp-group" style="border-left:4px solid ${jDevC}"><div class="pp-group-cap" style="color:${jDevC}">◆ デバイス</div>`;
       html += `<div class="pp-row"><label>デバイス</label>`
-        + `<input type="text" id="pp-jref" list="pp-jref-list" value="${el.partRef||''}"`
+        + `<input type="text" id="pp-jref" list="pp-jref-list" value="${escH(el.partRef||'')}"`
         + ` placeholder="例: TB1" onchange="onJunctionRefChanged()"></div>`
         + `<datalist id="pp-jref-list">${partRefOptionsHtml(el.partRef)}</datalist>`;
       html += `<div class="pp-row"><label>デバイスを図面に表示</label><input type="checkbox" id="pp-jrefshow" ${(el.showDev!==undefined?el.showDev:true)?'checked':''}></div>`;
@@ -2466,15 +2482,15 @@ function updateRightPanel() {
       // 内部表現(el.panelZone: 未設定 or '外')は変えていないので既存データも読める。
       html += `<div class="pp-row"><label>部品表の対象外</label><input type="checkbox" id="pp-jzone"${el.panelZone==='外'?' checked':''} title="チェックすると部品表に集計されません。現地調達品など、この図面で手配しないものに使います"></div>`;
       html += `<details class="pp-details" style="border-left:4px solid ${jDevC}"><summary>デバイス表示の詳細（色・サイズ・位置）</summary>`;
-      html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-jdfs" value="${el.devFs!==undefined?el.devFs:''}" placeholder="自動" min="4" max="48" step="1" oninput="previewJDeviceOff()"></div>`;
-      html += `<div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="color" id="pp-jdcolor" value="${el.devColor||'#555555'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('pp-jdcolor','pp-jdcolorcode');previewJDeviceOff()"><input type="text" id="pp-jdcolorcode" value="${el.devColor||'#555555'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-jdcolorcode','pp-jdcolor');previewJDeviceOff()">${colorCodeBtns('pp-jdcolorcode','pp-jdcolor')}</div></div>`;
-      html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-jdox" value="${el.devOffX!==undefined?el.devOffX:''}" placeholder="自動" step="1" oninput="previewJDeviceOff()"></div>`;
-      html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-jdoy" value="${el.devOffY!==undefined?el.devOffY:''}" placeholder="自動" step="1" oninput="previewJDeviceOff()"></div>`;
+      html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-jdfs" value="${escH(el.devFs!==undefined?el.devFs:'')}" placeholder="自動" min="4" max="48" step="1" oninput="previewJDeviceOff()"></div>`;
+      html += `<div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="color" id="pp-jdcolor" value="${escH(el.devColor||'#555555')}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('pp-jdcolor','pp-jdcolorcode');previewJDeviceOff()"><input type="text" id="pp-jdcolorcode" value="${escH(el.devColor||'#555555')}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-jdcolorcode','pp-jdcolor');previewJDeviceOff()">${colorCodeBtns('pp-jdcolorcode','pp-jdcolor')}</div></div>`;
+      html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-jdox" value="${escH(el.devOffX!==undefined?el.devOffX:'')}" placeholder="自動" step="1" oninput="previewJDeviceOff()"></div>`;
+      html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-jdoy" value="${escH(el.devOffY!==undefined?el.devOffY:'')}" placeholder="自動" step="1" oninput="previewJDeviceOff()"></div>`;
       html += `<div class="pp-row"><button onclick="resetJDeviceOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button></div>`;
       html += `</details></div>`;
 
       html += `<div class="pp-group" style="border-left:4px solid var(--fg3)"><div class="pp-group-cap" style="color:var(--fg3)">◆ 型式</div>`;
-      html += `<div class="pp-row"><label>型番(BOM用)</label><input type="text" id="pp-jmodel" value="${el.partModel||''}" placeholder="例: 端子台 M4" onchange="onJunctionModelChanged()" title="同じデバイス(TB1等)の端子すべてに同じ型式が入ります。台ごとに1回書けば済みます"></div>`;
+      html += `<div class="pp-row"><label>型番(BOM用)</label><input type="text" id="pp-jmodel" value="${escH(el.partModel||'')}" placeholder="例: 端子台 M4" onchange="onJunctionModelChanged()" title="同じデバイス(TB1等)の端子すべてに同じ型式が入ります。台ごとに1回書けば済みます"></div>`;
       html += `</div>`;
 
       // 【2026-08-23】端子番号は候補リスト付きにする。部品DBの端子番号欄
@@ -2486,34 +2502,34 @@ function updateRightPanel() {
       const jLblC = el.labelColor||'#555555';
       html += `<div class="pp-group" style="border-left:4px solid ${jLblC}"><div class="pp-group-cap" style="color:${jLblC}">◆ 端子番号</div>`;
       html += `<div class="pp-row"><label>端子番号</label>`
-        + `<input type="text" id="pp-jlabel" list="pp-jlabel-list" value="${el.label||''}" placeholder="例: A, 1"></div>`
+        + `<input type="text" id="pp-jlabel" list="pp-jlabel-list" value="${escH(el.label||'')}" placeholder="例: A, 1"></div>`
         + `<datalist id="pp-jlabel-list">${junctionTermOptionsHtml(el)}</datalist>`;
       html += `<details class="pp-details" style="border-left:4px solid ${jLblC}"><summary>端子番号表示の詳細（色・サイズ・位置）</summary>`;
-      html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-jlfs" value="${el.labelFs!==undefined?el.labelFs:''}" placeholder="自動" min="4" max="48" step="1" oninput="previewJLabelOff()"></div>`;
-      html += `<div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="color" id="pp-jlcolor" value="${el.labelColor||'#555555'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('pp-jlcolor','pp-jlcolorcode');previewJLabelOff()"><input type="text" id="pp-jlcolorcode" value="${el.labelColor||'#555555'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-jlcolorcode','pp-jlcolor');previewJLabelOff()">${colorCodeBtns('pp-jlcolorcode','pp-jlcolor')}</div></div>`;
-      html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-jlox" value="${el.labelOffX!==undefined?el.labelOffX:''}" placeholder="自動" step="1" oninput="previewJLabelOff()"></div>`;
-      html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-jloy" value="${el.labelOffY!==undefined?el.labelOffY:''}" placeholder="自動" step="1" oninput="previewJLabelOff()"></div>`;
+      html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-jlfs" value="${escH(el.labelFs!==undefined?el.labelFs:'')}" placeholder="自動" min="4" max="48" step="1" oninput="previewJLabelOff()"></div>`;
+      html += `<div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="color" id="pp-jlcolor" value="${escH(el.labelColor||'#555555')}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('pp-jlcolor','pp-jlcolorcode');previewJLabelOff()"><input type="text" id="pp-jlcolorcode" value="${escH(el.labelColor||'#555555')}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-jlcolorcode','pp-jlcolor');previewJLabelOff()">${colorCodeBtns('pp-jlcolorcode','pp-jlcolor')}</div></div>`;
+      html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-jlox" value="${escH(el.labelOffX!==undefined?el.labelOffX:'')}" placeholder="自動" step="1" oninput="previewJLabelOff()"></div>`;
+      html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-jloy" value="${escH(el.labelOffY!==undefined?el.labelOffY:'')}" placeholder="自動" step="1" oninput="previewJLabelOff()"></div>`;
       html += `<div class="pp-row"><button onclick="resetJLabelOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button></div>`;
       html += `</details></div>`;
     }
-    html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
+    html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${escH(l.name)}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
   } else if (el && el.type === 'text') {
     html += `<div class="pp-row"><label>テキスト</label><textarea rows="2" id="pp-text">${el.text||''}</textarea></div>`;
-    html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-fs" value="${el.fs||14}" min="8" max="72"></div>`;
+    html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-fs" value="${escH(el.fs||14)}" min="8" max="72"></div>`;
     html += `<div class="pp-row"><label>枠</label><input type="checkbox" id="pp-textbox" ${el.textBox?'checked':''}><label for="pp-textbox" style="margin-left:4px">枠あり</label></div>`;
   } else if (el && el.type === 'angle_dim') {
-    html += `<div class="pp-row"><label>角度テキスト</label><input type="text" id="pp-angtext" value="${el.dimText||''}"></div>`;
-    html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-angfs" value="${el.dimFs||11}" min="6" max="32"></div>`;
-    html += `<div class="pp-row"><label>弧の半径</label><input type="number" id="pp-angr" value="${el.r||30}" min="10" step="5"></div>`;
-    html += `<div class="pp-row"><label>テキストX補正</label><input type="number" id="pp-angtx" value="${el.dimTx||0}" step="5"></div>`;
-    html += `<div class="pp-row"><label>テキストY補正</label><input type="number" id="pp-angty" value="${el.dimTy||0}" step="5"></div>`;
-    html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
+    html += `<div class="pp-row"><label>角度テキスト</label><input type="text" id="pp-angtext" value="${escH(el.dimText||'')}"></div>`;
+    html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-angfs" value="${escH(el.dimFs||11)}" min="6" max="32"></div>`;
+    html += `<div class="pp-row"><label>弧の半径</label><input type="number" id="pp-angr" value="${escH(el.r||30)}" min="10" step="5"></div>`;
+    html += `<div class="pp-row"><label>テキストX補正</label><input type="number" id="pp-angtx" value="${escH(el.dimTx||0)}" step="5"></div>`;
+    html += `<div class="pp-row"><label>テキストY補正</label><input type="number" id="pp-angty" value="${escH(el.dimTy||0)}" step="5"></div>`;
+    html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${escH(l.name)}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
   } else if (el && el.type === 'dim') {
     const len = Math.round(Math.hypot(el.x2-el.x1, el.y2-el.y1));
-    html += `<div class="pp-row"><label>寸法テキスト</label><input type="text" id="pp-dimtext" value="${el.dimText||len}"></div>`;
-    html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-dimfs" value="${el.dimFs||11}" min="8" max="72"></div>`;
-    html += `<div class="pp-row"><label>テキストX補正</label><input type="number" id="pp-dimtx" value="${el.dimTx||0}" step="5"></div>`;
-    html += `<div class="pp-row"><label>テキストY補正</label><input type="number" id="pp-dimty" value="${el.dimTy||0}" step="5"></div>`;
+    html += `<div class="pp-row"><label>寸法テキスト</label><input type="text" id="pp-dimtext" value="${escH(el.dimText||len)}"></div>`;
+    html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-dimfs" value="${escH(el.dimFs||11)}" min="8" max="72"></div>`;
+    html += `<div class="pp-row"><label>テキストX補正</label><input type="number" id="pp-dimtx" value="${escH(el.dimTx||0)}" step="5"></div>`;
+    html += `<div class="pp-row"><label>テキストY補正</label><input type="number" id="pp-dimty" value="${escH(el.dimTy||0)}" step="5"></div>`;
     html += `<div class="pp-row"><label>矢印スタイル</label><select id="pp-arrstyle">
       <option value="filled" ${(el.arrowStyle||'filled')==='filled'?'selected':''}>▶ 塗りつぶし</option>
       <option value="open"   ${el.arrowStyle==='open'  ?'selected':''}>▷ 開き矢印</option>
@@ -2521,9 +2537,9 @@ function updateRightPanel() {
       <option value="dot"    ${el.arrowStyle==='dot'   ?'selected':''}>● 丸</option>
       <option value="none"   ${el.arrowStyle==='none'  ?'selected':''}>なし</option>
     </select></div>`;
-    html += `<div class="pp-row"><label>矢印サイズ</label><input type="number" id="pp-arrsz" value="${el.arrowSz||8}" min="2" max="30" step="1"></div>`;
-    html += `<div class="pp-row"><label>引出しgap</label><input type="number" id="pp-gap" value="${el.gap!=null?el.gap:state.G}" min="0" max="20"></div>`;
-    html += `<div class="pp-row"><label>伸び(ext)</label><input type="number" id="pp-ext" value="${el.ext!=null?el.ext:state.G}" min="0" max="20"></div>`;
+    html += `<div class="pp-row"><label>矢印サイズ</label><input type="number" id="pp-arrsz" value="${escH(el.arrowSz||8)}" min="2" max="30" step="1"></div>`;
+    html += `<div class="pp-row"><label>引出しgap</label><input type="number" id="pp-gap" value="${escH(el.gap!=null?el.gap:state.G)}" min="0" max="20"></div>`;
+    html += `<div class="pp-row"><label>伸び(ext)</label><input type="number" id="pp-ext" value="${escH(el.ext!=null?el.ext:state.G)}" min="0" max="20"></div>`;
     html += `<div class="pp-row"><label>線幅</label><select id="pp-dimlw">${lineWidthOptions(el.lineWidth||DEFAULT_LINE_WIDTH)}</select></div>`;
     html += `<div class="pp-row"><label>線種</label><select id="pp-dimls">
       <option value=""        ${!el.lineStyle          ?'selected':''}>実線</option>
@@ -2531,7 +2547,7 @@ function updateRightPanel() {
       <option value="dashdot" ${el.lineStyle==='dashdot'?'selected':''}>一点鎖線</option>
       <option value="dot"     ${el.lineStyle==='dot'    ?'selected':''}>点線</option>
     </select></div>`;
-    html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
+    html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${escH(l.name)}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
     html += `<div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
       <button class="fp-btn primary" onclick="applyRightPanel()">適用</button>
       <button class="fp-btn" onclick="applyDimToAll()">全て適用</button>
@@ -2539,21 +2555,21 @@ function updateRightPanel() {
       <button class="fp-btn danger" onclick="resetDimDef()">初期値に戻す</button>
     </div>`;
   } else if (el && el.type === 'leader') {
-    html += `<div class="pp-row"><label>引出しテキスト</label><input type="text" id="pp-ldrtext" value="${el.leaderText||''}"></div>`;
-    html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-ldrfs" value="${el.leaderFs||11}" min="8" max="72"></div>`;
-    html += `<div class="pp-row"><label>テキストX補正</label><input type="number" id="pp-ldrtx" value="${el.leaderTx||0}" step="5"></div>`;
-    html += `<div class="pp-row"><label>テキストY補正</label><input type="number" id="pp-ldrty" value="${el.leaderTy||0}" step="5"></div>`;
-    html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
+    html += `<div class="pp-row"><label>引出しテキスト</label><input type="text" id="pp-ldrtext" value="${escH(el.leaderText||'')}"></div>`;
+    html += `<div class="pp-row"><label>フォントサイズ</label><input type="number" id="pp-ldrfs" value="${escH(el.leaderFs||11)}" min="8" max="72"></div>`;
+    html += `<div class="pp-row"><label>テキストX補正</label><input type="number" id="pp-ldrtx" value="${escH(el.leaderTx||0)}" step="5"></div>`;
+    html += `<div class="pp-row"><label>テキストY補正</label><input type="number" id="pp-ldrty" value="${escH(el.leaderTy||0)}" step="5"></div>`;
+    html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${escH(l.name)}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
   } else if (wire || (el && el.pts)) {
     const lay = LAYERS.find(l => l.name === item.layer);
     const wPts = item.pts || [{x:item.x1,y:item.y1},{x:item.x2,y:item.y2}];
     const wAng = wPts.length>=2 ? Math.round(Math.atan2(wPts[wPts.length-1].y-wPts[0].y, wPts[wPts.length-1].x-wPts[0].x)*180/Math.PI*10)/10 : 0;
-    html += `<div class="pp-row"><label>角度(°)</label><input type="number" id="pp-wangle" value="${wAng}" step="1"></div>`;
-    html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${item.wireNo||''}"></div>`;
-    html += `<div class="pp-row"><label>線番サイズ</label><input type="number" id="pp-wno-fs" value="${item.wireNoFs||10}" step="1" min="6" max="32"></div>`;
-    html += `<div class="pp-row"><label>線番X補正</label><input type="number" id="pp-wno-ox" value="${item.wireNoOffX||0}" step="5"></div>`;
-    html += `<div class="pp-row"><label>線番Y補正</label><input type="number" id="pp-wno-oy" value="${item.wireNoOffY||0}" step="5"></div>`;
-    html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${item.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
+    html += `<div class="pp-row"><label>角度(°)</label><input type="number" id="pp-wangle" value="${escH(wAng)}" step="1"></div>`;
+    html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${escH(item.wireNo||'')}"></div>`;
+    html += `<div class="pp-row"><label>線番サイズ</label><input type="number" id="pp-wno-fs" value="${escH(item.wireNoFs||10)}" step="1" min="6" max="32"></div>`;
+    html += `<div class="pp-row"><label>線番X補正</label><input type="number" id="pp-wno-ox" value="${escH(item.wireNoOffX||0)}" step="5"></div>`;
+    html += `<div class="pp-row"><label>線番Y補正</label><input type="number" id="pp-wno-oy" value="${escH(item.wireNoOffY||0)}" step="5"></div>`;
+    html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${escH(l.name)}"${item.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
     html += `<div class="pp-row"><label>線幅</label><select id="pp-lw">${lineWidthOptions(item.lineWidth||DEFAULT_LINE_WIDTH)}</select></div>`;
     html += `<div class="pp-row"><label>線種</label><select id="pp-ls"><option value=""${!item.lineStyle?' selected':''}>実線</option><option value="dash"${item.lineStyle==='dash'?' selected':''}>破線</option><option value="dashdot"${item.lineStyle==='dashdot'?' selected':''}>一点鎖線</option><option value="dot"${item.lineStyle==='dot'?' selected':''}>点線</option></select></div>`;
     if (lay?.attr) html += `<div class="pp-row"><label>属性（レイヤー）</label><p style="font-size:11px;color:var(--fg3);padding:2px 5px">${lay.attr}</p></div>`;
@@ -2563,36 +2579,36 @@ function updateRightPanel() {
       const fAng = Math.round(Math.atan2(el.y2-el.y1, el.x2-el.x1)*180/Math.PI*10)/10;
       const fLen = Math.round(Math.hypot(el.x2-el.x1, el.y2-el.y1)*10)/10;
       html += `<div class="pp-row"><label>回転基準</label><select id="pp-fbase"><option value="p1">始点固定</option><option value="p2">終点固定</option></select></div>`;
-      html += `<div class="pp-row"><label>角度(°)</label><input type="number" id="pp-fangle" value="${fAng}" step="1"></div>`;
-      html += `<div class="pp-row"><label>長さ</label><input type="number" id="pp-flen" value="${fLen}" step="1" min="1"></div>`;
-      html += `<div class="pp-row"><label>始点X</label><input type="number" id="pp-x1" value="${Math.round(el.x1*1000)/1000}" step="any"></div>`;
-      html += `<div class="pp-row"><label>始点Y</label><input type="number" id="pp-y1" value="${Math.round(el.y1*1000)/1000}" step="any"></div>`;
-      html += `<div class="pp-row"><label>終点X</label><input type="number" id="pp-x2" value="${Math.round(el.x2*1000)/1000}" step="any"></div>`;
-      html += `<div class="pp-row"><label>終点Y</label><input type="number" id="pp-y2" value="${Math.round(el.y2*1000)/1000}" step="any"></div>`;
+      html += `<div class="pp-row"><label>角度(°)</label><input type="number" id="pp-fangle" value="${escH(fAng)}" step="1"></div>`;
+      html += `<div class="pp-row"><label>長さ</label><input type="number" id="pp-flen" value="${escH(fLen)}" step="1" min="1"></div>`;
+      html += `<div class="pp-row"><label>始点X</label><input type="number" id="pp-x1" value="${escH(Math.round(el.x1*1000)/1000)}" step="any"></div>`;
+      html += `<div class="pp-row"><label>始点Y</label><input type="number" id="pp-y1" value="${escH(Math.round(el.y1*1000)/1000)}" step="any"></div>`;
+      html += `<div class="pp-row"><label>終点X</label><input type="number" id="pp-x2" value="${escH(Math.round(el.x2*1000)/1000)}" step="any"></div>`;
+      html += `<div class="pp-row"><label>終点Y</label><input type="number" id="pp-y2" value="${escH(Math.round(el.y2*1000)/1000)}" step="any"></div>`;
     } else if (el.type === 'arc') {
-      html += `<div class="pp-row"><label>中心X</label><input type="number" id="pp-x1" value="${Math.round(el.x*1000)/1000}" step="any"></div>`;
-      html += `<div class="pp-row"><label>中心Y</label><input type="number" id="pp-y1" value="${Math.round(el.y*1000)/1000}" step="any"></div>`;
-      html += `<div class="pp-row"><label>半径</label><input type="number" id="pp-arcr" value="${Math.round((el.r||10)*10)/10}" step="1" min="1"></div>`;
-      html += `<div class="pp-row"><label>開始角(°)</label><input type="number" id="pp-arca1" value="${Math.round(el.startA*180/Math.PI*1000)/1000}" step="any"></div>`;
-      html += `<div class="pp-row"><label>終了角(°)</label><input type="number" id="pp-arca2" value="${Math.round(el.endA*180/Math.PI*1000)/1000}" step="any"></div>`;
+      html += `<div class="pp-row"><label>中心X</label><input type="number" id="pp-x1" value="${escH(Math.round(el.x*1000)/1000)}" step="any"></div>`;
+      html += `<div class="pp-row"><label>中心Y</label><input type="number" id="pp-y1" value="${escH(Math.round(el.y*1000)/1000)}" step="any"></div>`;
+      html += `<div class="pp-row"><label>半径</label><input type="number" id="pp-arcr" value="${escH(Math.round((el.r||10)*10)/10)}" step="1" min="1"></div>`;
+      html += `<div class="pp-row"><label>開始角(°)</label><input type="number" id="pp-arca1" value="${escH(Math.round(el.startA*180/Math.PI*1000)/1000)}" step="any"></div>`;
+      html += `<div class="pp-row"><label>終了角(°)</label><input type="number" id="pp-arca2" value="${escH(Math.round(el.endA*180/Math.PI*1000)/1000)}" step="any"></div>`;
     } else if (el.type === 'triangle') {
       html += `<div class="pp-row"><label>回転基準</label><select id="pp-tribase"><option value="p1">頂点1固定</option><option value="p2">頂点2固定</option><option value="p3">頂点3固定</option></select></div>`;
       html += `<div class="pp-row"><label>回転角(°)</label><input type="number" id="pp-triangle" value="0" step="1"></div>`;
-      html += `<div class="pp-row"><label>頂点1 X</label><input type="number" id="pp-tx1" value="${Math.round(el.x1*1000)/1000}" step="any"></div>`;
-      html += `<div class="pp-row"><label>頂点1 Y</label><input type="number" id="pp-ty1" value="${Math.round(el.y1*1000)/1000}" step="any"></div>`;
-      html += `<div class="pp-row"><label>頂点2 X</label><input type="number" id="pp-tx2" value="${Math.round(el.x2*1000)/1000}" step="any"></div>`;
-      html += `<div class="pp-row"><label>頂点2 Y</label><input type="number" id="pp-ty2" value="${Math.round(el.y2*1000)/1000}" step="any"></div>`;
-      html += `<div class="pp-row"><label>頂点3 X</label><input type="number" id="pp-tx3" value="${Math.round(el.x3*1000)/1000}" step="any"></div>`;
-      html += `<div class="pp-row"><label>頂点3 Y</label><input type="number" id="pp-ty3" value="${Math.round(el.y3*1000)/1000}" step="any"></div>`;
+      html += `<div class="pp-row"><label>頂点1 X</label><input type="number" id="pp-tx1" value="${escH(Math.round(el.x1*1000)/1000)}" step="any"></div>`;
+      html += `<div class="pp-row"><label>頂点1 Y</label><input type="number" id="pp-ty1" value="${escH(Math.round(el.y1*1000)/1000)}" step="any"></div>`;
+      html += `<div class="pp-row"><label>頂点2 X</label><input type="number" id="pp-tx2" value="${escH(Math.round(el.x2*1000)/1000)}" step="any"></div>`;
+      html += `<div class="pp-row"><label>頂点2 Y</label><input type="number" id="pp-ty2" value="${escH(Math.round(el.y2*1000)/1000)}" step="any"></div>`;
+      html += `<div class="pp-row"><label>頂点3 X</label><input type="number" id="pp-tx3" value="${escH(Math.round(el.x3*1000)/1000)}" step="any"></div>`;
+      html += `<div class="pp-row"><label>頂点3 Y</label><input type="number" id="pp-ty3" value="${escH(Math.round(el.y3*1000)/1000)}" step="any"></div>`;
     } else if (el.type === 'rect') {
-      html += `<div class="pp-row"><label>X</label><input type="number" id="pp-rx" value="${Math.round(el.x*1000)/1000}" step="any"></div>`;
-      html += `<div class="pp-row"><label>Y</label><input type="number" id="pp-ry" value="${Math.round(el.y*1000)/1000}" step="any"></div>`;
-      html += `<div class="pp-row"><label>幅</label><input type="number" id="pp-rw" value="${Math.round(el.w*1000)/1000}" step="any" min="1"></div>`;
-      html += `<div class="pp-row"><label>高さ</label><input type="number" id="pp-rh" value="${Math.round(el.h*1000)/1000}" step="any" min="1"></div>`;
+      html += `<div class="pp-row"><label>X</label><input type="number" id="pp-rx" value="${escH(Math.round(el.x*1000)/1000)}" step="any"></div>`;
+      html += `<div class="pp-row"><label>Y</label><input type="number" id="pp-ry" value="${escH(Math.round(el.y*1000)/1000)}" step="any"></div>`;
+      html += `<div class="pp-row"><label>幅</label><input type="number" id="pp-rw" value="${escH(Math.round(el.w*1000)/1000)}" step="any" min="1"></div>`;
+      html += `<div class="pp-row"><label>高さ</label><input type="number" id="pp-rh" value="${escH(Math.round(el.h*1000)/1000)}" step="any" min="1"></div>`;
     }
     html += `<div class="pp-row"><label>線幅</label><select id="pp-lw">${lineWidthOptions(el.lineWidth||DEFAULT_LINE_WIDTH)}</select></div>`;
     html += `<div class="pp-row"><label>線種</label><select id="pp-ls"><option value=""${!el.lineStyle?' selected':''}>実線</option><option value="dash"${el.lineStyle==='dash'?' selected':''}>破線</option><option value="dot"${el.lineStyle==='dot'?' selected':''}>点線</option><option value="dashdot"${el.lineStyle==='dashdot'?' selected':''}>一点鎖線</option></select></div>`;
-    html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
+    html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${escH(l.name)}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
     html += `<div class="pp-row"><label>メモ</label><textarea rows="2" id="pp-note">${el.note||''}</textarea></div>`;
   } else if (el) {
     const def = getDef(el.type) || {};
@@ -2612,29 +2628,29 @@ function updateRightPanel() {
     // デバイス記号だけを出す。既存デバイスを選ぶと型番・仕様がそこから引き継がれる
     // (MC1は主接点・コイル・補助接点と複数箇所に置くため、2つ目以降は選ぶだけで済む)。
     html += `<div class="pp-row"><label>デバイス</label>`
-      + `<input type="text" id="pp-partref" list="pp-partref-list" value="${el.partRef||''}"`
+      + `<input type="text" id="pp-partref" list="pp-partref-list" value="${escH(el.partRef||'')}"`
       + ` placeholder="例: MC1, NFB1" onchange="onPartRefChanged()"></div>`
       + `<datalist id="pp-partref-list">${partRefOptionsHtml(el.partRef)}</datalist>`;
     html += `<div class="pp-row"><label>デバイスを図面に表示</label><input type="checkbox" id="pp-devhide"${el.devHide?'':' checked'} title="3極品等、同じデバイスを複数のシンボルに分けて配置する場合に使います。デバイス名は全部の要素に同じ値を入れつつ、文字はどれか1つだけに絞れます"></div>`;
     html += `<div class="pp-row"><label>部品表の対象外</label><input type="checkbox" id="pp-zone"${el.panelZone==='外'?' checked':''} title="チェックすると部品表に集計されません。現地調達品など、この図面で手配しないものに使います"></div>`;
     html += `<details class="pp-details" style="border-left:4px solid ${devC}"><summary>デバイス表示の詳細（色・サイズ・位置）</summary>`;
-    html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-dfs" value="${el.devFs||11}" step="1" min="6" max="32" oninput="previewDeviceOff()"></div>`;
-    html += `<div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="color" id="pp-dcolor" value="${el.devColor||'#1d6fb5'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('pp-dcolor','pp-dcolorcode');previewDeviceOff()"><input type="text" id="pp-dcolorcode" value="${el.devColor||'#1d6fb5'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-dcolorcode','pp-dcolor');previewDeviceOff()">${colorCodeBtns('pp-dcolorcode','pp-dcolor')}</div></div>`;
-    html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-dox" value="${el.devOffX!==undefined?el.devOffX:''}" placeholder="自動" step="5" oninput="previewDeviceOff()"></div>`;
-    html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-doy" value="${el.devOffY!==undefined?el.devOffY:''}" placeholder="自動" step="5" oninput="previewDeviceOff()"></div>`;
+    html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-dfs" value="${escH(el.devFs||11)}" step="1" min="6" max="32" oninput="previewDeviceOff()"></div>`;
+    html += `<div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="color" id="pp-dcolor" value="${escH(el.devColor||'#1d6fb5')}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('pp-dcolor','pp-dcolorcode');previewDeviceOff()"><input type="text" id="pp-dcolorcode" value="${escH(el.devColor||'#1d6fb5')}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-dcolorcode','pp-dcolor');previewDeviceOff()">${colorCodeBtns('pp-dcolorcode','pp-dcolor')}</div></div>`;
+    html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-dox" value="${escH(el.devOffX!==undefined?el.devOffX:'')}" placeholder="自動" step="5" oninput="previewDeviceOff()"></div>`;
+    html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-doy" value="${escH(el.devOffY!==undefined?el.devOffY:'')}" placeholder="自動" step="5" oninput="previewDeviceOff()"></div>`;
     html += `<div class="pp-row"><button onclick="resetDeviceOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button></div>`;
     html += `</details>`;
     html += `</div>`; }
     { const mdlC = el.modelColor||el.labelColor||'#555555';
     html += `<div class="pp-group" style="border-left:4px solid ${mdlC}"><div class="pp-group-cap" style="color:${mdlC}">◆ 型式</div>`;
-    html += `<div class="pp-row"><label>型番</label><input type="text" id="pp-partmodel" value="${el.partModel||''}" placeholder="例: S-T10（メーカー型番）" onchange="onPartModelChanged()"></div>`;
+    html += `<div class="pp-row"><label>型番</label><input type="text" id="pp-partmodel" value="${escH(el.partModel||'')}" placeholder="例: S-T10（メーカー型番）" onchange="onPartModelChanged()"></div>`;
     html += partVoltRowHtml(el);
     html += `<div class="pp-row"><label>型式を図面に表示</label><input type="checkbox" id="pp-showmodel"${el.showModel?' checked':''} title="チェックしたシンボルにだけ型番が描画されます。接点側はOFFのままにしてください"></div>`;
     html += `<details class="pp-details" style="border-left:4px solid ${mdlC}"><summary>型式表示の詳細（色・サイズ・位置）</summary>`;
-    html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-mfs" value="${el.modelFs||el.labelFs||11}" step="1" min="6" max="32" oninput="previewModelOff()"></div>`;
-    html += `<div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="color" id="pp-mcolor" value="${el.modelColor||el.labelColor||'#555555'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('pp-mcolor','pp-mcolorcode');previewModelOff()"><input type="text" id="pp-mcolorcode" value="${el.modelColor||el.labelColor||'#555555'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-mcolorcode','pp-mcolor');previewModelOff()">${colorCodeBtns('pp-mcolorcode','pp-mcolor')}</div></div>`;
-    html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-mox" value="${el.modelOffX!==undefined?el.modelOffX:''}" placeholder="自動" step="5" oninput="previewModelOff()"></div>`;
-    html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-moy" value="${el.modelOffY!==undefined?el.modelOffY:''}" placeholder="自動" step="5" oninput="previewModelOff()"></div>`;
+    html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-mfs" value="${escH(el.modelFs||el.labelFs||11)}" step="1" min="6" max="32" oninput="previewModelOff()"></div>`;
+    html += `<div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="color" id="pp-mcolor" value="${escH(el.modelColor||el.labelColor||'#555555')}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('pp-mcolor','pp-mcolorcode');previewModelOff()"><input type="text" id="pp-mcolorcode" value="${escH(el.modelColor||el.labelColor||'#555555')}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-mcolorcode','pp-mcolor');previewModelOff()">${colorCodeBtns('pp-mcolorcode','pp-mcolor')}</div></div>`;
+    html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-mox" value="${escH(el.modelOffX!==undefined?el.modelOffX:'')}" placeholder="自動" step="5" oninput="previewModelOff()"></div>`;
+    html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-moy" value="${escH(el.modelOffY!==undefined?el.modelOffY:'')}" placeholder="自動" step="5" oninput="previewModelOff()"></div>`;
     html += `<div class="pp-row"><button onclick="resetModelOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button></div>`;
     html += `</details>`;
     html += `</div>`; }
@@ -2648,18 +2664,18 @@ function updateRightPanel() {
       <option value="center"${!el.labelAlign||el.labelAlign==='center'?'selected':''}>中央揃え</option>
       <option value="right" ${el.labelAlign==='right' ?'selected':''}>右揃え</option>
     </select></div>`;
-    html += `<div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="color" id="pp-lcolor" value="${el.labelColor||'#555555'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('pp-lcolor','pp-lcolorcode');previewLabelStyle()"><input type="text" id="pp-lcolorcode" value="${el.labelColor||'#555555'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-lcolorcode','pp-lcolor');previewLabelStyle()">${colorCodeBtns('pp-lcolorcode','pp-lcolor')}</div></div>`;
-    html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-lfs" value="${el.labelFs||11}" step="1" min="6" max="32" oninput="previewLabelStyle()"></div>`;
-    html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-lox" value="${el.labelOffX||0}" step="5" oninput="previewLabelOff()"></div>`;
-    html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-loy" value="${el.labelOffY||''}" placeholder="自動" step="5" oninput="previewLabelOff()"></div>`;
+    html += `<div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="color" id="pp-lcolor" value="${escH(el.labelColor||'#555555')}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('pp-lcolor','pp-lcolorcode');previewLabelStyle()"><input type="text" id="pp-lcolorcode" value="${escH(el.labelColor||'#555555')}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-lcolorcode','pp-lcolor');previewLabelStyle()">${colorCodeBtns('pp-lcolorcode','pp-lcolor')}</div></div>`;
+    html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-lfs" value="${escH(el.labelFs||11)}" step="1" min="6" max="32" oninput="previewLabelStyle()"></div>`;
+    html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-lox" value="${escH(el.labelOffX||0)}" step="5" oninput="previewLabelOff()"></div>`;
+    html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-loy" value="${escH(el.labelOffY||'')}" placeholder="自動" step="5" oninput="previewLabelOff()"></div>`;
     html += `<div class="pp-row"><button onclick="cancelLabelOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button></div>`;
     html += `</details>`;
     html += `</div>`; }
-    html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-term" value="${el.terminals||''}" placeholder="例: A1,A2,13,14"></div>`;
-    html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${el.wireNo||''}"></div>`;
-    html += `<div class="pp-row"><label>回転(°)</label><input type="number" id="pp-rot" value="${el.rot||0}" step="90"></div>`;
-    html += `<div class="pp-row"><label>文字の回転角度(°)</label><input type="number" id="pp-trot" value="${el.textRot||0}" step="90" title="このシンボルのデバイス名・型式・仕様すべてに共通で効きます。シンボル自体の回転(上の「回転(°)」)とは連動しません。位置は各項目のオフセット(X/Y補正)で個別に指定してください"></div>`;
-    html += `<div class="pp-row"><label>スケール</label><input type="number" id="pp-scale" value="${el.scale||1}" step="0.1" min="0.1" max="5" oninput="previewScale()"></div>`;
+    html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-term" value="${escH(el.terminals||'')}" placeholder="例: A1,A2,13,14"></div>`;
+    html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${escH(el.wireNo||'')}"></div>`;
+    html += `<div class="pp-row"><label>回転(°)</label><input type="number" id="pp-rot" value="${escH(el.rot||0)}" step="90"></div>`;
+    html += `<div class="pp-row"><label>文字の回転角度(°)</label><input type="number" id="pp-trot" value="${escH(el.textRot||0)}" step="90" title="このシンボルのデバイス名・型式・仕様すべてに共通で効きます。シンボル自体の回転(上の「回転(°)」)とは連動しません。位置は各項目のオフセット(X/Y補正)で個別に指定してください"></div>`;
+    html += `<div class="pp-row"><label>スケール</label><input type="number" id="pp-scale" value="${escH(el.scale||1)}" step="0.1" min="0.1" max="5" oninput="previewScale()"></div>`;
     // シンボル色ピッカーは撤去（2026-08-16）。62c94f0で完全BYLAYER化した際に
     // 描画側(draw.js)の el.color 参照を消したがUIだけ残っており、押しても画面に
     // 何も反映されない状態だった。さらに初期値が el.color||'#1d6fb5' だったため、
@@ -2669,7 +2685,7 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>シンボル線幅</label><select id="pp-symlw" title="登録時の太さや標準シンボルの既定太さを、このシンボル1個だけ上書きします">
       <option value=""${!el.lineWidth?' selected':''}>個別（変更なし）</option>${lineWidthOptions(el.lineWidth)}
     </select></div>`;
-    html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${l.name}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
+    html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${escH(l.name)}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
     if (def.jis) html += `<div class="pp-row"><label style="color:var(--fg4)">JIS規格</label><p style="font-size:10px;color:var(--fg3);padding:2px 5px">${def.jis}</p></div>`;
     // メモは既定では図面に出さない(従来どおり)。個別の注記を図面に書きたい
     // ときだけONにする。仕様(label)はデバイス単位で引き継がれて上書きされるため、
@@ -2677,10 +2693,10 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>メモ</label><textarea rows="2" id="pp-note">${el.note||''}</textarea></div>`;
     html += `<div class="pp-row"><label>メモを図面に表示</label><input type="checkbox" id="pp-shownote"${el.showNote?' checked':''} title="ONにするとメモの内容が図面に描かれます。仕様と違いデバイスの引き継ぎで上書きされないので、シンボルごとに違う注記を書くのに使えます"></div>`;
     html += `<details class="pp-details"><summary>メモ表示の詳細（サイズ・色・位置）</summary>`;
-    html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-nfs" value="${el.noteFs||el.labelFs||11}" step="1" min="6" max="32"></div>`;
-    html += `<div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="color" id="pp-ncolor" value="${el.noteColor||'#555555'}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('pp-ncolor','pp-ncolorcode')"><input type="text" id="pp-ncolorcode" value="${el.noteColor||'#555555'}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-ncolorcode','pp-ncolor')">${colorCodeBtns('pp-ncolorcode','pp-ncolor')}</div></div>`;
-    html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-nox" value="${el.noteOffX!==undefined?el.noteOffX:''}" placeholder="自動" step="5"></div>`;
-    html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-noy" value="${el.noteOffY!==undefined?el.noteOffY:''}" placeholder="自動" step="5"></div>`;
+    html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-nfs" value="${escH(el.noteFs||el.labelFs||11)}" step="1" min="6" max="32"></div>`;
+    html += `<div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="color" id="pp-ncolor" value="${escH(el.noteColor||'#555555')}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('pp-ncolor','pp-ncolorcode')"><input type="text" id="pp-ncolorcode" value="${escH(el.noteColor||'#555555')}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-ncolorcode','pp-ncolor')">${colorCodeBtns('pp-ncolorcode','pp-ncolor')}</div></div>`;
+    html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-nox" value="${escH(el.noteOffX!==undefined?el.noteOffX:'')}" placeholder="自動" step="5"></div>`;
+    html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-noy" value="${escH(el.noteOffY!==undefined?el.noteOffY:'')}" placeholder="自動" step="5"></div>`;
     html += `</details>`;
   }
 
@@ -2717,8 +2733,8 @@ function updateRightPanel() {
 function colorRow(label, pickerId, codeId, defaultColor, onInput) {
   const focusBlur = `onfocus="state.colorEditing=true;draw()"`;
   return `<div class="pp-row"><label>${label}</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">` +
-    `<input type="color" id="${pickerId}" value="${defaultColor}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" ${focusBlur} oninput="syncColorCode('${pickerId}','${codeId}');${onInput||''}">` +
-    `<input type="text" id="${codeId}" value="${defaultColor}" style="width:72px;font-size:11px" maxlength="7" ${focusBlur} oninput="syncColorPicker('${codeId}','${pickerId}');${onInput||''}">` +
+    `<input type="color" id="${pickerId}" value="${escH(defaultColor)}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" ${focusBlur} oninput="syncColorCode('${pickerId}','${codeId}');${onInput||''}">` +
+    `<input type="text" id="${codeId}" value="${escH(defaultColor)}" style="width:72px;font-size:11px" maxlength="7" ${focusBlur} oninput="syncColorPicker('${codeId}','${pickerId}');${onInput||''}">` +
     `${colorCodeBtns(codeId, pickerId)}</div></div>`;
 }
 
@@ -3518,11 +3534,11 @@ function renderSymFloat() {
         onpointerdown="symRowPointerDown(event,${i})"
         style="flex-direction:column;align-items:center;padding:5px 3px;gap:2px;position:relative;cursor:grab">
         ${img}
-        <span style="font-size:9px;text-align:center;line-height:1.2">${s.label||s.type}</span>
+        <span style="font-size:9px;text-align:center;line-height:1.2">${escH(s.label||s.type)}</span>
         <span style="font-size:8px;color:var(--fg3);line-height:1">${wDisp}×${hDisp}</span>
-        <span onclick="event.stopPropagation();openPinEditor('${s.type}')" title="端子(ピン)編集: ${termCount}点定義済み" style="position:absolute;top:2px;left:2px;font-size:9px;color:${termCount?'#0067c0':'var(--fg3)'};cursor:pointer">📍${termCount||''}</span>
-        <span onclick="event.stopPropagation();rescaleCustomSym('${s.type}')" title="サイズ調整: 比率を保って幅×高さを変更" style="position:absolute;top:2px;right:14px;font-size:9px;color:var(--fg3);cursor:pointer">⇔</span>
-        <span onclick="event.stopPropagation();delCusSym('${s.type}')" style="position:absolute;top:2px;right:2px;font-size:9px;color:var(--red);cursor:pointer">×</span>
+        <span onclick="event.stopPropagation();openPinEditor('${_escAttr(s.type)}')" title="端子(ピン)編集: ${termCount}点定義済み" style="position:absolute;top:2px;left:2px;font-size:9px;color:${termCount?'#0067c0':'var(--fg3)'};cursor:pointer">📍${termCount||''}</span>
+        <span onclick="event.stopPropagation();rescaleCustomSym('${_escAttr(s.type)}')" title="サイズ調整: 比率を保って幅×高さを変更" style="position:absolute;top:2px;right:14px;font-size:9px;color:var(--fg3);cursor:pointer">⇔</span>
+        <span onclick="event.stopPropagation();delCusSym('${_escAttr(s.type)}')" style="position:absolute;top:2px;right:2px;font-size:9px;color:var(--red);cursor:pointer">×</span>
       </div>`;
     });
     html += `</div>`;
@@ -3649,9 +3665,9 @@ function renderMakerTabs() {
   if (!el) return;
   const makers = [...new Set(allParts().map(p => p.maker).filter(Boolean))].sort();
   if (makers.length <= 1) { el.innerHTML = ''; return; }
-  const chip = (label, val) => `<span onclick="setPartsMakerFilter('${val.replace(/'/g, "\\'")}')" style="font-size:10px;padding:2px 8px;border-radius:10px;cursor:pointer;white-space:nowrap;${
+  const chip = (label, val) => `<span onclick="setPartsMakerFilter('${_escAttr(val)}')" style="font-size:10px;padding:2px 8px;border-radius:10px;cursor:pointer;white-space:nowrap;${
     state.partsMakerFilter === val ? 'background:var(--acc);color:#fff' : 'background:var(--bg3);color:var(--fg3);border:1px solid var(--bd2)'
-  }">${label}</span>`;
+  }">${escH(label)}</span>`;
   el.innerHTML = chip('全て', '') + makers.map(m => chip(m, m)).join('');
 }
 function setPartsMakerFilter(m) {
@@ -3690,22 +3706,22 @@ function renderPartsTable2(parts) {
     byMaker[b].length - byMaker[a].length || a.localeCompare(b, 'ja'));
 
   const cardHtml = p => `
-    <div style="padding:4px 3px;border-bottom:1px solid var(--bg4);cursor:pointer" title="選択中のシンボルにこの部品を割り当てます（型番・端子番号・コイル電圧）" onclick="placePart('${p.type}','${p.ref}','${p.terminals||''}')">
+    <div style="padding:4px 3px;border-bottom:1px solid var(--bg4);cursor:pointer" title="選択中のシンボルにこの部品を割り当てます（型番・端子番号・コイル電圧）" onclick="placePart('${_escAttr(p.type)}','${_escAttr(p.ref)}','${_escAttr(p.terminals||'')}')">
       <div style="display:flex;justify-content:space-between">
-        <span style="font-size:11px;font-weight:600;color:var(--fg)">${p.ref}</span>
+        <span style="font-size:11px;font-weight:600;color:var(--fg)">${escH(p.ref)}</span>
         ${p.custom
           ? `<span>
-               <span onclick="event.stopPropagation();editPart('${p.ref}')" style="font-size:9px;color:var(--acc);cursor:pointer;margin-right:6px" title="編集">✎</span>
-               <span onclick="event.stopPropagation();deletePart('${p.ref}')" style="font-size:9px;color:var(--red);cursor:pointer" title="削除">×</span>
+               <span onclick="event.stopPropagation();editPart('${_escAttr(p.ref)}')" style="font-size:9px;color:var(--acc);cursor:pointer;margin-right:6px" title="編集">✎</span>
+               <span onclick="event.stopPropagation();deletePart('${_escAttr(p.ref)}')" style="font-size:9px;color:var(--red);cursor:pointer" title="削除">×</span>
              </span>`
-          : `<span onclick="event.stopPropagation();hideBuiltinPart('${p.ref}')" style="font-size:9px;color:var(--fg3);cursor:pointer" title="一覧から非表示にする（標準部品は削除できないため）">×</span>`}
+          : `<span onclick="event.stopPropagation();hideBuiltinPart('${_escAttr(p.ref)}')" style="font-size:9px;color:var(--fg3);cursor:pointer" title="一覧から非表示にする（標準部品は削除できないため）">×</span>`}
       </div>
-      <div style="font-size:10px;color:var(--fg3)">${p.maker} ${p.volt||''} ${p.amp||''}</div>
-      ${p.contacts?`<div style="font-size:10px;color:var(--acc)">接点:${p.contacts}</div>`:''}
-      ${p.source?`<div style="font-size:9px;color:var(--fg3)" title="出典">📖 ${p.source}</div>`:''}
+      <div style="font-size:10px;color:var(--fg3)">${escH(p.maker)} ${escH(p.volt||'')} ${escH(p.amp||'')}</div>
+      ${p.contacts?`<div style="font-size:10px;color:var(--acc)">接点:${escH(p.contacts)}</div>`:''}
+      ${p.source?`<div style="font-size:9px;color:var(--fg3)" title="出典">📖 ${escH(p.source)}</div>`:''}
       ${p.outlineDxf
-        ? `<div style="font-size:9px;color:var(--acc)">外形図: ${p.outlineDxfName||'あり'} <span onclick="event.stopPropagation();placePartOutline('${p.ref}')" style="cursor:pointer;text-decoration:underline">配置</span></div>`
-        : (p.custom ? `<div style="font-size:9px;color:var(--fg3)">外形図なし <span onclick="event.stopPropagation();attachOutlineToPart('${p.ref}')" style="cursor:pointer;text-decoration:underline;color:var(--acc)">添付</span></div>` : '')}
+        ? `<div style="font-size:9px;color:var(--acc)">外形図: ${escH(p.outlineDxfName||'あり')} <span onclick="event.stopPropagation();placePartOutline('${_escAttr(p.ref)}')" style="cursor:pointer;text-decoration:underline">配置</span></div>`
+        : (p.custom ? `<div style="font-size:9px;color:var(--fg3)">外形図なし <span onclick="event.stopPropagation();attachOutlineToPart('${_escAttr(p.ref)}')" style="cursor:pointer;text-decoration:underline;color:var(--acc)">添付</span></div>` : '')}
     </div>`;
 
   el.innerHTML = makersPresent.map(mk => {
@@ -3727,8 +3743,8 @@ function renderPartsTable2(parts) {
       const label = PART_TYPE_LABELS[t]
         || (LEGACY_PART_TYPES[t] ? `${LEGACY_PART_TYPES[t]}（要再分類）` : t);
       return `<div class="parts-cat" style="margin-left:8px">
-        <div onclick="togglePartsCategory('${mk.replace(/'/g,"\\'")}','${t}')" style="display:flex;justify-content:space-between;align-items:center;padding:4px;cursor:pointer;background:var(--bg2);border-radius:3px;margin-top:3px">
-          <span style="font-size:10px;color:var(--fg2)">${label}（${list.length}）</span>
+        <div onclick="togglePartsCategory('${_escAttr(mk)}','${_escAttr(t)}')" style="display:flex;justify-content:space-between;align-items:center;padding:4px;cursor:pointer;background:var(--bg2);border-radius:3px;margin-top:3px">
+          <span style="font-size:10px;color:var(--fg2)">${escH(label)}（${list.length}）</span>
           <span style="font-size:9px;color:var(--fg3)">${collapsed ? '▶' : '▼'}</span>
         </div>
         ${collapsed ? '' : list.map(cardHtml).join('')}
@@ -3736,8 +3752,8 @@ function renderPartsTable2(parts) {
     }).join('');
 
     return `<div class="parts-maker">
-      <div onclick="togglePartsMaker('${mk.replace(/'/g,"\\'")}')" style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;cursor:pointer;background:var(--bg3);border-radius:3px;margin-top:5px;border-left:3px solid var(--acc)">
-        <span style="font-size:12px;font-weight:600;color:var(--fg)">${mk}（${mkParts.length}）</span>
+      <div onclick="togglePartsMaker('${_escAttr(mk)}')" style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;cursor:pointer;background:var(--bg3);border-radius:3px;margin-top:5px;border-left:3px solid var(--acc)">
+        <span style="font-size:12px;font-weight:600;color:var(--fg)">${escH(mk)}（${mkParts.length}）</span>
         <span style="font-size:10px;color:var(--fg3)">${mkCollapsed ? '▶' : '▼'}</span>
       </div>
       ${inner}

@@ -280,7 +280,7 @@ function probeDxfFrame(input) {
 
       const r = analyzeDxfFrame(text);
       const body = `<pre style="white-space:pre-wrap;font-size:11px;line-height:1.6;margin:0">`
-        + dfpFormat(r).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]))
+        + escH(dfpFormat(r))   // エスケープは全体共通(state.js の escH)に寄せる
         + `</pre>`;
       const el = document.getElementById('dfp-body');
       if (el) { el.innerHTML = body; openFP('dfp-p'); }

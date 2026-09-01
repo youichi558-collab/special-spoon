@@ -6,7 +6,7 @@
 <title>電気回路図エディタ v11</title>
 <link rel="stylesheet" href="css/style.css">
 <script src="js/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="js/jszip.min.js"></script>
 </head>
 <body>
 <div id="app">
@@ -877,6 +877,7 @@
 <div id="prt-float" style="display:none;position:fixed;top:60px;left:400px;width:280px;max-height:70vh;background:var(--bg2,#2a2a2a);border:1px solid var(--bd2,#444);border-radius:6px;box-shadow:0 4px 20px rgba(0,0,0,0.5);z-index:9999;flex-direction:column">
   <div id="prt-float-title" onpointerdown="prtFloatDown(event)" style="display:flex;align-items:center;padding:6px 10px;background:var(--bg3);border-bottom:1px solid var(--bd2);border-radius:6px 6px 0 0;cursor:move;user-select:none;flex-shrink:0">
     <span style="flex:1;font-size:12px;font-weight:600;color:var(--fg)">部品DB</span>
+    <span id="prt-float-count" style="font-size:10px;color:var(--fg3);margin-right:6px"></span>
     <span onclick="closePrt()" style="cursor:pointer;font-size:14px;color:var(--fg3);padding:0 4px">×</span>
   </div>
   <div style="padding:6px;flex-shrink:0">

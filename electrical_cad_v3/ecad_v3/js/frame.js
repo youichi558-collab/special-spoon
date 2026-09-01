@@ -72,7 +72,7 @@ function refreshTitleBlockSel(){
   if(!sel) return;
   const cur=(state.frameObj&&state.frameObj.tbTpl)||'standard';
   const user=userTitleBlockTpls();
-  const mk=(k,v)=>`<option value="${k}">${(v&&v.label)||k}</option>`;
+  const mk=(k,v)=>`<option value="${escH(k)}">${escH((v&&v.label)||k)}</option>`;
   let html=Object.entries(TITLE_BLOCK_TPLS).filter(([k])=>!user[k]).map(([k,v])=>mk(k,v)).join('');
   const uKeys=Object.keys(user);
   if(uKeys.length){

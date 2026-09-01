@@ -177,7 +177,7 @@ const symLib = (() => {
     if (!indexData) return;
     const sel = document.getElementById('symLibType3'); if (!sel) return;
     const types = [...new Set(indexData.map(e => e.type3))].sort();
-    sel.innerHTML = '<option value="">種類（全て）</option>' + types.map(t => `<option value="${t}">${t}</option>`).join('');
+    sel.innerHTML = '<option value="">種類（全て）</option>' + types.map(t => `<option value="${escH(t)}">${escH(t)}</option>`).join('');
   }
 
   function applyFilter() {
@@ -213,7 +213,7 @@ const symLib = (() => {
             <span class="addBtn" data-idx="${i}" title="キャンバスへ追加" style="position:absolute;top:1px;left:3px;font-size:13px;cursor:pointer;color:#6fbf6f;font-weight:bold;">＋</span>
             <span class="favStar" data-idx="${i}" style="position:absolute;top:2px;right:3px;font-size:11px;cursor:pointer;color:${isFav?'#f5a623':'#555'};">${isFav?'★':'☆'}</span>
             <canvas class="thumbCanvas" data-idx="${i}" width="90" height="60" style="background:#111;border-radius:2px;display:block;"></canvas>
-            <div style="font-size:9px;color:var(--acc,#9ec6f7);text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${e.label}">${e.label}</div>
+            <div style="font-size:9px;color:var(--acc,#9ec6f7);text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escH(e.label)}">${escH(e.label)}</div>
           </div>`;
         }).join('') + `</div>`;
 
@@ -268,8 +268,8 @@ const symLib = (() => {
         const isFav = favorites.some(f => f.path === e.path);
         return `<div class="slItem" data-idx="${i}" style="padding:5px 6px;margin:2px 0;border-radius:3px;cursor:pointer;background:var(--bg3,#252525);border:1px solid var(--bd,#333);display:flex;align-items:center;gap:4px;">
           <div style="flex:1;">
-            <div style="font-weight:bold;color:var(--acc,#9ec6f7);font-size:11px;">${e.label}</div>
-            <div style="color:var(--fg3,#777);font-size:10px;">${e.std.replace('_',' ')} / ${e.cat} / ${e.fname}</div>
+            <div style="font-weight:bold;color:var(--acc,#9ec6f7);font-size:11px;">${escH(e.label)}</div>
+            <div style="color:var(--fg3,#777);font-size:10px;">${escH(e.std.replace('_',' '))} / ${escH(e.cat)} / ${escH(e.fname)}</div>
           </div>
           <span class="addBtn" data-idx="${i}" title="キャンバスへ追加" style="font-size:15px;cursor:pointer;color:#6fbf6f;font-weight:bold;flex-shrink:0;">＋</span>
           <span class="favStar" data-idx="${i}" style="font-size:13px;cursor:pointer;color:${isFav?'#f5a623':'#555'};flex-shrink:0;">${isFav?'★':'☆'}</span>
@@ -333,7 +333,7 @@ const symLib = (() => {
           <span class="favAdd" data-idx="${i}" title="キャンバスへ追加" style="position:absolute;top:1px;left:3px;font-size:13px;cursor:pointer;color:#6fbf6f;font-weight:bold;">＋</span>
           <span class="favRemove" data-idx="${i}" style="position:absolute;top:2px;right:3px;font-size:10px;cursor:pointer;color:#f5a623;">★</span>
           <canvas class="favThumb" data-idx="${i}" width="90" height="60" style="background:#111;border-radius:2px;display:block;"></canvas>
-          <div style="font-size:9px;color:var(--ofg,#f5c842);text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${e.label}">${e.label}</div>
+          <div style="font-size:9px;color:var(--ofg,#f5c842);text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escH(e.label)}">${escH(e.label)}</div>
         </div>`
       ).join('') + `</div>`;
 
@@ -398,7 +398,7 @@ const symLib = (() => {
           <span class="recAdd" data-idx="${i}" title="キャンバスへ追加" style="position:absolute;top:1px;left:3px;font-size:13px;cursor:pointer;color:#6fbf6f;font-weight:bold;">＋</span>
           <span class="recRemove" data-idx="${i}" title="履歴から削除" style="position:absolute;top:2px;right:3px;font-size:10px;cursor:pointer;color:var(--fg3,#777);">✕</span>
           <canvas class="recThumb" data-idx="${i}" width="90" height="60" style="background:#111;border-radius:2px;display:block;"></canvas>
-          <div style="font-size:9px;color:var(--gfg,#9ed6b0);text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${e.label}">${e.label}</div>
+          <div style="font-size:9px;color:var(--gfg,#9ed6b0);text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escH(e.label)}">${escH(e.label)}</div>
         </div>`
       ).join('') + `</div>`;
 
