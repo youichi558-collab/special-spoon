@@ -212,6 +212,50 @@ console.log('\n【正常時はこれまで通り保存できる】');
   eq(JSON.parse(h.content).customParts.length, 6, '6件で保存される');
 }
 
+// ------------------------------------------------------------------
+// 部品DBパネルの件数表示。
+// 2026-09-01: 約440型番の欠落に気づくのが遅れた原因の一つが「合計件数が
+// どこにも出ていない」ことだった。そこで見出しに件数を出したのだが、
+// 最初の実装は renderPartsAll() にだけ足していて、パネルを開く経路
+// (renderPartsFloat)は同じ処理を別に書いていたため何も表示されなかった。
+// 「同じものを2箇所で計算しているのを見つけたら疑う」の実例。
+console.log('\n【部品DBパネルに件数が出る(開く経路・更新経路の両方)】');
+{
+  const ui = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8');
+  const pick = re => { const m = ui.match(re); if (!m) throw new Error('見つからない:' + re); return m[0]; };
+  const countEl = { textContent: '', style: {}, title: '' };
+  const sandbox = {
+    console,
+    state: { customParts: mkParts(170) },
+    document: { getElementById: id => (id === 'prt-float-count' ? countEl : null) },
+    partsDb: { isLocked: () => false },
+    renderMakerTabs: () => {},
+    renderPartsTable2: () => {},
+    applyPartsFilters: () => [],
+    _lastPartsQuery: '',
+  };
+  vm.createContext(sandbox);
+  vm.runInContext([
+    pick(/function renderPartsAll\([\s\S]*?\n\}/),
+    pick(/function renderPartsDbCount\([\s\S]*?\n\}/),
+    pick(/function renderPartsFloat\([\s\S]*?\n\}/),
+  ].join('\n'), sandbox);
+
+  countEl.textContent = '';
+  vm.runInContext('renderPartsFloat()', sandbox);
+  eq(countEl.textContent, '170件', 'パネルを開く経路(renderPartsFloat)で件数が出る');
+
+  countEl.textContent = '';
+  vm.runInContext('renderPartsAll()', sandbox);
+  eq(countEl.textContent, '170件', '更新経路(renderPartsAll)でも件数が出る');
+
+  // 保存できていないときは、件数だけでなくその事実も出す
+  sandbox.partsDb.isLocked = () => true;
+  vm.runInContext('renderPartsAll()', sandbox);
+  eq(countEl.textContent, '170件・未保存', '保存できていないことが件数の横に出る');
+  ok(/red/.test(countEl.style.color || ''), '未保存のときは赤で出す');
+}
+
 console.log(ng === 0 ? '\n=== 全て OK ===' : `\n=== NG ${ng}件 ===`);
 process.exit(ng === 0 ? 0 : 1);
 })();
