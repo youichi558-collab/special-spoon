@@ -256,6 +256,34 @@ console.log('\n【部品DBパネルに件数が出る(開く経路・更新経�
   ok(/red/.test(countEl.style.color || ''), '未保存のときは赤で出す');
 }
 
+// ------------------------------------------------------------------
+// 2026-08-20に実際に起きた消失の再現。
+// 「カタログDBの全件で部品DBを作り直す」は writeNow() の戻り値を見ずに
+// 「605件で作り直しました」と成功のalertを出していた。保存が空振りしても
+// 画面には605件が並び、次の起動で元の168件に戻る。気づく手段が無かった。
+// (Driveに残っていた parts_db_backup_2026-08-20_2230.json が作り直し直前の
+//  168件で、現在のファイルと完全一致したことで確定した)
+console.log('\n【writeNow() が保存の成否を返す】');
+{
+  const h = makeHandle({ content: JSON.stringify({ customParts: mkParts(10), hiddenBuiltinRefs: [] }) });
+  const s = load(h, []);
+  await s.partsDb.autoRestore();
+  await tick();
+  s.state.customParts = mkParts(605);          // 作り直し相当
+  eq(await s.partsDb.writeNow(), true, '書けたときは true');
+  eq(JSON.parse(h.content).customParts.length, 605, 'ファイルにも605件入る');
+
+  // 保存できない状態にする
+  s.partsDb.scheduleSave();
+  const h2 = makeHandle({ content: JSON.stringify({ customParts: mkParts(10) }), perm: 'prompt' });
+  const s2 = load(h2, []);
+  await s2.partsDb.autoRestore();               // 権限が下りずロックされる
+  await tick();
+  s2.state.customParts = mkParts(605);
+  eq(await s2.partsDb.writeNow(), false, '書けなかったときは false（呼び出し側が成功と誤認しない）');
+  eq(h2.writes, 0, 'ファイルは触られない');
+}
+
 console.log(ng === 0 ? '\n=== 全て OK ===' : `\n=== NG ${ng}件 ===`);
 process.exit(ng === 0 ? 0 : 1);
 })();
