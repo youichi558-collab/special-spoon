@@ -370,9 +370,10 @@ function renderPartsDbCount() {
   const locked = (typeof partsDb !== 'undefined' && partsDb.isLocked && partsDb.isLocked());
   el.textContent = locked ? `${n}件・未保存` : `${n}件`;
   el.style.color = locked ? 'var(--red)' : 'var(--fg3)';
-  el.title = locked
-    ? '部品DBファイルに保存できていません。「部品登録」パネルの📂開く で開き直してください'
-    : '登録済みのカスタム部品の件数（標準部品は含みません）';
+  el.title = !locked ? '登録済みのカスタム部品の件数（標準部品は含みません）'
+    : (partsDb.saveMode && partsDb.saveMode() === 'server'
+        ? '部品DBに保存できていません。ローカルサーバー(start.bat)が動いているか確認してください'
+        : '部品DBファイルに保存できていません。「部品登録」パネルの📂開く で開き直してください');
 }
 // filterParts は下で定義
 // 標準部品(BUILTIN_PARTS)を一覧から非表示にする（コード埋め込みのため削除は不可、非表示扱いのみ）
@@ -1004,6 +1005,15 @@ function showPartReg() {
 async function refreshPartsBackupDir() {
   const el = document.getElementById('parts-backup-dir');
   if (!el || typeof partsDb === 'undefined') return;
+  // 2026-09-02: サーバー経由で保存している場合、退避は parts_db.json と同じ
+  // フォルダへ自動で書ける(サーバーはパスを知っている)。フォルダ選択は不要なので、
+  // 未設定でも赤字の警告を出さない —— 実際には取れているのに警告を出すと、
+  // 本当に取れていないときの警告が効かなくなる。
+  if (partsDb.saveMode && partsDb.saveMode() === 'server') {
+    el.textContent = 'バックアップ: 部品DBと同じフォルダへ自動で書き出します（フォルダの選択は不要です）';
+    el.style.color = 'var(--fg3)';
+    return;
+  }
   const st = await partsDb.backupDirStatus();
   if (st.ok) {
     el.textContent = `バックアップ先: ${st.name}`;
@@ -1047,7 +1057,11 @@ async function refreshPartsPublish() {
   }
   const m = partsDb.mirrorStatus();
   if (stats.ok) {
-    const src = stats.source === 'path' ? '設定したファイルを直接参照'
+    // writable(=setpath済み)なら、CADの保存もこのファイルへ直接書いている。
+    // 「他ソフトが読んでいるもの」と「CADが書いているもの」が同じかどうかは、
+    // 食い違うと一番分かりにくい種類の事故になるので、ここで見えるようにする。
+    const src = stats.writable ? '設定したファイルを直接参照（CADの保存もここへ書きます）'
+              : stats.source === 'path' ? '設定したファイルを直接参照'
                                         : 'CADが保存した控えを参照';
     el.textContent = `他ソフトへの公開: ${stats.count}件（${src}）`
       + (m.at && !m.ok ? ` ※直近の控えの送信に失敗: ${m.error}` : '');
@@ -1312,11 +1326,15 @@ async function catalogResetPartsDb() {
     // (2026-08-20の作り直しが実際にこれで消えている。605件→168件)。
     const saved = await partsDb.writeNow();
     if (!saved) {
+      const howto = (partsDb.saveMode && partsDb.saveMode() === 'server')
+        ? `ローカルサーバー(start.bat の黒い画面)が動いているか確認し、`
+          + `動いていなければ起動してからもう一度この操作をしてください。`
+        : `「部品登録」パネルの📂開く で部品DBファイルを開き直してから、`
+          + `もう一度この操作をしてください。`;
       const msg = `部品DBをファイルに保存できませんでした。\n\n`
         + `画面上は${rows.length}件になっていますが、この状態は保存されていません。\n`
         + `このまま閉じると元の内容に戻ります。\n\n`
-        + `「部品登録」パネルの📂開く で部品DBファイルを開き直してから、`
-        + `もう一度この操作をしてください。`
+        + howto
         + (backup ? `\n\n直前の内容は「${backup}」に退避済みです。` : '');
       setMsg('保存できませんでした（画面上だけ変わっています）');
       alert(msg);

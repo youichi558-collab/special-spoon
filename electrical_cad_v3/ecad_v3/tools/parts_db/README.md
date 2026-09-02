@@ -5,11 +5,13 @@
 
 ```
 盛田さんのPC上の parts_db.json          読む側
-  （更新するのはCADだけ）
-        │                              ┌─ ecad_v3 の「部品登録」パネル
+        ↑                              ┌─ ecad_v3 の「部品登録」パネル
+   書くのはここ1つ                     ├─ 見積・部品表・Excelマクロ等
+   （server.py の /api/parts/save）    │   （parts_db_server.py 経由）
+        │                              │
         ├─ 直接読む（setpath 設定時）──┤
-        │                              ├─ 見積・部品表・Excelマクロ等
-        └─ CADが保存のたびに控えを写す ─┘   （parts_db_server.py 経由）
+        │                              │
+        └─ 保存のたびに控えも写す ──────┘
              %LOCALAPPDATA%\ecad\parts_db_mirror.json
 ```
 
@@ -20,29 +22,52 @@ File System Access API はセキュリティ上、フォルダやファイルの
 JavaScriptに渡さない（ハンドルをIndexedDBに覚えているだけ）。
 そのためCAD以外のソフトからは、部品DBを探しようが無かった。
 
-## 【最重要】書き込みはしない
+## 【最重要】書き手は常に1つ
 
-**このフォルダのコードは `parts_db.json` に一切書き込まない。**
+2つ以上が書くと、どちらかの書き込みが黙って失われるか、書きかけのJSONが残って
+次の起動で読めなくなる。2026-09-01に「保存できていないことに誰も気づけない」
+事故を起こしたばかりのファイルなので、ここは崩さない。
 
-`parts_db.json` を書いているのはCAD（ブラウザのFile System Access API）。
-そこへサーバーが同時に書くと、どちらかの書き込みが黙って失われるか、
-書きかけのJSONが残って次の起動で読めなくなる。
-2026-09-01に「保存できていないことに誰も気づけない」事故を起こしたばかりの
-ファイルなので、**書き手は1つに保つ。**
+### 2026-09-02：その「1つ」がCADからサーバーへ移った
 
-- 公開するのは read 系のAPIのみ
-- `parts_db_server.py` は POST/PUT/DELETE/PATCH を **405** で返す
-  （404ではなく405なのは、「実装し忘れ」ではなく「意図的に置いていない」と
-  分かるようにするため）
-- 部品DBを更新する手段は今まで通りCADの「部品登録」パネルだけ
+以前は CAD（ブラウザの File System Access API）が書いていた。移した理由:
 
-この不変条件は `tests/test_parts_db_api.js` が見張っている。
+- **ブラウザの許可はページを開くたびに下りるとは限らない。** 下りなかった回の
+  保存が静かに空振りする —— これが9-01の事故の根本だった。
+  サーバーからの書き込みに許可ダイアログは無い。
+- **tmpに書いてから `os.replace` で置き換えられる。** FSAの `createWritable()` は
+  開いた瞬間に中身を捨てるので、途中で落ちるとファイルが空のまま残る。
+- **退避（バックアップ）を `parts_db.json` と同じフォルダへ自動で置ける。**
+  Chromeに `getParent()` が無く、FSAではフォルダを別途選ばせる必要があった。
+
+移した後も書き手は1つのまま。守り方:
+
+| | |
+|---|---|
+| 書けるのは setpath 済みのときだけ | `save()` は `resolve()` ではなく `configured_path()` だけを見る。控え（mirror）には保存しない |
+| 書き込み口はCADの `server.py` だけ | `POST /api/parts/save`・`/api/parts/backup`。他ソフト向けの `parts_db_server.py` は今まで通り**読み取り専用**（POST/PUT/DELETE/PATCH は **405**） |
+| setpath が未設定なら書かない | `save()` が `reason:'unset'` を返し、CADは従来どおり File System Access API で保存する（そのときも書き手は1つ） |
+
+CADがどちらの経路で保存しているかは、「部品登録」パネルの状態行に出る
+（`…（605件・保存済み・サーバー経由）`）。
+
+この不変条件は `tests/test_parts_db_api.js`（書き手が増えていないか）、
+`tests/test_parts_db_server_mode.js`（CADがどちらの経路を選ぶか）、
+`tests/test_parts_db_save.py`（実際にファイルを書いて壊れないか）が見張っている。
+
+### 件数が激減したら書かない
+
+`save()` は、**今ファイルに入っている件数**と比べて「0件になる」「10件以上あった
+ものが半分未満になる」場合は書かずに `reason:'drop'` を返す。CADが人に確認して
+`force:true` で送り直してきたときだけ、退避を取ってから書く。
+（同じ規則が `js/parts_db.js` の `isSuspiciousDrop` にもある。経路ごとに1つずつ
+なので、**変えるときは必ず両方**。テストが一致を見ている）
 
 ## ファイル構成
 
 | ファイル | 役割 |
 |---|---|
-| `parts_db.py` | **本体。** parts_db.json の読み込みと検索。サーバー機能は持たない |
+| `parts_db.py` | **本体。** parts_db.json の読み書きと検索。サーバー機能は持たない |
 | `parts_db_server.py` | 他ソフトから使いたいときだけ起動する独立HTTPサーバー（**普段は不要**） |
 
 `ecad_v3/server.py` は `parts_db.py` を直接importして使う。
@@ -82,10 +107,14 @@ py parts_db.py setpath "G:\マイドライブ\claude\部品カタログ\parts_db
 
 ### 2. CADが置いていく控え（設定不要）
 
-CADが部品DBの保存に成功するたびに、その中身を `server.py` 経由で
-`%LOCALAPPDATA%\ecad\parts_db_mirror.json` に写す。
-パスを一度も設定していない場合はこちらを読む。
-**CADが最後に保存した時点の内容**なので、1より鮮度は落ちる。
+部品DBが保存されるたびに、その中身を `%LOCALAPPDATA%\ecad\parts_db_mirror.json`
+に写す。パスを一度も設定していない場合はこちらを読む。
+**最後に保存した時点の内容**なので、1より鮮度は落ちる。
+
+**控えは読むためだけのもので、保存先にはならない。** ここへ保存してしまうと
+「原本は古いまま、他ソフトだけ新しい内容を見る」という一番分かりにくい
+食い違いが起きる。setpath をしていない環境では、CADは今まで通り
+ブラウザ側（File System Access API）で `parts_db.json` に保存する。
 
 控えの送信が失敗しても、部品DBの保存自体には影響しない（別の話として扱う）。
 状態は「部品登録」パネルの `他ソフトへの公開:` の行に出る。
@@ -100,6 +129,9 @@ py parts_db.py search S-T21     部分一致で検索
 py parts_db.py get S-T21        1件をJSONで
 py parts_db.py path             今どこを読んでいるか
 ```
+
+`stats` の `writable` が真なら、CADの保存もそのファイルへ直接書いている。
+偽（控えしか無い）なら、CADはブラウザ側で保存している。
 
 ### Pythonから
 
@@ -128,6 +160,14 @@ py parts_db_server.py            既定 http://127.0.0.1:8091
 CADの `server.py` 経由でも同じものが引ける（`/api/parts/stats` `/api/parts/search`
 `/api/parts/get`）。CADを開いているならサーバーを増やさずに済む。
 
+`server.py` にはこのほかにCAD専用の口がある。**他ソフトからは叩かないこと。**
+
+| API | 用途 |
+|---|---|
+| `GET /api/parts/all` | 外形図DXFまで含めた全件（CADの起動時読み込み用） |
+| `POST /api/parts/save` | 保存（`{customParts, hiddenBuiltinRefs, force?}`） |
+| `POST /api/parts/backup` | 退避を1つ書き出す |
+
 **外形図DXF（`outlineDxf`）は検索結果に含めない。** 1件が数百KBあり、
 一覧に混ぜると応答が肥大化するうえ、備考の全文検索にDXFの図形データが
 引っかかる。あるか無いかは `has_outline` で分かるので、
@@ -143,4 +183,6 @@ LANの別PCから使いたい場合だけ `--host 0.0.0.0` を明示的に付け
 
 このフォルダ（`tools/parts_db/`）を削除すれば元の状態に戻る。
 `server.py` はimportに失敗しても `/api/parts/*` を無効にするだけで通常通り動く。
-`parts_db.json` 自体には一度も触っていないので、部品DBは無傷。
+CADは `/api/parts/stats` が返らない時点で、従来の File System Access API による
+保存へ自動的に戻る（`js/parts_db.js` の `restoreFromServer` が false を返す）ので、
+部品DBの読み書きはそのまま続けられる。

@@ -6,6 +6,24 @@ const partsDb = (() => {
   let fileHandle = null;
   let saveTimer = null;
 
+  // 【2026-09-02】保存の経路は2つあり、起動時にどちらか一方だけを選ぶ。
+  //
+  //   'server' … server.py が parts_db.json を直接読み書きする。
+  //              py tools\parts_db\parts_db.py setpath <パス> 済みのときだけ。
+  //   'file'   … 従来どおりブラウザの File System Access API で書く。
+  //
+  // サーバー側にした理由は「ブラウザの許可が下りずに保存できない」状態を
+  // 無くすため(2026-09-01の事故の根本)。ただし setpath をしていない環境や
+  // ファイルを直接開いている場合は今まで通り 'file' で動く —— 入れる前より
+  // できることが減る状況を作らない。
+  //
+  // どちらの場合も**書き手は1つ**。両方に同時に書くことは無い。
+  let mode = null;       // null=未接続 / 'server' / 'file'
+  let serverPath = '';   // サーバーが書いている parts_db.json のパス(表示用)
+
+  // パス表記から見出し用のファイル名だけを取り出す(Windows/POSIXの両方)。
+  const baseName = p => String(p || '').split(/[\\/]/).pop() || 'parts_db.json';
+
   // 【2026-09-01 追加】保存を止めるロックと、直近に確認できた件数。
   //
   // 事故の経緯: autoRestore() は読み込みより先に fileHandle を立てていたため、
@@ -79,8 +97,13 @@ const partsDb = (() => {
     saveLocked = true;
     clearTimeout(saveTimer);
     setStatus(`${reason}（部品DBの自動保存を停止しています）`);
-    setBanner(`⚠ ${reason}。部品DBの自動保存を停止しました。`
-      + 'ファイルの中身は無傷です。「部品登録」パネルの📂開く で開き直してください');
+    // 直し方は経路で違う。サーバー経由なのに「📂開く で開き直せ」と出すと、
+    // その操作ではサーバーの設定は元に戻らず、かえって別のファイルへ
+    // 書き始めてしまう。
+    setBanner(`⚠ ${reason}。部品DBの自動保存を停止しました。ファイルの中身は無傷です。`
+      + (mode === 'server'
+          ? 'ローカルサーバー(start.bat)が動いているか確認し、CADを開き直してください'
+          : '「部品登録」パネルの📂開く で開き直してください'));
   }
 
   function unlockSaving() {
@@ -171,15 +194,34 @@ const partsDb = (() => {
     return perm === 'granted';
   }
 
+  // サーバー経由で動いているときに、ブラウザ側でファイルを選び直そうとした場合の確認。
+  //
+  // ここで別のファイルを選ぶと、CADはそのファイルへ書き、他ソフトは setpath で
+  // 設定されたままのファイルを読み続ける ——「CADが見ているDBと他ソフトが見ている
+  // DBが別物」という、このプロジェクトが繰り返し踏んだ形になる。
+  // 止めはしない(出先で別の部品DBを開きたいことはある)が、黙って分岐はさせない。
+  function confirmLeaveServer() {
+    if (mode !== 'server') return true;
+    return typeof confirm === 'function' && confirm(
+      `いまの部品DBは、サーバー経由で\n  ${serverPath}\nを直接読み書きしています。\n\n`
+      + `ここで別のファイルを開くと、以後の保存はブラウザからそのファイルへ行われ、\n`
+      + `他ソフトは上のファイルを読み続けます（中身が食い違います）。\n\n`
+      + `場所そのものを変えたい場合は、いったんキャンセルして\n`
+      + `  py tools\\parts_db\\parts_db.py setpath <新しいパス>\n`
+      + `を実行し、CADを開き直してください。\n\n続けますか？`);
+  }
+
   // 既存の部品DBファイルを開く（内容で state.customParts を置き換え）
   async function pickExisting() {
     if (!window.showOpenFilePicker) { alert('このブラウザはFile System Access APIに対応していません（Chrome/Edge推奨）'); return; }
+    if (!confirmLeaveServer()) return;
     try {
       const [handle] = await window.showOpenFilePicker({ types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }] });
       const data = await readFromHandle(handle);
       if (state.customParts.length && !confirm(`現在の部品DB(${state.customParts.length}件)を、選択したファイルの内容(${data.customParts.length}件)で置き換えます。よろしいですか？`)) return;
       if (!(await ensurePermission(handle, 'readwrite'))) { setStatus('部品DBファイルへの書込み許可がありません'); return; }
       fileHandle = handle;
+      mode = 'file';   // 人が選んだファイルが以後の書き先になる
       await saveHandleRef(handle);
       state.customParts = data.customParts;
       state.hiddenBuiltinRefs = data.hiddenBuiltinRefs;
@@ -198,12 +240,14 @@ const partsDb = (() => {
   // 一番押されやすいボタンなので、0件のときだけ念を押す。
   async function createNew() {
     if (!window.showSaveFilePicker) { alert('このブラウザはFile System Access APIに対応していません（Chrome/Edge推奨）'); return; }
+    if (!confirmLeaveServer()) return;
     if (!state.customParts.length && typeof confirm === 'function'
         && !confirm('いま部品DBは0件です。このまま作成すると、選んだファイルの中身が0件になります。\n'
                   + '既存の部品DBを読み込みたい場合は「📂開く」を使ってください。\n\n続けますか？')) return;
     try {
       const handle = await window.showSaveFilePicker({ suggestedName: 'parts_db.json', types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }] });
       fileHandle = handle;
+      mode = 'file';
       lastGoodCount = null;   // 新規ファイルなので比較対象は無い
       unlockSaving();
       await saveHandleRef(handle);
@@ -212,12 +256,69 @@ const partsDb = (() => {
     } catch (e) { if (e.name !== 'AbortError') alert('作成エラー: ' + e.message); }
   }
 
-  // 戻り値は「本当にファイルへ書けたか」。
+  // 戻り値は「本当に保存できたか」。
   // 2026-09-01: catalogResetPartsDb() がこの戻り値を見ずに
   // 「605件で作り直しました」と成功のalertを出していたため、保存が空振りしても
   // 画面には605件が並び、次の起動で168件に戻る、という形で作り直しが消えていた。
   // 呼び出し側が成否を判断できないと、同じことがまた起きる。
+  //
+  // 呼び出し側(10箇所)は保存の経路を知らなくてよい。ここで振り分ける。
   async function writeNow() {
+    return mode === 'server' ? await writeToServer() : await writeToFile();
+  }
+
+  // ---- サーバー経由の保存(2026-09-02) --------------------------------
+  //
+  // ブラウザの許可ダイアログを通らないので、9-01の事故(許可が下りずに
+  // 保存できていないまま作業が進む)がこの経路では起こり得ない。
+  // 代わりに server.py が落ちていると保存できないので、失敗は必ず赤い帯にする。
+  async function writeToServer(force) {
+    if (saveLocked) return false;
+    const now = state.customParts.length;
+    let j;
+    try {
+      const res = await fetch('/api/parts/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customParts: state.customParts,
+                               hiddenBuiltinRefs: state.hiddenBuiltinRefs,
+                               force: !!force }),
+      });
+      j = await res.json();
+    } catch (e) {
+      lockSaving(`部品DBを保存できませんでした(ローカルサーバーに届きません: ${e.message})`);
+      return false;
+    }
+    // 件数の激減。ファイルに実際に入っている件数と比べているので、
+    // ブラウザ側の記憶(lastGoodCount)より確かな判断材料になっている。
+    // 聞くのは force が付いていないときだけ ——「force で送ったのにまた drop」は
+    // サーバー側の不具合であって、人に聞き直す話ではない(無限に往復してしまう)。
+    if (!force && !j.ok && j.reason === 'drop') {
+      const ok = typeof confirm === 'function' && confirm(
+        `部品DBの件数が ${j.prev} 件から ${j.now} 件に減っています。\n`
+        + `このまま保存すると、ファイル(${baseName(j.path)})の中身も ${j.now} 件になります。\n\n`
+        + `[OK] このまま保存する（直前の内容は自動でバックアップします）\n`
+        + `[キャンセル] 保存せず、部品DBの自動保存を停止する`);
+      if (!ok) {
+        lockSaving(`部品DBの件数が ${j.prev} → ${j.now} に減ったため保存を止めました`);
+        return false;
+      }
+      return await writeToServer(true);
+    }
+    if (!j.ok) {
+      lockSaving(`部品DBを保存できませんでした(${j.error || '原因不明'})`);
+      return false;
+    }
+    lastGoodCount = now;
+    setStatus(`部品DB: ${baseName(j.path)} (${now}件・保存済み・サーバー経由)`
+      + (j.backup ? `／直前の内容を ${j.backup} に退避しました` : ''));
+    // 控え(mirror)はサーバーが保存と同時に更新するので、ここからは送らない。
+    // 2重に書くと、送信の往復ぶんだけ大きなJSONが余計に流れる。
+    return true;
+  }
+
+  // ---- File System Access API による保存(従来の経路) -------------------
+  async function writeToFile() {
     if (!fileHandle) return false;
     if (saveLocked) return false;   // 読めていない/件数が激減した状態では書かない
     const now = state.customParts.length;
@@ -260,9 +361,60 @@ const partsDb = (() => {
 
   // customParts変更時に呼ぶ（デバウンス保存）
   function scheduleSave() {
-    if (!fileHandle || saveLocked) return;
+    if (mode !== 'server' && !fileHandle) return;
+    if (saveLocked) return;
     clearTimeout(saveTimer);
     saveTimer = setTimeout(writeNow, 1500);
+  }
+
+  // 前回ファイルに書けないまま図面側(localStorage)へ退避されていた部品を捨てない。
+  // 元の実装は無条件に state.customParts を置き換えていたため、
+  // 保存できていなかった回の登録が、次の起動で黙って消えていた。
+  // サーバー経由・ファイル経由のどちらで読んでも同じ扱いにする。
+  function mergeUnsaved(data) {
+    const extra = (state.customParts || [])
+      .filter(p => !data.customParts.some(q => q.ref === p.ref));
+    state.customParts = data.customParts.concat(extra);
+    state.hiddenBuiltinRefs = data.hiddenBuiltinRefs;
+    if (typeof renderPartsAll === 'function') renderPartsAll();
+    if (extra.length) {
+      setBanner(`部品DBのファイルに入っていなかった ${extra.length} 件を復帰させました`
+        + '（前回保存できていなかった分の可能性があります）。内容を確認してください');
+      scheduleSave();
+    }
+    return extra.length;
+  }
+
+  // 起動時：サーバーが部品DBを読み書きできる状態かを先に確かめる。
+  //
+  // できるなら以後の保存はサーバーに任せる(mode='server')。
+  // できないなら false を返し、呼び出し元が従来のFile System Access APIに
+  // 落ちる —— setpath をしていない環境やファイルを直接開いている場合に
+  // 今までできていたことができなくなる、という形の回帰を作らないため。
+  async function restoreFromServer() {
+    let st;
+    try {
+      st = await (await fetch('/api/parts/stats')).json();
+    } catch (e) {
+      return false;   // サーバー無しで開いている。従来の経路へ。
+    }
+    // writable が真になるのは setpath 済みのときだけ。控え(mirror)しか無い
+    // 場合は書き先が無いので、保存はブラウザ側に任せる。
+    if (!st || !st.available || !st.ok || !st.writable) return false;
+    let data;
+    try {
+      data = await (await fetch('/api/parts/all')).json();
+      if (!data || !data.ok) return false;
+    } catch (e) { return false; }
+
+    mode = 'server';
+    serverPath = st.path || '';
+    lastGoodCount = (data.customParts || []).length;
+    unlockSaving();
+    mergeUnsaved({ customParts: data.customParts || [],
+                   hiddenBuiltinRefs: data.hiddenBuiltinRefs || [] });
+    setStatus(`部品DB: ${baseName(serverPath)} (${state.customParts.length}件・サーバー経由)`);
+    return true;
   }
 
   // 起動時：前回選択したファイルを自動復元
@@ -275,6 +427,7 @@ const partsDb = (() => {
   // 許可ダイアログを出せずに拒否することがある(ブラウザ再起動後など)。
   // つまりここは「たまに失敗する」のが普通の経路で、例外的な状況ではない。
   async function autoRestore() {
+    if (await restoreFromServer()) return;
     const handle = await loadHandleRef();
     if (!handle) { setStatus('部品DBファイル未設定（下の「開く」「新規作成」から設定してください）'); return; }
     let data;
@@ -290,22 +443,10 @@ const partsDb = (() => {
     }
     // 読めた。ここで初めて「接続済み」にする。
     fileHandle = handle;
+    mode = 'file';
     lastGoodCount = data.customParts.length;
     unlockSaving();
-
-    // 前回ファイルに書けないまま図面側(localStorage)へ退避されていた部品を捨てない。
-    // 元の実装は無条件に state.customParts を置き換えていたため、
-    // 保存できていなかった回の登録が、次の起動で黙って消えていた。
-    const extra = (state.customParts || [])
-      .filter(p => !data.customParts.some(q => q.ref === p.ref));
-    state.customParts = data.customParts.concat(extra);
-    state.hiddenBuiltinRefs = data.hiddenBuiltinRefs;
-    if (typeof renderPartsAll === 'function') renderPartsAll();
-    if (extra.length) {
-      setBanner(`部品DBのファイルに入っていなかった ${extra.length} 件を復帰させました`
-        + '（前回保存できていなかった分の可能性があります）。内容を確認してください');
-      scheduleSave();
-    }
+    mergeUnsaved(data);
     setStatus(`部品DB: ${handle.name} (${state.customParts.length}件)`);
   }
 
@@ -313,6 +454,20 @@ const partsDb = (() => {
   // 同じフォルダに parts_db_backup_YYYY-MM-DD_HHMM.json として書き出す。
   // 判断を変えるためではなく、万一のときに戻せるようにするための保険。
   async function backupNow() {
+    // サーバー経由なら parts_db.json のパスが分かるので、同じフォルダへ書ける。
+    // ブラウザ側では Chrome に getParent() が無く、これができないために
+    // 「バックアップ先フォルダ」を別途選ばせていた(下の 2)。
+    if (mode === 'server') {
+      try {
+        const j = await (await fetch('/api/parts/backup', { method: 'POST' })).json();
+        if (j.ok) return j.name;
+        console.warn('[parts_db] バックアップを書き出せませんでした', j.error);
+        return null;
+      } catch (e) {
+        console.warn('[parts_db] バックアップを書き出せませんでした', e);
+        return null;
+      }
+    }
     if (!fileHandle) return null;
     const d = new Date();
     const p = n => String(n).padStart(2, '0');
@@ -382,9 +537,17 @@ const partsDb = (() => {
   // 判定に使い、falseのときは customParts を図面側(localStorage・図面ファイル)へ
   // 一緒に保存する。したがってロック中は false を返すのが正しい ——
   // ファイルに書けていないのだから、せめて図面側に控えを残す必要がある。
+  // サーバー経由(mode='server')でも部品DBは外部ファイルにあるので真を返す。
+  // 逆に言うと、サーバーが落ちて保存できずロックされた時点で false になり、
+  // 図面側への退避が自動的に復活する(既存の網をそのまま使う)。
   return { pickExisting, createNew, scheduleSave, autoRestore, writeNow, backupNow,
            pickBackupDir, backupDirStatus, pushMirror, mirrorStatus,
-           hasFile: () => !!fileHandle && !saveLocked,
+           // hasFile() は「部品DBを外部で管理できているか」。サーバー経由でも真。
+           hasFile: () => (mode === 'server' || !!fileHandle) && !saveLocked,
            isLocked: () => saveLocked,
+           // 保存経路(画面表示とテスト用)。null は未接続。
+           saveMode: () => mode,
+           savePath: () => (mode === 'server' ? serverPath
+                            : (fileHandle ? fileHandle.name : '')),
            partsCount: () => (state.customParts || []).length };
 })();

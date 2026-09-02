@@ -59,7 +59,12 @@ except Exception as _e:  # ImportError/構文エラー等、何が起きてもCA
 # たびに、その中身の控えを %LOCALAPPDATA%\ecad\parts_db_mirror.json へ写す。
 # これにより、CADを起動していない時間帯でも他ツールが部品DBを読める。
 #
-# 【重要】ここから parts_db.json 本体には絶対に書かない。書き手はCAD1つに保つ。
+# 【2026-09-02 追加】部品DBの保存もここを通るようになった(/api/parts/save)。
+# ブラウザの許可が下りずに保存できない、という9-01の事故の根本を無くすため。
+# 書き手が2つになったわけではなく、CAD側が「サーバーで書く」か
+# 「今まで通りFile System Access APIで書く」かのどちらか一方を選ぶ
+# (setpath が設定されていればサーバー、無ければブラウザ)。
+# 詳しくは tools/parts_db/parts_db.py の冒頭を参照。
 # ----------------------------------------------------------------------------
 parts_db = None
 try:
@@ -93,6 +98,12 @@ class Handler(SimpleHTTPRequestHandler):
             return
         if parsed.path == '/api/parts/mirror':
             self.handle_parts_mirror()
+            return
+        if parsed.path == '/api/parts/save':
+            self.handle_parts_save()
+            return
+        if parsed.path == '/api/parts/backup':
+            self.handle_parts_backup()
             return
         self.send_error(404)
 
@@ -187,10 +198,11 @@ class Handler(SimpleHTTPRequestHandler):
 
     # ---- 部品DBの外部公開(任意機能) ---------------------------------------
     def handle_parts(self, action, q):
-        """部品DBの読み取りAPI。**書き込みは無い。**
+        """部品DBの読み取りAPI(GET)。保存は do_POST 側にある。
 
-        parts_db.json を書けるのはCAD(ブラウザ)だけという前提を崩さないため、
-        ここは読むだけにしてある。理由は tools/parts_db/parts_db.py の冒頭を参照。
+        stats/search/get は他ソフトからも使う形(parts_db_server.py と同じ)。
+        all はCAD専用で、外形図DXFまで含めた中身をそのまま返す
+        —— CADは部品DBを全件メモリに持つので、間引かれた形では起動できない。
         """
         if parts_db is None:
             self._send_json({'ok': False, 'available': False,
@@ -210,6 +222,14 @@ class Handler(SimpleHTTPRequestHandler):
                 row = db.get(q.get('ref', ''))
                 self._send_json({'ok': True, 'available': True, 'result': row,
                                  'found': row is not None})
+            elif action == 'all':
+                # CADの起動時読み込み用。search/get と違い outlineDxf も含めた
+                # 生の中身を返す(間引くとCADが外形図を失う)。
+                d = db.load()
+                self._send_json({'ok': d['ok'], 'available': True,
+                                 'customParts': d['parts'],
+                                 'hiddenBuiltinRefs': d['hidden'],
+                                 'source': d['source'], 'error': d['error']})
             else:
                 self._send_json({'ok': False, 'available': True,
                                  'error': 'unknown action'}, 404)
@@ -236,6 +256,48 @@ class Handler(SimpleHTTPRequestHandler):
                 return
             res = parts_db.write_mirror(self.rfile.read(n).decode('utf-8'))
             self._send_json({'ok': True, 'available': True, **res})
+        except Exception as e:
+            self._send_json({'ok': False, 'available': True, 'error': str(e)})
+
+    def handle_parts_save(self):
+        """CADからの保存要求。**ここが parts_db.json の唯一の書き手。**
+
+        setpath が未設定なら ok:false / reason:'unset' を返すだけで、何も書かない。
+        その場合CADは今まで通りブラウザ側(File System Access API)で保存するので、
+        この機能を入れる前と同じ動きになる(回帰を作らない)。
+
+        件数が激減しているときは書かずに reason:'drop' を返す。CADが人に確認して
+        force:true で再送してきたときだけ、退避を取ってから書く。
+        """
+        if parts_db is None:
+            self._send_json({'ok': False, 'available': False,
+                             'error': '部品DBの外部公開機能が導入されていません'})
+            return
+        try:
+            n = int(self.headers.get('Content-Length') or 0)
+            if not n:
+                self._send_json({'ok': False, 'available': True, 'error': '中身が空です'})
+                return
+            payload = json.loads(self.rfile.read(n).decode('utf-8'))
+            force = bool(payload.get('force'))
+            res = parts_db.PartsDB().save(payload, force=force)
+            self._send_json({'available': True, **res})
+        except Exception as e:
+            self._send_json({'ok': False, 'available': True, 'error': str(e)})
+
+    def handle_parts_backup(self):
+        """破壊的な操作の前の退避。parts_db.json と同じフォルダに書き出す。
+
+        ブラウザ側では Chrome に getParent() が無いためこれができず、
+        「バックアップ先フォルダ」を別途選ばせていた(2026-09-01)。
+        サーバーからはパスが分かるので、選ばせずに済む。
+        """
+        if parts_db is None:
+            self._send_json({'ok': False, 'available': False,
+                             'error': '部品DBの外部公開機能が導入されていません'})
+            return
+        try:
+            self._send_json({'available': True, **parts_db.PartsDB().backup()})
         except Exception as e:
             self._send_json({'ok': False, 'available': True, 'error': str(e)})
 

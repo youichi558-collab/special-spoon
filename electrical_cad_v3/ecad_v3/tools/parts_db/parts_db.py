@@ -14,13 +14,27 @@ catalog_db.py と同じ発想を部品DBに適用したもの。
     部品DB     : 図面で実際に使う部品。数千件。原本は parts_db.json 1ファイル。
                  **更新するのは盛田さんだけ。**
 
-■ 【最重要】このライブラリは parts_db.json に絶対に書き込まない
-    parts_db.json はCADがブラウザの File System Access API で書いている。
-    そこへサーバーが同時に書くと、どちらかの書き込みが失われるか、
-    書きかけのJSONが残って次の起動で読めなくなる。
-    2026-09-01に「保存できていないことに誰も気づけない」事故を起こしたばかりの
-    ファイルなので、書き手は1つに保つ。
-    → 公開するのは read 系のみ。write/set/delete に相当するAPIは用意しない。
+■ 【最重要】parts_db.json の書き手は「常に1つだけ」
+    2つ以上が書くと、どちらかの書き込みが黙って失われるか、書きかけのJSONが
+    残って次の起動で読めなくなる。2026-09-01に「保存できていないことに誰も
+    気づけない」事故を起こしたばかりのファイルなので、ここは崩さない。
+
+    【2026-09-02 変更】その「1つ」を、CAD(ブラウザのFile System Access API)から
+    このライブラリに移した。理由:
+      ・ブラウザの許可はページを開くたびに下りないことがあり、それが9-01の事故の
+        根本だった。サーバーからの書き込みには許可ダイアログが無い。
+      ・tmpに書いてから os.replace で置き換えられる(FSAのcreateWritableは
+        開いた瞬間に中身を捨てるので、途中で落ちるとファイルが空になる)。
+      ・バックアップを parts_db.json と同じフォルダへ自動で置ける
+        (Chromeに getParent() が無く、FSAではフォルダを別途選ばせる必要があった)。
+
+    移した後も書き手は1つのまま。守り方は下の3つ:
+      1. 書けるのは setpath で場所を設定したときだけ(save() が resolve ではなく
+         configured_path() だけを見る)。控え(mirror)には保存しない。
+      2. 書き込み口はCAD自身の server.py の POST /api/parts/save だけ。
+         他ソフト向けの parts_db_server.py は今まで通り読み取り専用(405)。
+      3. setpath が未設定なら save() は失敗を返し、CAD側は従来どおり
+         File System Access API で書く(=そのときも書き手は1つ)。
 
 ■ 部品DBの実体をどうやって見つけるか
     2通りある。上から順に試す。
@@ -50,10 +64,14 @@ catalog_db.py と同じ発想を部品DBに適用したもの。
     db.outline('S-T21')             # 外形図DXFの中身(無ければNone)
 
     HTTPで使いたいなら parts_db_server.py を起動する(既定 http://127.0.0.1:8091)。
+    **他ツールからは読むだけにすること。** 書き込み(save/backup)はCADのために
+    用意してあるもので、server.py の /api/parts/save 以外からは呼ばない。
 
 ■ 消したくなったら
     このフォルダ(tools/parts_db/)を削除すれば元の状態に戻る。
-    parts_db.json 自体には一度も触っていないので、部品DBは無傷。
+    CADは setpath が読めなくなった時点で、従来の File System Access API による
+    保存へ自動的に戻る(js/parts_db.js の restoreFromServer が false を返す)ので、
+    部品DBの読み書きはそのまま続けられる。
 """
 import json
 import os
@@ -123,6 +141,23 @@ def normalize(data):
         return {'customParts': data.get('customParts') or [],
                 'hiddenBuiltinRefs': data.get('hiddenBuiltinRefs') or []}
     raise ValueError('parts_db.json の形式が想定と違います(配列でもオブジェクトでもない)')
+
+
+def is_suspicious_drop(prev, now):
+    """件数が大きく減った上書きを疑う。
+
+    js/parts_db.js の isSuspiciousDrop と**同じ規則**。片方だけ直すと、
+    保存経路(サーバー/ブラウザ)によって守られたり守られなかったりする
+    —— それが一番たちが悪いので、変えるときは必ず両方を直すこと。
+    tests/test_parts_db_server_mode.js が両者の一致を見ている。
+
+    1件ずつの削除は普通の操作なので通し、「全部消えた」「半分以下になった」だけ止める。
+    """
+    if prev is None or prev <= 0:
+        return False
+    if now == 0:
+        return True
+    return prev >= 10 and now < prev / 2
 
 
 def write_mirror(text, data_dir=None):
@@ -221,6 +256,125 @@ class PartsDB:
                 'hidden': self._cache['hiddenBuiltinRefs'],
                 'source': source, 'error': ''}
 
+    # ---- 書き込み(CADの保存経路・2026-09-02) ---------------------------
+    #
+    # ここから書けるのは setpath で設定された parts_db.json だけ。
+    # 控え(mirror)には保存しない —— 控えは「CADが最後に保存した中身の写し」で
+    # あって原本ではなく、そこへ保存すると原本が更新されないまま
+    # 他ツールだけが新しい内容を見る、という一番分かりにくい形になる。
+    def writable_path(self):
+        """保存先の parts_db.json。書けないときは (None, 理由)。"""
+        p = self.configured_path()
+        if not p:
+            return None, 'unset'
+        if not os.path.isfile(p):
+            return None, 'path_missing'
+        return p, 'path'
+
+    def _count_on_disk(self, path):
+        """今ファイルに入っている件数。読めなければ None(=比較しない)。"""
+        try:
+            with open(path, encoding='utf-8') as f:
+                return len(normalize(json.load(f))['customParts'])
+        except Exception:
+            return None
+
+    def backup(self):
+        """現在のファイルの中身を、同じフォルダへ退避する。
+
+        parts_db_backup_YYYY-MM-DD_HHMM.json という名前は、CAD側(js/parts_db.js)が
+        FSAで書いていたものと同じ。find の「バックアップ」表示もこの名前で拾う。
+
+        中身は「今ディスクにあるもの」であって、これから書こうとしている内容では
+        ない。戻したいのは常に上書きされる前の方なので、必ずコピー元は原本にする。
+        """
+        path, why = self.writable_path()
+        if path is None:
+            return {'ok': False, 'reason': why, 'name': '',
+                    'error': '部品DBの場所が未設定です'}
+        import datetime
+        base = 'parts_db_backup_' + datetime.datetime.now().strftime('%Y-%m-%d_%H%M')
+        folder = os.path.dirname(path)
+        # 名前は分までしか持たないので、同じ分に2回退避すると衝突する。
+        # 上書きすると「1回目の退避(=一番戻したい内容)」が消えるので、必ず別名にする。
+        # 作り直しの直前など、短い間に2回退避が走る流れが実際にある。
+        name = base + '.json'
+        for i in range(2, 100):
+            if not os.path.exists(os.path.join(folder, name)):
+                break
+            name = f'{base}_{i}.json'
+        dst = os.path.join(folder, name)
+        try:
+            with open(path, encoding='utf-8') as f:
+                body = f.read()
+            tmp = dst + '.tmp'
+            with open(tmp, 'w', encoding='utf-8') as f:
+                f.write(body)
+            os.replace(tmp, dst)
+        except Exception as e:
+            return {'ok': False, 'reason': 'error', 'name': '', 'error': str(e)}
+        return {'ok': True, 'name': name, 'path': dst, 'error': ''}
+
+    def save(self, data, force=False):
+        """部品DBを保存する。**CADの保存経路。他ツールからは呼ばない。**
+
+        戻り値は必ず ok を含む dict。例外にしないのは、呼び出し側(server.py →
+        js/parts_db.js)が「保存できなかった」を画面に出さなければならないため。
+        2026-09-01の事故は、保存の失敗が誰にも届かなかったことで起きている。
+
+        force=False のときに件数が激減していたら、書かずに reason='drop' を返す。
+        判断材料は**今ファイルに入っている件数**で、ブラウザ側の記憶ではない。
+        """
+        path, why = self.writable_path()
+        if path is None:
+            return {'ok': False, 'reason': why, 'count': 0, 'path': '',
+                    'error': {
+                        'unset': '部品DBの場所が未設定です'
+                                 '(py parts_db.py setpath <parts_db.jsonのパス>)',
+                        'path_missing': '設定された部品DBが見つかりません: '
+                                        + self.configured_path(),
+                    }.get(why, '部品DBに保存できません')}
+        try:
+            info = normalize(data)
+        except Exception as e:
+            return {'ok': False, 'reason': 'bad_data', 'count': 0, 'path': path,
+                    'error': f'保存する中身の形が違います: {e}'}
+        now = len(info['customParts'])
+        prev = self._count_on_disk(path)
+        dropping = is_suspicious_drop(prev, now)
+        if dropping and not force:
+            return {'ok': False, 'reason': 'drop', 'prev': prev, 'now': now,
+                    'count': prev or 0, 'path': path,
+                    'error': f'部品DBの件数が {prev} 件から {now} 件に減っています'}
+        backup = ''
+        if dropping:
+            # 人が「それでも書く」と答えた激減。戻せるようにしてから書く。
+            backup = self.backup().get('name', '')
+        try:
+            # 書きかけのJSONが parts_db.json として残らないよう、別名に書いてから
+            # 置き換える。FSAのcreateWritableは開いた瞬間に中身を捨てるので、
+            # 途中で落ちるとファイルが空になった —— それが起きない形にする。
+            text = json.dumps(info, ensure_ascii=False, indent=2)
+            tmp = path + '.tmp'
+            with open(tmp, 'w', encoding='utf-8') as f:
+                f.write(text)
+            os.replace(tmp, path)
+        except Exception as e:
+            return {'ok': False, 'reason': 'error', 'count': 0, 'path': path,
+                    'error': f'部品DBを保存できませんでした({path}): {e}'}
+        self._cache = None
+        self._cache_key = None
+        # 控えも合わせて更新する。失敗しても保存は成功のまま返す ——
+        # 控えが古いことと部品DBが保存できていないことは別の話で、
+        # ここを混ぜると「正常なのに保存失敗の赤い帯が出る」ようになる。
+        mirror_error = ''
+        try:
+            write_mirror(text, self.data_dir)
+        except Exception as e:
+            mirror_error = str(e)
+        return {'ok': True, 'count': now, 'path': path, 'backup': backup,
+                'mirror_error': mirror_error, 'error': ''}
+
     # ---- 公開API -------------------------------------------------------
     @staticmethod
     def _public(p):
@@ -231,8 +385,14 @@ class PartsDB:
     def stats(self):
         d = self.load()
         path, _ = self.resolve()
+        # writable は「このライブラリから保存できるか」。
+        # setpath 済み(source='path')のときだけ真になり、控え(mirror)しか
+        # 無いときは偽。CAD側はこれを見て、保存をサーバーに任せるか
+        # 従来の File System Access API で書くかを決める。
+        wpath, _ = self.writable_path()
         s = {'ok': d['ok'], 'count': len(d['parts']), 'source': d['source'],
-             'path': path or '', 'error': d['error'], 'readonly': True}
+             'path': path or '', 'error': d['error'],
+             'writable': wpath is not None}
         if d['ok']:
             s['makers'] = sorted({(p.get('maker') or '') for p in d['parts']} - {''})
             s['types'] = sorted({(p.get('type') or '') for p in d['parts']} - {''})

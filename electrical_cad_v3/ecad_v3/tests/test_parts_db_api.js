@@ -15,9 +15,16 @@
 //   1. 控えの送信が「保存できたとき」だけ起きること
 //      (保存に失敗しているのに控えだけ新しくなると、他ソフトが
 //       「保存されている」と誤解する。今年ここで繰り返した事故と同じ形)
-//   2. 公開経路に書き込み手段が無いこと
-//      (parts_db.json の書き手はCAD1つに保つ。2つになると、
-//       どちらかの書き込みが黙って失われる)
+//   2. parts_db.json の書き手が増えていないこと
+//      (2つ以上が書くと、どちらかの書き込みが黙って失われる)
+//
+// 【2026-09-02 追記】2の「書き手」がCAD(ブラウザ)からサーバーへ移った。
+// 移した後も同時に2つが書くことは無い —— CADは起動時にどちらか一方の経路だけを
+// 選ぶ(js/parts_db.js の mode)。このファイルでは
+//   ・他ソフト向けの parts_db_server.py は今まで通り読み取り専用であること
+//   ・server.py の書き込み口が保存・退避・控えの3つだけであること
+//   ・parts_db.json を上書きするときは必ず tmp 経由(書きかけが残らない)であること
+// を見る。経路の選び方そのものは tests/test_parts_db_server_mode.js が見ている。
 
 const fs = require('fs');
 const path = require('path');
@@ -39,11 +46,13 @@ const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 // ------------------------------------------------------------------
 console.log('【控えの送信は保存に成功したときだけ】');
 {
-  // writeNow() の中身だけを取り出して動かす。IIFE全体を評価するのは
-  // indexedDB や document への依存が多く、テストの本題から離れるため。
+  // File System Access API 経由の保存(writeToFile)の中身だけを取り出して動かす。
+  // IIFE全体を評価するのは indexedDB や document への依存が多く、本題から離れる。
+  // ※ 控えの送信はこちらの経路だけの話。サーバー経由の保存では、サーバーが
+  //   保存と同時に控えを更新するのでブラウザからは送らない。
   const src = read('js/parts_db.js');
-  const start = src.indexOf('  async function writeNow() {');
-  ok(start >= 0, 'writeNow() をソースから取り出せる');
+  const start = src.indexOf('  async function writeToFile() {');
+  ok(start >= 0, 'writeToFile() をソースから取り出せる');
   const end = src.indexOf('\n  }\n', start) + 4;
   const body = src.slice(start, end);
 
@@ -76,7 +85,7 @@ console.log('【控えの送信は保存に成功したときだけ】');
     const names = ['fileHandle', 'saveLocked', 'lastGoodCount', 'state',
                    'ensurePermission', 'isSuspiciousDrop', 'setStatus',
                    'lockSaving', 'pushMirror'];
-    const fn = new Function(...names, `${body}; return writeNow();`);
+    const fn = new Function(...names, `${body}; return writeToFile();`);
     return await fn(...names.map(n => env[n]));
   }
 
@@ -139,7 +148,7 @@ console.log('【控えの送信は保存に成功したときだけ】');
     //      挙動では差が出ない不変条件なので、ここだけ構造で見る。
     const wn = body;
     const catchEnd = wn.indexOf('return false;\n    }');
-    ok(catchEnd > 0, 'writeNow の catch 節が見つかる');
+    ok(catchEnd > 0, 'writeToFile の catch 節が見つかる');
     ok(wn.indexOf('pushMirror()') > catchEnd,
        '★控えの送信は try/catch を抜けた後で呼ぶ');
 
@@ -160,37 +169,65 @@ console.log('【控えの送信は保存に成功したときだけ】');
     }
 
     // --------------------------------------------------------------
-    console.log('\n【公開経路に書き込み手段が無い】');
+    console.log('\n【書き手が増えていない・書きかけが残らない】');
     const lib = read('tools/parts_db/parts_db.py');
     const srv = read('tools/parts_db/parts_db_server.py');
     const cad = read('server.py');
 
-    // parts_db.py が書きモードで open するのは、設定ファイルと控えの2つだけ。
-    // parts_db.json 本体(= resolve() が返すパス)は read でしか開かない。
     // コメント行は除いてから見る(説明文に 'w' が出てくるため)。
     const libCode = lib.split('\n').filter(l => !/^\s*#/.test(l)).join('\n');
+
+    // parts_db.py が書きモードで open するのは、設定ファイルと「.tmp」だけ。
+    // 本番のファイル(parts_db.json・控え・退避)は必ず tmp に書いてから
+    // os.replace で置き換える。途中で落ちても、読む側が半端なJSONを見ることはない。
+    // ——「開いた瞬間に中身が消える」FSAのcreateWritableを避けたのがこの形。
     const writeOpens = [...libCode.matchAll(/open\(\s*([A-Za-z_][\w.()\[\] +]*?)\s*,\s*'w'/g)]
       .map(m => m[1]);
-    eq(writeOpens.length, 2, '書きモードで open するのは2箇所だけ');
-    ok(writeOpens.some(v => /config_path/.test(v)), '1つ目は設定ファイル');
-    ok(writeOpens.some(v => /tmp/.test(v)), '2つ目は控え(tmp経由で置き換え)');
+    eq(writeOpens.length, 4, '書きモードで open するのは4箇所(設定＋tmp×3)');
+    ok(writeOpens.some(v => /config_path/.test(v)), '設定ファイルへの書き込みがある');
+    eq(writeOpens.filter(v => /tmp/.test(v)).length, 3,
+       '★残り3つ(控え・退避・部品DB本体)はすべて tmp に書く');
+    eq((libCode.match(/os\.replace\(/g) || []).length, 3,
+       '★tmpに書いたものは os.replace で置き換える(3箇所)');
 
-    // resolve() が返した実ファイルへ書く経路が無いこと。
+    // 実ファイルを直接 'w'/'a' で開く経路が無いこと。
     // load() は open(path) を読みモードでしか呼ばない。
     ok(!/open\(\s*path\s*,\s*['"][wa]/.test(libCode),
-       '★ resolve() が返したパス(parts_db.json)を書き・追記モードで開かない');
+       '★ parts_db.json を書き・追記モードで直接開かない(必ず tmp 経由)');
     ok(!/os\.remove|shutil\.|\.unlink\(/.test(libCode),
        'parts_db.py にファイルを消す経路が無い');
 
-    // 独立サーバーは POST/PUT/DELETE/PATCH を 405 で拒む
+    // 保存先は「setpath で設定されたファイル」だけ。控え(mirror)には保存しない。
+    // resolve() は控えも返すので、save() がそれを書き先にすると
+    // 「原本は古いまま、他ソフトだけ新しい」という一番分かりにくい形になる。
+    // save() の本体だけを切り出す(次のメソッド定義の手前まで)。
+    // libCode はコメントを落としてあるので、区切りの見出しは目印に使えない。
+    const saveStart = libCode.indexOf('    def save(self');
+    ok(saveStart > 0, 'parts_db.py に save() がある');
+    const after = libCode.slice(saveStart + 10);
+    const saveEnd = saveStart + 10 + Math.min(
+      ...[/\n    def /, /\n    @/].map(re => {
+        const i = after.search(re);
+        return i < 0 ? after.length : i;
+      }));
+    const saveBody = libCode.slice(saveStart, saveEnd);
+    ok(/writable_path\(\)/.test(saveBody), 'save() は writable_path() を書き先にする');
+    ok(!/\bself\.resolve\(\)/.test(saveBody),
+       '★save() は resolve() を使わない(控えに保存してしまわないため)');
+
+    // 独立サーバー(他ソフト向け)は今まで通り読み取り専用のまま。
+    // 書き込みが要るのはCAD自身だけなので、こちらに口を開ける理由が無い。
     ok(/do_PUT\s*=\s*do_DELETE\s*=\s*do_PATCH\s*=\s*do_POST/.test(srv),
        'POST以外の書き込みメソッドもまとめて塞いである');
     ok(/405/.test(srv), '書き込みは405で返す(実装漏れではないと分かる形)');
+    ok(!/\.save\(|\.backup\(/.test(srv),
+       '★他ソフト向けサーバーは save()/backup() を呼ばない');
 
-    // server.py の /api/parts/ に控え以外の書き込み経路が無い
+    // server.py の /api/parts/ で受ける書き込みは、保存・退避・控えの3つだけ。
     const partsPost = cad.match(/def do_POST[\s\S]*?self\.send_error\(404\)/)[0];
     const partsRoutes = [...partsPost.matchAll(/'(\/api\/parts\/[a-z]+)'/g)].map(m => m[1]);
-    eq(partsRoutes, ['/api/parts/mirror'], 'POSTで受けるのは控えの受け取りだけ');
+    eq(partsRoutes, ['/api/parts/mirror', '/api/parts/save', '/api/parts/backup'],
+       'POSTで受けるのは控え・保存・退避の3つだけ');
 
     // 控えの書き先が parts_db.json ではないこと
     ok(/mirror_path/.test(lib.slice(lib.indexOf('def write_mirror'))),
