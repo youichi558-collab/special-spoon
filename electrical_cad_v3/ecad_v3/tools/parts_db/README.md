@@ -54,6 +54,25 @@ JavaScriptに渡さない（ハンドルをIndexedDBに覚えているだけ）�
 
 ### 1. パスを設定する（推奨・CADを起動していなくても最新を読める）
 
+**場所が分からない場合は探せる。** 部品DBの場所はブラウザしか知らない
+（File System Access API は絶対パスをJSに渡さない）ので、すぐには出てこない。
+
+```
+> py parts_db.py find
+parts_db.json を探しています(数十秒かかることがあります)...
+
+部品DB本体:
+       605件  2026-09-02 10:59  G:\マイドライブ\claude\部品カタログ\parts_db.json
+       168件  2026-08-20 22:30  C:\Users\y.morita\Desktop\旧\parts_db.json
+
+件数が一番多いものを設定するなら:
+  py parts_db.py setpath "G:\マイドライブ\claude\部品カタログ\parts_db.json"
+```
+
+**件数の多い順に並べている**（中身が空のファイルを先頭に出すと選び間違えるため）。
+バックアップ（`parts_db_backup_*.json`）も参考として別に出すが、
+setpath には本体を指定すること。
+
 ```
 py parts_db.py setpath "G:\マイドライブ\claude\部品カタログ\parts_db.json"
 ```

@@ -86,19 +86,30 @@ TYPE_LABELS = {
     'hmi': 'タッチパネル・表示器', 'option': '増設ユニット等(付属品)',
 }
 
-PROMPT = """あなたは制御盤の設計者です。部品の情報から、種別コードを1つ選んでください。
+# 【言語の引きずられ対策・2026-09-02】
+# 盛田さんの実機で qwen2.5:3b に日本語で聞いたところ、**中国語で返ってきた**
+# (小さい中国語圏モデルではよくある)。この試験で測りたいのは
+# 「電気部品の型番を理解しているか」であって「何語で答えるか」ではない。
+# 説明文が何語で来ても構わないよう、
+#   ・出力は英字の種別コードのみ、と明示する
+#   ・説明を書くなと明示する(normalize()が拾えるので保険でしかないが、
+#     余計な文章はそれ自体が誤答の元になる)
+# としてある。それでも説明が付いてきたら normalize() がコードを拾う。
+PROMPT = """You are an electrical control panel designer.
+Choose exactly one type code for the part below.
 
-種別コードの一覧:
+Type codes:
 {types}
 
-部品:
-  メーカー: {maker}
-  型番: {ref}
-  定格電圧: {volt}
-  定格電流: {amp}
-  備考: {note}
+Part:
+  Maker (メーカー): {maker}
+  Model number (型番): {ref}
+  Rated voltage (定格電圧): {volt}
+  Rated current (定格電流): {amp}
+  Notes (備考): {note}
 
-種別コードだけを1行で答えてください。説明は不要です。"""
+Answer with the type code only, in lowercase ASCII, on a single line.
+No explanation, no translation, no other text."""
 
 
 def list_models(host, timeout=10):

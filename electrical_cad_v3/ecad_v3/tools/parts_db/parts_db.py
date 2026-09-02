@@ -26,6 +26,7 @@ catalog_db.py と同じ発想を部品DBに適用したもの。
     2通りある。上から順に試す。
 
     1. パス設定(推奨・CADを起動していなくても読める)
+           py parts_db.py find                  ← 場所が分からなければ探す
            py parts_db.py setpath "G:\\マイドライブ\\...\\parts_db.json"
        設定は %LOCALAPPDATA%\\ecad\\parts_db_config.json に入る。
        以後はこのファイルを直接読むので、常に最新。
@@ -285,6 +286,64 @@ class PartsDB:
         return None
 
 
+def find_candidates(roots=None, max_depth=6):
+    """parts_db.json をディスクから探す。
+
+    部品DBの場所はブラウザしか知らない(File System Access API は絶対パスを
+    JSに渡さない)ので、盛田さん自身もパスを即答できない。setpath を使うために
+    毎回エクスプローラで探させるのは無駄なので、こちらで探す。
+
+    バックアップ(parts_db_backup_*.json)も拾う —— 本体が見つからないときの
+    手がかりになるため。ただし本体と区別して返す。
+    """
+    if roots is None:
+        roots = []
+        home = os.path.expanduser('~')
+        if os.path.isdir(home):
+            roots.append(home)
+        if os.name == 'nt':
+            # Drive for Desktop は G: や I: に来ることが多い(環境で変わる)。
+            # 実在するドライブだけを見る。
+            for d in 'DEFGHIJKLMNOPQRSTUVWXYZ':
+                if os.path.isdir(f'{d}:\\'):
+                    roots.append(f'{d}:\\')
+
+    # 入って意味が無い場所。ここを刈らないと何分もかかる。
+    SKIP = {'node_modules', '.git', '__pycache__', 'AppData', 'Windows',
+            'Program Files', 'Program Files (x86)', '$Recycle.Bin',
+            'System Volume Information', '.cache', 'venv', '.venv'}
+    found, backups, seen = [], [], set()
+    for root in roots:
+        root = os.path.abspath(root)
+        base_depth = root.rstrip(os.sep).count(os.sep)
+        for dirpath, dirnames, filenames in os.walk(root, onerror=lambda e: None):
+            if dirpath.count(os.sep) - base_depth >= max_depth:
+                dirnames[:] = []
+                continue
+            dirnames[:] = [d for d in dirnames if d not in SKIP and not d.startswith('.')]
+            for fn in filenames:
+                if fn == 'parts_db.json':
+                    target = found
+                elif fn.startswith('parts_db_backup_') and fn.endswith('.json'):
+                    target = backups
+                else:
+                    continue
+                full = os.path.join(dirpath, fn)
+                if full in seen:
+                    continue
+                seen.add(full)
+                try:
+                    info = normalize(json.load(open(full, encoding='utf-8')))
+                    target.append((full, len(info['customParts']),
+                                   os.path.getmtime(full)))
+                except Exception:
+                    target.append((full, -1, os.path.getmtime(full)))
+    # 件数が多い順。中身が空のファイルを先頭に出すと選び間違えるため。
+    found.sort(key=lambda t: -t[1])
+    backups.sort(key=lambda t: -t[2])
+    return found, backups
+
+
 # ----------------------------------------------------------------------------
 # コマンドライン
 # ----------------------------------------------------------------------------
@@ -296,6 +355,29 @@ def main(argv):
             print('使い方: py parts_db.py setpath <parts_db.jsonのパス>', file=sys.stderr)
             return 2
         print('設定しました:', db.set_path(argv[2]))
+    elif cmd == 'find':
+        import datetime
+        print('parts_db.json を探しています(数十秒かかることがあります)...',
+              flush=True)
+        found, backups = find_candidates()
+        if not found and not backups:
+            print('見つかりませんでした。', file=sys.stderr)
+            print('  CADの「部品登録」パネルで一度保存すると作られます。',
+                  file=sys.stderr)
+            return 1
+        def show(rows, label):
+            if not rows:
+                return
+            print(f'\n{label}:')
+            for path, count, mtime in rows:
+                t = datetime.datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M')
+                n = f'{count}件' if count >= 0 else '(読めません)'
+                print(f'  {n:>10}  {t}  {path}')
+        show(found, '部品DB本体')
+        show(backups, 'バックアップ(参考。setpathには使わない)')
+        if found:
+            print(f'\n件数が一番多いものを設定するなら:')
+            print(f'  py parts_db.py setpath "{found[0][0]}"')
     elif cmd == 'path':
         p, src = db.resolve()
         print(f'{p or "(未設定)"}  [{src}]')
