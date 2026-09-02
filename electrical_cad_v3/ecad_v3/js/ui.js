@@ -377,34 +377,52 @@ function renderPartsDbCount() {
 }
 // filterParts は下で定義
 // 標準部品(BUILTIN_PARTS)を一覧から非表示にする（コード埋め込みのため削除は不可、非表示扱いのみ）
+// 非表示にした標準部品の置き場所(2026-09-02に作り直し)。
+//
+// 元の作りでは、戻す入口が「部品DB一覧の一番下」にある小さなリンクだけで、
+// 605件を全部スクロールし切らないと見えなかった。しかも押すと**別のパネル**
+// (カスタム部品登録)が開き、その中ほどの見出しの無い箱に一覧が出ていた。
+// 実際に「復元できない」と言われた。
+//
+// 隠したものを戻す操作は、隠した場所の隣にあるべきなので、部品DB一覧の
+// **先頭**に畳めるブロックとして出す。非表示にした直後は開いた状態にして、
+// 「どこへ行ったか」が操作の流れの中で見えるようにする。
+let _partsHiddenOpen = false;
+function togglePartsHidden() {
+  _partsHiddenOpen = !_partsHiddenOpen;
+  renderPartsAll();
+}
 function hideBuiltinPart(ref) {
-  if (!confirm(`標準部品「${ref}」を一覧から非表示にしますか？（後で復元できます）`)) return;
+  if (!confirm(`標準部品「${ref}」を一覧から非表示にしますか？\n`
+             + `（一覧の先頭に出る「非表示にした標準部品」からいつでも戻せます）`)) return;
   state.hiddenBuiltinRefs = state.hiddenBuiltinRefs || [];
   if (!state.hiddenBuiltinRefs.includes(ref)) state.hiddenBuiltinRefs.push(ref);
+  _partsHiddenOpen = true;   // 行き先を開いて見せる
   renderPartsAll();
   partsDb.scheduleSave();
 }
 function unhideBuiltinPart(ref) {
   state.hiddenBuiltinRefs = (state.hiddenBuiltinRefs || []).filter(r => r !== ref);
-  renderPartsAll();
+  renderPartsAll();          // ブロックの中身もここで更新される
   partsDb.scheduleSave();
-  showHiddenBuiltinParts(); // 一覧を再表示して更新
 }
-// 非表示にした標準部品の一覧をアラートではなくパネルで表示・復元できるようにする
-function showHiddenBuiltinParts() {
+// 部品DB一覧の先頭に出す「非表示にした標準部品」ブロック。
+// 1件も無ければ何も出さない(常時出ていると邪魔なだけなので)。
+function hiddenPartsBlockHtml() {
   const refs = state.hiddenBuiltinRefs || [];
-  showPartReg();
-  // 2026-08-17: 旧カタログ型式検索パネル撤去時に "cs-result" 要素ごと消えてしまい、
-  // このボタンが無反応になっていた不具合を修正。専用のhidden-parts-resultを使う。
-  const resultEl = document.getElementById('hidden-parts-result');
-  if (!resultEl) return;
-  resultEl.style.display = 'block';
-  resultEl.innerHTML = refs.length
-    ? refs.map(ref => `<div style="display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--bg4);padding:2px 0">
-        <span>${escH(ref)}</span>
-        <span onclick="unhideBuiltinPart('${_escAttr(ref)}')" style="color:var(--acc);cursor:pointer;text-decoration:underline">再表示する</span>
-      </div>`).join('')
-    : '非表示の標準部品はありません。';
+  if (!refs.length) return '';
+  const rows = refs.map(ref => `
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:3px 4px;border-bottom:1px solid var(--bg4)">
+      <span style="font-size:11px;color:var(--fg2)">${escH(ref)}</span>
+      <span onclick="unhideBuiltinPart('${_escAttr(ref)}')" style="font-size:10px;color:var(--acc);cursor:pointer;text-decoration:underline">再表示する</span>
+    </div>`).join('');
+  return `<div style="margin-top:5px;background:var(--bg3);border-radius:3px">
+      <div onclick="togglePartsHidden()" style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;cursor:pointer">
+        <span style="font-size:11px;color:var(--fg2)">非表示にした標準部品（${refs.length}）</span>
+        <span style="font-size:9px;color:var(--fg3)">${_partsHiddenOpen ? '▼' : '▶'}</span>
+      </div>
+      ${_partsHiddenOpen ? rows : ''}
+    </div>`;
 }
 function deletePart(ref) {
   if (!confirm(`「${ref}」を削除しますか？`)) return;
@@ -1060,7 +1078,9 @@ async function refreshPartsPublish() {
     // writable(=setpath済み)なら、CADの保存もこのファイルへ直接書いている。
     // 「他ソフトが読んでいるもの」と「CADが書いているもの」が同じかどうかは、
     // 食い違うと一番分かりにくい種類の事故になるので、ここで見えるようにする。
-    const src = stats.writable ? '設定したファイルを直接参照（CADの保存もここへ書きます）'
+    // 括弧を二重にしない。`…件（設定したファイルを直接参照（CADの保存もここへ
+    // 書きます））` は実機で読みにくかった。
+    const src = stats.writable ? '設定したファイルを直接参照。CADの保存もここへ書きます'
               : stats.source === 'path' ? '設定したファイルを直接参照'
                                         : 'CADが保存した控えを参照';
     el.textContent = `他ソフトへの公開: ${stats.count}件（${src}）`
@@ -3846,7 +3866,6 @@ function renderPartsTable2(parts) {
   const el = document.getElementById('parts-table2');
   if (!el) return;
   _lastPartsList = parts;
-  const hiddenCount = (state.hiddenBuiltinRefs || []).length;
   const searching = !!_lastPartsQuery || !!state.partsMakerFilter;
 
   // メーカー(第一階層) → 種別(第二階層) の2段でグループ化する。
@@ -3880,7 +3899,7 @@ function renderPartsTable2(parts) {
         : (p.custom ? `<div style="font-size:9px;color:var(--fg3)">外形図なし <span onclick="event.stopPropagation();attachOutlineToPart('${_escAttr(p.ref)}')" style="cursor:pointer;text-decoration:underline;color:var(--acc)">添付</span></div>` : '')}
     </div>`;
 
-  el.innerHTML = makersPresent.map(mk => {
+  el.innerHTML = hiddenPartsBlockHtml() + makersPresent.map(mk => {
     const mkParts = byMaker[mk];
     const mkCollapsed = !searching && _isCollapsed(mk);
     // このメーカー内を種別でさらに分ける
@@ -3914,8 +3933,7 @@ function renderPartsTable2(parts) {
       </div>
       ${inner}
     </div>`;
-  }).join('')
-    + (hiddenCount ? `<div style="padding:6px 3px;text-align:center"><span onclick="showHiddenBuiltinParts()" style="font-size:10px;color:var(--acc);cursor:pointer;text-decoration:underline">非表示にした標準部品(${hiddenCount}件)を確認・復元</span></div>` : '');
+  }).join('');
 }
 function filterParts(q) {
   _lastPartsQuery = q || '';
