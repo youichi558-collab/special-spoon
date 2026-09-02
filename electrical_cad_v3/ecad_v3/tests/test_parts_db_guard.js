@@ -328,7 +328,8 @@ console.log('\n【バックアップ先フォルダを覚えて自動で書け�
      `日付入りの名前で書き出される（実際: ${name}）`);
   ok(written[name], '覚えてあるフォルダに実際に書かれる（ダイアログを出さない）');
   eq(JSON.parse(written[name] || '{}').customParts.length, 170, '現在の内容がそのまま入る');
-  eq(await s.partsDb.backupDirName(), 'カタログDB', '設定済みのフォルダ名を画面に出せる');
+  eq(await s.partsDb.backupDirStatus(), { name: 'カタログDB', ok: true, reason: '' },
+     '設定済み・許可ありと分かる');
 }
 
 console.log('\n【バックアップ先が未設定なら、取れなかったと分かる】');
@@ -338,7 +339,26 @@ console.log('\n【バックアップ先が未設定なら、取れなかった�
   await s.partsDb.autoRestore();
   await tick();
   eq(await s.partsDb.backupNow(), null, 'null を返す（呼び出し側が確認を出せる）');
-  eq(await s.partsDb.backupDirName(), '', '未設定と分かる');
+  eq(await s.partsDb.backupDirStatus(), { name: '', ok: false, reason: 'unset' },
+     '未設定と分かる');
+}
+
+console.log('\n【バックアップ先の許可が外れていたら、それが分かる】');
+{
+  // ブラウザ再起動で許可が外れると「バックアップだけ静かに取れない」状態になる。
+  // ダイアログを出さない queryPermission で先に見えるようにしてある。
+  const backupDir = {
+    name: 'カタログDB',
+    queryPermission: async () => 'prompt',      // 許可が外れている
+    requestPermission: async () => 'prompt',
+    getFileHandle: async () => { throw new Error('書けない'); },
+  };
+  const h = makeHandle({ content: JSON.stringify({ customParts: mkParts(170), hiddenBuiltinRefs: [] }) });
+  const s = load(h, [], true, backupDir);
+  await s.partsDb.autoRestore();
+  await tick();
+  eq(await s.partsDb.backupDirStatus(), { name: 'カタログDB', ok: false, reason: 'permission' },
+     '未設定ではなく「許可が外れている」と区別して分かる');
 }
 
 console.log(ng === 0 ? '\n=== 全て OK ===' : `\n=== NG ${ng}件 ===`);

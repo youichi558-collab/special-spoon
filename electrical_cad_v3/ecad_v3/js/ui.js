@@ -1003,11 +1003,19 @@ function showPartReg() {
 async function refreshPartsBackupDir() {
   const el = document.getElementById('parts-backup-dir');
   if (!el || typeof partsDb === 'undefined') return;
-  const name = await partsDb.backupDirName();
-  el.textContent = name
-    ? `バックアップ先: ${name}`
-    : '⚠ バックアップ先フォルダが未設定です（作り直し等の前に自動バックアップが取れません）';
-  el.style.color = name ? 'var(--fg3)' : 'var(--red)';
+  const st = await partsDb.backupDirStatus();
+  if (st.ok) {
+    el.textContent = `バックアップ先: ${st.name}`;
+    el.style.color = 'var(--fg3)';
+  } else if (st.reason === 'unset') {
+    el.textContent = '⚠ バックアップ先フォルダが未設定です（作り直し等の前に自動バックアップが取れません）';
+    el.style.color = 'var(--red)';
+  } else {
+    // 許可が外れている。放置すると「バックアップだけ静かに取れない」状態になる。
+    el.textContent = `⚠ バックアップ先「${st.name}」への許可が外れています。`
+      + '「🗂 バックアップ先」を押して選び直してください';
+    el.style.color = 'var(--red)';
+  }
 }
 async function pickPartsBackupDir() {
   await partsDb.pickBackupDir();

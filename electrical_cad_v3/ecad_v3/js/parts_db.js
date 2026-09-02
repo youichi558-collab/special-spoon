@@ -315,10 +315,20 @@ const partsDb = (() => {
     }
   }
 
-  // バックアップ先が設定済みかどうか(画面表示用)
-  async function backupDirName() {
+  // バックアップ先の状態(画面表示用)。
+  // 許可はブラウザ再起動で外れることがあり、そうなると「バックアップだけ静かに
+  // 取れない」状態になる(今日追いかけていた不具合と同じ形)。ダイアログを出さない
+  // queryPermission で先に見ておき、選び直しが要ることを画面に出せるようにする。
+  async function backupDirStatus() {
     const dir = await loadBackupDirRef();
-    return dir ? dir.name : '';
+    if (!dir) return { name: '', ok: false, reason: 'unset' };
+    try {
+      const perm = await dir.queryPermission({ mode: 'readwrite' });
+      return { name: dir.name, ok: perm === 'granted',
+               reason: perm === 'granted' ? '' : 'permission' };
+    } catch (e) {
+      return { name: dir.name, ok: false, reason: 'error' };
+    }
   }
 
   // hasFile() は autosave.js / edit.js が「部品DBを外部ファイルで管理できているか」の
@@ -326,7 +336,7 @@ const partsDb = (() => {
   // 一緒に保存する。したがってロック中は false を返すのが正しい ——
   // ファイルに書けていないのだから、せめて図面側に控えを残す必要がある。
   return { pickExisting, createNew, scheduleSave, autoRestore, writeNow, backupNow,
-           pickBackupDir, backupDirName,
+           pickBackupDir, backupDirStatus,
            hasFile: () => !!fileHandle && !saveLocked,
            isLocked: () => saveLocked,
            partsCount: () => (state.customParts || []).length };
