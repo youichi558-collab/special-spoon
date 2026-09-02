@@ -56,6 +56,7 @@ import argparse
 import json
 import os
 import random
+import socket
 import sys
 import time
 import urllib.error
@@ -111,6 +112,18 @@ def list_models(host, timeout=10):
     return [m.get('name', '') for m in data.get('models', []) if m.get('name')]
 
 
+def running(host, timeout=10):
+    """いま読み込まれているモデルと、CPU/GPUのどちらで動いているか。
+
+    `ollama ps` と同じ情報。18GBのモデルをVRAMの足りないPCで動かすと、
+    Ollamaは黙ってCPUに落として動かす。**止まるのではなく、1問に何分もかかる**
+    ので、見た目は固まったのと区別が付かない。
+    ここを先に出して、遅いのか壊れているのかを分かるようにする。
+    """
+    with urllib.request.urlopen(f'{host}/api/ps', timeout=timeout) as res:
+        return json.loads(res.read().decode('utf-8')).get('models', [])
+
+
 def ask(host, model, prompt, timeout=120):
     """Ollamaに1問投げる。標準ライブラリだけで書く(pip不要)。"""
     body = json.dumps({
@@ -151,6 +164,9 @@ def main():
     ap.add_argument('--n', type=int, default=50, help='問題数(既定50)')
     ap.add_argument('--host', default=DEFAULT_HOST)
     ap.add_argument('--seed', type=int, default=1, help='出題の再現用')
+    ap.add_argument('--timeout', type=int, default=300,
+                    help='1問あたりの待ち時間の上限(秒・既定300)。'
+                         '大きいモデルをCPUで動かすと1問に数分かかる')
     args = ap.parse_args()
 
     # モデル名の解決。--model が無ければ、Ollamaに入っているものを見に行く。
@@ -222,6 +238,60 @@ def main():
     types_block = '\n'.join(f'  {c} = {l}' for c, l in TYPE_LABELS.items())
     print(f'モデル: {args.model} / 出題 {len(parts)}件 '
           f'(部品DB {st["count"]}件から抽出)')
+
+    # --- 本番の前に1問だけ投げて、速さを測る ------------------------------
+    # これが無いと、遅いモデルでは「1/50 正解 0」のまま何分も止まって見え、
+    # 壊れているのか遅いだけなのか分からない。先に1問で測って、
+    # 全体の見込み時間を出してから走る。
+    print('疎通確認中(最初の1問。モデルの読み込みを含むので時間がかかります)...',
+          flush=True)
+    warm = parts[0]
+    t_warm = time.time()
+    try:
+        raw0 = ask(args.host, args.model,
+                   PROMPT.format(types=types_block, maker=warm.get('maker', ''),
+                                 ref=warm.get('ref', ''), volt=warm.get('volt', ''),
+                                 amp=warm.get('amp', ''), note=warm.get('note', '')),
+                   timeout=args.timeout)
+    except (TimeoutError, socket.timeout):
+        print(f'\n{args.timeout}秒待っても返事がありませんでした。', file=sys.stderr)
+        print('  壊れているのではなく、モデルが大きすぎて遅い可能性が高いです。',
+              file=sys.stderr)
+        print('  別のウィンドウで `ollama ps` を叩き、PROCESSOR列を見てください:',
+              file=sys.stderr)
+        print('    100% GPU        → 実用になります。--timeout を伸ばしてください',
+              file=sys.stderr)
+        print('    CPU が混ざる    → VRAMが足りません。小さいモデルで試してください:',
+              file=sys.stderr)
+        print('        ollama pull qwen2.5:3b   (約2GB)', file=sys.stderr)
+        return 1
+    except urllib.error.URLError as e:
+        print(f'\nOllamaに繋がりません({args.host}): {e}', file=sys.stderr)
+        return 1
+    dt_warm = time.time() - t_warm
+
+    # いまCPUで回っているなら、それを先に言う。あとで気づくと時間を捨てる。
+    try:
+        for m in running(args.host):
+            det = m.get('size_vram')
+            total = m.get('size')
+            if det is not None and total:
+                pct = round(det / total * 100)
+                where = ('100% GPU' if pct >= 99 else
+                         '100% CPU' if pct <= 1 else f'{pct}% GPU / {100-pct}% CPU')
+                print(f'  実行場所: {where}')
+                if pct < 99:
+                    print('  ⚠ GPUに載り切っていません。'
+                          'この状態は「壊れている」のではなく「遅い」だけです')
+    except Exception:
+        pass   # 情報が取れなくても本題ではないので進む
+
+    est = dt_warm * len(parts)
+    print(f'  1問目: {dt_warm:.0f}秒 → {len(parts)}問で概ね '
+          f'{est/60:.0f}分 の見込み')
+    if est > 1800:
+        print('  ⚠ 30分以上かかる見込みです。--n を小さくするか、'
+              '小さいモデル(ollama pull qwen2.5:3b)で先に感触を見てください')
     print('-' * 60)
 
     ok = 0
@@ -232,7 +302,14 @@ def main():
                                ref=p.get('ref', ''), volt=p.get('volt', ''),
                                amp=p.get('amp', ''), note=p.get('note', ''))
         try:
-            raw = ask(args.host, args.model, prompt)
+            # 1問目は上の疎通確認で既に答えをもらっている(同じ問題・同じ設定)
+            raw = raw0 if i == 1 else ask(args.host, args.model, prompt,
+                                          timeout=args.timeout)
+        except (TimeoutError, socket.timeout):
+            print(f'\n{p.get("ref")}: {args.timeout}秒で打ち切りました'
+                  '(--timeout で伸ばせます)', file=sys.stderr)
+            wrong.append((p.get('ref', ''), p['type'], '(時間切れ)'))
+            continue
         except urllib.error.URLError as e:
             print(f'\nOllamaに繋がりません({args.host}): {e}', file=sys.stderr)
             print('  ollama serve が動いているか確認してください', file=sys.stderr)
