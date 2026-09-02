@@ -21,15 +21,21 @@ try_classify.py — ローカルLLM(Ollama)が使い物になるかを、実デ�
 
 ■ 使い方
 
-  1) Ollamaを起動して、モデルを1つ入れておく
-       ollama pull qwen2.5:7b        (例。手元にあるものでよい)
-  2) 部品DBの場所を教える(まだなら)
+  1) 部品DBの場所を教える(まだなら。1回だけ)
        py ..\\parts_db\\parts_db.py setpath "<parts_db.jsonのパス>"
-  3) 走らせる
+  2) Ollamaを起動して、そのまま走らせる
+       py try_classify.py
+
+     --model を付けなければ、**Ollamaに入っているモデルを一覧表示する**
+     (`ollama list` のNAME列と同じもの)。1つしか入っていなければそれを使う。
+     何も入っていなければ、入れ方を案内する。
+
+  3) モデルを選んで走らせる
        py try_classify.py --model qwen2.5:7b --n 50
 
   --n は問題数(既定50)。まず50で様子を見て、良さそうなら増やす。
-  --model を変えて何度か回せば、モデルごとの比較になる。
+  --model を変えて何度か回せば、モデルごとの比較になる
+  (--seed が固定なので同じ問題が出る)。
 
 ■ 結果の読み方
 
@@ -94,6 +100,17 @@ PROMPT = """あなたは制御盤の設計者です。部品の情報から、�
 種別コードだけを1行で答えてください。説明は不要です。"""
 
 
+def list_models(host, timeout=10):
+    """Ollamaに入っているモデル名の一覧。`ollama list` のNAME列と同じもの。
+
+    盛田さんが「モデル名とは？」で詰まったので、こちらから見に行く。
+    調べさせるより、選択肢を並べて選んでもらう方が早い。
+    """
+    with urllib.request.urlopen(f'{host}/api/tags', timeout=timeout) as res:
+        data = json.loads(res.read().decode('utf-8'))
+    return [m.get('name', '') for m in data.get('models', []) if m.get('name')]
+
+
 def ask(host, model, prompt, timeout=120):
     """Ollamaに1問投げる。標準ライブラリだけで書く(pip不要)。"""
     body = json.dumps({
@@ -129,11 +146,62 @@ def normalize(answer):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--model', required=True, help='Ollamaのモデル名(例: qwen2.5:7b)')
+    ap.add_argument('--model', help='Ollamaのモデル名(例: qwen2.5:7b)。'
+                                    '省略すると入っているものを一覧表示する')
     ap.add_argument('--n', type=int, default=50, help='問題数(既定50)')
     ap.add_argument('--host', default=DEFAULT_HOST)
     ap.add_argument('--seed', type=int, default=1, help='出題の再現用')
     args = ap.parse_args()
+
+    # モデル名の解決。--model が無ければ、Ollamaに入っているものを見に行く。
+    # 「モデル名とは？」で止まらないようにするため。
+    try:
+        installed = list_models(args.host)
+    except urllib.error.URLError as e:
+        print(f'Ollamaに繋がりません({args.host}): {e}', file=sys.stderr)
+        print('  Ollamaを起動してから、もう一度実行してください', file=sys.stderr)
+        return 1
+    except Exception as e:
+        print(f'モデル一覧を取れませんでした: {e}', file=sys.stderr)
+        return 1
+
+    if not installed:
+        print('Ollamaにモデルが1つも入っていません。', file=sys.stderr)
+        print('  まず1つ入れてください。軽い順の例:', file=sys.stderr)
+        print('    ollama pull qwen2.5:3b     (約2GB・一番軽い。まず動くか見る用)',
+              file=sys.stderr)
+        print('    ollama pull qwen2.5:7b     (約5GB・日本語がまとも。本命)',
+              file=sys.stderr)
+        print('    ollama pull llama3.1:8b    (約5GB・比較用)', file=sys.stderr)
+        return 1
+
+    if not args.model:
+        print('Ollamaに入っているモデル:')
+        for m in installed:
+            print(f'  {m}')
+        print()
+        if len(installed) == 1:
+            args.model = installed[0]
+            print(f'1つだけなので {args.model} で実行します。')
+        else:
+            print('どれかを --model に指定してください。例:')
+            print(f'  py try_classify.py --model {installed[0]} --n 50')
+            print('\n迷ったら、まず全部を順に試して比べるのが早いです'
+                  '(--seed が固定なので同じ問題が出ます)。')
+            return 0
+    elif args.model not in installed:
+        # タグ省略(`qwen2.5` と打って `qwen2.5:7b` が入っている)はよくあるので拾う
+        cand = [m for m in installed if m.split(':')[0] == args.model]
+        if len(cand) == 1:
+            print(f'{args.model} → {cand[0]} として実行します。')
+            args.model = cand[0]
+        else:
+            print(f'「{args.model}」はOllamaに入っていません。'
+                  f'入っているのは:', file=sys.stderr)
+            for m in installed:
+                print(f'  {m}', file=sys.stderr)
+            print(f'\n入れるなら: ollama pull {args.model}', file=sys.stderr)
+            return 1
 
     db = parts_db.PartsDB()
     st = db.stats()

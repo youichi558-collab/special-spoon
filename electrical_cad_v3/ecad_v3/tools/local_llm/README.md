@@ -23,15 +23,53 @@
 ## 使い方
 
 ```
-1) Ollamaを起動し、モデルを1つ入れる
-     ollama pull qwen2.5:7b          (例。手元にあるものでよい)
-
-2) 部品DBの場所を教える（まだなら。1回だけ）
+1) 部品DBの場所を教える（まだなら。1回だけ）
      py ..\parts_db\parts_db.py setpath "<parts_db.jsonのパス>"
 
-3) 走らせる
-     py try_classify.py --model qwen2.5:7b --n 50
+2) Ollamaを起動して、そのまま走らせる
+     py try_classify.py
 ```
+
+**`--model` は省略してよい。** 省略すると、Ollamaに入っているモデルを一覧表示する。
+1つしか入っていなければ、そのまま実行する。
+
+```
+> py try_classify.py
+Ollamaに入っているモデル:
+  qwen2.5:7b
+  llama3.1:8b
+
+どれかを --model に指定してください。例:
+  py try_classify.py --model qwen2.5:7b --n 50
+```
+
+### 「モデル名」とは
+
+Ollamaは入れたモデルに名前を付けて管理している。`ollama list` の **NAME列**がそれで、
+`--model` にはこれを渡す。
+
+```
+> ollama list
+NAME                ID              SIZE      MODIFIED
+qwen2.5:7b          845dbda0ea48    4.7 GB    3 days ago
+```
+
+`qwen2.5` のようにタグ（`:7b`）を省いて指定してもよい。
+一意に決まればそのまま実行する。
+
+### 何も入っていない場合
+
+軽い順に、例:
+
+| コマンド | 目安 | 用途 |
+|---|---|---|
+| `ollama pull qwen2.5:3b` | 約2GB | 一番軽い。まず動くか見る用 |
+| `ollama pull qwen2.5:7b` | 約5GB | 日本語がまとも。本命 |
+| `ollama pull llama3.1:8b` | 約5GB | 比較用 |
+
+GPUが非力でも、3bなら動くことが多い（遅いだけ）。まず3bで通してから7bへ。
+
+### オプション
 
 `--n` は問題数（既定50）。まず50で様子を見て、良さそうなら増やす。
 `--model` を変えて何度か回せば、モデルごとの比較になる。
