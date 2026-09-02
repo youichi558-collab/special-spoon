@@ -66,6 +66,44 @@ const partsDb = (() => {
   async function saveHandleRef(handle) {
     try { const db = await openHandleDB(); const tx = db.transaction('handles', 'readwrite'); tx.objectStore('handles').put(handle, 'partsDbHandle'); } catch (e) {}
   }
+  // バックアップ先フォルダのハンドル(部品DBファイルとは別に覚える)
+  async function saveBackupDirRef(handle) {
+    try { const db = await openHandleDB(); db.transaction('handles', 'readwrite').objectStore('handles').put(handle, 'backupDir'); } catch (e) {}
+  }
+  async function loadBackupDirRef() {
+    try {
+      const db = await openHandleDB();
+      return await new Promise(r => {
+        const req = db.transaction('handles', 'readonly').objectStore('handles').get('backupDir');
+        req.onsuccess = () => r(req.result);
+        req.onerror = () => r(null);
+      });
+    } catch (e) { return null; }
+  }
+
+  // バックアップ先フォルダを選ぶ(ボタンから呼ぶ)。
+  // フォルダ選択はユーザー操作の中でしか開けないので、破壊的操作の途中ではなく
+  // 事前に1回選んでもらう。選んだフォルダはIndexedDBに覚えるので次回以降は不要。
+  async function pickBackupDir() {
+    if (!window.showDirectoryPicker) {
+      alert('このブラウザはフォルダ選択に対応していません（Chrome/Edge推奨）');
+      return null;
+    }
+    try {
+      const dir = await window.showDirectoryPicker({ mode: 'readwrite' });
+      if (!(await ensurePermission(dir, 'readwrite'))) {
+        setStatus('バックアップ先フォルダへの書込み許可がありません');
+        return null;
+      }
+      await saveBackupDirRef(dir);
+      setStatus(`バックアップ先: ${dir.name}`);
+      return dir.name;
+    } catch (e) {
+      if (e.name !== 'AbortError') alert('フォルダの選択に失敗しました: ' + e.message);
+      return null;
+    }
+  }
+
   async function loadHandleRef() {
     try {
       const db = await openHandleDB();
@@ -229,23 +267,39 @@ const partsDb = (() => {
   // 判断を変えるためではなく、万一のときに戻せるようにするための保険。
   async function backupNow() {
     if (!fileHandle) return null;
+    const d = new Date();
+    const p = n => String(n).padStart(2, '0');
+    const name = `parts_db_backup_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`
+      + `_${p(d.getHours())}${p(d.getMinutes())}.json`;
+    const body = JSON.stringify(
+      { customParts: state.customParts, hiddenBuiltinRefs: state.hiddenBuiltinRefs }, null, 2);
+
+    const writeInto = async dir => {
+      const h = await dir.getFileHandle(name, { create: true });
+      const w = await h.createWritable();
+      await w.write(body);
+      await w.close();
+      return name;
+    };
+
+    // 1) 覚えてあるバックアップ先フォルダ(通常はここで書ける)
+    try {
+      const dir = await loadBackupDirRef();
+      if (dir && await ensurePermission(dir, 'readwrite')) return await writeInto(dir);
+    } catch (e) { console.warn('[parts_db] バックアップ先フォルダに書けませんでした', e); }
+
+    // 2) 部品DBと同じフォルダ。
+    //    ※ ChromeのFile System Access APIに getParent() は無いため、現状ここは通らない。
+    //      将来ブラウザが対応すれば、フォルダを選ばなくても済むようになる。
     try {
       const dir = await fileHandle.getParent?.();
-      const d = new Date();
-      const p = n => String(n).padStart(2, '0');
-      const name = `parts_db_backup_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`
-        + `_${p(d.getHours())}${p(d.getMinutes())}.json`;
-      const body = JSON.stringify(
-        { customParts: state.customParts, hiddenBuiltinRefs: state.hiddenBuiltinRefs }, null, 2);
-      if (dir) {
-        // 部品DBと同じフォルダに書ければ一番分かりやすい
-        const h = await dir.getFileHandle(name, { create: true });
-        const w = await h.createWritable();
-        await w.write(body);
-        await w.close();
-        return name;
-      }
-      // getParent()が使えないブラウザでは保存先を選んでもらう
+      if (dir) return await writeInto(dir);
+    } catch (e) { /* 使えないブラウザなら次へ */ }
+
+    // 3) 最後の手段。保存ダイアログはユーザー操作中でないと開けないので、
+    //    ここに落ちた時点で失敗することもある。その場合は null を返して
+    //    呼び出し側に「バックアップが取れていない」と判断させる。
+    try {
       if (!window.showSaveFilePicker) return null;
       const h = await window.showSaveFilePicker({
         suggestedName: name,
@@ -256,8 +310,15 @@ const partsDb = (() => {
       await w.close();
       return h.name;
     } catch (e) {
+      console.warn('[parts_db] バックアップを書き出せませんでした', e);
       return null;
     }
+  }
+
+  // バックアップ先が設定済みかどうか(画面表示用)
+  async function backupDirName() {
+    const dir = await loadBackupDirRef();
+    return dir ? dir.name : '';
   }
 
   // hasFile() は autosave.js / edit.js が「部品DBを外部ファイルで管理できているか」の
@@ -265,6 +326,7 @@ const partsDb = (() => {
   // 一緒に保存する。したがってロック中は false を返すのが正しい ——
   // ファイルに書けていないのだから、せめて図面側に控えを残す必要がある。
   return { pickExisting, createNew, scheduleSave, autoRestore, writeNow, backupNow,
+           pickBackupDir, backupDirName,
            hasFile: () => !!fileHandle && !saveLocked,
            isLocked: () => saveLocked,
            partsCount: () => (state.customParts || []).length };

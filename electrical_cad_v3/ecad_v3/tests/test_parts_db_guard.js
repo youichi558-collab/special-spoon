@@ -63,7 +63,7 @@ function makeHandle(opts) {
 }
 
 // parts_db.js を1回読み込んで partsDb を作る。handle は IndexedDB から返る想定。
-function load(handle, initialParts, confirmAnswer) {
+function load(handle, initialParts, confirmAnswer, backupDir) {
   const sandbox = {
     console,
     state: { customParts: initialParts || [], hiddenBuiltinRefs: [] },
@@ -83,7 +83,10 @@ function load(handle, initialParts, confirmAnswer) {
         const req = {};
         setTimeout(() => req.onsuccess({ target: { result: {
           transaction: () => ({ objectStore: () => ({
-            get: () => { const r = {}; setTimeout(() => { r.result = handle; r.onsuccess(); }, 0); return r; },
+            // 部品DBファイルとバックアップ先フォルダを、キーで出し分ける
+            get: (key) => { const r = {};
+              setTimeout(() => { r.result = (key === 'backupDir' ? backupDir : handle); r.onsuccess(); }, 0);
+              return r; },
             put: () => {},
           }) }),
         } } }), 0);
@@ -291,6 +294,51 @@ console.log('\n【writeNow() が保存の成否を返す】');
   s2.state.customParts = mkParts(605);
   eq(await s2.partsDb.writeNow(), false, '書けなかったときは false（呼び出し側が成功と誤認しない）');
   eq(h2.writes, 0, 'ファイルは触られない');
+}
+
+// ------------------------------------------------------------------
+// backupNow のバックアップ先。
+// 2026-09-01: 元の実装は fileHandle.getParent?.() で部品DBと同じフォルダに
+// 書こうとしていたが、ChromeのFile System Access APIに getParent() は存在しない。
+// この経路は常に失敗し、毎回「保存先を手で選ぶダイアログ」に落ちていた。
+// つまり「破壊的操作の前に自動でバックアップを取る」保険は一度も自動で動いておらず、
+// 2026-09-01の作り直しでも実際にバックアップが残らなかった。
+// 覚えてあるフォルダへ自動で書けることを、実ソースを動かして確認する。
+console.log('\n【バックアップ先フォルダを覚えて自動で書ける】');
+{
+  const written = {};
+  const backupDir = {
+    name: 'カタログDB',
+    queryPermission: async () => 'granted',
+    requestPermission: async () => 'granted',
+    getFileHandle: async (n) => ({
+      createWritable: async () => ({
+        write: async t => { written[n] = t; },
+        close: async () => {},
+      }),
+    }),
+  };
+  const h = makeHandle({ content: JSON.stringify({ customParts: mkParts(170), hiddenBuiltinRefs: [] }) });
+  const s = load(h, [], true, backupDir);
+  await s.partsDb.autoRestore();
+  await tick();
+
+  const name = await s.partsDb.backupNow();
+  ok(name && /^parts_db_backup_\d{4}-\d{2}-\d{2}_\d{4}\.json$/.test(name),
+     `日付入りの名前で書き出される（実際: ${name}）`);
+  ok(written[name], '覚えてあるフォルダに実際に書かれる（ダイアログを出さない）');
+  eq(JSON.parse(written[name] || '{}').customParts.length, 170, '現在の内容がそのまま入る');
+  eq(await s.partsDb.backupDirName(), 'カタログDB', '設定済みのフォルダ名を画面に出せる');
+}
+
+console.log('\n【バックアップ先が未設定なら、取れなかったと分かる】');
+{
+  const h = makeHandle({ content: JSON.stringify({ customParts: mkParts(170), hiddenBuiltinRefs: [] }) });
+  const s = load(h, [], true, null);   // フォルダ未設定・保存ダイアログも無い環境
+  await s.partsDb.autoRestore();
+  await tick();
+  eq(await s.partsDb.backupNow(), null, 'null を返す（呼び出し側が確認を出せる）');
+  eq(await s.partsDb.backupDirName(), '', '未設定と分かる');
 }
 
 console.log(ng === 0 ? '\n=== 全て OK ===' : `\n=== NG ${ng}件 ===`);

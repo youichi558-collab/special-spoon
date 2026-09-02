@@ -991,6 +991,27 @@ function showPartReg() {
   openFP('part-reg-p');
   refreshPendingCsvList();
   catalogRefreshStatus();
+  refreshPartsBackupDir();
+}
+
+// バックアップ先フォルダの表示と選択。
+// 2026-09-01: backupNow() は fileHandle.getParent?.() で部品DBと同じフォルダに
+// 書こうとしていたが、ChromeのFile System Access APIに getParent() は存在せず、
+// この経路は常に失敗して毎回「保存先を手で選ぶダイアログ」に落ちていた。
+// つまり「破壊的操作の前に自動でバックアップを取る」保険は一度も自動で動いていない。
+// フォルダ選択はユーザー操作の中でしか開けないので、事前に1回選んでもらう方式にした。
+async function refreshPartsBackupDir() {
+  const el = document.getElementById('parts-backup-dir');
+  if (!el || typeof partsDb === 'undefined') return;
+  const name = await partsDb.backupDirName();
+  el.textContent = name
+    ? `バックアップ先: ${name}`
+    : '⚠ バックアップ先フォルダが未設定です（作り直し等の前に自動バックアップが取れません）';
+  el.style.color = name ? 'var(--fg3)' : 'var(--red)';
+}
+async function pickPartsBackupDir() {
+  await partsDb.pickBackupDir();
+  refreshPartsBackupDir();
 }
 
 // ----------------------------------------------------------------
