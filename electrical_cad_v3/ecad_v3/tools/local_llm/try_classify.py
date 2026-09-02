@@ -307,6 +307,10 @@ def main():
 
     ok = 0
     wrong = []
+    # 種別ごとの正誤。全体の正答率だけでは判断を誤る ——
+    # 「付属品」のように型番だけでは人でも判別できない区分が混ざっているため、
+    # 1つの数字にまとめると、実務で効く区分の出来まで一緒に薄まる。
+    per = {c: [0, 0] for c in TYPE_LABELS}   # コード -> [正解数, 出題数]
     t0 = time.time()
     for i, p in enumerate(parts, 1):
         prompt = PROMPT.format(types=types_block, maker=p.get('maker', ''),
@@ -331,8 +335,10 @@ def main():
             continue
 
         got = normalize(raw)
+        per[p['type']][1] += 1
         if got == p['type']:
             ok += 1
+            per[p['type']][0] += 1
         else:
             wrong.append((p.get('ref', ''), p['type'], got or f'(解釈不能) {raw[:40]}'))
         sys.stdout.write(f'\r  {i}/{len(parts)}  正解 {ok}')
@@ -359,6 +365,34 @@ def main():
             print('\n多い取り違え:')
             for (exp, got), c in rep:
                 print(f'  {TYPE_LABELS[exp]} → {TYPE_LABELS[got]}  ({c}件)')
+
+        # 「分かりません」と言えたか。ここが本題。
+        #
+        # 静かに間違えるモデルは、使うと事故になる。間違えたときに黙って
+        # それらしいコードを返すのか、答えられないと分かるのかで、
+        # 使える用途がまるで変わる:
+        #   ・自信を持って間違える → 人が全件を見直すことになり、自動化の意味が無い
+        #   ・答えられないと分かる → 「怪しい行だけ人が見る」使い方ができる
+        blank = sum(1 for _, _, g in wrong if not g or g.startswith('('))
+        confident = len(wrong) - blank
+        print(f'\n誤答の内訳: 自信を持って間違えた {confident}件 / '
+              f'答えられなかった {blank}件')
+        if confident > blank:
+            print('  ⚠ 間違えるときに黙ってそれらしい答えを返している。'
+                  'この性質のモデルに部品DBを書かせてはいけない')
+
+    # 種別ごとの内訳。
+    # 全体の正答率だけを見ると判断を誤る。型番だけでは人でも判別できない区分
+    # (付属品・増設ユニット等)が混ざっており、そこの失点と、
+    # 実務で効く区分(サーボアンプ/サーボモータ等)の失点は意味が違う。
+    seen = [(c, v[0], v[1]) for c, v in per.items() if v[1]]
+    if len(seen) > 1:
+        print('\n種別ごとの出来（出題数の多い順）:')
+        for c, o, t in sorted(seen, key=lambda x: (-x[2], x[0])):
+            bar = '#' * round(o / t * 10)
+            print(f'  {TYPE_LABELS[c]:<20}{o}/{t:<4}{bar}')
+        print('  ※ 出題数が1〜2件の行は、当たり外れの運の範囲。'
+              '判断は出題数の多い行で行うこと')
 
     print('\n※ 正答率が高くても、そのまま部品DBに書かせないこと。')
     print('  9割当たるモデルは、1割を静かに間違える。')
