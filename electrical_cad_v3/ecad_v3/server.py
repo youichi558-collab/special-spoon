@@ -344,7 +344,18 @@ def main():
     if HOST not in ('127.0.0.1', 'localhost', '::1'):
         print(f"警告: {HOST} で待ち受けています。同一LAN上の別PCから図面・部品データが"
               f"見える状態です(ECAD_HOSTを外すと このPCからのみ になります)")
-    httpd = HTTPServer((HOST, PORT), Handler)
+    try:
+        httpd = HTTPServer((HOST, PORT), Handler)
+    except OSError as e:
+        # start.bat と 部品DBを開く.bat を両方起動した場合に踏む経路。
+        # 2つ目のサーバーは起動できないだけで、1つ目が動いていればブラウザの
+        # タブは普通に使える。素のトレースバックだと壊れたように見えるので、
+        # 「もう起動している」と分かる文言に変える。
+        print(f"\nポート{PORT}は既に使われています。")
+        print("CADか部品DBのウィンドウが既に開いているなら、これは正常です"
+              "(ブラウザのタブはそのまま使えます)。このウィンドウは閉じてください。")
+        print(f"(詳細: {e})")
+        return
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
