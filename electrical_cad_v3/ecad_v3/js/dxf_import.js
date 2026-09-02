@@ -681,28 +681,8 @@ function _lwOf(e){
 }
 
 function fromUnicodeDXF(str){return str.replace(/\\U\+([0-9A-Fa-f]{4})/g,(_,h)=>String.fromCharCode(parseInt(h,16)));}
-function _detectSjis(u8){
-  let sjis=0,utf8=0;
-  for(let i=0;i<u8.length-2;i++){
-    const b=u8[i];
-    // UTF-8 3バイトシーケンス (E0-EF 80-BF 80-BF)
-    if(b>=0xE0&&b<=0xEF){
-      const b2=u8[i+1],b3=u8[i+2];
-      if((b2&0xC0)===0x80&&(b3&0xC0)===0x80){utf8+=2;i+=2;continue;}
-    }
-    // UTF-8 2バイトシーケンス (C0-DF 80-BF)
-    if(b>=0xC0&&b<=0xDF){
-      const b2=u8[i+1];
-      if((b2&0xC0)===0x80){utf8++;i++;continue;}
-    }
-    // Shift-JIS 2バイト文字
-    if((b>=0x81&&b<=0x9F)||(b>=0xE0&&b<=0xFC)){
-      const b2=u8[i+1];
-      if(b2>=0x40&&b2<=0xFC&&b2!==0x7F){sjis++;i++;}
-    }
-  }
-  return utf8>sjis?'UTF-8':'Shift-JIS';
-}
+// _detectSjis は js/sjis.js に移した(2026-09-02。外形図DXFの文字コード判定に
+// 部品DB単独画面(parts_page.js)からも使うため。dxf_import.js全体は読み込まずに済む)。
 function mapBlock(name){const n=name.toLowerCase();const m=[
   ['timer_coil','timer_coil'],['timer_no','timer_no'],['timer_nc','timer_nc'],['timer','timer_coil'],
   ['coil','coil'],['relay','coil'],

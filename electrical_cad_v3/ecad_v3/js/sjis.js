@@ -53,3 +53,32 @@ function encodeSJIS(str) {
   }
   return new Uint8Array(out);
 }
+
+// ファイルのバイト列がUTF-8かShift-JISかを推定する。
+// 【2026-09-02】js/dxf_import.jsから移した。DXF読込(CAD)と外形図DXF添付
+// (js/ui.js・部品DB単独画面のjs/parts_page.js)の両方が使う共通処理のため。
+// カウント方式: UTF-8/Shift-JIS双方として解釈できるバイト列を両方でカウントし、
+// UTF-8の判定が多ければUTF-8、そうでなければShift-JISとみなす
+// (他ツールが出力したDXFはUTF-8確定と判定できないことが多いため)。
+function _detectSjis(u8){
+  let sjis=0,utf8=0;
+  for(let i=0;i<u8.length-2;i++){
+    const b=u8[i];
+    // UTF-8 3バイトシーケンス (E0-EF 80-BF 80-BF)
+    if(b>=0xE0&&b<=0xEF){
+      const b2=u8[i+1],b3=u8[i+2];
+      if((b2&0xC0)===0x80&&(b3&0xC0)===0x80){utf8+=2;i+=2;continue;}
+    }
+    // UTF-8 2バイトシーケンス (C0-DF 80-BF)
+    if(b>=0xC0&&b<=0xDF){
+      const b2=u8[i+1];
+      if((b2&0xC0)===0x80){utf8++;i++;continue;}
+    }
+    // Shift-JIS 2バイト文字
+    if((b>=0x81&&b<=0x9F)||(b>=0xE0&&b<=0xFC)){
+      const b2=u8[i+1];
+      if(b2>=0x40&&b2<=0xFC&&b2!==0x7F){sjis++;i++;}
+    }
+  }
+  return utf8>sjis?'UTF-8':'Shift-JIS';
+}

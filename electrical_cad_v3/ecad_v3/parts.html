@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>部品DB - ecad_v3</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+  /* ---- 単独画面専用レイアウト。CADのリボン等は使わず、この画面用に組む。---- */
+  body{overflow:hidden;}
+  #pp-app{display:flex;flex-direction:column;height:100vh;}
+  #pp-top{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--bd);background:var(--bg2);flex-shrink:0}
+  #pp-top h1{font-size:14px;font-weight:600;margin-right:auto}
+  #pp-status{font-size:11px;color:var(--fg3)}
+  #pp-banner{display:none;background:var(--rbg);color:var(--red);font-size:11px;padding:5px 12px;flex-shrink:0}
+  #pp-banner.show{display:block}
+  #pp-tabs{display:flex;gap:2px;padding:0 12px;background:var(--bg2);border-bottom:1px solid var(--bd);flex-shrink:0}
+  .pp-tab{padding:7px 14px;font-size:12px;cursor:pointer;color:var(--fg3);border-bottom:2px solid transparent}
+  .pp-tab.on{color:var(--acc);border-bottom-color:var(--acc);font-weight:600}
+  #pp-body{flex:1;overflow:hidden;display:flex}
+
+  /* 一覧・編集タブ */
+  #pp-panel-list{flex:1;display:flex;overflow:hidden}
+  #pp-filters{width:200px;flex-shrink:0;border-right:1px solid var(--bd);padding:10px;overflow-y:auto;background:var(--bg2)}
+  #pp-filters h4{font-size:10px;color:var(--fg4);text-transform:uppercase;margin:10px 0 4px}
+  #pp-filters h4:first-child{margin-top:0}
+  #pp-hidden{margin-bottom:8px;padding:6px;background:var(--bg3);border-radius:4px}
+  .pp-chk{display:flex;align-items:center;gap:5px;font-size:11px;padding:2px 0;cursor:pointer}
+  #pp-list-main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+  #pp-list-bar{display:flex;align-items:center;gap:8px;padding:8px;border-bottom:1px solid var(--bd)}
+  #pp-list-bar input[type=text]{flex:1}
+  #pp-count{font-size:11px;color:var(--fg3);white-space:nowrap}
+  #pp-table-wrap{flex:1;overflow:auto}
+  table.pp-table{width:100%;border-collapse:collapse;font-size:11px}
+  table.pp-table th{position:sticky;top:0;background:var(--bg3);text-align:left;padding:5px 8px;cursor:pointer;user-select:none;border-bottom:1px solid var(--bd2);white-space:nowrap}
+  table.pp-table th:hover{background:var(--bg4)}
+  table.pp-table td{padding:4px 8px;border-bottom:1px solid var(--bg4);white-space:nowrap}
+  table.pp-table tr{cursor:pointer}
+  table.pp-table tr:hover td{background:var(--bg3)}
+  table.pp-table tr.pp-row-sel td{background:var(--abg)}
+  #pp-edit{width:300px;flex-shrink:0;border-left:1px solid var(--bd);padding:10px;overflow-y:auto;background:var(--bg2)}
+  #pp-form-title{font-size:13px;font-weight:600;margin-bottom:8px}
+
+  /* 取り込みタブ */
+  #pp-panel-import{flex:1;overflow-y:auto;padding:14px;max-width:640px}
+  #pp-panel-import h3{font-size:13px;margin:16px 0 6px}
+  #pp-panel-import h3:first-child{margin-top:0}
+  #pp-panel-import textarea{width:100%;font-family:monospace;font-size:11px}
+  #pp-cat-result{display:none;max-height:220px;overflow-y:auto;background:var(--bg3);border-radius:4px;padding:6px;margin-top:6px}
+</style>
+</head>
+<body class="dk">
+<div id="pp-app">
+  <div id="pp-top">
+    <h1>部品DB</h1>
+    <span id="pp-status"></span>
+    <button class="fp-btn" onclick="toggleDark()">ダーク切替</button>
+  </div>
+  <div id="pp-banner"></div>
+  <div id="pp-tabs">
+    <div class="pp-tab on" id="pp-tab-list" onclick="switchTab('list')">一覧・編集</div>
+    <div class="pp-tab" id="pp-tab-import" onclick="switchTab('import')">取り込み</div>
+  </div>
+  <div id="pp-body">
+    <!-- ==== 一覧・編集タブ ==== -->
+    <div id="pp-panel-list">
+      <div id="pp-filters">
+        <div id="pp-hidden"></div>
+        <h4>検索</h4>
+        <div class="fr"><input type="text" id="pp-f-text" placeholder="型番・メーカー・備考" oninput="setFilter('text', this.value)"></div>
+        <h4>メーカー</h4>
+        <div class="fr"><select id="pp-f-maker" onchange="setFilter('maker', this.value)"></select></div>
+        <h4>種別</h4>
+        <div class="fr"><select id="pp-f-type" onchange="setFilter('type', this.value)"></select></div>
+        <h4>絞り込み</h4>
+        <label class="pp-chk"><input type="checkbox" onchange="setFilter('noOutline', this.checked)"> 外形図なし</label>
+        <label class="pp-chk"><input type="checkbox" onchange="setFilter('noType', this.checked)"> 種別が空欄</label>
+        <label class="pp-chk"><input type="checkbox" onchange="setFilter('legacy', this.checked)"> 要再分類(廃止種別)</label>
+      </div>
+      <div id="pp-list-main">
+        <div id="pp-list-bar">
+          <span id="pp-count"></span>
+          <button class="fp-btn primary" onclick="newPart()">+ 新規登録</button>
+        </div>
+        <div id="pp-table-wrap">
+          <table class="pp-table">
+            <thead><tr>
+              <th onclick="sortBy('ref')">型番</th>
+              <th onclick="sortBy('maker')">メーカー</th>
+              <th onclick="sortBy('type')">種別</th>
+              <th onclick="sortBy('volt')">電圧</th>
+              <th onclick="sortBy('amp')">電流</th>
+              <th>外形図</th>
+              <th></th>
+            </tr></thead>
+            <tbody id="pp-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="pp-edit">
+        <div id="pp-form-title">新規登録</div>
+        <div class="g2">
+          <div class="fr"><label>型番 *</label><input type="text" id="pp-ref" placeholder="S-T21"></div>
+          <div class="fr"><label>メーカー</label><input type="text" id="pp-maker" placeholder="三菱電機"></div>
+        </div>
+        <div class="fr"><label>種別</label><select id="pp-type"></select></div>
+        <div class="g2">
+          <div class="fr"><label>定格電圧</label><input type="text" id="pp-volt" placeholder="AC200V"></div>
+          <div class="fr"><label>定格電流</label><input type="text" id="pp-amp" placeholder="10A"></div>
+        </div>
+        <div class="fr"><label>端子番号(カンマ区切り)</label><input type="text" id="pp-term" placeholder="A1,A2,1,3,5,2,4,6"></div>
+        <div class="fr"><label>接点構成</label><input type="text" id="pp-contacts" placeholder="a3b1"></div>
+        <div class="fr"><label>備考</label><textarea id="pp-note" rows="2"></textarea></div>
+        <div class="fr"><label>出典</label><input type="text" id="pp-source" placeholder="例: 三菱電磁開閉器 p.41"></div>
+        <div class="fr"><label>外形図DXF(任意)</label><input type="file" id="pp-outline-file" accept=".dxf" onchange="handleOutlineFileSelect(event)"></div>
+        <p id="pp-outline-status" style="font-size:10px;color:var(--fg3)"></p>
+        <div style="display:flex;gap:6px;margin-top:10px">
+          <button class="fp-btn primary" onclick="savePart()">保存</button>
+          <button class="fp-btn danger" id="pp-delete" style="display:none" onclick="deleteCurrent()">削除</button>
+          <button class="fp-btn" onclick="newPart()">クリア</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==== 取り込みタブ ==== -->
+    <div id="pp-panel-import" style="display:none">
+      <h3>カタログDBから探す</h3>
+      <p style="font-size:11px;color:var(--fg3)">Google Drive上のカタログDB(メーカー別CSV)から型番を検索し、選んだものだけを部品DBに追加します。</p>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <input type="text" id="pp-cat-q" placeholder="型番・メーカーで検索" style="flex:1" onkeydown="if(event.key==='Enter')catalogSearch()">
+        <button class="fp-btn" onclick="catalogSearch()">検索</button>
+      </div>
+      <div id="pp-cat-result"></div>
+
+      <h3>保留CSVを読み込む</h3>
+      <p style="font-size:11px;color:var(--fg3)">Claudeがカタログから起こして置いた「登録待ちCSV」を読み込みます。読み込むだけでは登録されません。</p>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <select id="pp-pc-file" style="flex:1"><option value="">(読込中...)</option></select>
+        <button class="fp-btn" onclick="loadPendingCsv()">読み込む</button>
+      </div>
+
+      <h3>CSV一括登録</h3>
+      <p style="font-size:11px;color:var(--fg3)">1行1部品。形式: メーカー,型番,種別,定格電圧,定格電流,端子番号,接点構成,備考,出典</p>
+      <textarea id="pp-csv" rows="8" placeholder="三菱電機,S-T21,coil,AC200V,21A,&quot;A1,A2,1,3,5,2,4,6&quot;,a3b1,"></textarea>
+      <div style="margin-top:6px">
+        <button class="fp-btn primary" onclick="bulkImportParts()">CSVから一括登録</button>
+      </div>
+
+      <h3>部品DBをカタログ全件で作り直す</h3>
+      <p style="font-size:11px;color:var(--red)">⚠ 破壊的操作。現在の部品DBを破棄し、カタログDBの全件で作り直します(外形図は引き継がれます)。実行前に自動でバックアップを取ります。</p>
+      <button class="fp-btn danger" onclick="catalogResetPartsDb()">部品DBをカタログ全件で作り直す</button>
+    </div>
+  </div>
+</div>
+<script src="js/state.js"></script>
+<script src="js/part_types.js"></script>
+<script src="js/data.js"></script>
+<script src="js/sjis.js"></script>
+<script src="js/parts_page.js"></script>
+</body>
+</html>
