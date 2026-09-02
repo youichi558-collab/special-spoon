@@ -26,6 +26,10 @@ const eq = (a, b, m) => ok(JSON.stringify(a) === JSON.stringify(b), `${m} (期�
 
 const reportSrc = fs.readFileSync(__dirname + '/../js/report.js', 'utf8');
 const uiSrc     = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8');
+// 種別コードの定義(PART_TYPE_CODES等)は2026-09-02にjs/part_types.jsへ切り出した
+// (部品DB単独画面と共有するため)。ui.js側は今でも LEGACY_PART_TYPES[type] 等を
+// 「使って」いるので uiSrc は引き続き要るが、「定義」はこちらから読む。
+const typesSrc  = fs.readFileSync(__dirname + '/../js/part_types.js', 'utf8');
 
 const grab = (src, name) => {
   const start = src.indexOf(`function ${name}(`);
@@ -169,10 +173,10 @@ console.log('  index.html(セレクタ・CSVヘルプ)を直す必要がある�
   const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
 
   const codes = JSON.parse('[' +
-    uiSrc.match(/const PART_TYPE_CODES = \[([^\]]*)\]/)[1].replace(/'/g, '"') + ']');
+    typesSrc.match(/const PART_TYPE_CODES = \[([^\]]*)\]/)[1].replace(/'/g, '"') + ']');
   const order = JSON.parse('[' +
-    uiSrc.match(/const PART_TYPE_ORDER = \[([^\]]*)\]/)[1].replace(/'/g, '"') + ']');
-  const labelsBlock = uiSrc.match(/const PART_TYPE_LABELS = \{[\s\S]*?\n\};/)[0];
+    typesSrc.match(/const PART_TYPE_ORDER = \[([^\]]*)\]/)[1].replace(/'/g, '"') + ']');
+  const labelsBlock = typesSrc.match(/const PART_TYPE_LABELS = \{[\s\S]*?\n\};/)[0];
   const labelKeys = [...labelsBlock.matchAll(/(\w+):\s*'/g)].map(m => m[1]);
 
   const missing = (list, name) => codes.filter(c => !list.includes(c))
@@ -200,6 +204,18 @@ console.log('  index.html(セレクタ・CSVヘルプ)を直す必要がある�
   devTypes.forEach(t => ok(codes.includes(t),
     `DEVICE_PART_TYPES の ${t} は正規の種別コード`));
   ok(devTypes.includes('inverter'), 'インバータが装置端子の対象に入っている');
+
+  // 定義が js/ui.js に再び紛れ込んでいないこと(5箇所目を作らない、の逆側の見張り)。
+  // 部品DB単独画面(parts.html)を作るとき、ここに書かず part_types.js を
+  // 読み込む形を保つための歯止め。
+  ok(!/const PART_TYPE_CODES\s*=/.test(uiSrc),
+     '★PART_TYPE_CODES の定義が js/ui.js に無い(part_types.jsだけにある)');
+  ok(!/const PART_TYPE_LABELS\s*=/.test(uiSrc),
+     '★PART_TYPE_LABELS の定義が js/ui.js に無い');
+  ok(!/const PART_TYPE_ORDER\s*=/.test(uiSrc),
+     '★PART_TYPE_ORDER の定義が js/ui.js に無い');
+  ok(!/const LEGACY_PART_TYPES\s*=/.test(uiSrc),
+     '★LEGACY_PART_TYPES の定義が js/ui.js に無い');
 }
 
 // ------------------------------------------------------------------
@@ -207,8 +223,8 @@ console.log('【廃止した種別(sw_no/sw_nc)の扱い】');
 {
   const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
   const codes = JSON.parse('[' +
-    uiSrc.match(/const PART_TYPE_CODES = \[([^\]]*)\]/)[1].replace(/'/g, '"') + ']');
-  const legacyBlock = uiSrc.match(/const LEGACY_PART_TYPES = \{[^}]*\}/)[0];
+    typesSrc.match(/const PART_TYPE_CODES = \[([^\]]*)\]/)[1].replace(/'/g, '"') + ']');
+  const legacyBlock = typesSrc.match(/const LEGACY_PART_TYPES = \{[^}]*\}/)[0];
 
   ok(!codes.includes('sw_no'), 'sw_no は部品DBの種別から外れている');
   ok(!codes.includes('sw_nc'), 'sw_nc は部品DBの種別から外れている');

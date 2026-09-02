@@ -30,6 +30,9 @@ const eq = (a, b, m) => {
 const ok = (cond, m) => { if (!cond) { ng++; console.log('  NG', m); } else console.log('  OK', m); };
 
 const UI = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8');
+// 種別コードの定義(PART_TYPE_LABELS等)は2026-09-02にjs/part_types.jsへ切り出した
+// (部品DB単独画面と共有するため)。
+const TYPES = fs.readFileSync(__dirname + '/../js/part_types.js', 'utf8');
 
 // ui.js から関数を名前で取り出す(丸ごと評価するとDOM依存が多すぎるため)。
 // 実ソースから取るので、本体を直せばテストも自動で追従する。
@@ -40,9 +43,9 @@ function fn(name) {
   if (end < 0) throw new Error(`${name}() の終わりが見つかりません`);
   return UI.slice(start, end + 3);
 }
-function decl(re, label) {
-  const m = UI.match(re);
-  if (!m) throw new Error(`js/ui.js に ${label} が見つかりません`);
+function decl(re, label, src = UI) {
+  const m = src.match(re);
+  if (!m) throw new Error(`ソースに ${label} が見つかりません`);
   return m[0];
 }
 
@@ -62,9 +65,9 @@ function build(hiddenRefs, parts) {
     _lastPartsList: null,
   };
   vm.createContext(sandbox);
-  [decl(/const PART_TYPE_LABELS = \{[\s\S]*?\n\};/, 'PART_TYPE_LABELS'),
-   decl(/const PART_TYPE_ORDER = \[[^\]]*\];/, 'PART_TYPE_ORDER'),
-   decl(/const LEGACY_PART_TYPES = \{[^}]*\};/, 'LEGACY_PART_TYPES'),
+  [decl(/const PART_TYPE_LABELS = \{[\s\S]*?\n\};/, 'PART_TYPE_LABELS', TYPES),
+   decl(/const PART_TYPE_ORDER = \[[^\]]*\];/, 'PART_TYPE_ORDER', TYPES),
+   decl(/const LEGACY_PART_TYPES = \{[^}]*\};/, 'LEGACY_PART_TYPES', TYPES),
    decl(/let _partsHiddenOpen = [^;]*;/, '_partsHiddenOpen'),
    fn('_escAttr'), fn('_isCollapsed'), fn('hiddenPartsBlockHtml'),
    fn('togglePartsHidden'), fn('hideBuiltinPart'), fn('unhideBuiltinPart'),
