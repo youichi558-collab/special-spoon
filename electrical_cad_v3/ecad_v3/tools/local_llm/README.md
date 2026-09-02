@@ -22,12 +22,20 @@
 
 ## 使い方
 
-```
-1) 部品DBの場所を教える（まだなら。1回だけ）
-     py ..\parts_db\parts_db.py setpath "<parts_db.jsonのパス>"
+**一番簡単なのは、`ecad_v3` フォルダの `ローカルLLMを試す.bat` をダブルクリック。**
+（`start.bat` と同じ場所にある。どのフォルダにいるかを気にしなくてよい）
 
-2) Ollamaを起動して、そのまま走らせる
-     py try_classify.py
+コマンドから使う場合、**cdは不要**。`ecad_v3` から直接呼べる:
+
+```
+py tools\local_llm\try_classify.py --model qwen2.5:7b --n 20
+```
+
+事前に1回だけ、部品DBの場所を教えておく:
+
+```
+py tools\parts_db\parts_db.py find        ← 場所が分からなければ探す
+py tools\parts_db\parts_db.py setpath "<出てきたパス>"
 ```
 
 **`--model` は省略してよい。** 省略すると、Ollamaに入っているモデルを一覧表示する。
