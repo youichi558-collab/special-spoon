@@ -33,6 +33,47 @@ const partsDb = (() => {
   // 帯そのものの実装は state.js の showTopBanner に置いてある(複数箇所で使うため)。
   function setBanner(msg) { showTopBanner('parts-db-banner', msg); }
 
+  // ---- 他ソフト向けの控え(2026-09-02) --------------------------------
+  //
+  // 部品DBの実体は盛田さんのPC上のJSONで、その場所はブラウザだけが知っている
+  // (File System Access API は絶対パスをJSに渡さない)。そのため、CAD以外の
+  // ソフトからは部品DBを見つけようが無かった。
+  //
+  // ファイルに書けた直後に、同じ中身をローカルサーバーへ送って控えを置く。
+  // 送り先は %LOCALAPPDATA%\ecad\parts_db_mirror.json で、parts_db.json 本体では
+  // ない(書き手をCAD1つに保つため)。これで、CADを閉じている間も他ツールが読める。
+  //
+  // 【失敗しても保存は止めない】控えはあくまで副産物で、これが送れないことと
+  // 部品DBが保存できていないことは別の話。赤い帯(＝保存できていない合図)を
+  // ここで出すと、本当に危ない時の帯と見分けがつかなくなる。
+  // ただし黙って諦めるのもこのプロジェクトで繰り返した失敗なので、
+  // 結果は必ず控えておき、パネルの状態行から見えるようにする。
+  let mirrorState = { at: null, ok: false, count: 0, error: '未送信' };
+
+  async function pushMirror() {
+    const body = JSON.stringify({ customParts: state.customParts,
+                                  hiddenBuiltinRefs: state.hiddenBuiltinRefs });
+    try {
+      const res = await fetch('/api/parts/mirror', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      });
+      const j = await res.json();
+      mirrorState = { at: new Date(), ok: !!j.ok, count: j.count || 0,
+                      error: j.ok ? '' : (j.error || '不明なエラー') };
+    } catch (e) {
+      // サーバーを立てずにファイルを直接開いている場合はここに来る。
+      // その使い方でも部品DBは普通に使えるので、異常ではない。
+      mirrorState = { at: new Date(), ok: false, count: 0,
+                      error: `ローカルサーバーに届きませんでした(${e.message})` };
+    }
+    return mirrorState.ok;
+  }
+
+  // 他ソフト向けの控えの状態(画面表示用)
+  function mirrorStatus() { return { ...mirrorState }; }
+
   // 保存を止める。ファイルには一切触らないので、中身は無傷のまま残る。
   function lockSaving(reason) {
     saveLocked = true;
@@ -203,12 +244,18 @@ const partsDb = (() => {
       await writable.close();
       lastGoodCount = now;
       setStatus(`部品DB: ${fileHandle.name} (${now}件・保存済み)`);
-      return true;
     } catch (e) {
       // 書けなかったことを黙って流さない。次の変更でまた同じ失敗をするだけなので止める。
       lockSaving(`部品DBを保存できませんでした(${e.message})`);
       return false;
     }
+    // 他ソフト向けの控えの送信は、必ず try の外でやる。
+    // 中で呼ぶと、控えの送信で何かあっただけで catch に落ち、
+    // 実際にはファイルに書けているのに「保存できませんでした」と表示して
+    // 自動保存をロックしてしまう(=正常なのに赤い帯が出る)。
+    // await しないのは、控えが遅くても「保存できた」の返答を待たせないため。
+    pushMirror();
+    return true;
   }
 
   // customParts変更時に呼ぶ（デバウンス保存）
@@ -336,7 +383,7 @@ const partsDb = (() => {
   // 一緒に保存する。したがってロック中は false を返すのが正しい ——
   // ファイルに書けていないのだから、せめて図面側に控えを残す必要がある。
   return { pickExisting, createNew, scheduleSave, autoRestore, writeNow, backupNow,
-           pickBackupDir, backupDirStatus,
+           pickBackupDir, backupDirStatus, pushMirror, mirrorStatus,
            hasFile: () => !!fileHandle && !saveLocked,
            isLocked: () => saveLocked,
            partsCount: () => (state.customParts || []).length };

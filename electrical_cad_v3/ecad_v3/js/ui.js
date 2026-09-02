@@ -992,6 +992,7 @@ function showPartReg() {
   refreshPendingCsvList();
   catalogRefreshStatus();
   refreshPartsBackupDir();
+  refreshPartsPublish();
 }
 
 // バックアップ先フォルダの表示と選択。
@@ -1020,6 +1021,40 @@ async function refreshPartsBackupDir() {
 async function pickPartsBackupDir() {
   await partsDb.pickBackupDir();
   refreshPartsBackupDir();
+}
+
+// 他ソフト向けの公開状態の表示(2026-09-02)。
+// 部品DBは保存のたびに、その中身の控えをローカルサーバーへ送っている
+// (%LOCALAPPDATA%\ecad\parts_db_mirror.json)。他のソフトはそれを読む。
+//
+// ここを画面に出すのは、「送れていないこと」が今まで通り何の変化も無く
+// 進んでしまうのを防ぐため。ただし赤字にはしない ——
+// 控えが送れていなくても部品DB自体は正しく保存されており、
+// 赤=保存できていない、という既存の合図と混ぜてはいけない。
+async function refreshPartsPublish() {
+  const el = document.getElementById('parts-publish-status');
+  if (!el || typeof partsDb === 'undefined') return;
+  let stats = null;
+  try {
+    const res = await fetch('/api/parts/stats');
+    stats = await res.json();
+  } catch (e) { /* サーバー無しで開いている場合。下で案内する */ }
+
+  if (!stats || stats.available === false) {
+    el.textContent = '他ソフトへの公開: 無効（tools/parts_db が入っていないか、'
+      + 'ローカルサーバー経由で開いていません）';
+    return;
+  }
+  const m = partsDb.mirrorStatus();
+  if (stats.ok) {
+    const src = stats.source === 'path' ? '設定したファイルを直接参照'
+                                        : 'CADが保存した控えを参照';
+    el.textContent = `他ソフトへの公開: ${stats.count}件（${src}）`
+      + (m.at && !m.ok ? ` ※直近の控えの送信に失敗: ${m.error}` : '');
+  } else {
+    el.textContent = `他ソフトへの公開: まだ読めていません（${stats.error}）。`
+      + '部品DBを一度保存すると控えが作られます';
+  }
 }
 
 // ----------------------------------------------------------------

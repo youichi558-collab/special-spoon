@@ -48,6 +48,27 @@ try:
 except Exception as _e:  # ImportError/構文エラー等、何が起きてもCADは動かす
     print(f'(カタログDB機能は無効: {_e})')
 
+# ----------------------------------------------------------------------------
+# 部品DBの外部公開(任意機能・2026-09-02)
+#
+# tools/parts_db/parts_db.py があれば読み込んで /api/parts/* を有効にする。
+# 無くても・壊れていてもCADは通常通り動く(部品DBはブラウザ側のFile System
+# Access APIで読み書きしており、この機能はそこに一切関与しない)。
+#
+# 目的は「他ソフトからも部品DBを引けるようにする」こと。CADが部品DBを保存する
+# たびに、その中身の控えを %LOCALAPPDATA%\ecad\parts_db_mirror.json へ写す。
+# これにより、CADを起動していない時間帯でも他ツールが部品DBを読める。
+#
+# 【重要】ここから parts_db.json 本体には絶対に書かない。書き手はCAD1つに保つ。
+# ----------------------------------------------------------------------------
+parts_db = None
+try:
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tools', 'parts_db'))
+    import parts_db as _parts_db_mod
+    parts_db = _parts_db_mod
+except Exception as _e:
+    print(f'(部品DBの外部公開機能は無効: {_e})')
+
 
 class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
@@ -59,12 +80,19 @@ class Handler(SimpleHTTPRequestHandler):
             q = {k: v[0] for k, v in urllib.parse.parse_qs(parsed.query).items()}
             self.handle_catalog(parsed.path[len('/api/catalog/'):], q)
             return
+        if parsed.path.startswith('/api/parts/'):
+            q = {k: v[0] for k, v in urllib.parse.parse_qs(parsed.query).items()}
+            self.handle_parts(parsed.path[len('/api/parts/'):], q)
+            return
         super().do_GET()
 
     def do_POST(self):
         parsed = urllib.parse.urlparse(self.path)
         if parsed.path == '/api/catalog/import':
             self.handle_catalog_import()
+            return
+        if parsed.path == '/api/parts/mirror':
+            self.handle_parts_mirror()
             return
         self.send_error(404)
 
@@ -154,6 +182,60 @@ class Handler(SimpleHTTPRequestHandler):
                                  'results': rows, 'count': len(rows)})
             else:
                 self._send_json({'ok': False, 'error': 'unknown action'}, 404)
+        except Exception as e:
+            self._send_json({'ok': False, 'available': True, 'error': str(e)})
+
+    # ---- 部品DBの外部公開(任意機能) ---------------------------------------
+    def handle_parts(self, action, q):
+        """部品DBの読み取りAPI。**書き込みは無い。**
+
+        parts_db.json を書けるのはCAD(ブラウザ)だけという前提を崩さないため、
+        ここは読むだけにしてある。理由は tools/parts_db/parts_db.py の冒頭を参照。
+        """
+        if parts_db is None:
+            self._send_json({'ok': False, 'available': False,
+                             'error': '部品DBの外部公開機能が導入されていません'})
+            return
+        try:
+            db = parts_db.PartsDB()
+            if action == 'stats':
+                self._send_json({'available': True, **db.stats()})
+            elif action == 'search':
+                rows = db.search(q.get('q', ''), q.get('maker', ''),
+                                 q.get('type', ''), int(q.get('limit', 100)))
+                st = db.stats()
+                self._send_json({'ok': st['ok'], 'available': True, 'results': rows,
+                                 'count': len(rows), 'error': st['error']})
+            elif action == 'get':
+                row = db.get(q.get('ref', ''))
+                self._send_json({'ok': True, 'available': True, 'result': row,
+                                 'found': row is not None})
+            else:
+                self._send_json({'ok': False, 'available': True,
+                                 'error': 'unknown action'}, 404)
+        except Exception as e:
+            self._send_json({'ok': False, 'available': True, 'error': str(e)})
+
+    def handle_parts_mirror(self):
+        """CADが保存した部品DBの中身を控えとして受け取る。
+
+        書き先は %LOCALAPPDATA%\\ecad\\parts_db_mirror.json であって、
+        盛田さんの parts_db.json ではない。控えが壊れても原本は無傷。
+
+        これがあるおかげで、CADを起動していない時間帯でも他ツールが部品DBを
+        読める。CADの保存が成功したときだけ送られてくる(js/parts_db.js)。
+        """
+        if parts_db is None:
+            self._send_json({'ok': False, 'available': False,
+                             'error': '部品DBの外部公開機能が導入されていません'})
+            return
+        try:
+            n = int(self.headers.get('Content-Length') or 0)
+            if not n:
+                self._send_json({'ok': False, 'available': True, 'error': '中身が空です'})
+                return
+            res = parts_db.write_mirror(self.rfile.read(n).decode('utf-8'))
+            self._send_json({'ok': True, 'available': True, **res})
         except Exception as e:
             self._send_json({'ok': False, 'available': True, 'error': str(e)})
 
