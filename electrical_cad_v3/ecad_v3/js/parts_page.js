@@ -51,8 +51,20 @@ async function loadAll() {
   }
   if (!stats.writable) {
     // 単独画面は常に書く前提。控え(mirror)しか無い=setpath未設定では書けない。
-    setStatus('部品DBの場所が未設定です。'
-      + 'py tools\\parts_db\\parts_db.py setpath <parts_db.jsonのパス> を実行してから開き直してください', true);
+    //
+    // 【2026-09-02】「未設定」と「設定されているが見つからない」を区別する。
+    // 後者はGoogleドライブ(Drive for Desktop)がドライブ文字を変えたときに起きる
+    // (例: I:\ が J:\ に変わる)。ファイルには一切触っていないので実害は無いが、
+    // 「未設定です」と表示すると「一度も設定していない」ように読めて紛らわしい。
+    // parts_db.py はこの2つを source で区別して返しているので、そのまま使う。
+    if (stats.source === 'path_missing') {
+      setStatus(`${stats.error}\n`
+        + 'ドライブの文字が変わっていないか確認し、'
+        + 'py tools\\parts_db\\parts_db.py setpath <新しいパス> を実行してから開き直してください', true);
+    } else {
+      setStatus('部品DBの場所が未設定です。'
+        + 'py tools\\parts_db\\parts_db.py setpath <parts_db.jsonのパス> を実行してから開き直してください', true);
+    }
     saveLocked = true;
     return;
   }
