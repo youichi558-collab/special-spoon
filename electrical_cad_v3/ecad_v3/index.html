@@ -26,6 +26,7 @@
          ・「帳票出力」グループの中身はPDF/SVG出力だった → 「図面出力」に改名し出力タブへ集約 -->
     <div class="rtab on" onclick="switchRibbon('home',this)">ホーム</div>
     <div class="rtab" onclick="switchRibbon('draw',this)">作図</div>
+    <div class="rtab" onclick="switchRibbon('wire',this)">配線</div>
     <div class="rtab" onclick="switchRibbon('reg',this)">登録</div>
     <div class="rtab" onclick="switchRibbon('data',this)">データ</div>
     <div class="rtab" onclick="switchRibbon('report',this)">帳票</div>
@@ -33,12 +34,13 @@
     <div class="rtab" onclick="switchRibbon('view',this)">表示</div>
   </div>
   <div id="ribbon-content">
-    <!-- ホームタブ -->
     <!-- 【2026-09-19】「操作」グループ(選択/配線)を削除した。
          同じボタンが常時表示のクイックバーにもあり、点灯のさせ方が別々
          (リボン=CSSクラス / クイックバー=インラインstyle)だったため、
          採番モードに入るとクイックバー側だけ「選択」が点いたまま残る不具合が出ていた。
          常時見えるクイックバー側を残し、リボンの複製をなくして点灯箇所を1つにした。 -->
+    <!-- ホームタブ: 編集の基本操作だけを置く。画面の見え方(ズーム/大画面/ダーク)は
+         「表示」タブ、縮尺は「データ」タブへ移した(2026-09-19)。 -->
     <div id="rp-home" class="rg-wrap" style="display:flex;gap:0">
       <div class="rg">
         <div class="rg-btns">
@@ -93,52 +95,9 @@
         </div>
         <div class="rg-label">グループ・整列</div>
       </div>
-      <div class="rg">
-        <div class="rg-btns">
-          <div class="rb rb-sm" onclick="doZoom(1.25)" title="拡大 +"><svg viewBox="0 0 14 14"><circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9.5 9.5l3 3M5 4v4M3 6h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>拡大</div>
-          <div class="rb rb-sm" onclick="doZoom(0.8)" title="縮小 -"><svg viewBox="0 0 14 14"><circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9.5 9.5l3 3M3 6h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>縮小</div>
-          <div class="rb rb-sm" onclick="resetView()" title="全体表示 0"><svg viewBox="0 0 14 14"><rect x="2" y="2" width="10" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5 5l4 4M9 5l-4 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>全体</div>
-          <select id="grid-sel" onchange="state.G=+this.value;draw()" style="font-size:10px;padding:2px 3px;width:54px;">
-            <option value="1">G:1</option><option value="2">G:2</option>
-            <option value="5">G:5</option><option value="10" selected>G:10</option>
-            <option value="20">G:20</option><option value="40">G:40</option>
-          </select>
-        </div>
-        <!-- 【2026-09-19】旧称「表示」。上のタブ列にも「表示」タブ(中身はパネルの開閉)が
-             あり、同じ言葉が別の意味で2箇所に出ていた。中身は拡大/縮小/全体なので
-             「ズーム」に改めた。 -->
-        <div class="rg-label">ズーム</div>
-      </div>
-      <div class="rg">
-        <div class="rg-btns">
-          <div style="display:flex;align-items:center;gap:4px;padding:2px 4px;font-size:11px">
-            <label style="color:var(--fg3)">縮尺 1:</label>
-            <input type="number" id="draw-scale" value="1" min="1" max="10000" step="1"
-              style="width:52px;font-size:11px;padding:2px 4px;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)"
-              oninput="state.drawScale=parseFloat(this.value)||1">
-          </div>
-        </div>
-        <div class="rg-label">縮尺</div>
-      </div>
-      <div class="rg">
-        <div class="rg-btns">
-          <div class="rb rb-sm" id="rb-ortho" onclick="toggleOrtho()" title="直交モード F8"><svg viewBox="0 0 14 14"><path d="M2 12V2M2 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>直交F8</div>
-          <div class="rb rb-sm" id="rb-snapend" onclick="toggleSnapEnd()" title="端点スナップ" style="color:var(--grn)"><svg viewBox="0 0 14 14"><rect x="4" y="4" width="6" height="6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>端点Snap</div>
-          <div class="rb rb-sm on" id="rb-snapmid" onclick="toggleSnapMid()" title="中点スナップ" style="color:#f59e0b"><svg viewBox="0 0 14 14"><path d="M7 2l4 5-4 5-4-5z" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>中点Snap</div>
-        </div>
-        <div class="rg-label">スナップ・補助</div>
-      </div>
-      <div class="rg">
-        <div class="rg-btns">
-          <div class="rb rb-sm" onclick="clearAll()" style="color:var(--red)"><svg viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>全消去</div>
-          <div class="rb rb-sm" onclick="toggleExpand()"><svg viewBox="0 0 14 14"><path d="M1 5V1h4M13 5V1h-4M1 9v4h4M13 9v4h-4" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg><span id="exp-label">大画面</span></div>
-          <div class="rb rb-sm" onclick="toggleDark()"><svg viewBox="0 0 14 14"><path d="M7 2a5 5 0 1 0 5 5 3.5 3.5 0 0 1-5-5z" fill="currentColor"/></svg><span id="dk-label">ダーク</span></div>
-        </div>
-        <div class="rg-label">ウィンドウ</div>
-      </div>
     </div>
-
-    <!-- 作図タブ: 図面に描くものを全部ここに集めた(2026-09-19) -->
+    <!-- 作図タブ: 図面に描くもの。スナップ・補助はホームにあったが、描くときの
+         入力補助なのでこちらへ移した(2026-09-19)。 -->
     <div id="rp-draw" class="rg-wrap" style="display:none;gap:0">
       <div class="rg">
         <div class="rg-btns">
@@ -177,6 +136,28 @@
       </div>
       <div class="rg">
         <div class="rg-btns">
+          <div class="rb rb-sm" id="rb-dim" onclick="setMode('dim')"><svg viewBox="0 0 14 14"><path d="M2 10h10M2 4h10M2 4v6M12 4v6M5 7h4M5 5.5l2 1.5-2 1.5M9 5.5l-2 1.5 2 1.5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>寸法線</div>
+          <div class="rb rb-sm" id="rb-angle_dim" onclick="setMode('angle_dim')"><svg viewBox="0 0 14 14"><path d="M3 11L3 3M3 11L11 11M5 9 A4 4 0 0 1 9 5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/><text x="7" y="8" font-size="4" fill="currentColor" text-anchor="middle">°</text></svg>角度寸法</div>
+          <div class="rb rb-sm" id="rb-leader" onclick="setMode('leader')"><svg viewBox="0 0 14 14"><path d="M2 12l5-5M7 7l5-5M7 7h4M7 7v-4" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>指示線</div>
+          <div class="rb rb-sm" onclick="setMode('chain_dim')" id="rb-chain_dim"><svg viewBox="0 0 14 14"><path d="M1 10h12M2 6h10M3 6V10M7 6V10M11 6V10M2 4l1 2M7 4l1 2M11 4l1 2" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round"/></svg>連続寸法</div>
+          <div class="rb rb-sm" id="rb-measure" onclick="setMode('measure')" title="測定：2点間の距離・角度を測る（図形は作成されません）"><svg viewBox="0 0 14 14"><path d="M2 12L12 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M3.5 10.5l1 1M6 8l1 1M8.5 5.5l1 1M11 3l1 1" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>測定</div>
+        </div>
+        <div class="rg-label">寸法・注記</div>
+      </div>
+      <div class="rg">
+        <div class="rg-btns">
+          <div class="rb rb-sm" id="rb-ortho" onclick="toggleOrtho()" title="直交モード F8"><svg viewBox="0 0 14 14"><path d="M2 12V2M2 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>直交F8</div>
+          <div class="rb rb-sm" id="rb-snapend" onclick="toggleSnapEnd()" title="端点スナップ" style="color:var(--grn)"><svg viewBox="0 0 14 14"><rect x="4" y="4" width="6" height="6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>端点Snap</div>
+          <div class="rb rb-sm on" id="rb-snapmid" onclick="toggleSnapMid()" title="中点スナップ" style="color:#f59e0b"><svg viewBox="0 0 14 14"><path d="M7 2l4 5-4 5-4-5z" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>中点Snap</div>
+        </div>
+        <div class="rg-label">スナップ・補助</div>
+      </div>
+    </div>
+    <!-- 配線タブ: 作図タブの「配線」グループを独立させた。作図タブが図形・テキスト・
+         寸法・配線の4種を抱えて1行に収まらなかったため(2026-09-19)。 -->
+    <div id="rp-wire" class="rg-wrap" style="display:none;gap:0">
+      <div class="rg">
+        <div class="rg-btns">
           <div class="rb rb-sm" id="rb-junction-dot" onclick="setJunctionStyle('dot')" title="配線の分岐点（黒丸）を配置"><svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="3.5" fill="currentColor"/></svg>分岐点</div>
           <div class="rb rb-sm" id="rb-junction-circle" onclick="setJunctionStyle('circle')" title="端子台の端子（白丸）を配置"><svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="3.5" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>端子○</div>
           <div class="rb rb-sm" id="rb-junction-dbl" onclick="setJunctionStyle('dbl')" title="端子台の端子（二重丸）を配置"><svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="4.3" fill="none" stroke="currentColor" stroke-width="1.1"/><circle cx="7" cy="7" r="2" fill="none" stroke="currentColor" stroke-width="1.1"/></svg>端子◎</div>
@@ -191,19 +172,7 @@
         </div>
         <div class="rg-label">配線</div>
       </div>
-      <div class="rg">
-        <div class="rg-btns">
-          <div class="rb rb-sm" id="rb-dim" onclick="setMode('dim')"><svg viewBox="0 0 14 14"><path d="M2 10h10M2 4h10M2 4v6M12 4v6M5 7h4M5 5.5l2 1.5-2 1.5M9 5.5l-2 1.5 2 1.5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>寸法線</div>
-          <div class="rb rb-sm" id="rb-angle_dim" onclick="setMode('angle_dim')"><svg viewBox="0 0 14 14"><path d="M3 11L3 3M3 11L11 11M5 9 A4 4 0 0 1 9 5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/><text x="7" y="8" font-size="4" fill="currentColor" text-anchor="middle">°</text></svg>角度寸法</div>
-          <div class="rb rb-sm" id="rb-leader" onclick="setMode('leader')"><svg viewBox="0 0 14 14"><path d="M2 12l5-5M7 7l5-5M7 7h4M7 7v-4" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>指示線</div>
-          <div class="rb rb-sm" onclick="setMode('chain_dim')" id="rb-chain_dim"><svg viewBox="0 0 14 14"><path d="M1 10h12M2 6h10M3 6V10M7 6V10M11 6V10M2 4l1 2M7 4l1 2M11 4l1 2" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round"/></svg>連続寸法</div>
-          <div class="rb rb-sm" id="rb-measure" onclick="setMode('measure')" title="測定：2点間の距離・角度を測る（図形は作成されません）"><svg viewBox="0 0 14 14"><path d="M2 12L12 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M3.5 10.5l1 1M6 8l1 1M8.5 5.5l1 1M11 3l1 1" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>測定</div>
-        </div>
-        <div class="rg-label">寸法・注記</div>
-      </div>
     </div>
-
-    <!-- 登録タブ: 旧「挿入タブ」。作図系を作図タブへ移し、登録系だけが残ったので改名(2026-09-19) -->
     <div id="rp-reg" class="rg-wrap" style="display:none;gap:0">
       <div class="rg">
         <div class="rg-btns">
@@ -215,8 +184,7 @@
         <div class="rg-label">登録</div>
       </div>
     </div>
-
-    <!-- データタブ -->
+    <!-- データタブ: 図面ファイルと図面全体の設定。 -->
     <div id="rp-data" class="rg-wrap" style="display:none;gap:0">
       <div class="rg">
         <div class="rg-btns">
@@ -227,12 +195,13 @@
           <div class="rb rb-sm" onclick="document.getElementById('load-in').click()"><svg viewBox="0 0 14 14"><rect x="2" y="3" width="10" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M7 1v8M4 6l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>読込</div>
           <input type="file" id="load-in" accept=".json" style="display:none" onchange="loadProject(this)">
           <div class="rb rb-sm" onclick="insertCoverPage()"><svg viewBox="0 0 14 14"><rect x="1" y="1" width="12" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4 5h6M4 7h6M4 9h4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>表紙生成</div>
+          <!-- 【2026-09-19】「全消去」はホームタブの「ウィンドウ」グループにあったが、
+               図面を全部消す破壊的操作でウィンドウの話ではない。新規作成/保存/読込と
+               同じ「プロジェクト」へ移した。 -->
+          <div class="rb rb-sm" onclick="clearAll()" style="color:var(--red)"><svg viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>全消去</div>
         </div>
         <div class="rg-label">プロジェクト</div>
       </div>
-      <!-- 【2026-09-19】DXF読込は「出力」タブのDXFグループに入っていた(出力タブに読込がある
-           状態だった)ので、読み込みとしてこちらへ移した。上の「読込」(JSON)は図面を丸ごと
-           開く操作、こちらは今の図面に図形を取り込む操作なので、グループは分けてある。 -->
       <div class="rg">
         <div class="rg-btns">
           <label class="rb rb-sm" for="dxf-in"><svg viewBox="0 0 14 14"><rect x="2" y="2" width="10" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M7 10V4M4 7l3-3 3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>DXF読込</label>
@@ -261,9 +230,18 @@
         </div>
         <div class="rg-label">整理</div>
       </div>
+      <div class="rg">
+        <div class="rg-btns">
+          <div style="display:flex;align-items:center;gap:4px;padding:2px 4px;font-size:11px">
+            <label style="color:var(--fg3)">縮尺 1:</label>
+            <input type="number" id="draw-scale" value="1" min="1" max="10000" step="1"
+              style="width:52px;font-size:11px;padding:2px 4px;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)"
+              oninput="state.drawScale=parseFloat(this.value)||1">
+          </div>
+        </div>
+        <div class="rg-label">縮尺</div>
+      </div>
     </div>
-
-    <!-- 帳票タブ -->
     <div id="rp-report" class="rg-wrap" style="display:none;gap:0">
       <div class="rg">
         <div class="rg-btns">
@@ -281,8 +259,6 @@
         <div class="rg-label">接続</div>
       </div>
     </div>
-
-    <!-- 出力タブ -->
     <div id="rp-output" class="rg-wrap" style="display:none;gap:0">
       <div class="rg">
         <div class="rg-btns">
@@ -306,8 +282,7 @@
         <div class="rg-label">DXF</div>
       </div>
     </div>
-
-    <!-- 表示タブ -->
+    <!-- 表示タブ: 画面の見え方をここに集約した(2026-09-19)。 -->
     <div id="rp-view" class="rg-wrap" style="display:none;gap:0">
       <div class="rg">
         <div class="rg-btns">
@@ -317,7 +292,31 @@
         </div>
         <div class="rg-label">パネル</div>
       </div>
+      <div class="rg">
+        <div class="rg-btns">
+          <div class="rb rb-sm" onclick="doZoom(1.25)" title="拡大 +"><svg viewBox="0 0 14 14"><circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9.5 9.5l3 3M5 4v4M3 6h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>拡大</div>
+          <div class="rb rb-sm" onclick="doZoom(0.8)" title="縮小 -"><svg viewBox="0 0 14 14"><circle cx="6" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9.5 9.5l3 3M3 6h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>縮小</div>
+          <div class="rb rb-sm" onclick="resetView()" title="全体表示 0"><svg viewBox="0 0 14 14"><rect x="2" y="2" width="10" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5 5l4 4M9 5l-4 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>全体</div>
+          <select id="grid-sel" onchange="state.G=+this.value;draw()" style="font-size:10px;padding:2px 3px;width:54px;">
+            <option value="1">G:1</option><option value="2">G:2</option>
+            <option value="5">G:5</option><option value="10" selected>G:10</option>
+            <option value="20">G:20</option><option value="40">G:40</option>
+          </select>
+        </div>
+        <!-- 【2026-09-19】旧称「表示」。上のタブ列にも「表示」タブ(中身はパネルの開閉)が
+             あり、同じ言葉が別の意味で2箇所に出ていた。中身は拡大/縮小/全体なので
+             「ズーム」に改めた。 -->
+        <div class="rg-label">ズーム</div>
+      </div>
+      <div class="rg">
+        <div class="rg-btns">
+          <div class="rb rb-sm" onclick="toggleExpand()"><svg viewBox="0 0 14 14"><path d="M1 5V1h4M13 5V1h-4M1 9v4h4M13 9v4h-4" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg><span id="exp-label">大画面</span></div>
+          <div class="rb rb-sm" onclick="toggleDark()"><svg viewBox="0 0 14 14"><path d="M7 2a5 5 0 1 0 5 5 3.5 3.5 0 0 1-5-5z" fill="currentColor"/></svg><span id="dk-label">ダーク</span></div>
+        </div>
+        <div class="rg-label">ウィンドウ</div>
+      </div>
     </div>
+
   </div>
 </div>
 
