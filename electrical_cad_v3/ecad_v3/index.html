@@ -10,6 +10,10 @@
 </head>
 <body>
 <div id="app">
+<!-- 警告の帯(showTopBanner)の置き場所。ここに入れることでリボンを重ねずに
+     押し下げる。以前は position:fixed で画面上端に重ねており、リボンのタブ行と
+     丸かぶりして帯が出ている間タブが押せなかった(2026-09-19に修正)。 -->
+<div id="banner-area" style="flex-shrink:0"></div>
 
 <!-- ========= リボン ========= -->
 <div id="ribbon">

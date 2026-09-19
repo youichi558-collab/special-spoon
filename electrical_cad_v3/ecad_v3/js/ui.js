@@ -25,7 +25,11 @@ function syncRibbonHeight() {
   const rb = document.getElementById('ribbon');
   if (!rb) return;
   requestAnimationFrame(() => {
-    document.documentElement.style.setProperty('--ribbon-h', rb.offsetHeight + 'px');
+    // offsetHeight(リボンの高さ)ではなく画面上の下端を使う。
+    // 警告の帯(#banner-area)が出るとリボンごと下がるため、高さだけ見ていると
+    // #rp(右パネル)が帯の分だけ上にズレる。2026-09-19
+    document.documentElement.style.setProperty(
+      '--ribbon-h', Math.round(rb.getBoundingClientRect().bottom) + 'px');
   });
 }
 window.addEventListener('resize', syncRibbonHeight);

@@ -190,23 +190,43 @@ function escH(s) {
 // id ごとに1本ずつ。msg に空文字・null を渡すと消える。
 // 実装を1箇所に置くのは、同じ帯を複数のファイルが別々に作らないため。
 // ================================================================
+// 【2026-09-19】帯は position:fixed で画面の一番上に重ねていたが、
+// そこはリボンのタブ行(ホーム/作図/登録/…)と同じ場所で、実測で
+// 帯 y=0〜30 / タブ行 y=0〜28 と丸かぶりだった。つまり
+// **帯が出ている間はリボンのタブが押せない**。帯が出るのは部品DBが読めない・
+// 自動保存が止まった等の困っている時なので、一番まずい場面で操作できなくなる。
+//
+// そこで #banner-area (index.html の #app の先頭)がある場合はその中に
+// **通常の流れの要素として**置き、リボンごと下に押し下げる。重ねないので
+// 積み上げの座標計算(top:30px×枚数)も要らなくなった。
+// #banner-area が無いページ(単独画面等)では従来どおり body に重ねる。
 function showTopBanner(id, msg) {
   if (typeof document === 'undefined') return;
   let el = document.getElementById(id);
-  if (!msg) { if (el) el.remove(); return; }
-  if (!el) {
-    el = document.createElement('div');
-    el.id = id;
-    el.style.cssText = 'position:fixed;left:0;right:0;z-index:100000;'
-      + 'background:#a11;color:#fff;font-size:12px;line-height:1.5;padding:6px 12px;'
-      + 'text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.45)';
-    // 既に出ている帯の下に積む(2つ同時に出ても隠れないように)
-    const above = document.querySelectorAll('[data-topbanner]').length;
-    el.style.top = (above * 30) + 'px';
-    el.setAttribute('data-topbanner', '1');
-    document.body.appendChild(el);
+  if (!msg) {
+    if (el) el.remove();
+  } else {
+    if (!el) {
+      el = document.createElement('div');
+      el.id = id;
+      el.style.cssText = 'background:#a11;color:#fff;font-size:12px;line-height:1.5;'
+        + 'padding:6px 12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.45)';
+      el.setAttribute('data-topbanner', '1');
+      const area = document.getElementById('banner-area');
+      if (area && area.appendChild) {
+        area.appendChild(el);          // 流れの中に置く(リボンを押し下げる)
+      } else {
+        // 置き場所が無いページ用の従来の経路。重ねるので座標を自分で積む。
+        el.style.cssText += ';position:fixed;left:0;right:0;z-index:100000;'
+          + 'top:' + (document.querySelectorAll('[data-topbanner]').length * 30) + 'px';
+        document.body.appendChild(el);
+      }
+    }
+    el.textContent = msg;
   }
-  el.textContent = msg;
+  // 帯が増減するとリボンの下端が動く。#rp(右パネル)は --ribbon-h 基準の
+  // position:fixed なので、追従させないと帯の分だけ上にズレる。
+  if (typeof syncRibbonHeight === 'function') syncRibbonHeight();
 }
 
 if (typeof module !== 'undefined' && module.exports) {
