@@ -36,7 +36,7 @@ body{font-family:'Segoe UI',sans-serif;font-size:12px;background:var(--bg);color
 #ribbon-tabs{display:flex;background:var(--acc);padding:0 8px;}
 .rtab{padding:5px 14px;font-size:11px;color:rgba(255,255,255,.8);cursor:pointer;border-radius:3px 3px 0 0;margin-top:3px;}
 .rtab.on{background:var(--ribbon);color:var(--acc);font-weight:600;}
-#ribbon-content{display:flex;gap:0;padding:4px 6px;align-items:flex-end;flex-wrap:wrap;overflow-x:auto;max-height:40vh;overflow-y:auto;}
+#ribbon-content{display:flex;gap:0;padding:4px 6px;align-items:flex-start;flex-wrap:wrap;overflow-x:auto;max-height:40vh;overflow-y:auto;}
 .rg{display:flex;flex-direction:column;align-items:stretch;border-right:1px solid var(--bd);padding:0 6px 0 4px;margin-right:2px;min-width:0;}
 .rg-wrap{flex-wrap:wrap;row-gap:4px;}
 .rg-wrap>.rg{margin-bottom:2px;}
@@ -50,6 +50,18 @@ body{font-family:'Segoe UI',sans-serif;font-size:12px;background:var(--bg);color
 .rb svg{display:block;width:18px;height:18px;flex-shrink:0;}
 .rb-sm{flex-direction:row;min-width:unset;padding:3px 7px;font-size:11px;}
 .rb-sm svg{width:14px;height:14px;}
+
+/* 【2026-09-19】リボン内の高さ統一。
+   ・ボタンの高さが line-height:normal のせいでフォント環境依存になっていた
+     （盛田さんの実機では Segoe UI が無く、想定より2〜4px高くなる）ので
+     行の高さを固定して環境差を消す。
+   ・選択欄/入力欄/チェックボックスがボタンと違う高さ(14〜28px)だったため、
+     グループごとに高さが変わり、タブを切り替えるとリボンがガタついていた。
+     リボン内の直下要素を全て --rb-h に揃える。 */
+:root{--rb-h:23px;}
+.rg-btns>*{height:var(--rb-h);box-sizing:border-box;line-height:15px;white-space:nowrap;}
+.rg-btns select,.rg-btns input[type=number],.rg-btns input[type=text]{height:19px;box-sizing:border-box;line-height:17px;}
+.rg-btns>select,.rg-btns>input[type=number],.rg-btns>input[type=text]{height:var(--rb-h);}
 .sep{width:1px;background:var(--bd);margin:0 2px;height:28px;align-self:center;}
 
 /* ========= メイン ========= */
