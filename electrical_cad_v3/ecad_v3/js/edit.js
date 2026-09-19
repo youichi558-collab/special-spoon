@@ -1291,14 +1291,16 @@ function startPartRefSeq() {
   state.showPartRef = true;
   if (typeof syncPartRefBtn === 'function') syncPartRefBtn();
   document.querySelectorAll('.sym-item').forEach(el => el.classList.remove('on'));
-  document.getElementById('rb-sel')?.classList.remove('on');
+  // ボタンの点灯は syncModeButtons() に任せる(個別のidを触ると、リボンと
+  // クイックバーのどちらかを直し忘れる。2026-09-19 に実際に起きた)
+  syncModeButtons('partref');
   document.getElementById('s-hint').textContent = `「${state.partRefNext}」を割り当て → シンボルをクリック  [ESC] 終了`;
   draw();
 }
 function exitPartRefSeq() {
   state.mode = 'select';
   document.getElementById('s-hint').textContent = '';
-  document.getElementById('rb-sel')?.classList.add('on');
+  syncModeButtons('select');
   updateHint(); draw();
 }
 
@@ -1310,14 +1312,14 @@ function startWireNoSeq() {
   state.wireNoRule = start.trim(); // 採番書式として保存(一括割付のデフォルトにも使用)
   state.mode = 'wireno'; state.symType = null;
   document.querySelectorAll('.sym-item').forEach(el => el.classList.remove('on'));
-  document.getElementById('rb-sel')?.classList.remove('on');
+  syncModeButtons('wireno');
   document.getElementById('s-hint').textContent = `「${state.wireNoNext}」を割り当て → 配線をクリック  [ESC] 終了`;
   draw();
 }
 function exitWireNoSeq() {
   state.mode = 'select';
   document.getElementById('s-hint').textContent = '';
-  document.getElementById('rb-sel')?.classList.add('on');
+  syncModeButtons('select');
   updateHint(); draw();
 }
 
@@ -1386,8 +1388,7 @@ document.addEventListener('keydown', e => {
       state.mouse.shapeStart = null; state.mouse.arcP1 = null; state.mouse.arcP2 = null; state.mouse.arc3P1 = null; state.mouse.arc3P2 = null; state.mouse.triP1 = null; state.mouse.triP2 = null;
       state.mode = 'select'; state.symType = null;
       document.querySelectorAll('.sym-item').forEach(el => el.classList.remove('on'));
-      document.getElementById('rb-sel')?.classList.add('on');
-      document.getElementById('rb-wire')?.classList.remove('on');
+      syncModeButtons('select');
       draw(); updateHint(); break;
     case 's': setMode('select'); break;
     case 'w': setMode('wire'); break;

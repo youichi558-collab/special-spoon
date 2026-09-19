@@ -14,9 +14,15 @@
 <!-- ========= リボン ========= -->
 <div id="ribbon">
   <div id="ribbon-tabs">
+    <!-- 【2026-09-19 整理】タブと中身の食い違いを直した。
+         ・作図タブに作図ツールが無く、図形・テキストが「挿入」に入っていた → 作図へ集約
+         ・寸法が「挿入(寸法・注記)」と「作図(寸法)」の2タブに割れていた → 作図へ統合
+         ・「挿入」に残るのは登録系だけになったのでタブ名を「登録」に変更
+         ・DXF読込が「出力」タブにあった → 読み込みなので「データ」へ
+         ・「帳票出力」グループの中身はPDF/SVG出力だった → 「図面出力」に改名し出力タブへ集約 -->
     <div class="rtab on" onclick="switchRibbon('home',this)">ホーム</div>
-    <div class="rtab" onclick="switchRibbon('insert',this)">挿入</div>
     <div class="rtab" onclick="switchRibbon('draw',this)">作図</div>
+    <div class="rtab" onclick="switchRibbon('reg',this)">登録</div>
     <div class="rtab" onclick="switchRibbon('data',this)">データ</div>
     <div class="rtab" onclick="switchRibbon('report',this)">帳票</div>
     <div class="rtab" onclick="switchRibbon('output',this)">出力</div>
@@ -24,18 +30,12 @@
   </div>
   <div id="ribbon-content">
     <!-- ホームタブ -->
+    <!-- 【2026-09-19】「操作」グループ(選択/配線)を削除した。
+         同じボタンが常時表示のクイックバーにもあり、点灯のさせ方が別々
+         (リボン=CSSクラス / クイックバー=インラインstyle)だったため、
+         採番モードに入るとクイックバー側だけ「選択」が点いたまま残る不具合が出ていた。
+         常時見えるクイックバー側を残し、リボンの複製をなくして点灯箇所を1つにした。 -->
     <div id="rp-home" class="rg-wrap" style="display:flex;gap:0">
-      <div class="rg">
-        <div class="rg-btns">
-          <div class="rb on" id="rb-sel" onclick="setMode('select')" title="選択 (S)">
-            <svg viewBox="0 0 18 18"><path d="M3 2l10 7-5 1.5 2 5-2 .8-2-5-3 2.2z" fill="currentColor"/></svg>選択
-          </div>
-          <div class="rb" id="rb-wire" onclick="setMode('wire')" title="配線 (W)">
-            <svg viewBox="0 0 18 18"><path d="M2 9h4M8 9h4M14 9h2M6 9V5M12 9v4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>配線
-          </div>
-        </div>
-        <div class="rg-label">操作</div>
-      </div>
       <div class="rg">
         <div class="rg-btns">
           <div class="rb rb-sm" onclick="undo()" title="元に戻す Ctrl+Z">
@@ -100,7 +100,10 @@
             <option value="20">G:20</option><option value="40">G:40</option>
           </select>
         </div>
-        <div class="rg-label">表示</div>
+        <!-- 【2026-09-19】旧称「表示」。上のタブ列にも「表示」タブ(中身はパネルの開閉)が
+             あり、同じ言葉が別の意味で2箇所に出ていた。中身は拡大/縮小/全体なので
+             「ズーム」に改めた。 -->
+        <div class="rg-label">ズーム</div>
       </div>
       <div class="rg">
         <div class="rg-btns">
@@ -131,8 +134,8 @@
       </div>
     </div>
 
-    <!-- 挿入タブ -->
-    <div id="rp-insert" class="rg-wrap" style="display:none;gap:0">
+    <!-- 作図タブ: 図面に描くものを全部ここに集めた(2026-09-19) -->
+    <div id="rp-draw" class="rg-wrap" style="display:none;gap:0">
       <div class="rg">
         <div class="rg-btns">
           <div class="rb rb-sm" id="rb-text" onclick="setMode('text')"><svg viewBox="0 0 14 14"><path d="M2 3h10M7 3v8M4 11h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>テキスト</div>
@@ -170,28 +173,6 @@
       </div>
       <div class="rg">
         <div class="rg-btns">
-          <div class="rb rb-sm" onclick="showFramePanel()"><svg viewBox="0 0 14 14"><rect x="1" y="1" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="1" y="9" width="12" height="4" fill="none" stroke="currentColor" stroke-width="1"/></svg>図面枠</div>
-          <div class="rb rb-sm" onclick="window.open('parts.html','_blank')" title="部品の登録・編集は部品DB単独画面で行います"><svg viewBox="0 0 14 14"><rect x="3" y="2" width="8" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5 5h4M5 8h2M9 8v3M9 8h2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>部品登録</div>
-          <div class="rb rb-sm" onclick="showCatalogImport()" title="カタログDB(Google Drive上のメーカー別CSV)を検索用データベースに取り込みます"><svg viewBox="0 0 14 14"><rect x="1" y="2" width="12" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4 6h6M4 8h6M4 10h4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>カタログDB</div>
-          <div class="rb rb-sm" onclick="showSymReg()"><svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M7 5v4M5 7h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>シンボル登録</div>
-          <div class="rb rb-sm" onclick="symLib.toggle()" title="シンボルライブラリ"><svg viewBox="0 0 14 14"><rect x="1" y="2" width="12" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4 5h6M4 7h4M4 9h5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>ライブラリ</div>
-        </div>
-        <div class="rg-label">登録</div>
-      </div>
-      <div class="rg">
-        <div class="rg-btns">
-          <div class="rb rb-sm" id="rb-dim" onclick="setMode('dim')"><svg viewBox="0 0 14 14"><path d="M2 10h10M2 4h10M2 4v6M12 4v6M5 7h4M5 5.5l2 1.5-2 1.5M9 5.5l-2 1.5 2 1.5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>寸法線</div>
-          <div class="rb rb-sm" id="rb-angle_dim" onclick="setMode('angle_dim')"><svg viewBox="0 0 14 14"><path d="M3 11L3 3M3 11L11 11M5 9 A4 4 0 0 1 9 5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/><text x="7" y="8" font-size="4" fill="currentColor" text-anchor="middle">°</text></svg>角度寸法</div>
-          <div class="rb rb-sm" id="rb-leader" onclick="setMode('leader')"><svg viewBox="0 0 14 14"><path d="M2 12l5-5M7 7l5-5M7 7h4M7 7v-4" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>指示線</div>
-        </div>
-        <div class="rg-label">寸法・注記</div>
-      </div>
-    </div>
-
-    <!-- 作図タブ -->
-    <div id="rp-draw" class="rg-wrap" style="display:none;gap:0">
-      <div class="rg">
-        <div class="rg-btns">
           <div class="rb rb-sm" id="rb-junction-dot" onclick="setJunctionStyle('dot')" title="配線の分岐点（黒丸）を配置"><svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="3.5" fill="currentColor"/></svg>分岐点</div>
           <div class="rb rb-sm" id="rb-junction-circle" onclick="setJunctionStyle('circle')" title="端子台の端子（白丸）を配置"><svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="3.5" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>端子○</div>
           <div class="rb rb-sm" id="rb-junction-dbl" onclick="setJunctionStyle('dbl')" title="端子台の端子（二重丸）を配置"><svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="4.3" fill="none" stroke="currentColor" stroke-width="1.1"/><circle cx="7" cy="7" r="2" fill="none" stroke="currentColor" stroke-width="1.1"/></svg>端子◎</div>
@@ -208,10 +189,27 @@
       </div>
       <div class="rg">
         <div class="rg-btns">
+          <div class="rb rb-sm" id="rb-dim" onclick="setMode('dim')"><svg viewBox="0 0 14 14"><path d="M2 10h10M2 4h10M2 4v6M12 4v6M5 7h4M5 5.5l2 1.5-2 1.5M9 5.5l-2 1.5 2 1.5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>寸法線</div>
+          <div class="rb rb-sm" id="rb-angle_dim" onclick="setMode('angle_dim')"><svg viewBox="0 0 14 14"><path d="M3 11L3 3M3 11L11 11M5 9 A4 4 0 0 1 9 5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/><text x="7" y="8" font-size="4" fill="currentColor" text-anchor="middle">°</text></svg>角度寸法</div>
+          <div class="rb rb-sm" id="rb-leader" onclick="setMode('leader')"><svg viewBox="0 0 14 14"><path d="M2 12l5-5M7 7l5-5M7 7h4M7 7v-4" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>指示線</div>
           <div class="rb rb-sm" onclick="setMode('chain_dim')" id="rb-chain_dim"><svg viewBox="0 0 14 14"><path d="M1 10h12M2 6h10M3 6V10M7 6V10M11 6V10M2 4l1 2M7 4l1 2M11 4l1 2" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round"/></svg>連続寸法</div>
           <div class="rb rb-sm" id="rb-measure" onclick="setMode('measure')" title="測定：2点間の距離・角度を測る（図形は作成されません）"><svg viewBox="0 0 14 14"><path d="M2 12L12 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M3.5 10.5l1 1M6 8l1 1M8.5 5.5l1 1M11 3l1 1" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>測定</div>
         </div>
-        <div class="rg-label">寸法</div>
+        <div class="rg-label">寸法・注記</div>
+      </div>
+    </div>
+
+    <!-- 登録タブ: 旧「挿入タブ」。作図系を作図タブへ移し、登録系だけが残ったので改名(2026-09-19) -->
+    <div id="rp-reg" class="rg-wrap" style="display:none;gap:0">
+      <div class="rg">
+        <div class="rg-btns">
+          <div class="rb rb-sm" onclick="showFramePanel()"><svg viewBox="0 0 14 14"><rect x="1" y="1" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="1" y="9" width="12" height="4" fill="none" stroke="currentColor" stroke-width="1"/></svg>図面枠</div>
+          <div class="rb rb-sm" onclick="window.open('parts.html','_blank')" title="部品の登録・編集は部品DB単独画面で行います"><svg viewBox="0 0 14 14"><rect x="3" y="2" width="8" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5 5h4M5 8h2M9 8v3M9 8h2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>部品登録</div>
+          <div class="rb rb-sm" onclick="showCatalogImport()" title="カタログDB(Google Drive上のメーカー別CSV)を検索用データベースに取り込みます"><svg viewBox="0 0 14 14"><rect x="1" y="2" width="12" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4 6h6M4 8h6M4 10h4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>カタログDB</div>
+          <div class="rb rb-sm" onclick="showSymReg()"><svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M7 5v4M5 7h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>シンボル登録</div>
+          <div class="rb rb-sm" onclick="symLib.toggle()" title="シンボルライブラリ"><svg viewBox="0 0 14 14"><rect x="1" y="2" width="12" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4 5h6M4 7h4M4 9h5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>ライブラリ</div>
+        </div>
+        <div class="rg-label">登録</div>
       </div>
     </div>
 
@@ -228,6 +226,16 @@
           <div class="rb rb-sm" onclick="insertCoverPage()"><svg viewBox="0 0 14 14"><rect x="1" y="1" width="12" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4 5h6M4 7h6M4 9h4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>表紙生成</div>
         </div>
         <div class="rg-label">プロジェクト</div>
+      </div>
+      <!-- 【2026-09-19】DXF読込は「出力」タブのDXFグループに入っていた(出力タブに読込がある
+           状態だった)ので、読み込みとしてこちらへ移した。上の「読込」(JSON)は図面を丸ごと
+           開く操作、こちらは今の図面に図形を取り込む操作なので、グループは分けてある。 -->
+      <div class="rg">
+        <div class="rg-btns">
+          <label class="rb rb-sm" for="dxf-in"><svg viewBox="0 0 14 14"><rect x="2" y="2" width="10" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M7 10V4M4 7l3-3 3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>DXF読込</label>
+          <input type="file" id="dxf-in" accept=".dxf,.DXF" style="display:none" onchange="loadDXF(this)">
+        </div>
+        <div class="rg-label">取り込み</div>
       </div>
       <div class="rg">
         <div class="rg-btns">
@@ -280,16 +288,18 @@
           <div class="rb rb-sm" onclick="confirmAllPDF()"><svg viewBox="0 0 14 14"><rect x="2" y="1" width="10" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4 4h6M4 7h6M4 10h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>一括PDF</div>
           <div class="rb rb-sm" onclick="exportSVG()"><svg viewBox="0 0 14 14"><rect x="2" y="2" width="10" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5 5h4M5 7h2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><text x="7" y="11" font-size="4" fill="currentColor" text-anchor="middle">SVG</text></svg>SVG出力</div>
         </div>
-        <div class="rg-label">帳票出力</div>
+        <!-- 【2026-09-19】旧称「帳票出力」。中身は帳票ではなく図面のPDF/SVG出力なので改名した
+             (帳票そのものの作成は「帳票」タブ)。 -->
+        <div class="rg-label">図面出力</div>
       </div>
       <div class="rg">
         <div class="rg-btns">
           <div class="rb rb-sm" onclick="exportDXF()"><svg viewBox="0 0 14 14"><rect x="2" y="2" width="10" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5 5l4 4M9 5L5 9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>DXF出力</div>
           <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--fg3);cursor:pointer;white-space:nowrap;padding:0 4px" title="OFFにすると元の絶対座標のまま出力(複数シートを共通座標系で後から重ね合わせたい場合など)">
             <input type="checkbox" id="dxf-origin-shift" checked onchange="state.dxfOriginShift=this.checked" style="margin:0">原点シフト</label>
-          <label class="rb rb-sm" for="dxf-in"><svg viewBox="0 0 14 14"><rect x="2" y="2" width="10" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M7 10V4M4 7l3-3 3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>DXF読込</label>
-          <input type="file" id="dxf-in" accept=".dxf,.DXF" style="display:none" onchange="loadDXF(this)">
         </div>
+        <!-- 【2026-09-19】DXF読込はここ(出力タブ)にあり「出力タブに読込がある」状態だった。
+             読み込みなので「データ」タブの取り込みグループへ移した。 -->
         <div class="rg-label">DXF</div>
       </div>
     </div>

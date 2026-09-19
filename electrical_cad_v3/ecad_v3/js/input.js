@@ -531,6 +531,19 @@ function setMode(m, sym) {
   state.sel.els.clear();
   state.sel.wires.clear();
   if (typeof updateResizeHandles === 'function') updateResizeHandles();
+  syncModeButtons(m);
+  updateHint();
+}
+
+// モードに応じたボタンの点灯を1箇所にまとめる。
+//
+// 【2026-09-19】リボンは`.rb`のCSSクラス、クイックバーはインラインstyleと、
+// 同じ「今のモード」を別々の仕組みで表示している。呼び出し側がそれぞれのidを
+// 直接触る作りだったため、採番モード(startPartRefSeq/startWireNoSeq)では
+// リボン側だけ消してクイックバー側を消し忘れ、**採番中なのにクイックバーの
+// 「選択」が点いたまま**になっていた。モードを変える経路は setMode() 以外にも
+// あるので(採番モード・Escape)、点灯はこの関数だけが行う形にする。
+function syncModeButtons(m) {
   document.querySelectorAll('.rb[id^=rb-]').forEach(b => b.classList.remove('on'));
   document.getElementById('rb-' + (m === 'sym' ? 'sym' : m))?.classList.add('on');
   // トグル系ボタンはモードと独立なので表示状態を復元
@@ -539,7 +552,7 @@ function setMode(m, sym) {
   document.getElementById('rb-snapmid')?.classList.toggle('on', !!state.snapMid);
   document.getElementById('rb-mask')?.classList.toggle('on', !!state.maskMode);
   document.getElementById('rb-textbox')?.classList.toggle('on', !!state.textBoxDefault);
-  // クイックバーのモード表示更新
+  // クイックバー(常時表示。選択/配線はリボンに複製を置かずこちらだけが持つ)
   const modeLabels = { select:'選択', wire:'配線', text:'テキスト', shape:'図形', dim:'寸法', sym:'シンボル', junction:'接続点' };
   const qbMode = document.getElementById('qb-mode');
   if (qbMode) qbMode.textContent = modeLabels[m] || m;
@@ -547,7 +560,6 @@ function setMode(m, sym) {
   const qbWire = document.getElementById('qb-wire');
   if (qbSel)  { qbSel.style.background  = m==='select' ? 'var(--acc)' : 'var(--bg)';  qbSel.style.color  = m==='select' ? '#fff' : 'var(--fg)'; }
   if (qbWire) { qbWire.style.background = m==='wire'   ? 'var(--acc)' : 'var(--bg)';  qbWire.style.color = m==='wire'   ? '#fff' : 'var(--fg)'; }
-  updateHint();
 }
 
 function toggleOrtho() {
