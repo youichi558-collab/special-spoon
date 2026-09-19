@@ -572,6 +572,69 @@ function moveEntity(el, dx, dy) {
   }
 }
 
+// ----------------------------------------------------------------
+// 基準点合わせ — 人が指した1点を最寄りグリッドに乗せ、選択物を丸ごと平行移動する
+//
+// 【2026-09-19・なぜこの形なのか】
+// 「グリッドに乗っていない図形は編集できない」(スナップで狙えない)を直す機能。
+// 先にあった snapNearGrid(整列) は座標を1つずつ最寄りグリッドへ丸めるため、
+// グリッド線の中間をまたぐ2点が反対方向へ引き離される。端子と配線端の距離が
+// 2から10に広がる例を実測で確認した —— **直したいものが壊れる**ので方式として使えない。
+//
+// かといって選択物を剛体として動かす場合、決められるのは dx,dy の1組だけで、
+// 「塊の中のどこがグリッドに乗るか」は選べない(軸あたり自由度1)。
+// そこで**乗せる点を人に指してもらう**。貼り付け(pasteSelected)が既に
+// 「基準点をクリック→そこを基準に動かす」方式で動いているので、それに倣った。
+//
+// 平行移動なので図形同士の位置関係は一切変わらない(端子と配線の距離も、
+// 配線の直交も保たれる)。移動量は必ずグリッドの半分以内になる。
+function alignByBasePoint() {
+  const n = state.sel.els.size + state.sel.wires.size;
+  if (!n) {
+    alert('先に対象を選択してください。\n\n'
+        + '選択したものを「丸ごと」動かすので、繋がっている配線ごと選ぶと関係が保たれます。');
+    return;
+  }
+  state.mode = 'gridbase';
+  document.getElementById('s-hint').textContent =
+    `基準点をクリック（この点が最寄りグリッドに乗ります。選択中の${n}個が一緒に動きます）  [ESC] キャンセル`;
+  draw();
+}
+
+// 基準点が決まった時点で呼ぶ。pt は getAllSnapPoints() の戻り値。
+function commitAlignByBasePoint(pt) {
+  const g = state.G;
+  const dx = Math.round(pt.x / g) * g - pt.x;
+  const dy = Math.round(pt.y / g) * g - pt.y;
+  const exitMode = () => {
+    state.mode = 'select';
+    document.getElementById('s-hint').textContent = '';
+    syncModeButtons('select');
+    updateHint(); draw();
+  };
+  const r = v => Math.round(v * 1000) / 1000;   // 表示用(浮動小数のゴミを出さない)
+
+  if (dx === 0 && dy === 0) {
+    alert(`基準点 (${r(pt.x)}, ${r(pt.y)}) は既にグリッドに乗っています。移動しません。`);
+    exitMode();
+    return;
+  }
+  const nEl = state.sel.els.size, nW = state.sel.wires.size;
+  if (!confirm(
+      `基準点 (${r(pt.x)}, ${r(pt.y)}) を (${r(pt.x + dx)}, ${r(pt.y + dy)}) へ移動します。\n\n`
+      + `選択中の 図形${nEl}個・配線${nW}本 が、まとめて (${r(dx)}, ${r(dy)}) 動きます。\n`
+      + `図形どうしの位置関係は変わりません。\n（実行後はCtrl+Zで戻せます）`)) {
+    exitMode();
+    return;
+  }
+  pushH();
+  state.elements.filter(el => state.sel.els.has(el.id)).forEach(el => moveEntity(el, dx, dy));
+  state.wires.filter(w => state.sel.wires.has(w.id)).forEach(w => moveEntity(w, dx, dy));
+  exitMode();
+  document.getElementById('s-hint').textContent =
+    `基準点をグリッドに乗せました（${r(dx)}, ${r(dy)} 移動）`;
+}
+
 function copySelected() {
   const els   = state.elements.filter(el => state.sel.els.has(el.id));
   const wires = state.wires.filter(w   => state.sel.wires.has(w.id));
@@ -1371,6 +1434,12 @@ document.addEventListener('keydown', e => {
       }
       if (state.mode === 'wireno') {
         exitWireNoSeq(); break;
+      }
+      if (state.mode === 'gridbase') {
+        state.mode = 'select';
+        document.getElementById('s-hint').textContent = '';
+        syncModeButtons('select');
+        updateHint(); draw(); break;
       }
       if (state.mode === 'paste') {
         state.mode = 'select'; state.pasteStep = null; state.pasteBaseWorld = null; state.preview = null;

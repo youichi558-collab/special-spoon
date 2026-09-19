@@ -181,6 +181,13 @@ function doPointerLeftDown(cx, cy, e, wxOverride, wyOverride) {
     return;
   }
 
+  // 基準点合わせモード：クリックした1点を最寄りグリッドへ乗せ、選択物を丸ごと動かす
+  // (getAllSnapPoints は端子・端点を優先して拾うので、グリッドから外れた点も正確に指せる)
+  if (state.mode === 'gridbase') {
+    commitAlignByBasePoint(getAllSnapPoints(wx, wy));
+    return;
+  }
+
   // partRef連続採番モード：シンボルクリックで割り当て→自動インクリメント
   if (state.mode === 'partref') {
     state.mouse.down = false; state.mouse.dragging = false;
