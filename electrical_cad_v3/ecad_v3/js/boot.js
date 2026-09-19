@@ -103,4 +103,6 @@ function _safeInit(label, fn, critical) {
   _safeInit('ヒント更新', updateHint);
   _safeInit('右パネル更新', updateRightPanel);
   _safeInit('接続点スタイルボタン同期', () => { if (typeof syncJunctionStyleBtns === 'function') syncJunctionStyleBtns(); });
+  // 端子番号の表示は自動保存から復元されるので、ボタンの点灯を実状態に合わせる
+  _safeInit('端子番号ボタン同期', () => { if (typeof syncTermNoBtn === 'function') syncTermNoBtn(); });
 })();

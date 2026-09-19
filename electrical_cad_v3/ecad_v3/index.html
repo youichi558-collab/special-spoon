@@ -308,6 +308,14 @@
              「ズーム」に改めた。 -->
         <div class="rg-label">ズーム</div>
       </div>
+      <!-- 【2026-09-19】図面そのものの見え方。ここのトグルはPDF・DXF出力にも反映される
+           (パネル/ズーム/ウィンドウは画面の都合だけで、出力には影響しない)。 -->
+      <div class="rg">
+        <div class="rg-btns">
+          <div class="rb rb-sm" id="rb-termno" onclick="toggleTermNoDisp()" title="シンボルの端子番号を図面に表示します。プロパティの「端子番号」欄(例: A1,A2,13,14)に入れた番号、または部品DBから割り当てた番号を、各端子の位置に書きます。PDF・DXF出力にも出ます。図面全体でまとめて切り替わります。"><svg viewBox="0 0 14 14"><circle cx="3.5" cy="7" r="1.8" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M1 7h.7M5.3 7h2.2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M9.2 5.2h1.4v3.6M12 8.8h1" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>端子番号</div>
+        </div>
+        <div class="rg-label">図面</div>
+      </div>
       <div class="rg">
         <div class="rg-btns">
           <div class="rb rb-sm" onclick="toggleExpand()"><svg viewBox="0 0 14 14"><path d="M1 5V1h4M13 5V1h-4M1 9v4h4M13 9v4h-4" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg><span id="exp-label">大画面</span></div>

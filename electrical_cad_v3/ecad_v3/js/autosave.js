@@ -103,6 +103,10 @@ function doAutosave() {
       zoom:          state.zoom,
       pan:           state.pan,
       darkMode:      state.darkMode,
+      // 端子番号の表示は図面の見た目(PDF・DXF出力にも出る)を決める設定なので、
+      // ダークモードと同じく保存する。未接続マーカー(showUnconnected)や
+      // 🔴端子(仮)(showSymPins)はその場限りの確認用なので保存しない。
+      showTermNo:    state.showTermNo,
       // showPartRefは2026-08-07にトグル廃止・常時表示化したため保存しない
       // (保存しても読込側で無視するので実害はないが、混乱防止のため削除)
     };
@@ -219,6 +223,7 @@ function restoreAutosave() {
     if (typeof d.zoom === 'number' && d.zoom > 0) state.zoom = d.zoom;
     if (d.pan && typeof d.pan.x === 'number')     state.pan  = { x: d.pan.x, y: d.pan.y };
     if (typeof d.darkMode === 'boolean')          state.darkMode = d.darkMode;
+    if (typeof d.showTermNo === 'boolean')        state.showTermNo = d.showTermNo;
     // showPartRefは2026-08-07にトグル廃止・常時表示化したため、旧保存データに
     // false が入っていても復元しない(state.jsの既定値true のまま維持する)。
 

@@ -786,6 +786,28 @@ function exportDXF(){
         const dTextRot = el.textRot ? (360 - el.textRot) % 360 : 0;
         eText(layer, el.x+dx, el.y+dy, dfs, el.partRef, dTextRot);
       }
+      // 【新規 2026-09-19】端子番号。画面(draw.jsのdrawSymTermNos)と同条件・同位置で出す。
+      //
+      // 位置の計算は draw.js の symTermPoints / symTermLabelPos をそのまま呼ぶ。
+      // 式をここに写さないのは、画面とDXFで端子番号の位置がズレる余地を作らないため
+      // (デバイス名・型式は式を写した結果、DXFだけ1行に潰れる等の食い違いが実際に起きた)。
+      //
+      // 文字は常に水平なので回転は渡さない。DXFのTEXTは基準線(73,0)揃えしか
+      // 使っていないため、画面側の textBaseline='top' の分だけ下げて辻褄を合わせる
+      // (DXFのyは fy() で反転されるので、画面と同じ「下が＋」の値を渡せばよい)。
+      if(state.showTermNo && typeof symTermPoints === 'function'){
+        const cS  = (state.customSymbols||[]).find(s => s.type === el.type);
+        const tfs = el.termFs || 9;
+        symTermPoints(el, cS, d).forEach(tp => {
+          if(!tp.label) return;
+          const lp = symTermLabelPos(tp.rx, tp.ry);
+          const o  = (el.termOff||[])[tp.i] || [0,0];
+          const bl = lp.baseline === 'top' ? tfs * 0.8 : 0;
+          eText(layer, tp.x + lp.dx + (Number(o[0])||0),
+                       tp.y + lp.dy + bl + (Number(o[1])||0),
+                       tfs, tp.label, 0, lp.align);
+        });
+      }
     }
   });
 

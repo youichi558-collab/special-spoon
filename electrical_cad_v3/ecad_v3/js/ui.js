@@ -488,6 +488,79 @@ function symTerminalCount(el) {
   return (cS && cS.terminals) ? cS.terminals.length : 0;
 }
 
+// 端子番号の位置補正UI(プロパティの「端子番号」欄の直下)を組み立てる。
+//
+// カンマ区切り1行の「端子番号」欄だけでは、どの番号がどの端子点に付くのかが
+// 画面から判らない。ここで端子点を1つずつ並べ、そこに出る番号と位置補正を
+// 並べて見せる。番号そのものはカンマ区切りの欄が一次情報なので、ここでは
+// 読み取り専用で表示する(二重の入力欄を作ると食い違いの元になるため)。
+//
+// 端子点の並び・番号の決まり方は draw.js の symTermPoints と同一。
+// 表示していない番号の補正欄を出しても意味が無いので、番号が1つも無いときは
+// 欄ごと出さない。
+function symTermOffHtml(el) {
+  if (typeof symTermPoints !== 'function') return '';
+  const cS  = (state.customSymbols || []).find(s => s.type === el.type);
+  const pts = symTermPoints(el, cS, (typeof getDef === 'function' ? getDef(el.type) : null) || {});
+  if (!pts.length || !pts.some(p => p.label)) return '';
+  let h = `<div class="pp-group"><details><summary style="font-size:11px;cursor:pointer;padding:2px 5px;color:var(--fg3)">端子番号の位置（${pts.length}点）</summary>`;
+  if (!state.showTermNo) {
+    h += `<p style="font-size:10px;color:var(--fg3);padding:2px 5px;line-height:1.4">図面には出ていません。［表示］タブの「端子番号」をONにすると出ます。</p>`;
+  }
+  h += `<div class="pp-row"><label>文字サイズ</label><input type="number" id="pp-tfs" value="${escH(el.termFs || 9)}" step="1" min="5" max="24" oninput="previewTermNo()"></div>`;
+  pts.forEach(p => {
+    const o = (el.termOff || [])[p.i] || [0, 0];
+    const lbl = p.label ? escH(p.label) : '（番号なし）';
+    h += `<div class="pp-row" style="align-items:center"><label style="white-space:nowrap">${p.i + 1}: ${lbl}</label>`
+      +  `<span style="display:flex;gap:3px;align-items:center;font-size:10px;color:var(--fg3)">`
+      +  `X<input type="number" class="pp-toff-x" data-ti="${p.i}" value="${escH(Number(o[0]) || 0)}" step="1" style="width:44px" title="右へずらすと＋、左へずらすと－" oninput="previewTermNo()">`
+      +  `Y<input type="number" class="pp-toff-y" data-ti="${p.i}" value="${escH(Number(o[1]) || 0)}" step="1" style="width:44px" title="下へずらすと＋、上へずらすと－" oninput="previewTermNo()">`
+      +  `</span></div>`;
+  });
+  h += `<div class="pp-row"><button onclick="resetTermNoOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button></div>`;
+  h += `</details></div>`;
+  return h;
+}
+
+// 入力のたびに図面へ反映する(既存の previewLabelOff 等と同じ流儀)。
+// 確定は他の項目と同じく「適用」で行われるが、押す前に位置が見えないと
+// 数値を決めようがないため、ここで先に描いて見せる。
+function previewTermNo() {
+  const el = document.getElementById('rp-body')?._el;
+  if (!el) return;
+  const fs = document.getElementById('pp-tfs');
+  el.termFs  = fs ? (parseInt(fs.value) || undefined) : el.termFs;
+  const t = _readTermOff();
+  if (t) el.termOff = t; else delete el.termOff;
+  drawWithoutSel();
+}
+
+function resetTermNoOff() {
+  const el = document.getElementById('rp-body')?._el;
+  if (!el) return;
+  document.querySelectorAll('.pp-toff-x, .pp-toff-y').forEach(i => { i.value = 0; });
+  delete el.termOff;
+  drawWithoutSel();
+}
+
+// 入力欄から termOff を組み立てる。全部0なら undefined を返し、
+// 既存図面に無意味な配列を焼き込まない(保存サイズと差分を増やさないため)。
+function _readTermOff() {
+  const xs = [...document.querySelectorAll('.pp-toff-x')];
+  if (!xs.length) return undefined;
+  const arr = [];
+  let any = false;
+  xs.forEach(ix => {
+    const i  = parseInt(ix.dataset.ti);
+    const iy = document.querySelector(`.pp-toff-y[data-ti="${i}"]`);
+    const dx = parseInt(ix.value) || 0;
+    const dy = iy ? (parseInt(iy.value) || 0) : 0;
+    arr[i] = [dx, dy];
+    if (dx || dy) any = true;
+  });
+  return any ? arr : undefined;
+}
+
 // 割り当てるグループを決める。
 // シンボルの端子点数と一致するグループが1つだけならそれを自動採用する
 // （主回路6点 / 補助接点3点 のように数が違えば迷わない）。
@@ -2155,6 +2228,7 @@ function updateRightPanel() {
     html += `</details>`;
     html += `</div>`; }
     html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-term" value="${escH(el.terminals||'')}" placeholder="例: A1,A2,13,14"></div>`;
+    html += symTermOffHtml(el);
     html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${escH(el.wireNo||'')}"></div>`;
     html += `<div class="pp-row"><label>回転(°)</label><input type="number" id="pp-rot" value="${escH(el.rot||0)}" step="90"></div>`;
     html += `<div class="pp-row"><label>文字の回転角度(°)</label><input type="number" id="pp-trot" value="${escH(el.textRot||0)}" step="90" title="このシンボルのデバイス名・型式・仕様すべてに共通で効きます。シンボル自体の回転(上の「回転(°)」)とは連動しません。位置は各項目のオフセット(X/Y補正)で個別に指定してください"></div>`;
@@ -2578,6 +2652,8 @@ function applyRightPanel() {
     el.modelOffX = v('pp-mox') !== '' ? parseInt(v('pp-mox')) : undefined;
     el.modelOffY = v('pp-moy') !== '' ? parseInt(v('pp-moy')) : undefined;
     el.terminals = v('pp-term');
+    el.termFs    = parseInt(v('pp-tfs')) || undefined;
+    { const t = _readTermOff(); if (t) el.termOff = t; else delete el.termOff; }
     el.showNote  = !!document.getElementById('pp-shownote')?.checked;
     el.noteFs    = parseInt(v('pp-nfs')) || undefined;
     el.noteColor = v('pp-ncolorcode') || v('pp-ncolor') || undefined;
@@ -2861,6 +2937,19 @@ function syncSymPinsBtn() {
   b.style.background = state.showSymPins ? 'var(--acc)' : 'var(--bg)';
   b.style.color      = state.showSymPins ? '#fff' : 'var(--fg)';
   b.style.fontWeight = state.showSymPins ? '600' : '400';
+}
+
+// シンボルの端子番号を図面に出すトグル(全体一括)。
+// 【検証用/仮】の🔴端子(仮)と違い、これは図面の内容そのものなのでPDF・DXFにも出る。
+// 番号ごとの位置は端子単位で補正できる(プロパティの「端子番号の位置」)。
+function toggleTermNoDisp() {
+  state.showTermNo = !state.showTermNo;
+  syncTermNoBtn();
+  draw();
+  updateRightPanel();   // 位置補正欄は表示ONのときだけ出す
+}
+function syncTermNoBtn() {
+  document.getElementById('rb-termno')?.classList.toggle('on', !!state.showTermNo);
 }
 
 function toggleDark() {

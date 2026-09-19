@@ -38,6 +38,9 @@ function draw() {
   // 要素
   drawElements();
 
+  // シンボルの端子番号。PDF出力にも反映する(図面を読むための情報のため)
+  if (state.showTermNo) drawSymTermNos();
+
   // 【検証用/仮】シンボル端子(ピン)マーカー表示。PDF出力には反映しない
   if (!state.pdfMode && state.showSymPins) drawSymPinMarkers();
 
@@ -268,26 +271,14 @@ function drawSymPinMarkers() {
     const lay = LAYERS.find(l => l.name === el.layer);
     if (lay && !lay.visible) return;
 
-    const cS  = state.customSymbols.find(s => s.type === el.type);
-    const rot = (el.rot || 0) * Math.PI / 180;
-    let pins = [];
-    if (cS && cS.terminals && cS.terminals.length) {
-      pins = cS.terminals.map((t, i) => {
-        const rx = t.x * Math.cos(rot) - t.y * Math.sin(rot);
-        const ry = t.x * Math.sin(rot) + t.y * Math.cos(rot);
-        return { x: el.x + rx, y: el.y + ry, name: `T${i}` };
-      });
-    } else {
-      // 標準シンボル、またはterminals未定義のカスタムシンボル
-      // → snap.js と同じフォールバック(左右端の中点)
-      const d  = getDef(el.type) || {};
-      const sc = el.scale || 1;
-      const hw = (d.w || 0) / 2 * sc;
-      pins = [+hw, -hw].map((dx, i) => {
-        const rx = dx * Math.cos(rot), ry = dx * Math.sin(rot);
-        return { x: el.x + rx, y: el.y + ry, name: i === 0 ? 'R' : 'L' };
-      });
-    }
+    // 座標式は symTermPoints に一本化した(2026-09-19)。以前はここに
+    // snap.js / conn_table.js と同じ式の写しが置かれていた。端子番号の表示を
+    // 足すにあたり、同じ式の5つ目のコピーを作らないためにまとめてある。
+    // マーカーの名前は従来どおり通し番号(T0,T1…)のまま。実データの確認用で、
+    // 端子番号そのものは drawSymTermNos が描く。
+    const cS   = state.customSymbols.find(s => s.type === el.type);
+    const pins = symTermPoints(el, cS, getDef(el.type))
+                   .map(p => ({ x: p.x, y: p.y, name: `T${p.i}` }));
     pins.forEach(p => {
       ctx.beginPath();
       ctx.arc(p.x, p.y, 4/state.zoom, 0, Math.PI*2);
@@ -296,6 +287,126 @@ function drawSymPinMarkers() {
       ctx.font = `${10/state.zoom}px sans-serif`;
       ctx.fillStyle = '#ff0000';
       ctx.fillText(p.name || p.id, p.x + 6/state.zoom, p.y - 6/state.zoom);
+    });
+  });
+  ctx.restore();
+}
+
+// ================================================================
+// シンボルの端子番号を図面に描く(2026-09-19)
+//
+// 【なぜ要るか】端子番号を入れる欄(プロパティの「端子番号」= el.terminals)は
+// 以前からあり、部品DBから型番を割り当てれば自動で入る。しかしその値を
+// 読んでいたのは接続表・端子台表(conn_table.js)と検索(search.js)だけで、
+// 図面には一切出ていなかった。実務で使う展開接続図はコイルのA1/A2、接点の
+// 13/14が図面上に見えていないと読めない。端子台の端子(junction)だけは
+// drawJunctionElが端子番号を描いていて、シンボルにだけ同じものが無かった。
+//
+// 【表示の入切】state.showTermNo による全体一括(既定OFF)。
+// 既定ONにすると既存図面の見た目が黙って変わるため既定はOFFにしてある。
+// drawSymPinMarkers(🔴端子(仮))と違い、こちらはPDF・DXFにも出す。
+// ================================================================
+
+// 端子点(ワールド座標)と、そこに書く端子番号を返す。
+//
+// 【座標式】snap.js のスナップ判定・conn_table.js の接続判定と同一の式。
+// つまりここに出る番号は「実際に配線がスナップする点」そのものに付く。
+// cS.terminals に el.scale を掛けていないのは既存3箇所(snap.js /
+// conn_table.js / drawSymPinMarkers)に合わせるため。ここだけ掛けると
+// 番号の位置とスナップ位置がズレる。
+//
+// 【番号の優先順位】conn_table.js の collectTerminalPoints と同じく
+//   ①el.terminals(部品割当・手入力の個体差。型番ごとに違う実際の番号)
+//   ②cS.terminals[i].label(ピンエディタで入れた定義側の既定)
+// ただし帳票にある③通し番号(T1,T2…)のフォールバックは図面では出さない。
+// 帳票は行を特定するために必ず何か要るが、図面に "T1" と印刷されても
+// 意味が無いため。番号を入れていない端子は何も描かない。
+function symTermPoints(el, cS, def) {
+  const rot  = (el.rot || 0) * Math.PI / 180;
+  const cos  = Math.cos(rot), sin = Math.sin(rot);
+  const list = String(el.terminals || '').split(',').map(s => s.trim());
+  const raw  = [];
+  if (cS && cS.terminals && cS.terminals.length) {
+    cS.terminals.forEach((t, i) => {
+      raw.push({ rx: t.x * cos - t.y * sin,
+                 ry: t.x * sin + t.y * cos,
+                 label: list[i] || t.label || '' });
+    });
+  } else {
+    // 標準シンボル、または terminals 未定義のカスタムシンボル
+    // → snap.js と同じフォールバック(左右端の中点)
+    const sc = el.scale || 1;
+    const hw = ((def && def.w) || 0) / 2 * sc;
+    [+hw, -hw].forEach((dx, i) => {
+      raw.push({ rx: dx * cos, ry: dx * sin, label: list[i] || '' });
+    });
+  }
+  return raw.map((p, i) => ({ i, rx: p.rx, ry: p.ry, label: p.label,
+                              x: el.x + p.rx, y: el.y + p.ry }));
+}
+
+// 端子番号の文字を置く位置と揃えを決める。
+//
+// 文字は常に水平(シンボルを回しても字は回さない)。盛田さん判断(2026-09-19)。
+// 端子は本体の外周に出ているので、シンボル中心(el.x,el.y)から端子への向きへ
+// 逃がす。真上に重ねないのは、その点には必ず配線が来るため。
+//   ・横向きの端子 → 配線の上に載せる(左右に逃がし、少し上げる)
+//   ・縦向きの端子 → 配線の右に置く(上下に逃がし、少し右へ)
+// どちらも「線に文字が重ならない」ことを優先した既定値で、合わない分は
+// 端子ごとの位置補正(el.termOff)で動かしてもらう。
+const SYM_TERM_GAP = 4;   // 端子点から文字までの隙間(ワールド座標単位)
+const SYM_TERM_SEP = 2;   // 配線に重ねないための垂直方向の逃がし量
+function symTermLabelPos(rx, ry, gap, sep) {
+  const g = (gap === undefined) ? SYM_TERM_GAP : gap;
+  const s = (sep === undefined) ? SYM_TERM_SEP : sep;
+  const len = Math.hypot(rx, ry);
+  // 端子がシンボル中心と同じ位置にある場合(向きが決まらない)は右へ出す
+  if (len < 1e-6) return { dx: g, dy: -s, align: 'left', baseline: 'bottom' };
+  const ux = rx / len, uy = ry / len;
+  if (Math.abs(ux) >= Math.abs(uy)) {
+    // 横寄り: 外側へ逃がし、配線の上に載せる
+    return { dx: ux * g, dy: uy * g - s,
+             align: ux > 0 ? 'left' : 'right', baseline: 'bottom' };
+  }
+  // 縦寄り: 外側へ逃がし、配線の右に置く
+  return { dx: ux * g + s, dy: uy * g,
+           align: 'left', baseline: uy > 0 ? 'top' : 'bottom' };
+}
+
+// 端子ごとの位置補正(el.termOff[i] = [dx, dy])を取り出す。
+// 未設定・欠番は 0。既存図面は termOff を持たないので必ずここを通って 0 になる。
+function symTermOff(el, i) {
+  const o = (el.termOff || [])[i];
+  if (!o) return { ox: 0, oy: 0 };
+  return { ox: Number(o[0]) || 0, oy: Number(o[1]) || 0 };
+}
+
+// 図面へ端子番号を描く。state.showTermNo がONのときだけ呼ばれる。
+// drawSymPinMarkers と違い pdfMode を除外しない(PDFに出すため)。
+// 文字なしPDF(state.pdfSkipText)のときは他の文字と同様に出さない。
+function drawSymTermNos() {
+  if (state.pdfSkipText) return;
+  ctx.save();
+  ctx.textBaseline = 'alphabetic';
+  state.elements.forEach(el => {
+    if (SYM_ONLY_TYPES.includes(el.type)) return;   // シンボル以外はスキップ
+    const lay = LAYERS.find(l => l.name === el.layer);
+    if (lay && !lay.visible) return;
+    const cS  = state.customSymbols.find(s => s.type === el.type);
+    const pts = symTermPoints(el, cS, getDef(el.type));
+    if (!pts.some(p => p.label)) return;            // 番号が1つも無いシンボルは触らない
+    // 文字サイズはズームで割らない(シンボルのデバイス名・仕様と同じ扱い)。
+    // 端子だけ画面上で一定サイズになると他と食い違って見える — 2026-08-23の教訓。
+    const fs = el.termFs || 9;
+    ctx.font = `${fs}px sans-serif`;
+    ctx.fillStyle = lay ? lay.color : fgC();
+    pts.forEach(p => {
+      if (!p.label) return;
+      const lp = symTermLabelPos(p.rx, p.ry);
+      const { ox, oy } = symTermOff(el, p.i);
+      ctx.textAlign    = lp.align;
+      ctx.textBaseline = lp.baseline;
+      ctx.fillText(p.label, p.x + lp.dx + ox, p.y + lp.dy + oy);
     });
   });
   ctx.restore();
