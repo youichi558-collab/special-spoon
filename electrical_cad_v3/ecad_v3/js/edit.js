@@ -323,160 +323,11 @@ function dl(text, fname, mime) {
 // ----------------------------------------------------------------
 // 共通移動関数
 // ----------------------------------------------------------------
-// グリッド近傍の座標だけスナップ（許容誤差以内のズレのみ修正）
-// 手順: ①ズレの集計を表示して確認 → ②実行 → ③結果報告＋補正箇所をオレンジで数秒ハイライト
-// (「押しても動いたのか・合っているのか分からない」という声への対応。
-//  全件一括処理は 集計→確認→実行 の順にするという過去の教訓にも沿う)
-function snapNearGrid(tolerance) {
-  // 許容誤差未指定 → ダイアログで入力
-  if (tolerance == null) {
-    const val = prompt(
-      `グリッドから何以内の座標をスナップしますか？\n（現在のグリッド間隔: ${state.G}）`,
-      String(state.G / 2));
-    if (val == null) return;
-    tolerance = parseFloat(val);
-    if (isNaN(tolerance) || tolerance <= 0) return;
-  }
-
-  // 最寄りグリッドとのズレ量
-  const dev = v => Math.abs(Math.round(v / state.G) * state.G - v);
-  // 許容誤差内ならスナップ、そうでなければそのまま
-  const sn = v => {
-    const snapped = Math.round(v / state.G) * state.G;
-    return Math.abs(snapped - v) <= tolerance ? snapped : v;
-  };
-
-  // 何か選択されている場合は選択物のみ、無選択なら全体を対象にする
-  // (旧: els/wiresを別々に判定していたため、シンボルだけ選択しても全配線が動いていた)
-  const hasSel = state.sel.els.size > 0 || state.sel.wires.size > 0;
-  const targets = hasSel
-    ? state.elements.filter(e => state.sel.els.has(e.id))
-    : state.elements;
-  const wTargets = hasSel
-    ? state.wires.filter(w => state.sel.wires.has(w.id))
-    : state.wires;
-
-  // ---------- ①ドライラン: 変更対象の集計（まだ何も変更しない） ----------
-  // fixPts: 実際に補正される座標点(ハイライト用)。maxDev: 全ズレの最大値(誤差ゼロの座標は除外)
-  const stat = { fixEls: 0, fixWires: 0, offEls: 0, offWires: 0, maxDev: 0, fixPts: [] };
-  const KEYS = ['x','y','x1','y1','x2','y2','x3','y3','cx','cy','bx','by'];
-  const EPS = 1e-9;
-
-  // 要素/配線1個ぶんの座標を走査し「ズレあり」「許容内で補正される」を判定
-  const scanObj = (o) => {
-    let off = false, fix = false, beyond = false;
-    const pushPt = (xk, yk) => {
-      // ハイライト用の代表点。x/yペアが揃っている座標のみ点として記録
-      if (o[xk] != null && o[yk] != null) stat.fixPts.push({ x: sn(o[xk]), y: sn(o[yk]) });
-    };
-    for (const k of KEYS) {
-      if (o[k] == null) continue;
-      const d = dev(o[k]);
-      if (d > EPS) {
-        off = true;
-        stat.maxDev = Math.max(stat.maxDev, d);
-        if (d <= tolerance) fix = true; else beyond = true;
-      }
-    }
-    if (o.pts) for (const p of o.pts) {
-      for (const v of [p.x, p.y]) {
-        const d = dev(v);
-        if (d > EPS) {
-          off = true;
-          stat.maxDev = Math.max(stat.maxDev, d);
-          if (d <= tolerance) fix = true; else beyond = true;
-        }
-      }
-    }
-    if (fix) {
-      // 代表点(ハイライト位置): 基準点があればそこ、無ければ端点、pts先頭
-      if (o.x != null && o.y != null) pushPt('x','y');
-      else if (o.x1 != null && o.y1 != null) pushPt('x1','y1');
-      else if (o.pts && o.pts[0]) stat.fixPts.push({ x: sn(o.pts[0].x), y: sn(o.pts[0].y) });
-    }
-    return { off, fix, beyond };
-  };
-
-  targets.forEach(el => {
-    const r = scanObj(el);
-    if (r.off) stat.offEls++;
-    if (r.fix) stat.fixEls++;
-    if (r.beyond) stat.beyondEls = (stat.beyondEls||0) + 1;
-  });
-  wTargets.forEach(w => {
-    const r = scanObj(w);
-    if (r.off) stat.offWires++;
-    if (r.fix) stat.fixWires++;
-    if (r.beyond) stat.beyondWires = (stat.beyondWires||0) + 1;
-  });
-
-  const scope = hasSel ? '選択中' : '図面全体';
-  const fixTotal = stat.fixEls + stat.fixWires;
-  const offTotal = stat.offEls + stat.offWires;
-
-  if (offTotal === 0) {
-    alert(`【${scope}】グリッドからズレている座標はありません。すべて整列済みです。`);
-    return;
-  }
-  if (fixTotal === 0) {
-    alert(
-      `【${scope}】ズレあり: 図形${stat.offEls}個・配線${stat.offWires}本\n` +
-      `最大ズレ量: ${stat.maxDev.toFixed(2)}\n\n` +
-      `許容誤差 ${tolerance} 以内のものが無いため、何も補正されません。\n` +
-      `許容誤差を大きくして(例: ${Math.min(Math.ceil(stat.maxDev), state.G/2)})再実行してください。`);
-    return;
-  }
-  const ok = confirm(
-    `【${scope}】グリッドからのズレ: 図形${stat.offEls}個・配線${stat.offWires}本` +
-    `（最大ズレ量 ${stat.maxDev.toFixed(2)}）\n\n` +
-    `このうち許容誤差 ${tolerance} 以内の 図形${stat.fixEls}個・配線${stat.fixWires}本 を\n` +
-    `最寄りのグリッドに乗せます。よろしいですか？\n（実行後はCtrl+Zで戻せます）`);
-  if (!ok) return;
-
-  // ---------- ②実行 ----------
-  const snP = (o, k) => { if (o[k] != null) o[k] = sn(o[k]); };
-  pushH();
-  targets.forEach(el => {
-    snP(el,'x'); snP(el,'y');
-    snP(el,'x1'); snP(el,'y1');
-    snP(el,'x2'); snP(el,'y2');
-    snP(el,'x3'); snP(el,'y3');
-    snP(el,'cx'); snP(el,'cy');
-    snP(el,'bx'); snP(el,'by');
-    if (el.pts) {
-      el.pts = el.pts.map(p => ({ x: sn(p.x), y: sn(p.y) }));
-      el.x1 = el.pts[0]?.x; el.y1 = el.pts[0]?.y;
-      el.x2 = el.pts[el.pts.length-1]?.x; el.y2 = el.pts[el.pts.length-1]?.y;
-    }
-  });
-  wTargets.forEach(w => {
-    if (w.pts) {
-      w.pts = w.pts.map(p => ({ x: sn(p.x), y: sn(p.y) }));
-      w.x1 = w.pts[0]?.x; w.y1 = w.pts[0]?.y;
-      w.x2 = w.pts[w.pts.length-1]?.x; w.y2 = w.pts[w.pts.length-1]?.y;
-    } else {
-      snP(w,'x1'); snP(w,'y1'); snP(w,'x2'); snP(w,'y2');
-    }
-  });
-
-  // ---------- ③結果報告＋補正箇所を数秒ハイライト ----------
-  state.snapFlash = { pts: stat.fixPts, t0: Date.now() };
-  const anim = () => {
-    if (!state.snapFlash) return;
-    if (Date.now() - state.snapFlash.t0 > 3000) { state.snapFlash = null; draw(); return; }
-    draw();
-    requestAnimationFrame(anim);
-  };
-  requestAnimationFrame(anim);
-
-  draw(); updateRightPanel();
-  alert(
-    `図形${stat.fixEls}個・配線${stat.fixWires}本 をグリッドに乗せました。\n` +
-    `補正した箇所をオレンジ色で数秒間表示します。\n（Ctrl+Zで元に戻せます）` +
-    ((stat.beyondEls || stat.beyondWires)
-      ? `\n\n※許容誤差を超えるズレが 図形${stat.beyondEls||0}個・配線${stat.beyondWires||0}本 に残っています。`
-      : ''));
-}
+// 【2026-09-19・撤去】ここにあった snapNearGrid()(リボンの「整列」)を削除した。
+// 座標を1つずつ最寄りグリッドへ丸める方式で、グリッド線の中間をまたぐ2点が
+// 反対方向へ引き離される(実測: 端子104・配線端106 の差2 → 100と110 の差10)。
+// 繋がりを直すつもりが壊すため、方式として救えないと判断した。
+// 代わりは alignByBasePoint()(基準点合わせ)。経緯は HANDOFF.md 参照。
 
 // 独立テキストの「揃え」機能（AutoCAD TEXTALIGNに準拠した方式）
 // 選択したテキストのうち、最初に選んだもの(=Set挿入順の先頭)を基準にし、
@@ -538,7 +389,7 @@ function alignTexts() {
     fixPts.push({ x: t.x, y: t.y });
   });
 
-  // 補正箇所を数秒間オレンジでハイライト（snapNearGridと同じ仕組み）
+  // 移動したテキストを数秒間オレンジでハイライト（state.snapFlash を draw.js が描く）
   state.snapFlash = { pts: fixPts, t0: Date.now() };
   const anim = () => {
     if (!state.snapFlash) return;
@@ -577,9 +428,10 @@ function moveEntity(el, dx, dy) {
 //
 // 【2026-09-19・なぜこの形なのか】
 // 「グリッドに乗っていない図形は編集できない」(スナップで狙えない)を直す機能。
-// 先にあった snapNearGrid(整列) は座標を1つずつ最寄りグリッドへ丸めるため、
-// グリッド線の中間をまたぐ2点が反対方向へ引き離される。端子と配線端の距離が
-// 2から10に広がる例を実測で確認した —— **直したいものが壊れる**ので方式として使えない。
+// かつてあった snapNearGrid(リボンの「整列」) は座標を1つずつ最寄りグリッドへ
+// 丸めるため、グリッド線の中間をまたぐ2点が反対方向へ引き離される。端子と配線端の
+// 距離が2から10に広がる例を実測で確認し、**直したいものが壊れる**ため撤去した
+// (2026-09-19)。
 //
 // かといって選択物を剛体として動かす場合、決められるのは dx,dy の1組だけで、
 // 「塊の中のどこがグリッドに乗るか」は選べない(軸あたり自由度1)。

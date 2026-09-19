@@ -57,7 +57,7 @@ function draw() {
   // ラバーバンド選択ボックス
   if (!state.pdfMode) drawGuides();
 
-  // グリッド整列で補正した箇所のハイライト（snapNearGrid実行後、数秒間だけ表示）
+  // 移動した箇所のハイライト（alignTexts実行後、数秒間だけ表示）
   if (!state.pdfMode && state.snapFlash) {
     const t = (Date.now() - state.snapFlash.t0) / 400;
     const a = 0.35 + 0.45 * Math.abs(Math.sin(t * Math.PI));
