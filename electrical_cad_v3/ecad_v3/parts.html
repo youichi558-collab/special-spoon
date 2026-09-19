@@ -123,6 +123,33 @@
 
     <!-- ==== 取り込みタブ ==== -->
     <div id="pp-panel-import" style="display:none">
+      <!-- 【2026-09-19】CADから移設。カタログDB(検索用データベース)をDriveから
+           取り込む機能。以前はCAD側にあり、使う画面(この下のカタログDB検索・
+           全件作り直し)が自分で元データを更新できない状態だった。 -->
+      <h3>カタログDBの取り込み</h3>
+      <p style="font-size:11px;color:var(--fg3)">
+        Google Drive上の「カタログDB」フォルダ(メーカー別CSV)を読み込んで、下の検索で使うデータベースを更新します。<br>
+        カタログDBが未設定・未導入でも、部品DBの編集は通常どおり行えます（この欄が使えなくなるだけです）。
+      </p>
+      <div id="cat-setup" style="display:none;margin:6px 0">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <button class="fp-btn primary" onclick="catalogPickFolder()">フォルダの選択</button>
+          <span id="cat-pick-status" style="font-size:11px;color:var(--fg2)">フォルダが選択されていません</span>
+        </div>
+        <p style="font-size:11px;color:var(--fg3);margin-top:4px">
+          Drive上の「カタログDB」フォルダを選ぶと、中のCSVをまとめて取り込みます。<br>
+          次回以降は選び直し不要です（Driveの内容を更新したら「再取込」を押してください）。
+        </p>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;margin:6px 0">
+        <button class="fp-btn" onclick="catalogReimport()" title="Driveのフォルダを読み直して取り込み直します">再取込</button>
+        <div id="cat-change-wrap" style="display:none">
+          <button class="fp-btn" onclick="catalogShowSetup()">フォルダを変更</button>
+        </div>
+      </div>
+      <p id="cat-status" style="font-size:11px;color:var(--fg2)"></p>
+
+      <hr style="margin:14px 0;border:none;border-top:1px solid var(--bd2)">
       <h3>カタログDBから探す</h3>
       <p style="font-size:11px;color:var(--fg3)">Google Drive上のカタログDB(メーカー別CSV)から型番を検索し、選んだものだけを部品DBに追加します。</p>
       <div style="display:flex;gap:6px;margin-top:6px">

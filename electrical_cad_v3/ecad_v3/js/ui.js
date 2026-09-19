@@ -25,12 +25,55 @@ function syncRibbonHeight() {
   const rb = document.getElementById('ribbon');
   if (!rb) return;
   requestAnimationFrame(() => {
+    equalizeRibbonHeight();
     // offsetHeight(リボンの高さ)ではなく画面上の下端を使う。
     // 警告の帯(#banner-area)が出るとリボンごと下がるため、高さだけ見ていると
     // #rp(右パネル)が帯の分だけ上にズレる。2026-09-19
     document.documentElement.style.setProperty(
       '--ribbon-h', Math.round(rb.getBoundingClientRect().bottom) + 'px');
   });
+}
+
+// 全タブの中で一番高いものに合わせて、リボンの高さを固定する。
+//
+// 【2026-09-19】タブを切り替えるたびに作図領域が最大48px上下していた
+// (盛田さん実機・幅1365pxでの実測: ホーム126 / 作図132 / 登録82 …)。
+// 原因は #ribbon-content が flex-wrap で折り返すこと。ホームは9グループで
+// 必要幅1838px、作図は1477pxあり、1365pxの画面では2段になる。一方それ以外の
+// タブは1段で収まるため、切り替えるたびに段数＝高さが変わる。
+//
+// 画面幅で折り返しの有無が変わるので、CSSの固定値では対応できない。
+// 読み込み時とリサイズ時に**全タブを実測して最大値を min-height にする**。
+// 広い画面(全タブ1段)では最大値も1段ぶんになるので、余白は生まれない。
+//
+// measure のために隠れているタブを一瞬表示するが、visibility:hidden で
+// 測るので画面にはちらつかない。測り終えたら元の表示状態へ必ず戻す。
+//
+// 測るのは**パネル(.rg-wrap)ではなくコンテナ(#ribbon-content)の高さ**。
+// コンテナは box-sizing:border-box なので min-height に padding が含まれる。
+// パネルの高さをそのまま min-height にすると padding(上下8px)のぶん足りず、
+// 背の高いタブだけ8px高いままになる(実測で確認済み)。
+function equalizeRibbonHeight() {
+  const content = document.getElementById('ribbon-content');
+  if (!content) return;
+  const panels = [...document.querySelectorAll('.rg-wrap')];
+  if (!panels.length) return;
+  const visible = panels.find(p => p.style.display !== 'none');
+
+  content.style.minHeight = '';          // 前回の固定値を外して素の高さを測る
+  panels.forEach(p => { p.style.display = 'none'; });
+
+  let max = 0;
+  panels.forEach(p => {
+    p.style.visibility = 'hidden';
+    p.style.display = 'flex';
+    max = Math.max(max, content.getBoundingClientRect().height);
+    p.style.display = 'none';
+    p.style.visibility = '';
+  });
+
+  if (visible) visible.style.display = 'flex';
+  if (max > 0) content.style.minHeight = Math.ceil(max) + 'px';
 }
 window.addEventListener('resize', syncRibbonHeight);
 
@@ -940,193 +983,12 @@ function lineWidthOptions(cur) {
   }).join('');
 }
 
-// 【2026-09-03】部品DBの登録・編集はCADから部品DB単独画面(parts.html)へ
-// 移した。ここで開くのは「カタログDB取り込み」(Google Drive上のメーカー別
-// CSVを検索用データベースに取り込む機能。部品DB本体=customParts への
-// 書き込みではない)だけに絞った小さいパネル。
-function showCatalogImport() {
-  openFP('catalog-import-p');
-  catalogRefreshStatus();
-}
-
-// ----------------------------------------------------------------
-// カタログDB検索(2026-08-20)
-//
-// Google Drive上のメーカー別CSVから作ったSQLiteを、server.py経由で検索する。
-// 選んだ型番だけを部品DBに追加する = カタログ全数を部品DBに流し込まない。
-//
-// 【重要】カタログDBが無い環境(外部PC等)でもCADは普通に使えること。
-// APIが available:false を返したら、この欄を無効化して案内を出すだけにする。
-// ----------------------------------------------------------------
-async function catalogRefreshStatus() {
-  const st = document.getElementById('cat-status');
-  const setup = document.getElementById('cat-setup');
-  const chg = document.getElementById('cat-change-wrap');
-  if (!st) return;
-  st.style.whiteSpace = 'pre-line';  // 現在のフォルダを2行目に出すため
-  try {
-    const res = await fetch('/api/catalog/stats');
-    const d = await res.json();
-    if (!d.available) {
-      st.textContent = 'カタログDB機能は未導入です（CADの他の機能には影響しません）';
-      if (setup) setup.style.display = 'none';
-      if (chg) chg.style.display = 'none';
-      return;
-    }
-    if (!d.configured) {
-      if (d.built && d.count) {
-        st.textContent = `前回取り込んだ ${d.count}件で検索できます`
-          + `（最新のCSVを反映するには「再取込」を押してください）`;
-      } else {
-        st.textContent = 'カタログDBフォルダが未選択です。下の「フォルダの選択」から選んでください';
-      }
-      if (setup) setup.style.display = 'block';
-      if (chg) chg.style.display = 'none';
-      _catShowPickStatus();
-      return;
-    }
-    // 設定済み。設定欄は畳んでおくが、選び直せるようにボタンは常に出す
-    if (setup) setup.style.display = 'none';
-    if (chg) chg.style.display = 'block';
-    const makers = (d.makers || []).map(m => `${m.maker} ${m.count}`).join(' / ');
-    const label = d.source_label ? `${d.source_label} — ` : '';
-    st.textContent = `${label}登録 ${d.count}件（CSV ${d.csv_files.length}個）`
-      + `${makers ? '\n' + makers : ''}`;
-  } catch (e) {
-    st.textContent = 'サーバーが応答しません（start.batを最新版で起動してください）';
-    if (setup) setup.style.display = 'none';
-    if (chg) chg.style.display = 'none';
-  }
-}
-
-// 設定済みでも設定欄を開けるようにする(フォルダ変更・自動検出の確認用)
-function catalogShowSetup() {
-  const setup = document.getElementById('cat-setup');
-  if (!setup) return;
-  const show = setup.style.display === 'none';
-  setup.style.display = show ? 'block' : 'none';
-  if (show) _catShowPickStatus();
-}
-
-// 設定欄を開いたとき、選択済みフォルダ名を表示する
-async function _catShowPickStatus() {
-  const pick = document.getElementById('cat-pick-status');
-  if (!pick) return;
-  const handle = await _catLoadHandle();
-  pick.textContent = handle ? `選択中: ${handle.name}` : 'フォルダが選択されていません';
-}
-
-// --- フォルダ選択(File System Access API) ---
-// 部品DB(parts_db.js)と同じ方式。Windowsのフォルダ選択ダイアログが開く。
-// このAPIはセキュリティ上フォルダの絶対パスをJSに渡さないため、
-// パスではなくCSVの「中身」を読んでサーバーに送り、取り込んでもらう。
-// フォルダのハンドルはIndexedDBに保存するので、次回以降は選び直し不要。
-
-function _catOpenHandleDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open('catalogDirHandleDB', 1);
-    req.onupgradeneeded = e => e.target.result.createObjectStore('handles');
-    req.onsuccess = e => resolve(e.target.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-async function _catSaveHandle(handle) {
-  try {
-    const db = await _catOpenHandleDB();
-    db.transaction('handles', 'readwrite').objectStore('handles').put(handle, 'catalogDir');
-  } catch (e) {}
-}
-async function _catLoadHandle() {
-  try {
-    const db = await _catOpenHandleDB();
-    return await new Promise(r => {
-      const req = db.transaction('handles', 'readonly').objectStore('handles').get('catalogDir');
-      req.onsuccess = () => r(req.result);
-      req.onerror = () => r(null);
-    });
-  } catch (e) { return null; }
-}
-
-// フォルダ内のCSVをすべて読んでサーバーに送る
-async function _catImportFromHandle(handle, silent) {
-  const st = document.getElementById('cat-status');
-  const pick = document.getElementById('cat-pick-status');
-  const setMsg = m => { if (st) st.textContent = m; if (pick) pick.textContent = m; };
-  setMsg('読み込み中...');
-  const files = [];
-  for await (const [name, entry] of handle.entries()) {
-    if (entry.kind !== 'file' || !name.toLowerCase().endsWith('.csv')) continue;
-    if (name.startsWith('~$')) continue;
-    const f = await entry.getFile();
-    files.push({ name, text: await f.text() });
-  }
-  if (!files.length) {
-    setMsg(`「${handle.name}」にCSVがありません`);
-    return false;
-  }
-  setMsg(`取り込み中... (CSV ${files.length}個)`);
-  let d;
-  try {
-    const res = await fetch('/api/catalog/import', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ files, label: handle.name }),
-    });
-    d = await res.json();
-  } catch (e) {
-    // 「Failed to fetch」は通信そのものが失敗したとき。POST未対応の古いserver.pyは
-    // 本文を読まずに接続を切るため、404ではなくこの形で失敗する。
-    setMsg('サーバーとの通信に失敗しました。server.py(start.bat)を起動し直してください');
-    return false;
-  }
-  if (!d.ok) { setMsg('エラー: ' + (d.error || '取り込みに失敗しました')); return false; }
-  const br = document.getElementById('cat-setup');
-  if (br && !silent) br.style.display = 'none';
-  catalogRefreshStatus();
-  return true;
-}
-
-async function catalogPickFolder() {
-  const st = document.getElementById('cat-status');
-  if (!window.showDirectoryPicker) {
-    if (st) st.textContent = 'このブラウザはフォルダ選択に対応していません（Chrome/Edge推奨）';
-    return;
-  }
-  try {
-    const handle = await window.showDirectoryPicker({ mode: 'read' });
-    await _catSaveHandle(handle);
-    await _catImportFromHandle(handle);
-  } catch (e) {
-    if (e.name !== 'AbortError' && st) st.textContent = 'エラー: ' + (e.message || e);
-  }
-}
-
-// 保存済みハンドルからDriveのフォルダを読み直す(Driveの内容を更新したとき)
-async function catalogReimport() {
-  const st = document.getElementById('cat-status');
-  const handle = await _catLoadHandle();
-  if (!handle) {
-    if (st) st.textContent = 'フォルダが未選択です。「フォルダを変更」から選んでください';
-    catalogShowSetup();
-    return;
-  }
-  try {
-    let perm = await handle.queryPermission({ mode: 'read' });
-    if (perm !== 'granted') perm = await handle.requestPermission({ mode: 'read' });
-    if (perm !== 'granted') {
-      if (st) st.textContent = 'フォルダへのアクセスが許可されませんでした';
-      return;
-    }
-    await _catImportFromHandle(handle, true);
-  } catch (e) {
-    if (st) st.textContent = 'エラー: ' + (e.message || e);
-  }
-}
-
-// 部品DB(customParts)の登録・編集・カタログからの取り込み・全件作り直しは、
-// すべて部品DB単独画面(parts.html / js/parts_page.js)へ移した(2026-09-03)。
-// CADに残るのはカタログDB(検索用データベース)をDriveから取り込む機能だけ
-// (下の catalogPickFolder 等。部品DB本体への書き込みではない)。
+// 【2026-09-19・移設】カタログDB(検索用データベース)をGoogle Driveから取り込む
+// 機能一式(catalogPickFolder / catalogReimport / catalogRefreshStatus 等)を
+// 部品DB単独画面(js/parts_page.js)へ移した。カタログDBを「使う」のは
+// 単独画面(検索・全件作り直し)なのに「取り込む」側だけがCADにあり、
+// 使う画面が自分でデータを更新できない状態だったため。
+// これでCADから部品DB・カタログDB関連のUIは無くなった(CADは読むだけ)。
 
 // 全体共通のHTMLエスケープ(state.js の escH)への別名。
 // 呼び出し箇所が多いのでこの名前は残すが、実装は1箇所に寄せてある。

@@ -514,13 +514,185 @@ function switchTab(name) {
     $('pp-tab-' + t).classList.toggle('on', t === name);
     $('pp-panel-' + t).style.display = t === name ? '' : 'none';
   });
-  if (name === 'import') refreshPendingCsvList();
+  if (name === 'import') { refreshPendingCsvList(); catalogRefreshStatus(); }
 }
 
 function toggleDark() {
   document.body.classList.toggle('dk');
   try { localStorage.setItem('ecad-parts-dark', document.body.classList.contains('dk') ? '1' : '0'); } catch (e) {}
 }
+
+// ================================================================
+// カタログDB取り込み — Google Drive上のメーカー別CSVを検索用DBへ取り込む
+// 【2026-09-19】CAD(js/ui.js)から移設。カタログDBを使うのはこの画面
+// (カタログDB検索・全件作り直し)なので、取り込みもここにある方が筋。
+// 部品DB(customParts)への書き込みではなく、検索用データベースの更新。
+// ================================================================
+async function catalogRefreshStatus() {
+  const st = document.getElementById('cat-status');
+  const setup = document.getElementById('cat-setup');
+  const chg = document.getElementById('cat-change-wrap');
+  if (!st) return;
+  st.style.whiteSpace = 'pre-line';  // 現在のフォルダを2行目に出すため
+  try {
+    const res = await fetch('/api/catalog/stats');
+    const d = await res.json();
+    if (!d.available) {
+      st.textContent = 'カタログDB機能は未導入です（CADの他の機能には影響しません）';
+      if (setup) setup.style.display = 'none';
+      if (chg) chg.style.display = 'none';
+      return;
+    }
+    if (!d.configured) {
+      if (d.built && d.count) {
+        st.textContent = `前回取り込んだ ${d.count}件で検索できます`
+          + `（最新のCSVを反映するには「再取込」を押してください）`;
+      } else {
+        st.textContent = 'カタログDBフォルダが未選択です。下の「フォルダの選択」から選んでください';
+      }
+      if (setup) setup.style.display = 'block';
+      if (chg) chg.style.display = 'none';
+      _catShowPickStatus();
+      return;
+    }
+    // 設定済み。設定欄は畳んでおくが、選び直せるようにボタンは常に出す
+    if (setup) setup.style.display = 'none';
+    if (chg) chg.style.display = 'block';
+    const makers = (d.makers || []).map(m => `${m.maker} ${m.count}`).join(' / ');
+    const label = d.source_label ? `${d.source_label} — ` : '';
+    st.textContent = `${label}登録 ${d.count}件（CSV ${d.csv_files.length}個）`
+      + `${makers ? '\n' + makers : ''}`;
+  } catch (e) {
+    st.textContent = 'サーバーが応答しません（start.batを最新版で起動してください）';
+    if (setup) setup.style.display = 'none';
+    if (chg) chg.style.display = 'none';
+  }
+}
+
+// 設定済みでも設定欄を開けるようにする(フォルダ変更・自動検出の確認用)
+function catalogShowSetup() {
+  const setup = document.getElementById('cat-setup');
+  if (!setup) return;
+  const show = setup.style.display === 'none';
+  setup.style.display = show ? 'block' : 'none';
+  if (show) _catShowPickStatus();
+}
+
+// 設定欄を開いたとき、選択済みフォルダ名を表示する
+async function _catShowPickStatus() {
+  const pick = document.getElementById('cat-pick-status');
+  if (!pick) return;
+  const handle = await _catLoadHandle();
+  pick.textContent = handle ? `選択中: ${handle.name}` : 'フォルダが選択されていません';
+}
+
+// --- フォルダ選択(File System Access API) ---
+// 部品DB(parts_db.js)と同じ方式。Windowsのフォルダ選択ダイアログが開く。
+// このAPIはセキュリティ上フォルダの絶対パスをJSに渡さないため、
+// パスではなくCSVの「中身」を読んでサーバーに送り、取り込んでもらう。
+// フォルダのハンドルはIndexedDBに保存するので、次回以降は選び直し不要。
+
+function _catOpenHandleDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('catalogDirHandleDB', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('handles');
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function _catSaveHandle(handle) {
+  try {
+    const db = await _catOpenHandleDB();
+    db.transaction('handles', 'readwrite').objectStore('handles').put(handle, 'catalogDir');
+  } catch (e) {}
+}
+async function _catLoadHandle() {
+  try {
+    const db = await _catOpenHandleDB();
+    return await new Promise(r => {
+      const req = db.transaction('handles', 'readonly').objectStore('handles').get('catalogDir');
+      req.onsuccess = () => r(req.result);
+      req.onerror = () => r(null);
+    });
+  } catch (e) { return null; }
+}
+
+// フォルダ内のCSVをすべて読んでサーバーに送る
+async function _catImportFromHandle(handle, silent) {
+  const st = document.getElementById('cat-status');
+  const pick = document.getElementById('cat-pick-status');
+  const setMsg = m => { if (st) st.textContent = m; if (pick) pick.textContent = m; };
+  setMsg('読み込み中...');
+  const files = [];
+  for await (const [name, entry] of handle.entries()) {
+    if (entry.kind !== 'file' || !name.toLowerCase().endsWith('.csv')) continue;
+    if (name.startsWith('~$')) continue;
+    const f = await entry.getFile();
+    files.push({ name, text: await f.text() });
+  }
+  if (!files.length) {
+    setMsg(`「${handle.name}」にCSVがありません`);
+    return false;
+  }
+  setMsg(`取り込み中... (CSV ${files.length}個)`);
+  let d;
+  try {
+    const res = await fetch('/api/catalog/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files, label: handle.name }),
+    });
+    d = await res.json();
+  } catch (e) {
+    // 「Failed to fetch」は通信そのものが失敗したとき。POST未対応の古いserver.pyは
+    // 本文を読まずに接続を切るため、404ではなくこの形で失敗する。
+    setMsg('サーバーとの通信に失敗しました。server.py(start.bat)を起動し直してください');
+    return false;
+  }
+  if (!d.ok) { setMsg('エラー: ' + (d.error || '取り込みに失敗しました')); return false; }
+  const br = document.getElementById('cat-setup');
+  if (br && !silent) br.style.display = 'none';
+  catalogRefreshStatus();
+  return true;
+}
+
+async function catalogPickFolder() {
+  const st = document.getElementById('cat-status');
+  if (!window.showDirectoryPicker) {
+    if (st) st.textContent = 'このブラウザはフォルダ選択に対応していません（Chrome/Edge推奨）';
+    return;
+  }
+  try {
+    const handle = await window.showDirectoryPicker({ mode: 'read' });
+    await _catSaveHandle(handle);
+    await _catImportFromHandle(handle);
+  } catch (e) {
+    if (e.name !== 'AbortError' && st) st.textContent = 'エラー: ' + (e.message || e);
+  }
+}
+
+// 保存済みハンドルからDriveのフォルダを読み直す(Driveの内容を更新したとき)
+async function catalogReimport() {
+  const st = document.getElementById('cat-status');
+  const handle = await _catLoadHandle();
+  if (!handle) {
+    if (st) st.textContent = 'フォルダが未選択です。「フォルダを変更」から選んでください';
+    catalogShowSetup();
+    return;
+  }
+  try {
+    let perm = await handle.queryPermission({ mode: 'read' });
+    if (perm !== 'granted') perm = await handle.requestPermission({ mode: 'read' });
+    if (perm !== 'granted') {
+      if (st) st.textContent = 'フォルダへのアクセスが許可されませんでした';
+      return;
+    }
+    await _catImportFromHandle(handle, true);
+  } catch (e) {
+    if (st) st.textContent = 'エラー: ' + (e.message || e);
+  }
+}
+
 
 window.addEventListener('DOMContentLoaded', () => {
   try { if (localStorage.getItem('ecad-parts-dark') === '1') document.body.classList.add('dk'); } catch (e) {}
