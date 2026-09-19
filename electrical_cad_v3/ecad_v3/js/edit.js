@@ -296,7 +296,6 @@ function loadProject(input) {
       // ここでも落としておかないと開いた瞬間に●が出たままになる。
       state.pages.forEach(pg => { pg.dirty = false; });
       renderSymFloat(); renderPartsAll(); renderPageTabs(); draw(); updateRightPanel();
-      if (typeof partsDb !== 'undefined') partsDb.scheduleSave();
       alert(fixedIds > 0
         ? `読込完了\n\n重複していた図形IDを ${fixedIds} 件修復しました。\n`
           + `(このファイルは、図形が勝手に一緒に動く・消える不具合が起きうる状態でした)\n`

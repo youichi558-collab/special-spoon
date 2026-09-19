@@ -11,20 +11,19 @@
 //   ・サーバー(server.py / parts_db_server.py)が読み取りAPIで公開する
 // という構成にした。
 //
-// このテストが守るのは主に2つ:
-//   1. 控えの送信が「保存できたとき」だけ起きること
-//      (保存に失敗しているのに控えだけ新しくなると、他ソフトが
-//       「保存されている」と誤解する。今年ここで繰り返した事故と同じ形)
-//   2. parts_db.json の書き手が増えていないこと
-//      (2つ以上が書くと、どちらかの書き込みが黙って失われる)
+// このテストが守るのは主に1つ:
+//   parts_db.json の書き手が増えていないこと
+//   (2つ以上が書くと、どちらかの書き込みが黙って失われる)
 //
 // 【2026-09-02 追記】2の「書き手」がCAD(ブラウザ)からサーバーへ移った。
-// 移した後も同時に2つが書くことは無い —— CADは起動時にどちらか一方の経路だけを
-// 選ぶ(js/parts_db.js の mode)。このファイルでは
+// 【2026-09-03 追記】CADはもう部品DBを書かない(読むだけ)。書き手は
+// 部品DB単独画面(parts.html / js/parts_page.js)だけになった
+// (経路そのものは tests/test_parts_page_save.js が見ている)。
+// このファイルでは
 //   ・他ソフト向けの parts_db_server.py は今まで通り読み取り専用であること
 //   ・server.py の書き込み口が保存・退避・控えの3つだけであること
 //   ・parts_db.json を上書きするときは必ず tmp 経由(書きかけが残らない)であること
-// を見る。経路の選び方そのものは tests/test_parts_db_server_mode.js が見ている。
+// を見る。
 
 const fs = require('fs');
 const path = require('path');
@@ -39,137 +38,9 @@ const ok = (cond, m) => { if (!cond) { ng++; console.log('  NG', m); } else cons
 const root = path.join(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 
-// ------------------------------------------------------------------
-// 1. 控えの送信は「ファイルに書けたとき」だけ
-//
-// js/parts_db.js の writeNow() を実際に動かす。ソースの見た目ではなく挙動で見る。
-// ------------------------------------------------------------------
-console.log('【控えの送信は保存に成功したときだけ】');
-{
-  // File System Access API 経由の保存(writeToFile)の中身だけを取り出して動かす。
-  // IIFE全体を評価するのは indexedDB や document への依存が多く、本題から離れる。
-  // ※ 控えの送信はこちらの経路だけの話。サーバー経由の保存では、サーバーが
-  //   保存と同時に控えを更新するのでブラウザからは送らない。
-  const src = read('js/parts_db.js');
-  const start = src.indexOf('  async function writeToFile() {');
-  ok(start >= 0, 'writeToFile() をソースから取り出せる');
-  const end = src.indexOf('\n  }\n', start) + 4;
-  const body = src.slice(start, end);
-
-  // writeNow が使う周辺を最小限だけ用意する
-  function makeEnv({ writeThrows = false, permission = true, locked = false } = {}) {
-    const calls = { mirror: 0, written: 0 };
-    const env = {
-      fileHandle: {
-        name: 'parts_db.json',
-        createWritable: async () => {
-          if (writeThrows) throw new Error('書けません');
-          return { write: async () => { calls.written++; }, close: async () => {} };
-        },
-      },
-      saveLocked: locked,
-      lastGoodCount: 3,
-      state: { customParts: [{ ref: 'A' }, { ref: 'B' }, { ref: 'C' }], hiddenBuiltinRefs: [] },
-      ensurePermission: async () => permission,
-      isSuspiciousDrop: () => false,
-      setStatus: () => {},
-      lockSaving: () => { env.saveLocked = true; },
-      pushMirror: () => { calls.mirror++; },
-      calls,
-    };
-    return env;
-  }
-
-  async function run(env) {
-    // 関数本体を env のスコープで組み立てて呼ぶ
-    const names = ['fileHandle', 'saveLocked', 'lastGoodCount', 'state',
-                   'ensurePermission', 'isSuspiciousDrop', 'setStatus',
-                   'lockSaving', 'pushMirror'];
-    const fn = new Function(...names, `${body}; return writeToFile();`);
-    return await fn(...names.map(n => env[n]));
-  }
-
-  (async () => {
-    let env = makeEnv();
-    let r = await run(env);
-    eq(r, true, '正常に書けたら true');
-    eq(env.calls.written, 1, 'ファイルに書いている');
-    eq(env.calls.mirror, 1, '書けたときは控えを送る');
-
-    env = makeEnv({ writeThrows: true });
-    r = await run(env);
-    eq(r, false, '書き込みが失敗したら false');
-    eq(env.calls.mirror, 0, '★書き込みが失敗したら控えを送らない');
-
-    env = makeEnv({ permission: false });
-    r = await run(env);
-    eq(r, false, '書込み許可が無ければ false');
-    eq(env.calls.mirror, 0, '★許可が無いときは控えを送らない');
-
-    env = makeEnv({ locked: true });
-    r = await run(env);
-    eq(r, false, '保存ロック中は false');
-    eq(env.calls.mirror, 0, '★ロック中は控えを送らない');
-
+(async () => {
     // --------------------------------------------------------------
-    console.log('\n【控えの送信が保存の成否を左右しない】');
-    // 控えが送れないことと、部品DBが保存できていないことは別の話。
-    // pushMirror が失敗しても writeNow は true を返さなければならない
-    // (ここが逆になると、サーバーを立てずにCADを開いている人の部品DBが
-    //  「保存できていない」扱いになって赤い帯が出続ける)。
-    // (a) 控えの送信が終わるのを writeNow が待たない。
-    //     待つ実装だと、サーバーが落ちている環境でタイムアウトするまで
-    //     「保存できた」の返答が遅れる。
-    env = makeEnv();
-    let settled = false;
-    env.pushMirror = async () => { await new Promise(() => {}); settled = true; };
-    // await を付けた実装だと writeNow が永久に返らない。
-    // そのまま await するとテスト全体が終わらず、Nodeが終了コード0で
-    // 抜けてしまう(= 落ちたことにならない)ので、必ず時間で打ち切る。
-    r = await Promise.race([run(env),
-                            new Promise(res => setTimeout(() => res('TIMEOUT'), 300))]);
-    eq(r, true, '★控えの送信を待たずに「保存できた」を返す(TIMEOUTならawaitしている)');
-    eq(settled, false, '控えの送信はまだ終わっていない');
-
-    // (b) 控えの送信が失敗しても、保存の成否は覆らない。
-    env = makeEnv();
-    env.pushMirror = async () => { throw new Error('サーバーがいません'); };
-    r = await run(env);
-    eq(r, true, '控えが送れなくても「保存できた」を返す');
-    eq(env.saveLocked, false, '控えの失敗で自動保存をロックしない');
-
-    // (b') 控えの送信を try/catch の外で呼ぶ。
-    //      今の pushMirror は async なので、中に置いても失敗は
-    //      rejected promise になるだけで catch には落ちない
-    //      (= 上の (b) は中に置いても通ってしまう)。
-    //      ただし将来 pushMirror が同期関数になったり await を付けたりすると、
-    //      控えが送れないだけで lockSaving() が走り、ファイルには書けているのに
-    //      「保存できませんでした」の赤い帯が出るようになる。
-    //      挙動では差が出ない不変条件なので、ここだけ構造で見る。
-    const wn = body;
-    const catchEnd = wn.indexOf('return false;\n    }');
-    ok(catchEnd > 0, 'writeToFile の catch 節が見つかる');
-    ok(wn.indexOf('pushMirror()') > catchEnd,
-       '★控えの送信は try/catch を抜けた後で呼ぶ');
-
-    // (c) 実物の pushMirror は、通信に失敗しても投げずに false を返す。
-    {
-      const src2 = read('js/parts_db.js');
-      const st = src2.indexOf('  async function pushMirror() {');
-      const en = src2.indexOf('\n  }\n', st) + 4;
-      const fn = new Function('state', 'fetch', 'mirrorState',
-        `${src2.slice(st, en)}; return pushMirror();`);
-      const ms = { at: null, ok: true, count: 0, error: '' };
-      let bad = false;
-      const out = await fn({ customParts: [], hiddenBuiltinRefs: [] },
-                           async () => { throw new Error('接続できません'); }, ms)
-        .catch(() => { bad = true; });
-      ok(!bad, '★通信に失敗しても pushMirror は例外を投げない');
-      eq(out, false, '通信に失敗したら false を返す');
-    }
-
-    // --------------------------------------------------------------
-    console.log('\n【書き手が増えていない・書きかけが残らない】');
+    console.log('【書き手が増えていない・書きかけが残らない】');
     const lib = read('tools/parts_db/parts_db.py');
     const srv = read('tools/parts_db/parts_db_server.py');
     const cad = read('server.py');
@@ -253,5 +124,4 @@ console.log('【控えの送信は保存に成功したときだけ】');
 
     console.log(ng ? `\n失敗 ${ng} 件` : '\nすべて通過');
     process.exit(ng ? 1 : 0);
-  })();
-}
+})();

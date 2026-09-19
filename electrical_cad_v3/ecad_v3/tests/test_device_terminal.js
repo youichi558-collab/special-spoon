@@ -166,12 +166,15 @@ console.log('【型式が無ければ候補は空(従来どおり自由入力)�
 }
 
 // ------------------------------------------------------------------
-console.log('【種別コードが4箇所すべてで揃っている】');
-console.log('  種別を1つ足すとPART_TYPE_CODES / PART_TYPE_LABELS / PART_TYPE_ORDER /');
-console.log('  index.html(セレクタ・CSVヘルプ)を直す必要がある。過去に漏れの前例あり');
+console.log('【種別コードが揃っている】');
+console.log('  種別を1つ足すとPART_TYPE_CODES / PART_TYPE_LABELS / PART_TYPE_ORDER を');
+console.log('  直す必要がある。過去に漏れの前例あり');
+// 【2026-09-03】部品の登録フォーム(セレクタ・CSVヘルプ)は部品DB単独画面
+// (parts.html)へ移した。parts.html側はPART_TYPE_ORDERから動的に<select>を
+// 組み立てる(js/parts_page.js の fillTypeSelect())ので、index.htmlのように
+// コードを直書きしたセレクタ・ヘルプ文言は無くなっており、この形の
+// 「取りこぼし」自体が起こらない。よってここでのHTML側の突き合わせは不要になった。
 {
-  const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
-
   const codes = JSON.parse('[' +
     typesSrc.match(/const PART_TYPE_CODES = \[([^\]]*)\]/)[1].replace(/'/g, '"') + ']');
   const order = JSON.parse('[' +
@@ -187,16 +190,6 @@ console.log('  index.html(セレクタ・CSVヘルプ)を直す必要がある�
   ok(codes.every(c => labelKeys.includes(c)), 'PART_TYPE_LABELS が全コードを網羅');
   ok(codes.every(c => order.includes(c)),     'PART_TYPE_ORDER が全コードを網羅');
   eq(order.length, codes.length, 'PART_TYPE_ORDER の件数が PART_TYPE_CODES と一致');
-
-  codes.forEach(c => {
-    if (!html.includes(`<option value="${c}">`)) {
-      ng++; console.log(`  NG index.html のセレクタに ${c} が無い`);
-    }
-    if (!html.includes(`${c}(`)) {
-      ng++; console.log(`  NG index.html のCSVヘルプ文言に ${c} が無い`);
-    }
-  });
-  ok(true, `index.html のセレクタ・ヘルプ文言を全${codes.length}コードについて確認`);
 
   // 装置系は必ず正規のコードであること(綴り間違いの検出)
   const devTypes = JSON.parse('[' +
@@ -221,7 +214,10 @@ console.log('  index.html(セレクタ・CSVヘルプ)を直す必要がある�
 // ------------------------------------------------------------------
 console.log('【廃止した種別(sw_no/sw_nc)の扱い】');
 {
-  const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
+  // 【2026-09-03】CSV一括登録は部品DB単独画面(parts.html / js/parts_page.js)
+  // へ移した。CADのindex.html/js/ui.jsにはもうこの経路が無いので、
+  // legacy種別の扱いはそちらのソースで確認する。
+  const pageSrc = fs.readFileSync(__dirname + '/../js/parts_page.js', 'utf8');
   const codes = JSON.parse('[' +
     typesSrc.match(/const PART_TYPE_CODES = \[([^\]]*)\]/)[1].replace(/'/g, '"') + ']');
   const legacyBlock = typesSrc.match(/const LEGACY_PART_TYPES = \{[^}]*\}/)[0];
@@ -229,18 +225,16 @@ console.log('【廃止した種別(sw_no/sw_nc)の扱い】');
   ok(!codes.includes('sw_no'), 'sw_no は部品DBの種別から外れている');
   ok(!codes.includes('sw_nc'), 'sw_nc は部品DBの種別から外れている');
   ok(codes.includes('contact_unit'), 'contact_unit が種別に入っている');
-  ok(!html.includes('value="sw_no"'), 'index.htmlのセレクタからsw_noが消えている');
-  ok(!html.includes('value="sw_nc"'), 'index.htmlのセレクタからsw_ncが消えている');
 
   ok(legacyBlock.includes('sw_no') && legacyBlock.includes('sw_nc'),
      'LEGACY_PART_TYPES に旧コードが登録され、取込は通る(既存CSVが再取込できなくならない)');
-  ok(uiSrc.includes('LEGACY_PART_TYPES[type]'),
+  ok(pageSrc.includes('LEGACY_PART_TYPES[type]'),
      'CSV取込で旧コードを弾かずに要再分類として扱う');
-  ok(uiSrc.includes('要再分類'), '旧コードの部品は「要再分類」と表示される');
+  ok(pageSrc.includes('要再分類'), '旧コードの部品は「要再分類」と表示される');
 
   // 自動変換していないこと(IDECのsw_noは実際には押ボタン等なので、機械的に
   // contact_unitへ変換すると誤分類になる)
-  ok(!/sw_no'?\s*:\s*'contact_unit/.test(uiSrc) && !/sw_no.*→.*contact_unit/.test(uiSrc),
+  ok(!/sw_no'?\s*:\s*'contact_unit/.test(pageSrc) && !/sw_no.*→.*contact_unit/.test(pageSrc),
      'sw_no→contact_unit の自動変換はしていない(誤分類防止)');
 
   // 図面側のシンボル種別としては残っていること(既存図面の接点が壊れないため)

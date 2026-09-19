@@ -55,7 +55,7 @@ vm.createContext(sandbox);
 // (ファイル全体をevalすると未定義参照でトップレベルが落ちるため)
 const src = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8');
 const start = src.indexOf('function parseTerminalGroups');
-const endMark = '\n// 既存のカスタム部品を登録フォームに読み込んで編集';
+const endMark = '\n// ----------------------------------------------------------------\n// コイル電圧（2026-08-20）';
 const end = src.indexOf(endMark);
 if (start < 0 || end < 0 || end <= start) {
   console.log('  NG テスト対象の範囲をui.jsから切り出せませんでした（関数名かコメントが変わった可能性）');

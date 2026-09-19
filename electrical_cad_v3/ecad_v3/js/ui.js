@@ -362,74 +362,25 @@ function renderPartsAll()  { renderMakerTabs(); renderPartsTable2(applyPartsFilt
 // 部品DBパネルの見出しに件数を常時出す。
 // 2026-09-01: 約440型番が欠落していたのに気づくのが遅れた原因の一つが
 // 「合計件数がどこにも出ていない」ことだった。開けば必ず目に入る場所に出す。
-// 保存できていない状態(partsDb.isLocked)も、ここで分かるようにしておく。
+//
+// 【2026-09-03】CADは部品DBを読むだけになったので「未保存」の概念は無い。
+// 代わりに、サーバーから読めているか(partsDb.hasFile())を出す
+// ——読めていなければ0件のまま図面を描いていることになるため。
 function renderPartsDbCount() {
   const el = document.getElementById('prt-float-count');
   if (!el) return;
   const n = state.customParts ? state.customParts.length : 0;
-  const locked = (typeof partsDb !== 'undefined' && partsDb.isLocked && partsDb.isLocked());
-  el.textContent = locked ? `${n}件・未保存` : `${n}件`;
-  el.style.color = locked ? 'var(--red)' : 'var(--fg3)';
-  el.title = !locked ? '登録済みのカスタム部品の件数（標準部品は含みません）'
-    : (partsDb.saveMode && partsDb.saveMode() === 'server'
-        ? '部品DBに保存できていません。ローカルサーバー(start.bat)が動いているか確認してください'
-        : '部品DBファイルに保存できていません。「部品登録」パネルの📂開く で開き直してください');
+  const connected = !(typeof partsDb !== 'undefined' && partsDb.hasFile && !partsDb.hasFile());
+  el.textContent = connected ? `${n}件` : `${n}件・未接続`;
+  el.style.color = connected ? 'var(--fg3)' : 'var(--red)';
+  el.title = connected ? '登録済みのカスタム部品の件数（標準部品は含みません）'
+    : '部品DBを読み込めていません。ローカルサーバー(start.bat)が動いているか確認してください';
 }
 // filterParts は下で定義
-// 標準部品(BUILTIN_PARTS)を一覧から非表示にする（コード埋め込みのため削除は不可、非表示扱いのみ）
-// 非表示にした標準部品の置き場所(2026-09-02に作り直し)。
+// 標準部品(BUILTIN_PARTS)を一覧から非表示にする機能は部品DB単独画面
+// (parts.html)へ移した。CADは state.hiddenBuiltinRefs をサーバーから読んで
+// 一覧から除くだけ(下の allParts() 参照)——非表示・再表示の操作自体はしない。
 //
-// 元の作りでは、戻す入口が「部品DB一覧の一番下」にある小さなリンクだけで、
-// 605件を全部スクロールし切らないと見えなかった。しかも押すと**別のパネル**
-// (カスタム部品登録)が開き、その中ほどの見出しの無い箱に一覧が出ていた。
-// 実際に「復元できない」と言われた。
-//
-// 隠したものを戻す操作は、隠した場所の隣にあるべきなので、部品DB一覧の
-// **先頭**に畳めるブロックとして出す。非表示にした直後は開いた状態にして、
-// 「どこへ行ったか」が操作の流れの中で見えるようにする。
-let _partsHiddenOpen = false;
-function togglePartsHidden() {
-  _partsHiddenOpen = !_partsHiddenOpen;
-  renderPartsAll();
-}
-function hideBuiltinPart(ref) {
-  if (!confirm(`標準部品「${ref}」を一覧から非表示にしますか？\n`
-             + `（一覧の先頭に出る「非表示にした標準部品」からいつでも戻せます）`)) return;
-  state.hiddenBuiltinRefs = state.hiddenBuiltinRefs || [];
-  if (!state.hiddenBuiltinRefs.includes(ref)) state.hiddenBuiltinRefs.push(ref);
-  _partsHiddenOpen = true;   // 行き先を開いて見せる
-  renderPartsAll();
-  partsDb.scheduleSave();
-}
-function unhideBuiltinPart(ref) {
-  state.hiddenBuiltinRefs = (state.hiddenBuiltinRefs || []).filter(r => r !== ref);
-  renderPartsAll();          // ブロックの中身もここで更新される
-  partsDb.scheduleSave();
-}
-// 部品DB一覧の先頭に出す「非表示にした標準部品」ブロック。
-// 1件も無ければ何も出さない(常時出ていると邪魔なだけなので)。
-function hiddenPartsBlockHtml() {
-  const refs = state.hiddenBuiltinRefs || [];
-  if (!refs.length) return '';
-  const rows = refs.map(ref => `
-    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:3px 4px;border-bottom:1px solid var(--bg4)">
-      <span style="font-size:11px;color:var(--fg2)">${escH(ref)}</span>
-      <span onclick="unhideBuiltinPart('${_escAttr(ref)}')" style="font-size:10px;color:var(--acc);cursor:pointer;text-decoration:underline">再表示する</span>
-    </div>`).join('');
-  return `<div style="margin-top:5px;background:var(--bg3);border-radius:3px">
-      <div onclick="togglePartsHidden()" style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;cursor:pointer">
-        <span style="font-size:11px;color:var(--fg2)">非表示にした標準部品（${refs.length}）</span>
-        <span style="font-size:9px;color:var(--fg3)">${_partsHiddenOpen ? '▼' : '▶'}</span>
-      </div>
-      ${_partsHiddenOpen ? rows : ''}
-    </div>`;
-}
-function deletePart(ref) {
-  if (!confirm(`「${ref}」を削除しますか？`)) return;
-  state.customParts = state.customParts.filter(p => p.ref !== ref);
-  renderPartsAll();
-  partsDb.scheduleSave();
-}
 // 部品DBの部品をクリックしたときの動作（2026-08-21に変更）。
 //
 // 以前は種別(p.type)をそのままシンボル種別として配置モードに入っていたが、
@@ -602,27 +553,6 @@ function doPlacePart(type, ref, terminals, groupName) {
     if (labelSkipped) msg += `（仕様欄は既存${labelSkipped}件を保護、未入力${labelFilled}件のみ自動入力）`;
     hint.textContent = msg;
   }
-}
-// 既存のカスタム部品を登録フォームに読み込んで編集できるようにする(2026-08-17)。
-// 従来は同じ型番で全項目を打ち直すか削除して作り直すしかなく不便だった。
-// 保存時(saveCusPart)は型番一致で上書きするので、ここでは値を詰めるだけでよい。
-function editPart(ref) {
-  const p = state.customParts.find(x => x.ref === ref);
-  if (!p) { alert('編集対象が見つかりません（標準部品は編集できません）'); return; }
-  showPartReg();
-  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
-  set('pr-name', p.name || p.ref);
-  set('pr-maker', p.maker);
-  set('pr-ref', p.ref);
-  set('pr-type', p.type);
-  set('pr-volt', p.volt);
-  set('pr-amp', p.amp);
-  set('pr-term', p.terminals);
-  set('pr-contacts', p.contacts);
-  set('pr-note', p.note);
-  set('pr-source', p.source);
-  const statusEl = document.getElementById('pr-outline-status');
-  if (statusEl) statusEl.textContent = p.outlineDxf ? `外形図: ${p.outlineDxfName || 'あり'}(保持されます)` : '';
 }
 // ----------------------------------------------------------------
 // コイル電圧（2026-08-20）
@@ -1006,89 +936,13 @@ function lineWidthOptions(cur) {
   }).join('');
 }
 
-function showPartReg() {
-  openFP('part-reg-p');
-  refreshPendingCsvList();
+// 【2026-09-03】部品DBの登録・編集はCADから部品DB単独画面(parts.html)へ
+// 移した。ここで開くのは「カタログDB取り込み」(Google Drive上のメーカー別
+// CSVを検索用データベースに取り込む機能。部品DB本体=customParts への
+// 書き込みではない)だけに絞った小さいパネル。
+function showCatalogImport() {
+  openFP('catalog-import-p');
   catalogRefreshStatus();
-  refreshPartsBackupDir();
-  refreshPartsPublish();
-}
-
-// バックアップ先フォルダの表示と選択。
-// 2026-09-01: backupNow() は fileHandle.getParent?.() で部品DBと同じフォルダに
-// 書こうとしていたが、ChromeのFile System Access APIに getParent() は存在せず、
-// この経路は常に失敗して毎回「保存先を手で選ぶダイアログ」に落ちていた。
-// つまり「破壊的操作の前に自動でバックアップを取る」保険は一度も自動で動いていない。
-// フォルダ選択はユーザー操作の中でしか開けないので、事前に1回選んでもらう方式にした。
-async function refreshPartsBackupDir() {
-  const el = document.getElementById('parts-backup-dir');
-  if (!el || typeof partsDb === 'undefined') return;
-  // 2026-09-02: サーバー経由で保存している場合、退避は parts_db.json と同じ
-  // フォルダへ自動で書ける(サーバーはパスを知っている)。フォルダ選択は不要なので、
-  // 未設定でも赤字の警告を出さない —— 実際には取れているのに警告を出すと、
-  // 本当に取れていないときの警告が効かなくなる。
-  if (partsDb.saveMode && partsDb.saveMode() === 'server') {
-    el.textContent = 'バックアップ: 部品DBと同じフォルダへ自動で書き出します（フォルダの選択は不要です）';
-    el.style.color = 'var(--fg3)';
-    return;
-  }
-  const st = await partsDb.backupDirStatus();
-  if (st.ok) {
-    el.textContent = `バックアップ先: ${st.name}`;
-    el.style.color = 'var(--fg3)';
-  } else if (st.reason === 'unset') {
-    el.textContent = '⚠ バックアップ先フォルダが未設定です（作り直し等の前に自動バックアップが取れません）';
-    el.style.color = 'var(--red)';
-  } else {
-    // 許可が外れている。放置すると「バックアップだけ静かに取れない」状態になる。
-    el.textContent = `⚠ バックアップ先「${st.name}」への許可が外れています。`
-      + '「🗂 バックアップ先」を押して選び直してください';
-    el.style.color = 'var(--red)';
-  }
-}
-async function pickPartsBackupDir() {
-  await partsDb.pickBackupDir();
-  refreshPartsBackupDir();
-}
-
-// 他ソフト向けの公開状態の表示(2026-09-02)。
-// 部品DBは保存のたびに、その中身の控えをローカルサーバーへ送っている
-// (%LOCALAPPDATA%\ecad\parts_db_mirror.json)。他のソフトはそれを読む。
-//
-// ここを画面に出すのは、「送れていないこと」が今まで通り何の変化も無く
-// 進んでしまうのを防ぐため。ただし赤字にはしない ——
-// 控えが送れていなくても部品DB自体は正しく保存されており、
-// 赤=保存できていない、という既存の合図と混ぜてはいけない。
-async function refreshPartsPublish() {
-  const el = document.getElementById('parts-publish-status');
-  if (!el || typeof partsDb === 'undefined') return;
-  let stats = null;
-  try {
-    const res = await fetch('/api/parts/stats');
-    stats = await res.json();
-  } catch (e) { /* サーバー無しで開いている場合。下で案内する */ }
-
-  if (!stats || stats.available === false) {
-    el.textContent = '他ソフトへの公開: 無効（tools/parts_db が入っていないか、'
-      + 'ローカルサーバー経由で開いていません）';
-    return;
-  }
-  const m = partsDb.mirrorStatus();
-  if (stats.ok) {
-    // writable(=setpath済み)なら、CADの保存もこのファイルへ直接書いている。
-    // 「他ソフトが読んでいるもの」と「CADが書いているもの」が同じかどうかは、
-    // 食い違うと一番分かりにくい種類の事故になるので、ここで見えるようにする。
-    // 括弧を二重にしない。`…件（設定したファイルを直接参照（CADの保存もここへ
-    // 書きます））` は実機で読みにくかった。
-    const src = stats.writable ? '設定したファイルを直接参照。CADの保存もここへ書きます'
-              : stats.source === 'path' ? '設定したファイルを直接参照'
-                                        : 'CADが保存した控えを参照';
-    el.textContent = `他ソフトへの公開: ${stats.count}件（${src}）`
-      + (m.at && !m.ok ? ` ※直近の控えの送信に失敗: ${m.error}` : '');
-  } else {
-    el.textContent = `他ソフトへの公開: まだ読めていません（${stats.error}）。`
-      + '部品DBを一度保存すると控えが作られます';
-  }
 }
 
 // ----------------------------------------------------------------
@@ -1100,8 +954,6 @@ async function refreshPartsPublish() {
 // 【重要】カタログDBが無い環境(外部PC等)でもCADは普通に使えること。
 // APIが available:false を返したら、この欄を無効化して案内を出すだけにする。
 // ----------------------------------------------------------------
-let _catalogResults = [];
-
 async function catalogRefreshStatus() {
   const st = document.getElementById('cat-status');
   const setup = document.getElementById('cat-setup');
@@ -1267,154 +1119,10 @@ async function catalogReimport() {
   }
 }
 
-// カタログDBの全件で部品DBを作り直す（2026-08-20）
-//
-// 部品DBに何が入っていて何が最新か分からなくなったため、素性の分かる
-// カタログDBを唯一の出所として作り直す、という盛田さんの判断による機能。
-// 既存の内容は破棄されるので、実行前に必ずバックアップを書き出す。
-async function catalogResetPartsDb() {
-  const st = document.getElementById('cat-status');
-  const setMsg = m => { if (st) st.textContent = m; };
-  try {
-    // 先にDriveを読み直す。「再取込」を押し忘れると古いカタログで作り直してしまい、
-    // 種別が空欄のまま入る等の分かりにくい失敗になるため、順番を人に意識させない。
-    const handle = await _catLoadHandle();
-    if (handle) {
-      try {
-        let perm = await handle.queryPermission({ mode: 'read' });
-        if (perm !== 'granted') perm = await handle.requestPermission({ mode: 'read' });
-        if (perm === 'granted') {
-          setMsg('Driveのカタログを読み直しています...');
-          await _catImportFromHandle(handle, true);
-        }
-      } catch (e) { /* 読み直せなくても、既存のカタログDBで続行する */ }
-    }
-
-    const res = await fetch('/api/catalog/all');
-    const d = await res.json();
-    if (!d.ok) { setMsg('エラー: ' + (d.error || '取得に失敗しました')); return; }
-    const rows = d.results || [];
-    if (!rows.length) { setMsg('カタログDBが空です。先にフォルダを選んで取り込んでください'); return; }
-
-    const noType = rows.filter(r => !r.type).length;
-    const now = state.customParts.length;
-    // 【2026-09-01】外形図DXFは作り直しで丸ごと消えていた(2回目の消失)。
-    // カタログには存在しないデータなので、refで突き合わせて必ず引き継ぐ。
-    // 何が残り何が消えるかを、押す前に数字で見せる。
-    const catalogRefs = new Set(rows.map(r => r.ref));
-    const withDxf = state.customParts.filter(p => p.outlineDxf);
-    const keptDxf = withDxf.filter(p => catalogRefs.has(p.ref)).length;
-    const lostDxf = withDxf.length - keptDxf;
-    const dropped = state.customParts.filter(p => !catalogRefs.has(p.ref)).map(p => p.ref);
-    if (!confirm(
-      `部品DBの中身を破棄し、カタログDBの${rows.length}件で作り直します。\n\n`
-      + `　現在の部品DB: ${now}件 → 破棄されます\n`
-      + `　作り直し後　: ${rows.length}件\n`
-      + (noType ? `　うち種別が空欄: ${noType}件\n` : '')
-      + (keptDxf ? `\n外形図DXFの紐付け ${keptDxf}件は引き継ぎます。\n` : '')
-      + (lostDxf ? `⚠ ただし、カタログに無い部品に付いた外形図 ${lostDxf}件は失われます。\n` : '')
-      + (dropped.length
-          ? `⚠ カタログに無い部品 ${dropped.length}件が削除されます:\n`
-            + `　${dropped.slice(0, 8).join(', ')}${dropped.length > 8 ? ` ほか${dropped.length - 8}件` : ''}\n`
-          : '')
-      + `\n実行前に現在の内容をバックアップファイルへ書き出します。\n\n`
-      + `続けますか？`)) return;
-
-    setMsg('バックアップ中...');
-    const backup = await partsDb.backupNow();
-    if (!backup && now > 0) {
-      if (!confirm('バックアップを書き出せませんでした。\nこのまま作り直すと現在の内容は戻せません。続けますか？')) {
-        setMsg('中止しました');
-        return;
-      }
-    }
-
-    setMsg('作り直し中...');
-    // 作り直しでも外形図DXFは捨てない。carryOutlineDxf を必ず通す。
-    const prevByRef = new Map(state.customParts.map(p => [p.ref, p]));
-    state.customParts = rows.map(r => carryOutlineDxf({
-      maker: r.maker || '', ref: r.ref, type: r.type || '',
-      volt: r.volt || '', amp: r.amp || '', terminals: r.terminals || '',
-      contacts: r.contacts || '', note: r.note || '', source: r.source || '', custom: true,
-    }, prevByRef.get(r.ref)));
-    state.hiddenBuiltinRefs = state.hiddenBuiltinRefs || [];
-    renderPartsAll();
-    // 【2026-09-01】保存の成否を必ず確認してから結果を伝える。
-    // 以前はここで writeNow() の戻り値を見ずに「作り直しました」と出していたため、
-    // 保存が空振りしても画面には全件が並び成功のalertまで出て、次の起動で
-    // 元の件数に戻る、という形で作り直しが丸ごと失われていた
-    // (2026-08-20の作り直しが実際にこれで消えている。605件→168件)。
-    const saved = await partsDb.writeNow();
-    if (!saved) {
-      const howto = (partsDb.saveMode && partsDb.saveMode() === 'server')
-        ? `ローカルサーバー(start.bat の黒い画面)が動いているか確認し、`
-          + `動いていなければ起動してからもう一度この操作をしてください。`
-        : `「部品登録」パネルの📂開く で部品DBファイルを開き直してから、`
-          + `もう一度この操作をしてください。`;
-      const msg = `部品DBをファイルに保存できませんでした。\n\n`
-        + `画面上は${rows.length}件になっていますが、この状態は保存されていません。\n`
-        + `このまま閉じると元の内容に戻ります。\n\n`
-        + howto
-        + (backup ? `\n\n直前の内容は「${backup}」に退避済みです。` : '');
-      setMsg('保存できませんでした（画面上だけ変わっています）');
-      alert(msg);
-      return;
-    }
-    setMsg(`部品DBを${rows.length}件で作り直しました（保存済み`
-      + (keptDxf ? `・外形図${keptDxf}件を引き継ぎ` : '')
-      + `）`
-      + (backup ? `（バックアップ: ${backup}）` : '')
-      + (d.truncated ? `　※カタログは${d.total}件ありますが上限まで取り込みました` : ''));
-    alert(`部品DBを${rows.length}件で作り直し、ファイルに保存しました。`
-      + (keptDxf ? `\n外形図DXFの紐付け${keptDxf}件は引き継いでいます。` : '')
-      + (backup ? `\n\n以前の内容は「${backup}」に退避してあります。` : ''));
-  } catch (e) {
-    setMsg('エラー: ' + (e.message || e));
-  }
-}
-
-async function catalogSearch() {
-  const q = document.getElementById('cat-q')?.value.trim() || '';
-  const st = document.getElementById('cat-status');
-  const box = document.getElementById('cat-result');
-  if (!q) { if (st) st.textContent = 'キーワードを入力してください'; return; }
-  if (st) st.textContent = '検索中...';
-  try {
-    const res = await fetch('/api/catalog/search?q=' + encodeURIComponent(q) + '&limit=100');
-    const d = await res.json();
-    if (!d.ok) {
-      if (st) st.textContent = 'エラー: ' + (d.error || '検索に失敗しました');
-      if (box) box.style.display = 'none';
-      return;
-    }
-    _catalogResults = d.results || [];
-    if (st) {
-      let msg = `${d.count}件ヒット${d.count >= 100 ? '（上位100件を表示）' : ''}`;
-      if (d.warning) msg += ' ※' + d.warning;
-      st.textContent = msg;
-    }
-    if (!box) return;
-    if (!_catalogResults.length) { box.style.display = 'none'; return; }
-    box.style.display = 'block';
-    box.innerHTML = _catalogResults.map((r, i) => {
-      const already = state.customParts.some(p => p.ref === r.ref);
-      const spec = [r.type, r.volt, r.amp, r.contacts].filter(Boolean).join(' / ');
-      // 出典(カタログ名・ページ)を出す。調べられない情報は持つ意味がないため。
-      const src = r.source ? `<div style="color:var(--fg3);font-size:10px">出典: ${_esc(r.source)}</div>` : '';
-      return `<div style="display:flex;gap:6px;align-items:flex-start;padding:3px 0;border-bottom:1px solid var(--bd2)">
-        <div style="flex:1;min-width:0">
-          <div><b>${_esc(r.ref)}</b> <span style="color:var(--fg3)">${_esc(r.maker)}</span></div>
-          <div style="color:var(--fg3);font-size:10px">${_esc(spec)}</div>
-          ${src}
-        </div>
-        <button class="fp-btn" style="font-size:10px;padding:2px 6px;white-space:nowrap"
-          onclick="catalogAddToParts(${i})">${already ? '上書き' : '部品DBへ'}</button>
-      </div>`;
-    }).join('');
-  } catch (e) {
-    if (st) st.textContent = 'エラー: ' + (e.message || e);
-  }
-}
+// 部品DB(customParts)の登録・編集・カタログからの取り込み・全件作り直しは、
+// すべて部品DB単独画面(parts.html / js/parts_page.js)へ移した(2026-09-03)。
+// CADに残るのはカタログDB(検索用データベース)をDriveから取り込む機能だけ
+// (下の catalogPickFolder 等。部品DB本体への書き込みではない)。
 
 // 全体共通のHTMLエスケープ(state.js の escH)への別名。
 // 呼び出し箇所が多いのでこの名前は残すが、実装は1箇所に寄せてある。
@@ -1425,156 +1133,6 @@ function _escAttr(s) {
   return String(s == null ? '' : s)
     .replace(/\\/g, '\\\\').replace(/'/g, "\\'")
     .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-}
-
-// ----------------------------------------------------------------
-// carryOutlineDxf — 外形図DXFの紐付けを新しい部品データへ引き継ぐ
-//
-// 外形図DXFはカタログにもCSVにも列が無く、盛田さんが手で1件ずつ紐付けたデータ。
-// 部品データを新しい内容で置き換えるとき、意識して引き継がないと必ず消える。
-//
-// **これで2回消している**:
-//   2026-08-19 CSV一括登録(bulkImportParts)が Object.assign で丸ごと上書きしていた
-//   2026-09-01 カタログDBからの作り直し(catalogResetPartsDb)が丸ごと置き換えていた
-//              (1回目の修正が、隣の経路に反映されていなかった)
-//
-// 部品データを置き換える処理を新しく書くときは、必ずここを通すこと。
-// ----------------------------------------------------------------
-function carryOutlineDxf(newPart, oldPart) {
-  if (!oldPart || !newPart) return newPart;
-  if (oldPart.outlineDxf     !== undefined) newPart.outlineDxf     = oldPart.outlineDxf;
-  if (oldPart.outlineDxfName !== undefined) newPart.outlineDxfName = oldPart.outlineDxfName;
-  return newPart;
-}
-
-// 検索結果の1件だけを部品DBに追加する。
-// 外形図DXFは盛田さんが手で紐付けたものなので、上書き時も必ず引き継ぐ
-// (CSV一括登録で全件消えた事故と同じ轍を踏まないこと)。
-function catalogAddToParts(idx) {
-  const r = _catalogResults[idx];
-  if (!r) return;
-  const part = {
-    maker: r.maker || '', ref: r.ref, type: r.type || '',
-    volt: r.volt || '', amp: r.amp || '', terminals: r.terminals || '',
-    contacts: r.contacts || '', note: r.note || '', source: r.source || '', custom: true,
-  };
-  const existing = state.customParts.find(p => p.ref === r.ref);
-  if (existing) {
-    if (!confirm(`「${r.ref}」は既に部品DBにあります。カタログの内容で上書きしますか？\n（外形図DXFの紐付けは保持されます）`)) return;
-    const prev = { ...existing };
-    Object.assign(existing, part);
-    carryOutlineDxf(existing, prev);
-  } else {
-    state.customParts.push(part);
-  }
-  renderPartsAll();
-  partsDb.scheduleSave();
-  const st = document.getElementById('cat-status');
-  if (st) st.textContent = `「${r.ref}」を部品DBに${existing ? '上書き' : '追加'}しました`;
-  catalogSearch();
-}
-
-// 保留CSV(catalog_pending/)の一覧を取得してプルダウンに反映
-async function refreshPendingCsvList() {
-  const sel = document.getElementById('pc-file');
-  if (!sel) return;
-  try {
-    const res = await fetch('/api/pending_csv');
-    const data = await res.json();
-    const files = data.files || [];
-    sel.innerHTML = files.length
-      ? files.map(f => `<option value="${escH(f)}">${escH(f)}</option>`).join('')
-      : '<option value="">(登録待ちCSVはありません)</option>';
-  } catch (e) {
-    sel.innerHTML = '<option value="">(サーバー未対応・start.batを最新版で起動してください)</option>';
-  }
-}
-
-// 選択した保留CSVを取得し、CSV一括登録欄に追記する(登録自体はボタンを押すまで実行しない)
-async function loadPendingCsv() {
-  const sel = document.getElementById('pc-file');
-  const statusEl = document.getElementById('pc-status');
-  const name = sel?.value;
-  if (!name) { if (statusEl) statusEl.textContent = 'ファイルを選択してください'; return; }
-  try {
-    const res = await fetch('catalog_pending/' + encodeURIComponent(name));
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const text = (await res.text()).trim();
-    const csvEl = document.getElementById('pr-csv');
-    if (csvEl) csvEl.value = csvEl.value.trim() ? (csvEl.value.trim() + '\n' + text) : text;
-    if (statusEl) statusEl.textContent = `読み込みました(${text.split('\n').filter(l=>l.trim()).length}行)。内容を確認して「CSVから一括登録」を押してください`;
-  } catch (e) {
-    if (statusEl) statusEl.textContent = '読み込みに失敗しました: ' + (e.message || e);
-  }
-}
-
-// 外形図DXFファイル読込（エンコーディング自動判定して文字列化）
-function _readDxfFileAsText(file, cb) {
-  const rd = new FileReader();
-  rd.onload = ev => {
-    const buf = ev.target.result;
-    const u8 = new Uint8Array(buf);
-    let enc = 'UTF-8';
-    if (!(u8[0]===0xEF && u8[1]===0xBB && u8[2]===0xBF)) enc = _detectSjis(u8);
-    let text;
-    try { text = new TextDecoder(enc).decode(buf); }
-    catch (err) { text = new TextDecoder('UTF-8').decode(buf); }
-    cb(text);
-  };
-  rd.readAsArrayBuffer(file);
-}
-
-let _pendingOutlineDxf = null; // { text, filename } 登録フォーム用の一時保持
-function handleOutlineFileSelect(e) {
-  const f = e.target.files[0]; if (!f) return;
-  _readDxfFileAsText(f, text => {
-    _pendingOutlineDxf = { text, filename: f.name };
-    document.getElementById('pr-outline-status').textContent = `添付予定: ${f.name}`;
-  });
-}
-
-function saveCusPart() {
-  const ref = document.getElementById('pr-ref').value.trim();
-  if (!ref) { alert('型番を入力してください'); return; }
-  const existing = state.customParts.find(p => p.ref === ref);
-  // 外形図DXF: 今回新しく選択したファイルがあればそれを使う。無ければ、編集時に
-  // 既存部品が持っていた外形図をそのまま残す(2026-08-17、編集機能追加時に
-  // 「編集して保存すると外形図が消える」不具合を作り込みそうになったため対策)。
-  const outlineDxf     = _pendingOutlineDxf?.text     ?? existing?.outlineDxf     ?? '';
-  const outlineDxfName = _pendingOutlineDxf?.filename ?? existing?.outlineDxfName ?? '';
-  const part = {
-    maker: document.getElementById('pr-maker').value,
-    ref, type: document.getElementById('pr-type').value,
-    volt: document.getElementById('pr-volt').value, amp: document.getElementById('pr-amp').value,
-    terminals: document.getElementById('pr-term').value, contacts: document.getElementById('pr-contacts').value,
-    note: document.getElementById('pr-note').value,
-    source: document.getElementById('pr-source').value, custom: true,
-    outlineDxf, outlineDxfName,
-  };
-  if (existing) Object.assign(existing, part); else state.customParts.push(part);
-  _pendingOutlineDxf = null;
-  document.getElementById('pr-outline-status').textContent = '';
-  document.getElementById('pr-outline-file').value = '';
-  renderPartsAll(); closeFP('part-reg-p'); alert(`「${ref}」を登録しました`);
-  partsDb.scheduleSave();
-}
-
-// 既存カスタム部品に外形図DXFを後から添付
-function attachOutlineToPart(ref) {
-  const part = state.customParts.find(p => p.ref === ref);
-  if (!part) { alert('カスタム部品のみ外形図を添付できます（標準部品はコピーしてカスタム登録してください）'); return; }
-  const input = document.createElement('input');
-  input.type = 'file'; input.accept = '.dxf';
-  input.onchange = e => {
-    const f = e.target.files[0]; if (!f) return;
-    _readDxfFileAsText(f, text => {
-      part.outlineDxf = text; part.outlineDxfName = f.name;
-      renderPartsAll();
-      partsDb.scheduleSave();
-      alert(`「${ref}」に外形図「${f.name}」を添付しました`);
-    });
-  };
-  input.click();
 }
 
 // 部品DBに紐付いた外形図DXFをキャンバスに配置するモードへ
@@ -1589,87 +1147,6 @@ function placePartOutline(ref) {
   state.pendingOutline = parsed;
   setMode('outline');
   document.getElementById('s-hint').textContent = `「${ref}」外形図 → クリックで配置  [ESC] 終了`;
-}
-
-// 簡易CSVパーサ（ダブルクォート内のカンマに対応）
-function parseCSVLine(line) {
-  const out = []; let cur = ''; let inQ = false;
-  for (let i = 0; i < line.length; i++) {
-    const c = line[i];
-    if (inQ) {
-      if (c === '"' && line[i+1] === '"') { cur += '"'; i++; }
-      else if (c === '"') { inQ = false; }
-      else cur += c;
-    } else {
-      if (c === '"') inQ = true;
-      else if (c === ',') { out.push(cur); cur = ''; }
-      else cur += c;
-    }
-  }
-  out.push(cur);
-  return out.map(s => s.trim());
-}
-// PART_TYPE_CODES / LEGACY_PART_TYPES / PART_TYPE_LABELS / PART_TYPE_ORDER は
-// js/part_types.js に集約した(2026-09-02。単独画面と共有するため)。
-function bulkImportParts() {
-  const raw = document.getElementById('pr-csv').value;
-  const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  let added = 0, skipped = 0, updated = 0;
-  const errors = [];
-  const legacyRows = [];   // 廃止した種別(sw_no/sw_nc)で登録されている行。要再分類
-  lines.forEach((line, i) => {
-    // ヘッダー行らしき行はスキップ（「型番」「maker」等の文字を含む、または種別列が既知コードでない）
-    if (/型番|メーカー|maker|ref/i.test(line)) return;
-    const cols = parseCSVLine(line);
-    // 9列目=出典(カタログ名・ページ)。将来列が増えても壊れないよう、
-    // 足りない列は空として扱う(「ちょうどN列」では判定しない)。2026-08-21
-    const [maker, ref, type, volt, amp, terminals, contacts, note, source] = cols;
-    if (!ref) { errors.push(`${i+1}行目: 型番が空です`); skipped++; return; }
-    if (type && !PART_TYPE_CODES.includes(type)) {
-      // 廃止した種別(sw_no/sw_nc)は弾かずに通す。ここで弾くと、これらで
-      // 登録済みのCSV(IDEC ø22の16型番等)が再取込できなくなるため。
-      // 中身の分類し直しは人がやる必要があるので、件数だけ数えて後で知らせる。
-      if (LEGACY_PART_TYPES[type]) {
-        legacyRows.push(`${i+1}行目: ${ref}（現在の種別: ${LEGACY_PART_TYPES[type]}）`);
-      } else {
-        errors.push(`${i+1}行目: 種別「${type}」が不正です（${PART_TYPE_CODES.join('/')}のいずれか）`);
-        skipped++; return;
-      }
-    }
-    // 種別が空欄の場合、以前は coil に強制していたが、それだとPLC・タッチパネル等の
-    // 「該当種別なし」で登録した部品が全部リレーコイル扱いになってしまうため、
-    // 2026-08-19に空欄のまま(未分類)を許容するよう変更した。
-    const part = { maker: maker||'', ref, type: type||'', volt: volt||'', amp: amp||'', terminals: terminals||'', contacts: contacts||'', note: note||'', source: source||'', custom: true };
-    const existing = state.customParts.find(p => p.ref === ref);
-    if (existing) {
-      // 外形図DXFはCSVに列が無いため、Object.assignで丸ごと上書きすると
-      // 手作業で紐付けた外形図が消えてしまう(実際に消失事故が起きた。2026-08-19)
-      const prev = { ...existing };
-      Object.assign(existing, part);
-      carryOutlineDxf(existing, prev);
-      updated++;
-    }
-    else { state.customParts.push(part); added++; }
-  });
-  renderPartsAll();
-  partsDb.scheduleSave();
-  let msg = `登録完了: 新規${added}件`;
-  if (updated) msg += `・更新${updated}件`;
-  if (skipped) msg += `・スキップ${skipped}件`;
-  if (errors.length) msg += `\n\n【エラー詳細】\n${errors.join('\n')}`;
-  if (legacyRows.length) {
-    // 2026-08-23: sw_no/sw_nc は廃止した種別。取り込みは通すが、実体に合わせて
-    // 分類し直してもらう必要がある(押ボタンなら pb、セレクタなら selector、
-    // 接点ブロック単体なら contact_unit)。自動変換すると誤分類になるためしない。
-    msg += `\n\n【要再分類 ${legacyRows.length}件】\n`
-        + `a接点/b接点は「接点構成」であって部品の分類ではないため、種別から廃止しました。\n`
-        + `接点構成は型式の中に含まれます(例: IDEC HW1B-M1P10 の P10 が 1a)。\n`
-        + `下記は実体に合わせて種別を選び直してください。\n`
-        + `　押ボタン → pb / セレクタ → selector / 接点ブロック単体 → contact_unit\n\n`
-        + legacyRows.join('\n');
-  }
-  alert(msg);
-  if (added || updated) document.getElementById('pr-csv').value = '';
 }
 
 // ----------------------------------------------------------------
@@ -3841,26 +3318,23 @@ function renderPartsTable2(parts) {
   const makersPresent = Object.keys(byMaker).sort((a, b) =>
     byMaker[b].length - byMaker[a].length || a.localeCompare(b, 'ja'));
 
+  // 【2026-09-03】編集(✎)・削除(×)・非表示(×)・外形図添付(添付)は、
+  // 部品DB(customParts)への書き込みなのでCADからは無くした。
+  // 部品の登録・編集は部品DB単独画面(parts.html)で行う。
   const cardHtml = p => `
     <div style="padding:4px 3px;border-bottom:1px solid var(--bg4);cursor:pointer" title="選択中のシンボルにこの部品を割り当てます（型番・端子番号・コイル電圧）" onclick="placePart('${_escAttr(p.type)}','${_escAttr(p.ref)}','${_escAttr(p.terminals||'')}')">
       <div style="display:flex;justify-content:space-between">
         <span style="font-size:11px;font-weight:600;color:var(--fg)">${escH(p.ref)}</span>
-        ${p.custom
-          ? `<span>
-               <span onclick="event.stopPropagation();editPart('${_escAttr(p.ref)}')" style="font-size:9px;color:var(--acc);cursor:pointer;margin-right:6px" title="編集">✎</span>
-               <span onclick="event.stopPropagation();deletePart('${_escAttr(p.ref)}')" style="font-size:9px;color:var(--red);cursor:pointer" title="削除">×</span>
-             </span>`
-          : `<span onclick="event.stopPropagation();hideBuiltinPart('${_escAttr(p.ref)}')" style="font-size:9px;color:var(--fg3);cursor:pointer" title="一覧から非表示にする（標準部品は削除できないため）">×</span>`}
       </div>
       <div style="font-size:10px;color:var(--fg3)">${escH(p.maker)} ${escH(p.volt||'')} ${escH(p.amp||'')}</div>
       ${p.contacts?`<div style="font-size:10px;color:var(--acc)">接点:${escH(p.contacts)}</div>`:''}
       ${p.source?`<div style="font-size:9px;color:var(--fg3)" title="出典">📖 ${escH(p.source)}</div>`:''}
       ${p.outlineDxf
         ? `<div style="font-size:9px;color:var(--acc)">外形図: ${escH(p.outlineDxfName||'あり')} <span onclick="event.stopPropagation();placePartOutline('${_escAttr(p.ref)}')" style="cursor:pointer;text-decoration:underline">配置</span></div>`
-        : (p.custom ? `<div style="font-size:9px;color:var(--fg3)">外形図なし <span onclick="event.stopPropagation();attachOutlineToPart('${_escAttr(p.ref)}')" style="cursor:pointer;text-decoration:underline;color:var(--acc)">添付</span></div>` : '')}
+        : ''}
     </div>`;
 
-  el.innerHTML = hiddenPartsBlockHtml() + makersPresent.map(mk => {
+  el.innerHTML = makersPresent.map(mk => {
     const mkParts = byMaker[mk];
     const mkCollapsed = !searching && _isCollapsed(mk);
     // このメーカー内を種別でさらに分ける
