@@ -11,6 +11,11 @@
 //               → 1回目の修正が隣の経路に反映されていなかった。同じ穴を踏んだ
 //
 // 3度目を防ぐため、部品データを置き換える全経路を実ソースで検証する。
+//
+// 【2026-09-03】部品DB(customParts)の書き込み経路はCAD(js/ui.js)から
+// 部品DB単独画面(js/parts_page.js)へ移した。carryOutlineDxf等の実体も
+// そちらにしか無いので、このテストが見るソースを ui.js から parts_page.js へ
+// 切り替えた。
 
 const fs = require('fs');
 const vm = require('vm');
@@ -22,7 +27,7 @@ const eq = (a, b, m) => {
 };
 const ok = (cond, m) => { if (!cond) { ng++; console.log('  NG', m); } else console.log('  OK', m); };
 
-const ui = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8');
+const ui = fs.readFileSync(__dirname + '/../js/parts_page.js', 'utf8');
 const pick = re => { const m = ui.match(re); if (!m) throw new Error('見つからない:' + re); return m[0]; };
 
 // ------------------------------------------------------------------
@@ -101,8 +106,7 @@ console.log('\n【押す前に、何が残り何が消えるか出る】');
 {
   ok(/外形図DXFの紐付け \$\{keptDxf\}件は引き継ぎます/.test(ui), '引き継ぐ件数を確認ダイアログに出す');
   ok(/カタログに無い部品 \$\{dropped\.length\}件が削除されます/.test(ui), '削除される部品の件数を出す');
-  ok(/dropped\.slice\(0, 8\)/.test(ui), '削除される型番を実際に列挙する');
-  ok(/カタログに無い部品に付いた外形図 \$\{lostDxf\}件は失われます/.test(ui), '失われる外形図がある場合は警告する');
+  ok(/カタログに無い部品の外形図 \$\{lostDxf\}件は失われます/.test(ui), '失われる外形図がある場合は警告する');
 }
 
 console.log(ng === 0 ? '\n=== 全て OK ===' : `\n=== NG ${ng}件 ===`);

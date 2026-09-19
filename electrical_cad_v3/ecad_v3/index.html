@@ -171,7 +171,8 @@
       <div class="rg">
         <div class="rg-btns">
           <div class="rb rb-sm" onclick="showFramePanel()"><svg viewBox="0 0 14 14"><rect x="1" y="1" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="1" y="9" width="12" height="4" fill="none" stroke="currentColor" stroke-width="1"/></svg>図面枠</div>
-          <div class="rb rb-sm" onclick="showPartReg()"><svg viewBox="0 0 14 14"><rect x="3" y="2" width="8" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5 5h4M5 8h2M9 8v3M9 8h2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>部品登録</div>
+          <div class="rb rb-sm" onclick="window.open('parts.html','_blank')" title="部品の登録・編集は部品DB単独画面で行います"><svg viewBox="0 0 14 14"><rect x="3" y="2" width="8" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5 5h4M5 8h2M9 8v3M9 8h2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>部品登録</div>
+          <div class="rb rb-sm" onclick="showCatalogImport()" title="カタログDB(Google Drive上のメーカー別CSV)を検索用データベースに取り込みます"><svg viewBox="0 0 14 14"><rect x="1" y="2" width="12" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4 6h6M4 8h6M4 10h4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>カタログDB</div>
           <div class="rb rb-sm" onclick="showSymReg()"><svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M7 5v4M5 7h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>シンボル登録</div>
           <div class="rb rb-sm" onclick="symLib.toggle()" title="シンボルライブラリ"><svg viewBox="0 0 14 14"><rect x="1" y="2" width="12" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4 5h6M4 7h4M4 9h5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>ライブラリ</div>
         </div>
@@ -593,55 +594,21 @@
     </div>
 
     
-    <!-- 部品登録 -->
-    <div class="fp" id="part-reg-p">
+    <!-- カタログDB取り込み -->
+    <!-- 【2026-09-03】部品DB(customParts)の登録・編集・削除・非表示・CSV一括登録・
+         カタログからの全件作り直しは、すべて部品DB単独画面(parts.html)へ移した。
+         CADはもう部品DBを書かない(読むだけ)。ここに残るのは、カタログDB
+         (Google Drive上のメーカー別CSVを検索用データベースへ取り込む機能)だけ
+         ——部品DB本体への書き込みではないため、CAD側に残している。 -->
+    <div class="fp" id="catalog-import-p">
       <div style="display:flex;align-items:center;margin-bottom:6px">
-        <h3 style="flex:1;margin:0">カスタム部品登録</h3>
-        <span onclick="closeFP('part-reg-p')" style="cursor:pointer;font-size:18px;color:var(--fg3);padding:0 4px">×</span>
+        <h3 style="flex:1;margin:0">カタログDB取り込み</h3>
+        <span onclick="closeFP('catalog-import-p')" style="cursor:pointer;font-size:18px;color:var(--fg3);padding:0 4px">×</span>
       </div>
-      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;padding:6px;background:var(--bg3);border-radius:4px">
-        <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="partsDb.pickExisting()">📂 開く</button>
-        <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="partsDb.createNew()">🆕 新規作成</button>
-        <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="pickPartsBackupDir()"
-          title="作り直し等の破壊的な操作の前に、自動でバックアップを書き出すフォルダを選びます。一度選べば次回以降は不要です">🗂 バックアップ先</button>
-      </div>
-      <p class="parts-db-status" style="font-size:10px;color:var(--fg3);margin-bottom:8px">部品DBファイル未設定</p>
-      <p id="parts-backup-dir" style="font-size:10px;color:var(--fg3);margin-bottom:8px"></p>
-      <p id="parts-publish-status" style="font-size:10px;color:var(--fg3);margin-bottom:8px"></p>
-      <div class="g2">
-        <div class="fr"><label>部品名 *</label><input type="text" id="pr-name" placeholder="三菱 S-T21"></div>
-        <div class="fr"><label>メーカー</label><input type="text" id="pr-maker" placeholder="三菱電機"></div>
-      </div>
-      <div class="g2">
-        <div class="fr"><label>型番 *</label><input type="text" id="pr-ref" placeholder="S-T21"></div>
-        <div class="fr"><label>種別</label>
-          <select id="pr-type"><option value="breaker">ブレーカ</option><option value="contactor">電磁接触器</option><option value="starter">電磁開閉器(サーマル一体)</option><option value="thermal">サーマルリレー</option><option value="coil">リレーコイル</option><option value="timer">タイマ</option><option value="pb">押ボタン</option><option value="pb_lamp">照光押ボタン</option><option value="pb_estop">非常停止</option><option value="selector">セレクタ</option><option value="selector_key">鍵付セレクタ</option><option value="selector_lamp">照光セレクタ</option><option value="selector_pb">セレクタ押ボタン</option><option value="lever">モノレバー</option><option value="contact_unit">コンタクトユニット</option><option value="lamp">ランプ・表示灯</option><option value="inverter">インバータ</option><option value="servo">サーボアンプ</option><option value="servo_motor">サーボモータ</option><option value="motor">モーター</option><option value="plc">PLC(シーケンサ)</option><option value="plc_unit">PLC増設ユニット</option><option value="hmi">タッチパネル・表示器</option><option value="terminal">端子台</option><option value="fuse">ヒューズ</option><option value="transformer">トランス</option><option value="option">増設ユニット等(付属品)</option></select>
-        </div>
-      </div>
-      <div class="g2">
-        <div class="fr"><label>定格電圧</label><input type="text" id="pr-volt" placeholder="AC200V"></div>
-        <div class="fr"><label>定格電流</label><input type="text" id="pr-amp" placeholder="10A"></div>
-      </div>
-      <div class="fr"><label>端子番号 (カンマ区切り)</label><input type="text" id="pr-term" placeholder="例: 主回路:1,2,3,4,5,6 / 補助:11,12,14"></div>
-      <div style="font-size:10px;color:var(--fg3);margin:-4px 0 6px 0;line-height:1.5">
-        1つの型式が複数のシンボルに分かれる部品（コイル＋主接点、ブレーカ本体＋補助接点等）は<br>
-        「名前:番号,番号 / 名前:番号,番号」の形で書くと、割り当て時にどれを使うか選べます。<br>
-        例) コイル:A1,A2 / 主回路:1,3,5,2,4,6 / 補助:13,14<br>
-        「:」を使わず従来どおり「A1,A2,1,2」と書いた場合はそのまま1つの並びとして扱います。
-      </div>
-      <div class="fr"><label>接点構成</label><input type="text" id="pr-contacts" placeholder="a2b1"></div>
-      <div class="fr"><label>備考</label><textarea id="pr-note" rows="2"></textarea></div>
-      <div class="fr"><label>出典</label><input type="text" id="pr-source" placeholder="例: 三菱電磁開閉器 p.41"></div>
-      <div class="fr"><label>外形図DXF（任意）</label><input type="file" id="pr-outline-file" accept=".dxf" onchange="handleOutlineFileSelect(event)"></div>
-      <p id="pr-outline-status" style="font-size:10px;color:var(--fg3)"></p>
-      <div style="display:flex;gap:6px;margin-top:8px">
-        <button class="fp-btn primary" onclick="saveCusPart()">登録</button>
-        <button class="fp-btn" onclick="closeFP('part-reg-p')">閉じる</button>
-      </div>
-      <hr style="margin:12px 0;border-color:var(--bd2)">
-      <h3 style="font-size:13px">カタログDBから探す</h3>
-      <p style="font-size:10px;color:var(--fg2);margin-bottom:4px">
-        Google Drive上のカタログDB(メーカー別CSV)から型番を検索し、選んだものだけを部品DBに追加します。<br>
+      <p style="font-size:10px;color:var(--fg2);margin-bottom:8px">
+        部品の登録・編集・削除は<a href="parts.html" target="_blank" style="color:var(--acc)">部品DB単独画面</a>で行います。<br>
+        ここでは、Google Drive上のカタログDB(メーカー別CSV)を検索用データベースに
+        取り込みます（部品DB単独画面の「カタログDB検索」で使う元データです）。<br>
         カタログDBが未設定・未導入でもCADは通常通り使えます（この欄が使えなくなるだけです）。
       </p>
       <div id="cat-setup" style="display:none;margin-bottom:6px">
@@ -655,37 +622,14 @@
         </p>
       </div>
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
-        <input type="text" id="cat-q" placeholder="型番・メーカー・キーワード（空白区切りでAND）" style="flex:1;font-size:11px"
-               onkeydown="if(event.key==='Enter'){event.preventDefault();catalogSearch();}">
-        <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="catalogSearch()">検索</button>
         <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="catalogReimport()" title="Driveのフォルダを読み直して取り込み直します">再取込</button>
       </div>
       <p id="cat-status" style="font-size:10px;color:var(--fg2)"></p>
       <div id="cat-change-wrap" style="display:none;margin-bottom:6px">
         <button class="fp-btn" style="font-size:10px;padding:2px 6px" onclick="catalogShowSetup()">フォルダを変更</button>
-        <button class="fp-btn" style="font-size:10px;padding:2px 6px;color:var(--red);border-color:var(--red)"
-          onclick="catalogResetPartsDb()"
-          title="部品DBの中身を破棄し、カタログDBの全件で作り直します">部品DBをカタログ全件で作り直す</button>
       </div>
-      <div id="cat-result" style="max-height:200px;overflow-y:auto;font-size:11px;background:var(--bg3);border-radius:4px;padding:6px;display:none"></div>
-      <hr style="margin:12px 0;border-color:var(--bd2)">
-      <h3 style="font-size:13px">保留CSVを読み込む</h3>
-      <p style="font-size:10px;color:var(--fg3);margin-bottom:4px">
-        Claudeとの会話でカタログを読み取ってもらいpushしてもらった「登録待ちCSV」を、
-        コピペ無しでそのまま読み込みます。内容はCSV一括登録欄に入りますが、
-        <b>「CSVから一括登録」ボタンを押すまでは実際には登録されません。</b>
-      </p>
-      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
-        <select id="pc-file" style="flex:1"><option value="">(読込中...)</option></select>
-        <button class="fp-btn" style="font-size:10px;padding:3px 8px" onclick="loadPendingCsv()">読み込む</button>
-      </div>
-      <p id="pc-status" style="font-size:10px;color:var(--fg3)"></p>
-      <hr style="margin:12px 0;border-color:var(--bd2)">
-      <h3 style="font-size:13px">CSV一括登録</h3>
-      <p style="font-size:10px;color:var(--fg3);margin-bottom:4px">1行1部品、カンマ区切り。ヘッダー行は任意（maker等の文字を含む行は自動でスキップ）。<br>形式: メーカー,型番,種別,定格電圧,定格電流,端子番号,接点構成,備考<br>種別は次のいずれか:<br>breaker(ブレーカ) / contactor(電磁接触器) / starter(電磁開閉器(サーマル一体)) / thermal(サーマルリレー) / coil(リレーコイル) / timer(タイマ) / pb(押ボタン) / pb_lamp(照光押ボタン) / pb_estop(非常停止) / selector(セレクタ) / selector_key(鍵付セレクタ) / selector_lamp(照光セレクタ) / selector_pb(セレクタ押ボタン) / lever(モノレバー) / contact_unit(コンタクトユニット) / lamp(ランプ・表示灯) / inverter(インバータ) / servo(サーボアンプ) / servo_motor(サーボモータ) / motor(モーター) / plc(PLC(シーケンサ)) / plc_unit(PLC増設ユニット) / hmi(タッチパネル・表示器) / terminal(端子台) / fuse(ヒューズ) / transformer(トランス) / option(増設ユニット等(付属品))<br>例: 三菱電機,S-T21,contactor,AC200V,21A,"A1,A2,1,3,5,2,4,6",a3b1,</p>
-      <textarea id="pr-csv" rows="6" placeholder="三菱電機,S-T21,coil,AC200V,21A,&quot;A1,A2,1,3,5,2,4,6&quot;,a3b1,&#10;オムロン,G2R-1,coil,DC24V,,&quot;1,2,3,4,5&quot;,a1b1," style="width:100%;font-size:11px;font-family:monospace"></textarea>
-      <div style="display:flex;gap:6px;margin-top:6px">
-        <button class="fp-btn primary" onclick="bulkImportParts()">CSVから一括登録</button>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button class="fp-btn" onclick="closeFP('catalog-import-p')">閉じる</button>
       </div>
     </div>
 
@@ -892,6 +836,7 @@
     <p style="font-size:10px;margin-bottom:6px">
       <a href="parts.html" target="_blank" style="color:var(--acc)">部品DBを別画面で編集する →</a>
     </p>
+    <p class="parts-db-status" style="font-size:10px;color:var(--fg3);margin-bottom:6px">部品DB: 読み込み中...</p>
     <input type="text" id="part-search2" placeholder="型番・メーカー検索" oninput="filterParts(this.value)" style="width:100%;box-sizing:border-box;font-size:11px;padding:4px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:3px">
   </div>
   <div id="parts-maker-tabs" style="padding:0 6px 6px;flex-shrink:0;display:flex;gap:4px;flex-wrap:wrap"></div>

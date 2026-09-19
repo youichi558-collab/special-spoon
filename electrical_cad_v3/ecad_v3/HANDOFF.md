@@ -33,9 +33,9 @@ CSV作成作業の状況は、同じ問題(静的な引き継ぎ文書が実際�
 
 テーマは**「部品DBをCADから切り離す」**。9-02に構想の発掘・読み取り口の実装・
 設計確定・**Stage 1(書き手をサーバーに一本化)**まで進み、9-03(この続き)で
-**Stage 2(単独画面)の骨組み**まで進んだ。まだ完成ではない
-(下の「今、実際に何が次か」参照)。途中でローカルLLMを実測し、
-使えないと結論して痕跡ごと削除した(9-02)。
+**Stage 2(単独画面)の骨組み→テスト整備→CAD側の読み取り専用化**まで進み、
+実装としては完了した(下の「今、実際に何が次か」参照)。途中でローカルLLMを
+実測し、使えないと結論して痕跡ごと削除した(9-02)。
 
 ### 今日やったこと
 
@@ -84,8 +84,7 @@ CSV作成作業の状況は、同じ問題(静的な引き継ぎ文書が実際�
 取り込みタブ(カタログ検索・保留CSV・CSV一括・作り直し)。**まだレイアウトの
 フィードバック段階**(盛田さんの「使えるならいい」は強い確認ではない)。
 単独画面は `js/parts_db.js`(CAD用)を使わず、`/api/parts/save` を直接叩く
-別実装 —— **単独画面側の保存ロジックにはStage 1と同じ不変条件のテストが
-まだ無い**(激減で止める・保存失敗でロック等)。CAD側の読み取り専用化も未着手。
+別実装。
 
 **⑨ 起動導線を2つ用意した**
 `start.bat` は `index.html` しか開かず `parts.html` へは辿り着けなかった。
@@ -99,9 +98,19 @@ CSV作成作業の状況は、同じ問題(静的な引き継ぎ文書が実際�
 (Driveのドライブ文字が変わった等)を区別していたが、`parts_page.js` 側が
 両方とも「未設定です」と表示していて紛らわしかった。区別して案内するよう修正。
 
+**⑪ 単独画面の保存ロジックにStage 1相当のテストを足し、CAD側を読み取り専用にした
+（詳細は下の `2026-09-03(2)`・`2026-09-03(3)`）**
+`test_parts_page_save.js` を新設(単独画面の`saveAll()`の不変条件を検証)。続けて
+CAD(`js/ui.js`・`js/parts_db.js`)から部品DB(customParts)への書き込み経路9箇所を
+すべて削除し、File System Access API経由の直接読み書きも廃止(盛田さんの指示で
+「サーバー必須」を選択)。分担(部品DB単独画面=書く／CAD=読むだけ)が実現した。
+カタログDB(検索用データベース)のGoogle Drive取り込みだけはCADに残っている
+(customPartsへの書き込みではないため)。
+
 ### 今、実際に何が次か
 
-**部品DBの単独化の Stage 2(単独画面)。骨組みはできたが、完成ではない。**
+**部品DBの単独化の Stage 2(単独画面)。実装は完了。残るは盛田さんの実データでの
+確認だけ。**
 
 - ~~**Stage 1**: 書き手をサーバーに一本化~~ → **完了**(下の `2026-09-02(4)`)
 - **Stage 2**: 単独画面。**骨組みは実装済み(下の `2026-09-03(1)`)。残っているのは:**
@@ -109,10 +118,9 @@ CSV作成作業の状況は、同じ問題(静的な引き継ぎ文書が実際�
      触ってもらい、テーブルの列・絞り込み・3タブ構成でよいか確認する
   2. ~~単独画面の保存ロジック(`saveAll`)にStage 1相当のテストを足す~~ → **完了**
      (`tests/test_parts_page_save.js`。下の `2026-09-03(2)` 参照)
-  3. **CAD側を読み取り専用にする。** 今もCADの「カスタム部品登録」パネルの
-     9箇所の書き込み経路(`saveCusPart`/`deletePart`等)がそのまま残っている。
-     単独画面ができた今、CAD側は起動時に読むだけにして書き込み経路を消す
-     (設計どおりの分担 = 部品DB単独画面が書く / CADは読むだけ、にする)
+  3. ~~CAD側を読み取り専用にする~~ → **完了**(下の `2026-09-03(3)`)。
+     部品DB本体(customParts)への書き込み経路9箇所をCADから削除し、
+     部品DBの登録・編集は部品DB単独画面(parts.html)一本になった
 
 8-30からの持ち越しもそのまま残っている:
 1. bboxの食い違い(`getGroupBounds`は図記号の大きさや文字幅を見るが`drawGroupBoxes`は基準点だけ)
@@ -213,20 +221,26 @@ CSV作成作業の状況は、同じ問題(静的な引き継ぎ文書が実際�
 
 ### テスト
 
-**45本。`node tests/run_all.js` で全部流し、全通過を確認してからpushしている。**
+**44本。`node tests/run_all.js` で全部流し、全通過を確認してからpushしている。**
 
 9-02に4本追加した:
 - `test_parts_db_api.js` … 書き手が増えていないか
-- `test_parts_db_server_mode.js` … CADがどちらの保存経路を選ぶか
+- ~~`test_parts_db_server_mode.js`~~ … CADがどちらの保存経路を選ぶかを見ていたが、
+  9-03(3)でCADの書き込み経路そのものを削除したため、テストごと削除した
+  (詳細は下の `2026-09-03(3)`)
 - `test_parts_db_save.py` … **実際にファイルを書いて**壊れないか(唯一のPythonテスト)
 - `test_parts_hidden_restore.js` … 非表示にした標準部品を戻す入口が一覧の先頭にあるか
+  (9-03(3)で対象を`js/ui.js`から`js/parts_page.js`へ切り替え済み)
 
-9-03に2本追加した:
+9-03に3本追加した:
 - `test_parts_page_status.js` … 部品DBの場所が「未設定」か「設定されているのに
   見つからない」かで、単独画面の案内文が正しく分かれるか
 - `test_parts_page_save.js` … 単独画面の `saveAll()` が、Stage 1の
   `writeToServer()` と同じ不変条件(激減で確認・forceは1回だけ・保存失敗で
   ロック・接続不可でもロック)を守っているか(下の `2026-09-03(2)` 参照)
+- `test_parts_db_readonly.js` … CAD側(読むだけになった `js/parts_db.js`)の
+  `autoRestore()` がサーバーから正しく読める/読めないを扱えるか
+  (下の `2026-09-03(3)` 参照)
 
 **14通りの退行を実際に埋め込んで、すべてで落ちることを確認済み(9-02の分)。**
 (1つは最初素通りし、1つはハングして「落ちた」と分からない形になったので、
@@ -332,9 +346,8 @@ CSV作成作業の状況は、同じ問題(静的な引き継ぎ文書が実際�
    だけでは確定とみなさない
 2. ~~単独画面の保存ロジックにテストを足すこと~~ → **完了**(`test_parts_page_save.js`。
    下の `2026-09-03(2)`)
-3. **CAD側を読み取り専用にすること。** 分担(部品DB単独画面=書く/CAD=読むだけ)は
-   まだ実現していない。CADの「カスタム部品登録」パネルの9箇所の書き込み経路
-   (`saveCusPart`/`deletePart`等)は今もそのまま残っている
+3. ~~CAD側を読み取り専用にすること~~ → **完了**(下の `2026-09-03(3)`)。
+   分担(部品DB単独画面=書く/CAD=読むだけ)は実現した
 
 ---
 
@@ -382,6 +395,98 @@ CSV作成作業の状況は、同じ問題(静的な引き継ぎ文書が実際�
 
 `tests/run_all.js` で45本すべて通過を確認済み。「次に触る人へ」の残りは
 1番(レイアウト確定・盛田さんの実データ確認待ち)と3番(CAD側の読み取り専用化)。
+
+---
+
+## 2026-09-03(3) CAD側を読み取り専用にした（Stage 2完了）
+
+上の「次に触る人へ」3番に着手。分担(部品DB単独画面=書く／CAD=読むだけ)を
+実現した。盛田さんから「サーバー(start.bat)が無いとき部品DBをどう扱うか」を
+選んでもらい(A: 読むだけ残す／B: サーバー必須にする／C: 今回はUI操作だけ止める、
+の3択で提示)、**B(サーバー必須)** の指示を受けて実装した。
+
+### やったこと
+
+**`js/parts_db.js` を丸ごと書き直した。** File System Access API経由の直接
+読み書き(`pickExisting`/`createNew`/`writeToFile`/`writeToServer`/
+`scheduleSave`/`writeNow`/`backupNow`/`pickBackupDir`/`backupDirStatus`/
+`pushMirror`/`mirrorStatus`/`isLocked`等、IndexedDBのハンドル保存を含む)を
+全部削除し、`autoRestore()`でサーバーから読むだけの実装にした。
+サーバー(start.bat)が動いていない・`setpath`未設定の環境では、部品DBは
+0件のまま起動する(画面上部に赤い帯で案内)。以前あった「サーバー無しでも
+ファイルを直接開けば使える」フォールバックは、指示どおり廃止した。
+
+`hasFile()`は「サーバーから読めているか」を返すだけになったが、
+`edit.js`/`autosave.js`が図面保存時にcustomPartsを埋め込むかどうかの
+判定に使っている箇所(4箇所)はそのまま動く(読めていなければ埋め込む、
+という既存の网を維持)。図面ファイルに旧形式で埋め込まれていた
+customPartsを捨てない`mergeEmbedded()`(旧`mergeUnsaved()`)も残した。
+
+**`js/ui.js`から部品DB(customParts)への書き込み経路を全部削除した。**
+`hideBuiltinPart`/`unhideBuiltinPart`/`hiddenPartsBlockHtml`/
+`togglePartsHidden`/`deletePart`/`editPart`/`saveCusPart`/
+`attachOutlineToPart`/`catalogSearch`/`catalogAddToParts`/
+`catalogResetPartsDb`/`carryOutlineDxf`/`bulkImportParts`/
+`parseCSVLine`/`refreshPendingCsvList`/`loadPendingCsv`/
+`_readDxfFileAsText`/`refreshPartsBackupDir`/`pickPartsBackupDir`/
+`refreshPartsPublish`。部品一覧のカード(`renderPartsTable2`)からも
+編集(✎)・削除(×)・非表示(×)・外形図添付(添付)のアイコンを外した
+(「配置」だけ残る=読み取り操作)。
+
+**カタログDB(検索用データベース)の取り込みだけはCADに残した。**
+`catalogPickFolder`/`catalogReimport`/`catalogRefreshStatus`等は
+Google Drive上のCSVを検索用データベースへ取り込む機能で、
+customParts(部品DB本体)への書き込みではないため、9箇所の対象外。
+`index.html`の「カスタム部品登録」パネルを丸ごと「カタログDB取り込み」
+という小さいパネル(`id="catalog-import-p"`)に置き換え、部品の登録・編集は
+parts.htmlで行う旨のリンクを付けた。ツールバーの「部品登録」ボタンは
+`parts.html`を新規タブで開くだけに変更し、隣に「カタログDB」ボタンを
+新設してこの取り込みパネルを開く。
+
+`js/edit.js`の`loadProject()`にあった`partsDb.scheduleSave()`呼び出しも
+削除した(CADはもう保存しない)。
+
+### 確認方法
+
+Playwrightで実際にCADを起動し、部品DBパネル・カタログDB取り込みパネルを
+スクリーンショットで確認した(合成データではなくsetpath未設定の状態。
+「未接続」の赤帯・案内文が正しく出た)。`window.open('parts.html')`が
+新規タブでparts.htmlを正しく開くことも確認した。JSの実行時エラーは無し。
+
+### テストの調整
+
+書き込み経路を消したので、それを前提にしていたテストを合わせて直した:
+
+- `tests/test_parts_db_guard.js`・`tests/test_parts_db_server_mode.js` は
+  File System Access API経由の書き込み保護を見ていた(もう存在しない)ので削除
+- 新設 `tests/test_parts_db_readonly.js` … 書き直した`autoRestore()`が
+  ①サーバーから読めたら接続済みになる ②サーバーに繋がらない/読めないときは
+  接続済みにならず案内が出る ③図面に埋め込まれていた旧形式のcustomPartsを
+  捨てない、を見る。退行(接続フラグを立て忘れる)を埋め込み、落ちることを確認済み
+- `tests/test_parts_db_api.js` … ブラウザ側`writeToFile`/`pushMirror`の
+  検証部分(もう存在しない)を削除。server.py/parts_db.py側の書き込み安全性
+  (tmp経由での置き換え・書き手が増えていないこと等)の検証はそのまま残した
+- `tests/test_parts_hidden_restore.js` … 対象を`js/ui.js`から
+  `js/parts_page.js`の`hideBuiltin`/`unhideBuiltin`/`renderHiddenList`へ
+  切り替え(非表示・再表示の実体がそちらに移ったため)
+- `tests/test_outline_dxf_keep.js` … 対象を`js/ui.js`から
+  `js/parts_page.js`へ切り替え(`carryOutlineDxf`・作り直し処理の実体が
+  そちらに移ったため)。文言差(削除件数の列挙が無い等)に合わせて調整
+- `tests/test_device_terminal.js` … 種別コードとindex.htmlのセレクタ・
+  CSVヘルプ文言の突き合わせを削除(index.html側のセレクタ自体が無くなった。
+  parts.html側は`PART_TYPE_ORDER`から動的に組み立てるため、この形の
+  「取りこぼし」は起こらなくなった)。CSV取込のlegacy種別チェックは
+  対象を`js/parts_page.js`に切り替え
+- `tests/test_terminal_groups.js` … 切り出し範囲の終端マーカー
+  (`editPart`のコメント文)が削除で消えたため、新しい終端に合わせて修正
+
+`node tests/run_all.js` で44本すべて通過を確認済み。
+
+### 残り
+
+- 盛田さんの実データでの実機確認(Stage 2全体・レイアウトのフィードバック含む)
+- CAD側の「部品登録」ボタンの位置・アイコンは仮のまま(スクリーンショットで
+  動作は確認したが、実機での見え方の確認は未)
 
 ---
 
