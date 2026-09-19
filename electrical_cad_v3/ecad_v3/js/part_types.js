@@ -53,3 +53,14 @@ const PART_TYPE_LABELS = {
   '': '(種別未設定)',
 };
 const PART_TYPE_ORDER = ['breaker','contactor','starter','thermal','coil','timer','pb','pb_lamp','pb_estop','selector','selector_key','selector_lamp','selector_pb','lever','contact_unit','lamp','inverter','servo','servo_motor','motor','plc','plc_unit','hmi','terminal','fuse','transformer','option'];
+
+// ================================================================
+// 【2026-09-19】読み込めたことの目印。
+// サーバーが落ちた状態でCADを開くとJSが虫食いで落ち(ERR_CONNECTION_REFUSED)、
+// 一部の関数が無いまま起動して図面が真っ白になる事故が起きた。その状態のまま
+// 自動保存が走ると、欠けた状態のデータで上書きされかねない。
+// autosave.js の _asMissingScripts() が、index.html の <script> タグと
+// この目印を突き合わせて「読み込めていないファイル」を検出する。
+// 目印はファイル末尾に置く(先頭だと、途中で落ちたファイルも「読めた」ことになる)。
+// ================================================================
+if (typeof window !== 'undefined') (window.__ecadLoaded = window.__ecadLoaded || {})['part_types.js'] = 1;

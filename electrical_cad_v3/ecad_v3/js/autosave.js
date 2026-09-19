@@ -33,6 +33,43 @@ let _asRestoreFailed = false;
 // 保存済みデータがあったのに復元できなかったとき、その量を覚えておく(通知用)
 let _asBlockedCount = 0;
 
+// 【2026-09-19 追加】JSが虫食いで読み込めていない状態を検出する。
+//
+// 【背景】盛田さんの「図面消えた」(2026-09-19)。サーバー(start.bat)が落ちた
+// 状態でCADを開いたため、frame.js・snap.js など8本が
+// ERR_CONNECTION_REFUSED で落ち、drawFrame が無いまま draw() の先頭で例外。
+// 配線も要素も描く前に止まるので画面は真っ白になった。
+// このときデータ自体は state にも localStorage にも無傷で残っていたが、
+// 「欠けた状態で自動保存が走る」経路が残っていると、2026-08-23の事故
+// (空の状態で上書き → 復旧不能)と同じことが起きうる。
+//
+// 【やり方】各JSの末尾に window.__ecadLoaded['ファイル名'] = 1 を置き、
+// index.html の <script src="js/..."> タグと突き合わせる。
+// 「あるべきファイル」の一次情報をDOMのタグにしているので、ファイルを
+// 増やしても減らしてもこの関数を直す必要が無い(代表的な関数名を並べる
+// やり方だと、関数名を変えたときに黙って検出できなくなる)。
+//
+// jspdf/jszipは他所のライブラリで目印を入れられないため対象外。
+// この2つが落ちてもPDF出力が使えなくなるだけで、図面データには影響しない。
+const AS_THIRD_PARTY_JS = ['jspdf.umd.min.js', 'jszip.min.js'];
+function _asMissingScripts() {
+  // テスト環境など、DOMが無い/簡易スタブの場合は判定しない(誤検出で
+  // 自動保存を止める方が、検出できないことより危険なため)
+  if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return [];
+  let tags;
+  try { tags = document.querySelectorAll('script[src]'); } catch (e) { return []; }
+  const loaded = (typeof window !== 'undefined' && window.__ecadLoaded) || {};
+  const out = [];
+  tags.forEach(t => {
+    const m = String(t.getAttribute('src') || '').match(/^js\/([^\/?#]+\.js)$/);
+    if (!m) return;
+    const f = m[1];
+    if (AS_THIRD_PARTY_JS.indexOf(f) >= 0) return;
+    if (!loaded[f]) out.push(f);
+  });
+  return out;
+}
+
 // 図面の中身の量(要素＋配線の総数)。空かどうかの判定に使う。
 function _asContentCount(pages) {
   if (!Array.isArray(pages)) return 0;
@@ -58,6 +95,18 @@ function scheduleAutosave() {
 
 function doAutosave() {
   if (_asDisabled) return;
+  // 【2026-09-19 追加】JSが読み込めていない状態では絶対に書かない。
+  // 欠けたまま起動したアプリのstateは信用できない。書かなければ
+  // localStorageは無傷のまま残るので、start.batを起動し直して
+  // リロードすればそのまま復元できる。
+  const _missing = _asMissingScripts();
+  if (_missing.length) {
+    const h = document.getElementById('s-hint');
+    if (h) h.textContent =
+      `⚠ JSが読み込めていないため自動保存を停止しています（${_missing.join(' / ')}）。`
+      + `保存済みデータは無傷です。start.bat を起動し直してから、この画面をリロードしてください`;
+    return;
+  }
   // 復元に失敗している場合は絶対に書かない。読み込めなかった図面を
   // 上書きしてしまうと復旧手段が無くなる(2026-08-23の事故の直接原因)。
   if (_asRestoreFailed) {
@@ -266,3 +315,14 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') doAutosave();
 });
 window.addEventListener('pagehide', doAutosave);
+
+// ================================================================
+// 【2026-09-19】読み込めたことの目印。
+// サーバーが落ちた状態でCADを開くとJSが虫食いで落ち(ERR_CONNECTION_REFUSED)、
+// 一部の関数が無いまま起動して図面が真っ白になる事故が起きた。その状態のまま
+// 自動保存が走ると、欠けた状態のデータで上書きされかねない。
+// autosave.js の _asMissingScripts() が、index.html の <script> タグと
+// この目印を突き合わせて「読み込めていないファイル」を検出する。
+// 目印はファイル末尾に置く(先頭だと、途中で落ちたファイルも「読めた」ことになる)。
+// ================================================================
+if (typeof window !== 'undefined') (window.__ecadLoaded = window.__ecadLoaded || {})['autosave.js'] = 1;

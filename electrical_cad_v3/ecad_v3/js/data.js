@@ -222,3 +222,14 @@ const BUILTIN_SYMS = [
   { cat:'制御機器', type:'terminal',   label:'端子台',
     svg:`<svg width="36" height="16" viewBox="0 0 34 20"><line x1="2" y1="10" x2="32" y2="10" stroke="currentColor" stroke-width="1.5"/><rect x="10" y="4" width="14" height="12" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="14" y1="7" x2="20" y2="13" stroke="currentColor" stroke-width="1"/><line x1="20" y1="7" x2="14" y2="13" stroke="currentColor" stroke-width="1"/></svg>` },
 ];
+
+// ================================================================
+// 【2026-09-19】読み込めたことの目印。
+// サーバーが落ちた状態でCADを開くとJSが虫食いで落ち(ERR_CONNECTION_REFUSED)、
+// 一部の関数が無いまま起動して図面が真っ白になる事故が起きた。その状態のまま
+// 自動保存が走ると、欠けた状態のデータで上書きされかねない。
+// autosave.js の _asMissingScripts() が、index.html の <script> タグと
+// この目印を突き合わせて「読み込めていないファイル」を検出する。
+// 目印はファイル末尾に置く(先頭だと、途中で落ちたファイルも「読めた」ことになる)。
+// ================================================================
+if (typeof window !== 'undefined') (window.__ecadLoaded = window.__ecadLoaded || {})['data.js'] = 1;
