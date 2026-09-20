@@ -535,9 +535,9 @@ function symTermOffHtml(el) {
     h += `<div class="pp-row" style="align-items:center">`
       +  `<label style="white-space:nowrap;font-size:10px">${p.i + 1} ${escH(symTermPosHint(p, pts))}</label>`
       +  `<span style="display:flex;gap:3px;align-items:center;font-size:10px;color:var(--fg3)">`
-      +  `<input type="text" class="pp-tnum" data-ti="${p.i}" value="${escH(p.label || '')}" style="width:56px" placeholder="番号" title="この端子に書く番号。空にすると何も出ません" oninput="previewTermNum()">`
-      +  `X<input type="number" class="pp-toff-x" data-ti="${p.i}" value="${escH(Number(o[0]) || 0)}" step="1" style="width:40px" title="右へずらすと＋、左へずらすと－" oninput="previewTermNo()">`
-      +  `Y<input type="number" class="pp-toff-y" data-ti="${p.i}" value="${escH(Number(o[1]) || 0)}" step="1" style="width:40px" title="下へずらすと＋、上へずらすと－" oninput="previewTermNo()">`
+      +  `<input type="text" class="pp-tnum" data-ti="${p.i}" value="${escH(p.label || '')}" placeholder="番号" title="この端子に書く番号。空にすると何も出ません" oninput="previewTermNum()">`
+      +  `X<input type="number" class="pp-toff-x" data-ti="${p.i}" value="${escH(Number(o[0]) || 0)}" step="1" title="右へずらすと＋、左へずらすと－" oninput="previewTermNo()">`
+      +  `Y<input type="number" class="pp-toff-y" data-ti="${p.i}" value="${escH(Number(o[1]) || 0)}" step="1" title="下へずらすと＋、上へずらすと－" oninput="previewTermNo()">`
       +  `</span></div>`;
   });
   h += `<div class="pp-row" style="gap:6px"><button onclick="resetTermNoOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button>`
@@ -1796,11 +1796,9 @@ function srUndo() {
   if (_srShapes.length) { _srShapes.pop(); srRender(); }
 }
 
-function srSetTermLabel(i, v) {
-  if (!_srTerms[i]) return;
-  _srTerms[i].label = v;
-  srRender();
-}
+// 【2026-09-20 削除】端子番号(label)の入力欄はシンボル登録からも外した。
+// 理由は js/pin_editor.js の peUpdateList の直前に書いた通り。
+// データとしての label は残し、図面で読むのも続けている。
 
 function srUpdateTermList() {
   const el = document.getElementById('sr-term-list');
@@ -1809,7 +1807,6 @@ function srUpdateTermList() {
   el.innerHTML = _srTerms.map((t,i) =>
     `<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">`
     + `<span>T${i}: (${t.x}, ${t.y})</span>`
-    + `<input type="text" value="${escH(t.label)}" placeholder="端子番号(例:A1)" style="width:70px;font-size:11px" onchange="srSetTermLabel(${i}, this.value)">`
     + `<span onclick="_srTerms.splice(${i},1);srUpdateTermList();srRender()" style="cursor:pointer;color:var(--red)">×</span>`
     + `</div>`
   ).join('');

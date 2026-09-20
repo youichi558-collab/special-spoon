@@ -358,29 +358,29 @@ function symTermPoints(el, cS, def) {
 // 端子番号の文字を置く位置と揃えを決める。
 //
 // 文字は常に水平(シンボルを回しても字は回さない)。盛田さん判断(2026-09-19)。
-// 端子は本体の外周に出ているので、シンボル中心(el.x,el.y)から端子への向きへ
-// 逃がす。真上に重ねないのは、その点には必ず配線が来るため。
-//   ・横向きの端子 → 配線の上に載せる(左右に逃がし、少し上げる)
-//   ・縦向きの端子 → 配線の右に置く(上下に逃がし、少し右へ)
-// どちらも「線に文字が重ならない」ことを優先した既定値で、合わない分は
-// 端子ごとの位置補正(el.termOff)で動かしてもらう。
+//
+// **端子点からの相対位置は全端子で同じ**。端子がどこにあっても、点の
+// 右上(右へ隙間ぶん、上へ逃がしぶん)に置く。
+//
+// 【なぜ向きで変えないか・2026-09-20】
+// 以前はシンボル中心から端子への向きを見て、横寄りなら左右へ・縦寄りなら上下へ、
+// と置き方を変えていた。これが2つの理由で破綻していた。
+//
+//  ① 多極シンボルで左右がバラバラになる。3極ブレーカ接点(端子点が縦2列×3組)だと、
+//     中央の端子だけ「縦寄り」・左右端は「横寄り」と判定が割れ、同じ下段の3端子が
+//     左・右・右 に散った(盛田さん指摘、実物 ブレーカー接点 で確認)。
+//  ② 端子ごとの位置補正(el.termOff)の意味が端子ごとに変わってしまう。
+//     基準位置が端子によって違うと、同じ補正値を入れても揃わない
+//     ——盛田さん「端子点からの位置で固定しないと調整値がバラバラになる」。
+//
+// 基準を1つに固定したので、合わない分は termOff で動かせば、**入れた数値がそのまま
+// 同じ向きに効く**。真上に重ねないのは、その点には必ず配線が来るため。
 const SYM_TERM_GAP = 4;   // 端子点から文字までの隙間(ワールド座標単位)
 const SYM_TERM_SEP = 2;   // 配線に重ねないための垂直方向の逃がし量
-function symTermLabelPos(rx, ry, gap, sep) {
+function symTermLabelPos(gap, sep) {
   const g = (gap === undefined) ? SYM_TERM_GAP : gap;
   const s = (sep === undefined) ? SYM_TERM_SEP : sep;
-  const len = Math.hypot(rx, ry);
-  // 端子がシンボル中心と同じ位置にある場合(向きが決まらない)は右へ出す
-  if (len < 1e-6) return { dx: g, dy: -s, align: 'left', baseline: 'bottom' };
-  const ux = rx / len, uy = ry / len;
-  if (Math.abs(ux) >= Math.abs(uy)) {
-    // 横寄り: 外側へ逃がし、配線の上に載せる
-    return { dx: ux * g, dy: uy * g - s,
-             align: ux > 0 ? 'left' : 'right', baseline: 'bottom' };
-  }
-  // 縦寄り: 外側へ逃がし、配線の右に置く
-  return { dx: ux * g + s, dy: uy * g,
-           align: 'left', baseline: uy > 0 ? 'top' : 'bottom' };
+  return { dx: g, dy: -s, align: 'left', baseline: 'bottom' };
 }
 
 // 端子ごとの位置補正(el.termOff[i] = [dx, dy])を取り出す。
@@ -412,7 +412,7 @@ function drawSymTermNos() {
     ctx.fillStyle = lay ? lay.color : fgC();
     pts.forEach(p => {
       if (!p.label) return;
-      const lp = symTermLabelPos(p.rx, p.ry);
+      const lp = symTermLabelPos();
       const { ox, oy } = symTermOff(el, p.i);
       ctx.textAlign    = lp.align;
       ctx.textBaseline = lp.baseline;

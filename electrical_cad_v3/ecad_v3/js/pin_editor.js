@@ -176,13 +176,12 @@ function peRender() {
   });
 }
 
-// 端子番号(label)入力欄の変更をterminalsへ反映(表示ラベルなので空文字も許容)
-function peSetTermLabel(i, v) {
-  if (!_peTerms[i]) return;
-  _peTerms[i].label = v;
-  peRender();
-}
-
+// 【2026-09-20 削除】端子番号(label)の入力欄はここから外した。
+// cS.terminals[i].label は図面では「部品DBの端子番号が無いときの既定値」に
+// しかならず、部品DBから割り当てて個体ごとに直す画面(プロパティの「端子番号」)が
+// できた今は、定義側に既定を持つ意味が無い(盛田さん判断)。
+// **データとしての label は残し、読むのも続ける** ので、既に入っている
+// シンボルの図面の見た目は変わらない。新しく入れる口を閉じただけ。
 function peUpdateList() {
   const el = document.getElementById('pe-term-list');
   if (!el) return;
@@ -190,7 +189,7 @@ function peUpdateList() {
   el.innerHTML = _peTerms.map((t, i) =>
     `<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">`
     + `<span>P${i}: (${t.x}, ${t.y})</span>`
-    + `<input type="text" value="${escH(t.label)}" placeholder="端子番号(例:A1)" style="width:70px;font-size:11px" onchange="peSetTermLabel(${i}, this.value)">`
+
     + `<span onclick="_peTerms.splice(${i},1);peUpdateList();peRender()" style="cursor:pointer;color:var(--red)">×</span>`
     + `</div>`
   ).join('');
@@ -209,7 +208,21 @@ function peOnClick(e) {
   _peTerms.forEach((t, i) => { const d = Math.hypot(wx - t.x, wy - t.y); if (d < minD) { minD = d; minI = i; } });
   if (minI >= 0) { _peTerms.splice(minI, 1); peUpdateList(); peRender(); return; }
 
-  _peTerms.push({ x: Math.round(wx), y: Math.round(wy), label: '' });
+  // 【2026-09-20】手で足す端子はシンボル登録と同じグリッド(SR_GRID=5)に乗せる。
+  // ここだけ Math.round(=1刻み) で、登録画面(ui.js の srOnClick)は5刻みだった。
+  // 同じシンボルでも「登録時に置いた端子」と「後から足した端子」で刻みが変わり、
+  // 端子が揃わなくなっていた(盛田さん指摘)。
+  //
+  // 自動候補(peAutoDetect)は丸めない。あちらは図形の線の端そのものを拾っており、
+  // 5刻みに丸めると端子が線の端から離れてしまう(図形自体が5刻みに乗っていない
+  // シンボルが実在する)。手で置くときだけ揃える。
+  // SR_GRID は js/ui.js のトップレベル定数。index.html は ui.js → pin_editor.js の
+  // 順で読むのでクリック時には必ず入っているが、単体で読み込んだときに落ちないよう
+  // 既定値を持たせてある(刻みの正は ui.js 側。ここで別の値を持たない)。
+  const G = (typeof SR_GRID === 'number' && SR_GRID > 0) ? SR_GRID : 5;
+  const gx = Math.round(wx / G) * G;
+  const gy = Math.round(wy / G) * G;
+  _peTerms.push({ x: gx, y: gy, label: '' });
   peUpdateList(); peRender();
 }
 

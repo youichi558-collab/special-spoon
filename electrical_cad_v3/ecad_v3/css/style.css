@@ -120,6 +120,18 @@ body{font-family:'Segoe UI',sans-serif;font-size:12px;background:var(--bg);color
 .pp-row input,.pp-row select,.pp-row textarea{width:100%;padding:3px 5px;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg);font-size:11px;box-sizing:border-box;}
 .pp-row input[type=number]{height:32px;font-size:13px;}
 .pp-row input:focus{outline:none;border-color:var(--acc);}
+/* 端子番号の欄(番号・位置補正X/Y)。
+   【2026-09-20】プロパティパネルは幅200pxしかなく、そこに 番号+X+Y を並べている。
+   .pp-row input[type=number] の font-size:13px と、Chromeのスピンボタン(左右で約16px)に
+   幅を食われて、2桁の値やマイナスが見切れて読めなかった(盛田さん指摘)。
+   スピンボタンを消し(キーボードとstep=1で足りる)、数字が収まる幅を確保する。 */
+/* .pp-row input[type=number] が (0,2,1) なので、クラスだけだと font-size/height が
+   効かない。input を付けて (0,2,1) 以上にしてから上書きする。 */
+.pp-row input.pp-tnum{width:50px;flex:0 0 auto;}
+.pp-row input.pp-toff-x,.pp-row input.pp-toff-y{
+  width:46px;flex:0 0 auto;font-size:11px;height:24px;text-align:right;-moz-appearance:textfield;}
+.pp-toff-x::-webkit-outer-spin-button,.pp-toff-x::-webkit-inner-spin-button,
+.pp-toff-y::-webkit-outer-spin-button,.pp-toff-y::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 .pp-details{margin:0 10px 6px;border:1px solid var(--bd2);border-radius:4px;background:var(--bg2);}
 .pp-details .pp-row{padding:4px 10px;}
 .pp-details summary{padding:5px 10px;font-size:10px;color:var(--fg3);cursor:pointer;user-select:none;list-style:none;}

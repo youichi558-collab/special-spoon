@@ -55,6 +55,7 @@ const sandbox = {
   requestAnimationFrame: () => {},
   console,
   escH: require('./_esch.js').escH,   // 実体は js/state.js のもの
+  SR_GRID: 5,   // 実体は js/ui.js。ブラウザでは ui.js → pin_editor.js の順で読まれる
 };
 vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync(__dirname + '/../js/pin_editor.js', 'utf8'), sandbox);
@@ -75,8 +76,16 @@ const peTerms = () => vm.runInContext('_peTerms', sandbox);
 eq(peTerms().length, 1, 'クリックで端子が1点追加される');
 eq(peTerms()[0].label, '', '新規端子のlabelは既定で空文字');
 
-sandbox.peSetTermLabel(0, 'A1');
-eq(peTerms()[0].label, 'A1', 'peSetTermLabelでlabelが書き換わる');
+// 【2026-09-20】手で足す端子はグリッド(SR_GRID=5)に乗せる。
+// ここだけ1刻みで、シンボル登録画面(ui.jsのsrOnClick)は5刻みだったため、
+// 同じシンボルでも「登録時に置いた端子」と「後から足した端子」で刻みが変わっていた。
+eq(peTerms()[0].x % 5, 0, '追加された端子のXがグリッド(5)に乗る');
+eq(peTerms()[0].y % 5, 0, '追加された端子のYがグリッド(5)に乗る');
+
+// 【2026-09-20】端子番号(label)の入力欄はピンエディタから外した(盛田さん判断)。
+// ただし **データとしてのlabelは残し、保存も読み出しも続ける**。
+// 既にlabelが入っているシンボルの図面の見た目を変えないため。
+vm.runInContext("_peTerms[0].label = 'A1';", sandbox);
 
 sandbox.savePinEdits();
 eq(cS.terminals.length, 1, '保存後、cS.terminalsに1件入る');

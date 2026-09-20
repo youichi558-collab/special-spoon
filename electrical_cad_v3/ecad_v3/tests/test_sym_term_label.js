@@ -122,39 +122,32 @@ console.log('[4] 端子番号の優先順位（①el.terminals ②定義側label
   ok(p5[1].label === '2', '余った番号は無視される');
 }
 
-console.log('[5] 文字は配線に重ならない側へ逃げる');
+console.log('[5] 文字を置く位置は、端子点からの相対で全端子とも同じ');
+console.log('  ← 2026-09-20 盛田さん「端子点からの位置で固定しないと調整値がバラバラになる」');
+console.log('    以前はシンボル中心から端子への向きで置き方を変えていた。3極ブレーカ接点のように');
+console.log('    端子が縦2列×3組あると、中央だけ「縦寄り」・左右端は「横寄り」と判定が割れ、');
+console.log('    同じ下段の3端子が 左・右・右 に散っていた(実物 ブレーカー接点 で確認)。');
+console.log('    基準位置が端子ごとに違うと、端子ごとの位置補正(termOff)も意味が変わってしまう。');
 {
-  // 右向きの端子 → 右へ出し、線の上に載せる
-  const r = symTermLabelPos(20, 0);
-  ok(r.align === 'left',     '右の端子は左揃え(右へ伸ばす)');
-  ok(r.baseline === 'bottom','右の端子は配線の上に載る');
-  ok(r.dx > 0,               '右へ逃がす');
-  ok(r.dy < 0,               '配線に重ねない分だけ上げる');
+  const base = symTermLabelPos();
+  ok(base.align === 'left',     '右へ伸ばす(左揃え)');
+  ok(base.baseline === 'bottom','配線の上に載せる');
+  ok(base.dx > 0,               '右へ逃がす');
+  ok(base.dy < 0,               '配線に重ねない分だけ上げる');
+  near(base.dx, SYM_TERM_GAP,  '右への逃がしはSYM_TERM_GAP');
+  near(base.dy, -SYM_TERM_SEP, '上への逃がしはSYM_TERM_SEP');
 
-  // 左向きの端子 → 左へ出す
-  const l = symTermLabelPos(-20, 0);
-  ok(l.align === 'right',    '左の端子は右揃え(左へ伸ばす)');
-  ok(l.dx < 0,               '左へ逃がす');
+  // 実物「ブレーカー接点」の6端子。以前はここで左右が割れていた。
+  const brk = [[-25,16],[-25,-17],[5,16],[5,-17],[35,16],[35,-17]];
+  const all = brk.map(() => symTermLabelPos());
+  ok(all.every(r => r.align === base.align && r.baseline === base.baseline
+                 && r.dx === base.dx && r.dy === base.dy),
+     '3極ブレーカ接点の6端子が全部同じ置き方になる(左右が散らない)');
 
-  // 下向きの端子 → 下へ出し、配線の右に置く
-  const d = symTermLabelPos(0, 15);
-  ok(d.align === 'left',     '下の端子は配線の右に置く');
-  ok(d.baseline === 'top',   '下の端子は下側に出す');
-  ok(d.dy > 0,               '下へ逃がす');
-  ok(d.dx > 0,               '配線に重ねない分だけ右へ寄せる');
-
-  // 上向きの端子
-  const u = symTermLabelPos(0, -15);
-  ok(u.baseline === 'bottom','上の端子は上側に出す');
-  ok(u.dy < 0,               '上へ逃がす');
-
-  // 端子がシンボル中心と同じ位置(向きが決まらない)でもNaNにしない
-  const c = symTermLabelPos(0, 0);
-  ok(Number.isFinite(c.dx) && Number.isFinite(c.dy), '中心の端子でもNaNにならない');
-  ok(c.align === 'left', '中心の端子は右へ出す');
-
-  // 逃がす量は隙間の設定どおり
-  near(Math.hypot(r.dx, r.dy + SYM_TERM_SEP), SYM_TERM_GAP, '逃がす距離はSYM_TERM_GAP', 1e-9);
+  // 隙間の設定は引数でも変えられる(既定値と同じ意味を持つこと)
+  const wide = symTermLabelPos(10, 3);
+  near(wide.dx, 10, '隙間を指定できる');
+  near(wide.dy, -3, '逃がし量を指定できる');
 }
 
 console.log('[6] 端子ごとの位置補正');

@@ -131,7 +131,11 @@ console.log('\n【端子(ピン)編集: 端子番号が生のHTMLにならない
   const html = domEls['pe-term-list'].innerHTML;
   ok(html.length > 0, '端子一覧が描画される');
   ok(!/value="[^"]*" onmouseover=/.test(html), '端子番号のvalue属性から抜け出せない');
-  ok(html.includes('&quot;'), '" がエスケープされている');
+  // 【2026-09-20】端子番号(label)の入力欄はピンエディタから外した。
+  // labelがHTMLに出る経路そのものが無くなったので、「エスケープされているか」ではなく
+  // 「生の値がHTMLに現れないか」を見る。欄を戻すときに escH を忘れたら、ここが落ちる。
+  ok(!html.includes(EVIL_ATTR), 'labelの生の値がHTMLに入らない(入力欄を外したため)');
+  ok(!/onmouseover/.test(html), '属性を注入できない');
 }
 
 // ------------------------------------------------------------------

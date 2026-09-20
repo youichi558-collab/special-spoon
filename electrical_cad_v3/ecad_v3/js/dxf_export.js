@@ -800,7 +800,7 @@ function exportDXF(){
         const tfs = el.termFs || 9;
         symTermPoints(el, cS, d).forEach(tp => {
           if(!tp.label) return;
-          const lp = symTermLabelPos(tp.rx, tp.ry);
+          const lp = symTermLabelPos();
           const o  = (el.termOff||[])[tp.i] || [0,0];
           const bl = lp.baseline === 'top' ? tfs * 0.8 : 0;
           eText(layer, tp.x + lp.dx + (Number(o[0])||0),
