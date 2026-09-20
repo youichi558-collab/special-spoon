@@ -247,14 +247,16 @@ function saveAllProject() {
   renderPageTabs();
 }
 
-function loadProject(input) {
-  const f = input.files[0]; if (!f) return;
-  const rd = new FileReader();
-  rd.onload = e => {
-    try {
-      const d = JSON.parse(e.target.result);
-      pushH();
-
+// 読み込んだプロジェクトデータ(保存ファイルと同じ形)を、実際に画面へ反映する。
+//
+// 【2026-09-20】ファイルからの読込(loadProject)とバックアップからの復元
+// (js/backup.js)で同じ処理が要るため、ここに切り出した。
+// マイグレーション・ID重複修復・レイヤー修復は、どちらの経路でも同じものが
+// 掛からないと「ファイルから開くと直るのに、バックアップから戻すと直らない」
+// という食い違いが出る(同じ性質の処理を複数経路に写さない)。
+//
+// 戻り値: { fixedIds } — 修復した重複IDの件数(呼び出し側が知らせるのに使う)
+function applyProjectData(d) {
       // バージョン別マイグレーション
       if (d.version === 2) {
         state.pages        = d.pages || [{ name:'Sheet1', elements:[], wires:[], groups:[], guides:[], frameObj:null }];
@@ -296,6 +298,17 @@ function loadProject(input) {
       // ここでも落としておかないと開いた瞬間に●が出たままになる。
       state.pages.forEach(pg => { pg.dirty = false; });
       renderSymFloat(); renderPartsAll(); renderPageTabs(); draw(); updateRightPanel();
+      return { fixedIds };
+}
+
+function loadProject(input) {
+  const f = input.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = e => {
+    try {
+      const d = JSON.parse(e.target.result);
+      pushH();
+      const { fixedIds } = applyProjectData(d);
       alert(fixedIds > 0
         ? `読込完了\n\n重複していた図形IDを ${fixedIds} 件修復しました。\n`
           + `(このファイルは、図形が勝手に一緒に動く・消える不具合が起きうる状態でした)\n`

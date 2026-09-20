@@ -40,6 +40,26 @@ HOST = os.environ.get('ECAD_HOST', '127.0.0.1')
 # → 盛田さんは今まで通り server.py を起動するだけでよく、常駐サーバーは増えない。
 # → 他ソフトから使いたいときだけ tools/catalog_db/catalog_server.py を別途起動する。
 # ----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+# 図面のバックアップ(2026-09-20)
+#
+# 一定時間ごとにCADから送られてくる図面を backup/ にファイルで貯め、
+# 件数が設定を超えたら古いものから消す。ブラウザの中(localStorage)に置く
+# 「自動保存」とは別物で、呼び方も分けてある(自動保存=ブラウザ内、
+# バックアップ=フォルダのファイル)。AutoCADの .sv$ と .bak の関係と同じ。
+#
+# backup/ は .gitignore に入れてある(GitHub Desktopでpullするフォルダなので、
+# 控えがコミット対象に出てくると邪魔になる)。
+# ----------------------------------------------------------------------------
+BACKUP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backup')
+backup_store = None
+try:
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tools', 'backup'))
+    import backup_store as _bk
+    backup_store = _bk
+except Exception as e:
+    print(f'バックアップ機能を読み込めませんでした（CADは通常どおり動きます）: {e}')
+
 catalog_db = None
 try:
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tools', 'catalog_db'))
@@ -89,6 +109,10 @@ class Handler(SimpleHTTPRequestHandler):
             q = {k: v[0] for k, v in urllib.parse.parse_qs(parsed.query).items()}
             self.handle_parts(parsed.path[len('/api/parts/'):], q)
             return
+        if parsed.path.startswith('/api/backup/'):
+            q = {k: v[0] for k, v in urllib.parse.parse_qs(parsed.query).items()}
+            self.handle_backup_get(parsed.path[len('/api/backup/'):], q)
+            return
         super().do_GET()
 
     def do_POST(self):
@@ -104,6 +128,9 @@ class Handler(SimpleHTTPRequestHandler):
             return
         if parsed.path == '/api/parts/backup':
             self.handle_parts_backup()
+            return
+        if parsed.path == '/api/backup/save':
+            self.handle_backup_save()
             return
         self.send_error(404)
 
@@ -298,6 +325,52 @@ class Handler(SimpleHTTPRequestHandler):
             return
         try:
             self._send_json({'available': True, **parts_db.PartsDB().backup()})
+        except Exception as e:
+            self._send_json({'ok': False, 'available': True, 'error': str(e)})
+
+    # ---- 図面のバックアップ(2026-09-20) ----------------------------
+    def handle_backup_get(self, action, q):
+        """一覧(list)と1件読み出し(get)。どちらも backup/ の中しか見ない。"""
+        if backup_store is None:
+            self._send_json({'ok': False, 'available': False,
+                             'error': 'バックアップ機能が読み込めていません'})
+            return
+        try:
+            store = backup_store.BackupStore(BACKUP_DIR)
+            if action == 'list':
+                self._send_json({'available': True, **store.list()})
+            elif action == 'get':
+                self._send_json({'available': True, **store.get(q.get('name', ''))})
+            else:
+                self.send_error(404)
+        except Exception as e:
+            self._send_json({'ok': False, 'available': True, 'error': str(e)})
+
+    def handle_backup_save(self):
+        """CADから送られてきた図面を1件書き、古いものを消す。
+
+        送る側(js/backup.js)が「書くべきか」を判断済みで、ここは受けて書くだけ。
+        中身が空のときは書かない(空で埋めても復旧の役に立たないため)。
+        """
+        if backup_store is None:
+            self._send_json({'ok': False, 'available': False,
+                             'error': 'バックアップ機能が読み込めていません'})
+            return
+        try:
+            n = int(self.headers.get('Content-Length') or 0)
+            if not n:
+                self._send_json({'ok': False, 'available': True, 'error': '中身が空です'})
+                return
+            payload = json.loads(self.rfile.read(n).decode('utf-8'))
+            data = payload.get('data')
+            if not data or not data.get('pages'):
+                self._send_json({'ok': False, 'available': True, 'error': '図面がありません'})
+                return
+            store = backup_store.BackupStore(BACKUP_DIR)
+            res = store.save(data,
+                             name=payload.get('name') or '図面',
+                             keep=payload.get('keep', backup_store.DEFAULT_KEEP))
+            self._send_json({'available': True, **res})
         except Exception as e:
             self._send_json({'ok': False, 'available': True, 'error': str(e)})
 

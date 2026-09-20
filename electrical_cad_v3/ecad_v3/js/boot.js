@@ -105,6 +105,9 @@ function _safeInit(label, fn, critical) {
   _safeInit('接続点スタイルボタン同期', () => { if (typeof syncJunctionStyleBtns === 'function') syncJunctionStyleBtns(); });
   // 端子番号の表示は自動保存から復元されるので、ボタンの点灯を実状態に合わせる
   _safeInit('端子番号ボタン同期', () => { if (typeof syncTermNoBtn === 'function') syncTermNoBtn(); });
+  // 図面のバックアップ(ファイル)のタイマーを開始する。
+  // ブラウザ内の「自動保存」とは別物で、start.bat が動いているときだけ効く。
+  _safeInit('バックアップ開始', () => { if (typeof bkStart === 'function') bkStart(); });
 })();
 
 // ================================================================
