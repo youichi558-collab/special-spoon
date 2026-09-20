@@ -651,10 +651,11 @@
           <div class="fr"><label>カテゴリ</label><input type="text" id="sr-cat" value="カスタム"></div>
           <div class="fr"><label>種別（接点Ref用）</label>
             <select id="sr-role">
-              <option value="">その他（Ref対象外）</option>
+              <option value="">その他</option>
               <option value="coil">コイル（本体側）</option>
-              <option value="contact_a">a接点</option>
-              <option value="contact_b">b接点</option>
+              <option value="contact_main">主接点</option>
+              <option value="contact_a">補助接点（a接点）</option>
+              <option value="contact_b">補助接点（b接点）</option>
             </select>
           </div>
           <div style="display:flex;gap:6px">
@@ -725,10 +726,11 @@
           <button class="fp-btn primary" onclick="peAutoDetect()">🔍 自動候補(開放端検出)</button>
           <div class="fr"><label style="font-size:11px;font-weight:600">種別（接点Ref用）</label>
             <select id="pe-role">
-              <option value="">その他（Ref対象外）</option>
+              <option value="">その他</option>
               <option value="coil">コイル（本体側）</option>
-              <option value="contact_a">a接点</option>
-              <option value="contact_b">b接点</option>
+              <option value="contact_main">主接点</option>
+              <option value="contact_a">補助接点（a接点）</option>
+              <option value="contact_b">補助接点（b接点）</option>
             </select>
           </div>
           <div>

@@ -684,12 +684,29 @@ function elLocation(el, pageIdx) {
   return z ? `${pageIdx + 1}/${z}` : String(pageIdx + 1);
 }
 
+// シンボルの種別。'coil' | 'contact_main' | 'contact_a' | 'contact_b' | ''(その他)
+//
+// 【2026-09-20】`contact_main`(主接点)を新設した。従来は a接点/b接点 しか無く、
+// 主接点を置く先が無かった。a接点/b接点は「接点の性質(開くか閉じるか)」、
+// 主接点/補助接点は「部品のどの部分か」で**軸が違う**ため、主接点を
+// contact_a に押し込むと接点リファレンスで a接点として数えられてしまう。
+// 補助接点であることを名前に出して「補助接点(a接点)」とした(値は従来のまま)。
 function symRole(el){
   const d=getDef(el.type)||{};
-  if(d.role)return d.role;                       // 'coil' | 'contact_a' | 'contact_b'
+  if(d.role)return d.role;
   if(d.isCoil)return 'coil';
   if(d.isContact)return d.contactType==='b'?'contact_b':'contact_a';
   return '';
+}
+
+// 接点として数えるもの。ランプ・押釦・モータ等(その他)は「接点数」に含めない。
+// 含めると「接点数」の意味が壊れるため(盛田さんと確認: 主接点は数える)。
+const REF_CONTACT_ROLES = ['contact_main', 'contact_a', 'contact_b'];
+function refRoleLabel(role){
+  return role==='contact_main' ? '主接点'
+       : role==='contact_a'    ? '補助接点(a接点)'
+       : role==='contact_b'    ? '補助接点(b接点)'
+       : 'その他';
 }
 
 // 接点・コイル リファレンス。
@@ -703,8 +720,11 @@ function showRefPanel(){
   state.pages.forEach((pg,pi)=>{
     (pg.elements||[]).forEach(el=>{
       if(skip.includes(el.type))return;
+      // 【2026-09-20】以前はここで role 未設定のシンボルを丸ごと落としていた。
+      // 盛田さん「主接点が出るのは問題ない、というかその他も載ってていいと思うんだが」。
+      // この表は「このデバイスの部品が図面のどこにあるか」の索引として使うので、
+      // ランプ・押釦・モータのような種別未設定のシンボルも載せる。
       const role=symRole(el);
-      if(!role)return;                            // Ref対象外
       const raw=(el.partRef||'').trim();
       const key=normalizeRef(raw)||`(未設定)#${el.type}`;
       if(!devs[key])devs[key]={spellings:new Map(),coils:[],contacts:[],noRef:!raw};
@@ -730,12 +750,24 @@ function showRefPanel(){
     const name=spells.length?spells[0][0]:'(デバイス未設定)';
     const warns=[];
     if(spells.length>1)warns.push(`表記ゆれ: ${spells.map(s=>s[0]).join(' / ')}`);
-    if(!dv.coils.length)warns.push('コイル未配置');
+    // 【2026-09-20】種別未設定のシンボル(ランプ・押釦・モータ等)も表に載せる
+    // ようにしたため、無条件だと全部に「コイル未配置」が出てしまう。
+    // コイルと対で見るべきなのは接点を持つデバイスだけなので、そのときだけ出す。
+    const nContacts=dv.contacts.filter(c=>REF_CONTACT_ROLES.includes(c.role)).length;
+    if(!dv.coils.length&&nContacts)warns.push('コイル未配置');
     if(dv.coils.length>1)warns.push(`コイルが${dv.coils.length}個`);
     if(dv.noRef)warns.push('デバイス未設定');
     // locは「2/B3」(ページ/区画)形式。図面枠が無いページはページ番号だけになる
-    const badge=c=>`<span class="badge badge-${c.role==='contact_a'?'g':'b'}">`
-      +`${c.role==='contact_a'?'a':'b'} ${escH(c.loc)}</span>`;
+    // バッジは 主 / a / b / 他 の4種。以前は contact_a か否かの2択だったため、
+    // 主接点もその他も「b」と表示されてしまっていた。
+    // 主接点はコイル(badge-p)と色が被らないよう badge-o。種別未設定は地味な灰色。
+    const badgeTxt=r=>r==='contact_a'?'a':r==='contact_b'?'b':r==='contact_main'?'主':'他';
+    const badge=c=>{
+      const r=c.role;
+      const cls=r==='contact_a'?'badge-g':r==='contact_b'?'badge-b':r==='contact_main'?'badge-o':'';
+      const st=cls?'':' style="background:var(--bg4);color:var(--fg3)"';
+      return `<span class="badge ${cls}"${st}>${badgeTxt(r)} ${escH(c.loc)}</span>`;
+    };
     const coilTxt=dv.coils.length
       ? dv.coils.map(c=>`<span class="badge badge-p">${escH(c.loc)}</span>`).join(' ')
       : '<span class="badge" style="background:var(--rbg);color:var(--red)">未配置</span>';
@@ -743,7 +775,7 @@ function showRefPanel(){
         ?`<br><span style="color:var(--red);font-size:10px">⚠ ${escH(warns.join(' / '))}</span>`:''}</td>`
       +`<td>${coilTxt}</td>`
       +`<td>${dv.contacts.map(badge).join(' ')||'なし'}</td>`
-      +`<td>${dv.contacts.length}</td></tr>`;
+      +`<td>${nContacts}</td></tr>`;
   }).join('');
 
   const noFrame=state.pages.some(pg=>!pg.frameObj||!pg.frameObj.cols);
@@ -769,7 +801,7 @@ function exportRefCSV(devs){
       return;
     }
     dv.contacts.forEach(c=>{
-      lines.push([name,coilLoc,c.role==='contact_a'?'a接点':'b接点',c.loc].map(esc).join(','));
+      lines.push([name,coilLoc,refRoleLabel(c.role),c.loc].map(esc).join(','));
     });
   });
   dl(lines.join('\n'),'cross_reference.csv','text/csv');
