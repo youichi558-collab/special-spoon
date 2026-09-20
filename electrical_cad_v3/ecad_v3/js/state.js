@@ -245,4 +245,46 @@ if (typeof module !== 'undefined' && module.exports) {
 // この目印を突き合わせて「読み込めていないファイル」を検出する。
 // 目印はファイル末尾に置く(先頭だと、途中で落ちたファイルも「読めた」ことになる)。
 // ================================================================
+
+// ---- サーバーが古いコードで動いていないか ----------------------------------
+//
+// 【2026-09-20】盛田さん「毎回再起動は要らないと聞いてるが？いる時は再起動を
+// 要請が当たり前だろ」。そのとおりで、実際に時間を無駄にした。
+//
+// JS・HTML・CSS は pull して F5 すれば効く。**Pythonは効かない。**
+// server.py は起動時に tools/catalog_db/catalog_db.py 等を import してメモリに
+// 持ち続けるので、動かしたまま pull しても古いコードが動き続ける。
+// 2026-09-20、catalog_db.py の10列対応を入れたのに「再取込」を4〜5回やっても
+// 直らない、ということが実際に起きた(こちらが再起動を案内していなかった)。
+//
+// 「毎回再起動してください」ではなく、**要るときだけこちらから言う**のが筋。
+// index.html と parts.html の両方がこのファイルを読むので、ここに置いてある。
+function ecadFmtTime(sec) {
+  try { return new Date(sec * 1000).toLocaleString('ja-JP', { hour12: false }); }
+  catch (e) { return '?'; }
+}
+function checkServerFresh() {
+  if (typeof document === 'undefined' || typeof fetch !== 'function') return;
+  fetch('/api/serverinfo').then(r => {
+    // このAPIが無い = server.py 自体が古い。HTMLは新しいのにAPIだけ無いのだから、
+    // 「pullしたが再起動していない」状態そのもの。404も知らせる材料になる。
+    if (!r.ok) return { ok: true, stale: true, missing: true };
+    return r.json();
+  }).then(d => {
+    if (!d || !d.ok || !d.stale) return;
+    showTopBanner('server-stale-banner',
+      'サーバーが古いコードで動いています。start.bat を開き直してください。'
+      + (d.missing ? '（更新の確認APIがまだありません）'
+                   : `（起動 ${ecadFmtTime(d.started)} ／ ${d.newestPyFile} の更新 `
+                     + `${ecadFmtTime(d.newestPy)}）`));
+  }).catch(() => {});   // file:// で開いた等、サーバーが居ない場合は黙って何もしない
+}
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', checkServerFresh);
+  } else {
+    checkServerFresh();
+  }
+}
+
 if (typeof window !== 'undefined') (window.__ecadLoaded = window.__ecadLoaded || {})['state.js'] = 1;

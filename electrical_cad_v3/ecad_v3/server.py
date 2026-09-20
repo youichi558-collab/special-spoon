@@ -17,6 +17,7 @@ import json
 import os
 import sys
 import urllib.parse
+import time
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 PORT = 8080
@@ -28,6 +29,52 @@ PORT = 8080
 # どうしてもLANの別PCから開きたい場合だけ、環境変数で明示的に広げる:
 #   set ECAD_HOST=0.0.0.0  &&  py server.py
 HOST = os.environ.get('ECAD_HOST', '127.0.0.1')
+
+# ----------------------------------------------------------------------------
+# 「このサーバーは古いコードで動いていないか」の判定材料
+#
+# 【2026-09-20】盛田さん「毎回再起動は要らないと聞いてるが？いる時は再起動を
+# 要請が当たり前だろ」。そのとおりで、実際に時間を無駄にした。
+#
+# JS・HTML・CSS は pull して F5 すれば効く。**Pythonは効かない。**
+# server.py は起動時に tools/catalog_db/catalog_db.py 等を import してメモリに
+# 持ち続けるので、動かしたまま pull しても古いコードが動き続ける。
+# 2026-09-20、catalog_db.py の10列対応を入れたのに「再取込」を4〜5回やっても
+# 直らない、ということが実際に起きた(こちらが再起動を案内していなかった)。
+#
+# 起動時刻と .py の最終更新を返し、画面側(js/state.js)で帯を出して知らせる。
+SERVER_STARTED = time.time()
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def newest_py():
+    """このサーバーが読み込むPythonのうち、最後に更新されたものを返す。
+
+    見るのは server.py 本体と tools/ 配下の .py。__pycache__ は見ない
+    (あれは実行時に生成されるので、常に新しくなってしまう)。
+    """
+    newest, name = 0.0, ''
+    targets = [os.path.join(APP_DIR, 'server.py')]
+    for root, dirs, files in os.walk(os.path.join(APP_DIR, 'tools')):
+        dirs[:] = [d for d in dirs if d != '__pycache__']
+        targets += [os.path.join(root, f) for f in files if f.endswith('.py')]
+    for t in targets:
+        try:
+            m = os.path.getmtime(t)
+        except OSError:
+            continue
+        if m > newest:
+            newest, name = m, os.path.relpath(t, APP_DIR).replace('\\', '/')
+    return newest, name
+
+
+def is_stale(started, newest):
+    """起動より .py が新しければ True(= 再起動が要る)。
+
+    1秒の余裕を見るのは、pull した直後に start.bat を叩くと、同じ秒に
+    「ファイルの更新」と「起動」が並んで誤報することがあるため。
+    """
+    return newest > started + 1
 
 # ----------------------------------------------------------------------------
 # カタログDB(任意機能・2026-08-20)
@@ -101,6 +148,9 @@ class Handler(SimpleHTTPRequestHandler):
         if parsed.path == '/api/pending_csv':
             self.handle_pending_csv_list()
             return
+        if parsed.path == '/api/serverinfo':
+            self.handle_serverinfo()
+            return
         if parsed.path.startswith('/api/catalog/'):
             q = {k: v[0] for k, v in urllib.parse.parse_qs(parsed.query).items()}
             self.handle_catalog(parsed.path[len('/api/catalog/'):], q)
@@ -133,6 +183,17 @@ class Handler(SimpleHTTPRequestHandler):
             self.handle_backup_save()
             return
         self.send_error(404)
+
+    def handle_serverinfo(self):
+        """起動時刻と .py の最終更新を返す。画面側が「再起動が要る」と出すために使う。"""
+        newest, name = newest_py()
+        self._send_json({
+            'ok': True,
+            'started': SERVER_STARTED,
+            'newestPy': newest,
+            'newestPyFile': name,
+            'stale': is_stale(SERVER_STARTED, newest),
+        })
 
     def handle_catalog_import(self):
         """ブラウザが読んだカタログCSVの中身を受け取って取り込む。
