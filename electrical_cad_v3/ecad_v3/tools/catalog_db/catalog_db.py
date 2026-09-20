@@ -45,11 +45,22 @@ DB_NAME = 'catalog.sqlite3'
 
 # CSVの列定義(部品登録パネルのCSV一括登録と同じ並び)。
 # 9列目に source(出典) を追加(2026-08-21)。
+# 10列目に catalogUrl(カタログURL) を追加(2026-09-20)。
 #
 # 列数は「8列以上あればよい」という扱いにしてある。将来さらに列が増えても、
 # 古いCSV(8列)と新しいCSV(9列以上)が混在したまま読めるようにするため。
 # 「ちょうどN列」で検証すると列を足すたびに全ファイルの修正が必要になる。
-COLUMNS = ('maker', 'ref', 'type', 'volt', 'amp', 'terminals', 'contacts', 'note', 'source')
+#
+# 【2026-09-20の不具合】10列目を足したのは parts_page.js のCSV一括登録だけで、
+# こちら(Drive→検索用カタログDB)は9列のままだった。277行目の穴埋めが
+# [''] * (9 - 10) = [] になり、cells[:9] で10列目が黙って捨てられていた。
+# 列を足すときは必ず両方の経路を直すこと。
+#
+# 列名は部品DB(JS側)のキーとそのまま合わせてある。search() は SELECT * の結果を
+# dict にしてJSONで返すので、ここを catalog_url にすると js/parts_page.js が読む
+# r.catalogUrl と食い違ってまた黙って落ちる。
+COLUMNS = ('maker', 'ref', 'type', 'volt', 'amp', 'terminals', 'contacts', 'note',
+           'source', 'catalogUrl')
 MIN_COLUMNS = 8
 
 SCHEMA = """
@@ -65,6 +76,7 @@ CREATE TABLE IF NOT EXISTS parts (
     contacts   TEXT,
     note       TEXT,
     source     TEXT,               -- 出典(カタログ名・ページ)。CSVの9列目
+    catalogUrl TEXT,               -- カタログのURL。CSVの10列目
     src_file   TEXT                -- 由来(元CSVファイル名。取り込み追跡用)
 );
 
@@ -207,8 +219,15 @@ class CatalogDB:
         return bool(self.csv_dir) and os.path.isdir(self.csv_dir)
 
     # -- 構築 ---------------------------------------------------------------
+    # 1: 初版 / 2: 10列目 catalogUrl を追加(2026-09-20)
+    SCHEMA_VERSION = 2
+
     def _current_state(self):
-        st = {}
+        # スキーマを変えたら SCHEMA_VERSION を上げること。
+        # これが無いと「CSVが変わっていない=再構築不要」と判断され、列を足しても
+        # 古いDBが使われ続けて黙って値が落ちる(2026-09-20のカタログURLがこれ)。
+        # ファイル名は .csv で終わるものしか入らないので、この番兵とは衝突しない。
+        st = {'__schema__': (0.0, self.SCHEMA_VERSION)}
         for p in self.csv_files():
             try:
                 s = os.stat(p)
@@ -275,7 +294,8 @@ class CatalogDB:
                         continue
                     # 列が足りなければ空で補う(古い8列のCSVもそのまま読める)
                     cells = [c.strip() for c in row] + [''] * (len(COLUMNS) - len(row))
-                    maker, ref, typ, volt, amp, term, cont, note, source = cells[:len(COLUMNS)]
+                    (maker, ref, typ, volt, amp, term, cont, note,
+                     source, caturl) = cells[:len(COLUMNS)]
                     if not ref:
                         skipped += 1
                         continue
@@ -284,14 +304,15 @@ class CatalogDB:
                         continue
                     conn.execute("""
                         INSERT INTO parts (ref, maker, type, volt, amp, terminals, contacts,
-                                           note, source, src_file)
-                        VALUES (?,?,?,?,?,?,?,?,?,?)
+                                           note, source, catalogUrl, src_file)
+                        VALUES (?,?,?,?,?,?,?,?,?,?,?)
                         ON CONFLICT(ref) DO UPDATE SET
                           maker=excluded.maker, type=excluded.type, volt=excluded.volt,
                           amp=excluded.amp, terminals=excluded.terminals,
                           contacts=excluded.contacts, note=excluded.note,
-                          source=excluded.source, src_file=excluded.src_file
-                    """, (ref, maker, typ, volt, amp, term, cont, note, source, src))
+                          source=excluded.source, catalogUrl=excluded.catalogUrl,
+                          src_file=excluded.src_file
+                    """, (ref, maker, typ, volt, amp, term, cont, note, source, caturl, src))
                     total += 1
 
         for name, (mtime, size) in self._current_state().items():
