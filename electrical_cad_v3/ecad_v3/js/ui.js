@@ -502,24 +502,52 @@ function symTermOffHtml(el) {
   if (typeof symTermPoints !== 'function') return '';
   const cS  = (state.customSymbols || []).find(s => s.type === el.type);
   const pts = symTermPoints(el, cS, (typeof getDef === 'function' ? getDef(el.type) : null) || {});
-  if (!pts.length || !pts.some(p => p.label)) return '';
-  let h = `<div class="pp-group"><details><summary style="font-size:11px;cursor:pointer;padding:2px 5px;color:var(--fg3)">端子番号の位置（${pts.length}点）</summary>`;
+  // 【2026-09-20】以前は「番号が1つも無ければ欄ごと出さない」にしていたが、
+  // それだと空の状態から手で入れられなかった。端子点があれば必ず出す。
+  if (!pts.length) return '';
+
+  const list = String(el.terminals || '').split(',').map(s => s.trim());
+  const extra = list.slice(pts.length).filter(x => x);   // 端子点より多い分
+
+  let h = `<div class="pp-group"><details open><summary style="font-size:11px;cursor:pointer;padding:2px 5px;color:var(--fg3)">端子番号（${pts.length}点）</summary>`;
   if (!state.showTermNo) {
     h += `<p style="font-size:10px;color:var(--fg3);padding:2px 5px;line-height:1.4">図面には出ていません。［表示］タブの「端子番号」をONにすると出ます。</p>`;
+  }
+  if (extra.length) {
+    h += `<p style="font-size:10px;color:var(--red);padding:2px 5px;line-height:1.4">`
+      +  `番号が端子点より${extra.length}個多いです（余り: ${escH(extra.join(','))}）。`
+      +  `部品DBの端子番号は1台ぶんの全端子なので、このシンボルの分だけ下の欄で選び直してください。`
+      +  `下の欄を編集すると余りは消えます。</p>`;
   }
   h += `<div class="pp-row"><label>文字サイズ</label><input type="number" id="pp-tfs" value="${escH(el.termFs || 9)}" step="1" min="5" max="24" oninput="previewTermNo()"></div>`;
   pts.forEach(p => {
     const o = (el.termOff || [])[p.i] || [0, 0];
-    const lbl = p.label ? escH(p.label) : '（番号なし）';
-    h += `<div class="pp-row" style="align-items:center"><label style="white-space:nowrap">${p.i + 1}: ${lbl}</label>`
+    h += `<div class="pp-row" style="align-items:center">`
+      +  `<label style="white-space:nowrap;font-size:10px">${p.i + 1} ${escH(symTermPosHint(p, pts))}</label>`
       +  `<span style="display:flex;gap:3px;align-items:center;font-size:10px;color:var(--fg3)">`
-      +  `X<input type="number" class="pp-toff-x" data-ti="${p.i}" value="${escH(Number(o[0]) || 0)}" step="1" style="width:44px" title="右へずらすと＋、左へずらすと－" oninput="previewTermNo()">`
-      +  `Y<input type="number" class="pp-toff-y" data-ti="${p.i}" value="${escH(Number(o[1]) || 0)}" step="1" style="width:44px" title="下へずらすと＋、上へずらすと－" oninput="previewTermNo()">`
+      +  `<input type="text" class="pp-tnum" data-ti="${p.i}" value="${escH(p.label || '')}" style="width:56px" placeholder="番号" title="この端子に書く番号。空にすると何も出ません" oninput="previewTermNum()">`
+      +  `X<input type="number" class="pp-toff-x" data-ti="${p.i}" value="${escH(Number(o[0]) || 0)}" step="1" style="width:40px" title="右へずらすと＋、左へずらすと－" oninput="previewTermNo()">`
+      +  `Y<input type="number" class="pp-toff-y" data-ti="${p.i}" value="${escH(Number(o[1]) || 0)}" step="1" style="width:40px" title="下へずらすと＋、上へずらすと－" oninput="previewTermNo()">`
       +  `</span></div>`;
   });
-  h += `<div class="pp-row"><button onclick="resetTermNoOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button></div>`;
+  h += `<div class="pp-row" style="gap:6px"><button onclick="resetTermNoOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button>`
+    +  `<button onclick="clearTermNums()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">番号を全部消す</button></div>`;
   h += `</details></div>`;
   return h;
+}
+
+// 端子がシンボルのどこにあるかを日本語で返す（「左上」「中下」等）。
+//
+// 【なぜ要るか・2026-09-20】盛田さん「自動で端子番号入れると単純に左から
+// 入ってる時点で問題あり、現状だと自動で入れて修正がいるが修正ができない」。
+// 主接点は接点3個を並べて1つのシンボルに登録されているため、端子点が6つある。
+// 番号欄だけ並べても「3番目の欄」がどの端子か画面から分からず、直しようがない。
+function symTermPosHint(p, pts) {
+  const maxR = Math.max(1, ...pts.map(q => Math.hypot(q.rx || 0, q.ry || 0)));
+  const th = maxR * 0.2;
+  const v = (p.ry < -th) ? '上' : (p.ry > th) ? '下' : '';
+  const hh = (p.rx < -th) ? '左' : (p.rx > th) ? '右' : (v ? '中' : '');
+  return (hh + v) || '中央';
 }
 
 // 入力のたびに図面へ反映する(既存の previewLabelOff 等と同じ流儀)。
@@ -533,6 +561,57 @@ function previewTermNo() {
   const t = _readTermOff();
   if (t) el.termOff = t; else delete el.termOff;
   drawWithoutSel();
+}
+
+// 端子番号の欄(1端子ずつ)を編集したとき。
+//
+// **カンマ区切りの「端子番号」欄(pp-term)が唯一の保存先**で、ここはその
+// 読み書きの窓口。二重管理にしないため、入力のたびに pp-term へ書き戻す。
+// 端子点より多かった余りの番号はここで落ちる(欄に赤字で予告してある)。
+function previewTermNum() {
+  const el = document.getElementById('rp-body')?._el;
+  if (!el) return;
+  const nums = _readTermNums();
+  if (nums === null) return;
+  // 末尾の空欄は切り詰める(「A1,,,,,」のような無意味な尻尾を残さない)
+  const arr = nums.slice();
+  while (arr.length && !arr[arr.length - 1]) arr.pop();
+  const s = arr.join(',');
+  el.terminals = s;
+  const pt = document.getElementById('pp-term');
+  if (pt) pt.value = s;
+  drawWithoutSel();
+}
+
+// カンマ区切りの欄を直接いじったとき、1端子ずつの欄を追随させる。
+// どちらから編集しても食い違わないようにするため。
+function syncTermNumInputs() {
+  const pt = document.getElementById('pp-term');
+  if (!pt) return;
+  const list = String(pt.value || '').split(',').map(s => s.trim());
+  document.querySelectorAll('.pp-tnum').forEach(inp => {
+    const i = parseInt(inp.dataset.ti);
+    inp.value = list[i] || '';
+  });
+  const el = document.getElementById('rp-body')?._el;
+  if (el) { el.terminals = pt.value; drawWithoutSel(); }
+}
+
+function _readTermNums() {
+  const ins = [...document.querySelectorAll('.pp-tnum')];
+  if (!ins.length) return null;
+  const arr = [];
+  ins.forEach(inp => { arr[parseInt(inp.dataset.ti)] = (inp.value || '').trim(); });
+  for (let i = 0; i < arr.length; i++) if (arr[i] === undefined) arr[i] = '';
+  return arr;
+}
+
+function clearTermNums() {
+  const el = document.getElementById('rp-body')?._el;
+  document.querySelectorAll('.pp-tnum').forEach(i => { i.value = ''; });
+  const pt = document.getElementById('pp-term');
+  if (pt) pt.value = '';
+  if (el) { el.terminals = ''; drawWithoutSel(); }
 }
 
 function resetTermNoOff() {
@@ -2227,7 +2306,7 @@ function updateRightPanel() {
     html += `<div class="pp-row"><button onclick="cancelLabelOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button></div>`;
     html += `</details>`;
     html += `</div>`; }
-    html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-term" value="${escH(el.terminals||'')}" placeholder="例: A1,A2,13,14"></div>`;
+    html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-term" value="${escH(el.terminals||'')}" placeholder="例: A1,A2,13,14" title="このシンボルの端子番号をカンマ区切りで。下の「端子番号」欄で1端子ずつ入れた方が確実です" oninput="syncTermNumInputs()"></div>`;
     html += symTermOffHtml(el);
     html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${escH(el.wireNo||'')}"></div>`;
     html += `<div class="pp-row"><label>回転(°)</label><input type="number" id="pp-rot" value="${escH(el.rot||0)}" step="90"></div>`;
