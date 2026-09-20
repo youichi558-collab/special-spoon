@@ -666,7 +666,10 @@ function pickTerminalGroup(groups, termCount) {
 let _pendingAssign = null;
 
 // グループ選択パネルを出す。選ぶと applyPartAssign() が呼ばれる。
-function askTerminalGroup(type, ref, groups) {
+// narrowed=true は「シンボルの種別に当たるグループが2つ以上あったので、
+// 当たったものだけに絞って出している」ことを示す。全グループを出す通常の呼び方と
+// 見た目が同じだと、なぜこの並びなのかが分からないため一言添える。
+function askTerminalGroup(type, ref, groups, narrowed) {
   _pendingAssign = { type, ref, groups };
   const box = document.getElementById('tg-list');
   if (!box) {   // パネルが無い環境では先頭グループで進める（安全側）
@@ -674,6 +677,13 @@ function askTerminalGroup(type, ref, groups) {
     return;
   }
   document.getElementById('tg-ref').textContent = ref;
+  const note = document.getElementById('tg-note');
+  if (note) {
+    note.textContent = narrowed
+      ? `このシンボルの種別に当てはまるグループが${groups.length}つあります。どれを入れますか。`
+      : '';
+    note.style.display = narrowed ? '' : 'none';
+  }
   box.innerHTML = groups.map((g, i) =>
     `<button class="fp-btn" style="display:block;width:100%;text-align:left;margin-bottom:4px"
        onclick="applyPartAssign(${i})">${escH(g.name || '(名前なし)')}　<span style="color:var(--fg3)">${escH(g.list.join(','))}</span></button>`
@@ -722,8 +732,14 @@ function placePart(type, ref, terminals) {
   // 1つの端子番号を全部に入れることになり、どれかが必ず間違うため従来どおりに落とす。
   const roles = [...new Set(targets.map(symTermRole))];
   if (roles.length === 1 && roles[0]) {
-    const rg = pickGroupByRole(groups, roles[0]);
-    if (rg) { doPlacePart(type, ref, rg.list.join(','), rg.name); return; }
+    const hit = matchGroupsByRole(groups, roles[0]);
+    if (hit.length === 1) { doPlacePart(type, ref, hit[0].list.join(','), hit[0].name); return; }
+    // 【2026-09-20】2つ以上当たったときは、従来は「決まらない」として
+    // 端子点数判定→全グループの一覧へ落ちていた。
+    // 可逆電磁接触器の「正転コイル」「逆転コイル」のように、どちらも正しくて
+    // 人が選ぶしかないものが実際にある(部品DB実測で34件)。
+    // 全グループを並べ直すより、当たったものだけを出す方が選びやすく間違えにくい。
+    if (hit.length > 1) { askTerminalGroup(type, ref, hit, true); return; }
   }
   // 選択中シンボルの端子点数（複数選択時は全部同じ数のときだけ自動判定に使う）
   const counts = [...new Set(targets.map(symTerminalCount))];
@@ -757,10 +773,28 @@ const TERM_GROUP_PATTERNS = {
   contact_a:    [/補助/i, /^aux/i],
   contact_b:    [/補助/i, /^aux/i],
 };
-function pickGroupByRole(groups, role) {
+
+// 上のパターンに当たってしまうが、その種別ではないもの。
+//
+// 【2026-09-20】三菱インバータFR-D700の「主回路オプション」(P/+,PR,N/-,P1)は
+// 回生抵抗器やDCリアクトルをつなぐ端子で、主接点ではない。
+// /^\s*主/ が拾ってしまい「主回路」と2つ当たるため、30件で自動選択が効かなかった。
+const TERM_GROUP_EXCLUDE = {
+  contact_main: [/オプション/],
+};
+
+// 種別に当たるグループを全部返す。1つに決まらないときの扱いは呼び出し側で決める。
+function matchGroupsByRole(groups, role) {
   const pats = TERM_GROUP_PATTERNS[role];
-  if (!pats) return null;
-  const hit = groups.filter(g => pats.some(re => re.test(g.name || '')));
+  if (!pats) return [];
+  const ng = TERM_GROUP_EXCLUDE[role] || [];
+  return (groups || []).filter(g => {
+    const name = g.name || '';
+    return pats.some(re => re.test(name)) && !ng.some(re => re.test(name));
+  });
+}
+function pickGroupByRole(groups, role) {
+  const hit = matchGroupsByRole(groups, role);
   return hit.length === 1 ? hit[0] : null;
 }
 

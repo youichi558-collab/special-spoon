@@ -21,6 +21,18 @@
 //   2. 決まらないとき(該当0個/2個以上)は null を返し、聞く側へ落とす
 //   3. CSVの書き方の揺れ(コイル/操作コイル、主接点/主回路)を吸収する
 //   4. 「主接点」と「補助接点」を取り違えない（どちらも「接点」を含む）
+//
+// 【2026-09-20追記・Coworkのカタログ整備を取り込んだ後の実測】
+// 実データで数えたら、問題は「パターンに当たらない」ではなく
+// 「2つ以上当たって決められない」だった（該当64行）。
+//   コイル   34件: 正転コイル と 逆転コイル（可逆電磁接触器）
+//   補助接点 34件: 正転補助 と 逆転補助（6件はインタロック補助も）
+//   主接点   30件: 主回路 と 主回路オプション（三菱インバータFR-D700）
+// このうちインバータ側はこちらの誤判定なので除外パターンで直した。
+// 可逆形は「どちらも正しい」ので、当たったものだけ出して人に選んでもらう。
+//
+//   5. 「主回路オプション」を主接点として拾わない
+//   6. 2つ以上当たったときは matchGroupsByRole が両方返す（選択肢として出すため）
 
 const fs = require('fs');
 const vm = require('vm');
@@ -47,10 +59,12 @@ const sandbox = { console };
 vm.createContext(sandbox);
 vm.runInContext([
   constBlock('TERM_GROUP_PATTERNS'),
+  constBlock('TERM_GROUP_EXCLUDE'),
+  grab('matchGroupsByRole'),
   grab('pickGroupByRole'),
   grab('parseTerminalGroups'),
 ].join('\n'), sandbox);
-const { pickGroupByRole, parseTerminalGroups } = sandbox;
+const { matchGroupsByRole, pickGroupByRole, parseTerminalGroups } = sandbox;
 
 // 富士SC09XAをグループ形式で書いた場合
 const FUJI = 'コイル:A1,A2 / 主接点:L1,L2,L3,T1,T2,T3 / 補助:13,14';
@@ -102,6 +116,55 @@ console.log('  ← 推測で入れて外すより、聞く側へ落とす方が�
   ok(pickGroupByRole([], 'coil') === null, 'グループが空でも落ちない');
 }
 
+console.log('【インバータの「主回路オプション」を主接点として拾わない】');
+console.log('  ← P/+,PR,N/- は回生抵抗器やDCリアクトルの端子で、主接点ではない');
+{
+  // 三菱インバータFR-D700の実データ（catalog_pending/mitsubishi_inverter_batch1.csv）
+  const inv = parseTerminalGroups(
+    '主回路:R/L1,S/L2,T/L3,U,V,W / 制御入力:STF,STR,RH,RM,RL,SD,PC'
+    + ' / 周波数設定:10,2,4,5 / 出力:A,B,C,RUN,SE,FM'
+    + ' / セーフティ:S1,S2,SC,SO / 主回路オプション:P/+,PR,N/-,P1');
+  ok(inv.length === 6, `6グループに分かれる（実際 ${inv.length}）`);
+  const hit = matchGroupsByRole(inv, 'contact_main');
+  ok(hit.length === 1, `主接点に当たるのは1つだけ（実際 ${hit.length}: ${hit.map(g => g.name).join('/')}）`);
+  ok(hit.length === 1 && hit[0].name === '主回路', '当たるのは「主回路」の方');
+  const g = pickGroupByRole(inv, 'contact_main');
+  ok(g && g.list.join(',') === 'R/L1,S/L2,T/L3,U,V,W', '主接点 → R/L1,S/L2,T/L3,U,V,W');
+  ok(matchGroupsByRole(inv, 'coil').length === 0, 'インバータにコイルグループは無い');
+}
+
+console.log('【2つ以上当たるときは、当たったものを全部返す】');
+console.log('  ← 可逆電磁接触器は正転・逆転でコイルが2つある。どちらも正しいので人が選ぶ');
+{
+  // 三菱可逆電磁接触器 S-2×T10 相当（catalog_pending/mitsubishi_mc_batch2.csv）
+  const rev = parseTerminalGroups(
+    '正転コイル:A1,A2 / 逆転コイル:A1,A2 / 主接点:1,3,5,2,4,6'
+    + ' / 正転補助:13,14 / 逆転補助:13,14 / インタロック補助:21,22');
+  const coils = matchGroupsByRole(rev, 'coil');
+  ok(coils.length === 2, `コイルは2つ当たる（実際 ${coils.length}）`);
+  ok(coils.map(g => g.name).join('/') === '正転コイル/逆転コイル', '正転コイルと逆転コイルの両方');
+  ok(pickGroupByRole(rev, 'coil') === null, '1つに決まらないので自動では入れない');
+
+  const aux = matchGroupsByRole(rev, 'contact_a');
+  ok(aux.length === 3, `補助は3つ当たる（実際 ${aux.length}）`);
+  ok(aux.map(g => g.name).join('/') === '正転補助/逆転補助/インタロック補助', '3つとも返る');
+
+  // 主接点は1つしかないので、可逆形でも自動で決まる
+  const main = pickGroupByRole(rev, 'contact_main');
+  ok(main && main.list.join(',') === '1,3,5,2,4,6', '主接点は1つなので自動で決まる');
+}
+
+console.log('【除外パターンで全部消えても落ちない】');
+{
+  const only = parseTerminalGroups('主回路オプション:P/+,PR');
+  ok(matchGroupsByRole(only, 'contact_main').length === 0, '除外だけが残るなら該当0');
+  ok(pickGroupByRole(only, 'contact_main') === null, 'nullを返す');
+  ok(matchGroupsByRole([], 'contact_main').length === 0, 'グループが空でも落ちない');
+  ok(matchGroupsByRole(null, 'coil').length === 0, 'null を渡しても落ちない');
+  ok(matchGroupsByRole(parseTerminalGroups('コイル:A1,A2'), 'なんだこれ').length === 0,
+     '知らない種別なら空');
+}
+
 console.log('【端子記号にスラッシュが入っていても割らない】');
 console.log('  ← 三菱インバータの主回路は R/L1・S/L2・T/L3。素朴に / で割ると「R」と「L1」に砕ける');
 {
@@ -151,7 +214,8 @@ console.log('  ← 既存のPLC用データ(入力:X0,X1,X2,COM/出力:Y0,Y1,COM
 }
 
 console.log('【グループ名が無い従来データでは選ばない】');
-console.log('  ← カタログCSVは今のところ全件フラット。従来どおり端子点数の判定へ落とす');
+console.log('  ← 2026-09-20のCowork整備後も、グループ名が付いたのは205行で残り95行は素の羅列。');
+console.log('    フラットなデータは今後も混ざるので、従来どおり端子点数の判定へ落とす');
 {
   const flat = parseTerminalGroups('A1,A2,L1,L2,L3,T1,T2,T3,13,14');
   ok(flat.length === 1, 'フラットなら1グループ');
