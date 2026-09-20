@@ -198,9 +198,6 @@
           <!-- 【2026-09-19】「全消去」はホームタブの「ウィンドウ」グループにあったが、
                図面を全部消す破壊的操作でウィンドウの話ではない。新規作成/保存/読込と
                同じ「プロジェクト」へ移した。 -->
-          <!-- 【2026-09-20】バックアップ。ブラウザ内の「自動保存」とは別で、
-               ecad_v3\backup\ にファイルで世代を残す。設定は別画面。 -->
-          <div class="rb rb-sm" onclick="openBackupPanel()" title="図面の控えをファイルで残します（ecad_v3\backup\）。間隔と残す件数はこの画面で設定します。ブラウザ内の「自動保存」とは別の仕組みで、start.bat が動いているときだけ取れます"><svg viewBox="0 0 14 14"><path d="M2 4.5V11a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="1" y="2" width="12" height="2.5" rx=".5" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 7h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>バックアップ</div>
           <div class="rb rb-sm" onclick="clearAll()" style="color:var(--red)"><svg viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>全消去</div>
         </div>
         <div class="rg-label">プロジェクト</div>
@@ -243,6 +240,18 @@
           </div>
         </div>
         <div class="rg-label">縮尺</div>
+      </div>
+      <!-- 【2026-09-20】バックアップ。
+           最初は「プロジェクト」群の中、保存・全頁保存・読込の並びに置いていたが、
+           盛田さん「保存とバックアップが同じ場所にあるとどっちだか分らんかもな」。
+           押しても図面は保存されず設定画面が開くだけなので、保存操作の列から
+           外して独立したグループにし、ボタン名にも「設定」を付けた。
+           (4案を実際に組んでスクリーンショットで見てもらって決定) -->
+      <div class="rg">
+        <div class="rg-btns">
+          <div class="rb rb-sm" onclick="openBackupPanel()" title="図面の控えをファイルで残す設定です（ecad_v3\backup\）。押すと設定画面が開きます（この操作では図面は保存されません）。間隔と残す件数をここで決めます。ブラウザ内の「自動保存」とは別の仕組みで、start.bat が動いているときだけ取れます"><svg viewBox="0 0 14 14"><path d="M2 4.5V11a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="1" y="2" width="12" height="2.5" rx=".5" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 7h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>バックアップ設定</div>
+        </div>
+        <div class="rg-label">控え</div>
       </div>
     </div>
     <div id="rp-report" class="rg-wrap" style="display:none;gap:0">
