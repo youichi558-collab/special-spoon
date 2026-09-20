@@ -121,6 +121,10 @@
         <div class="fr"><label>接点構成</label><input type="text" id="pp-contacts" placeholder="a3b1"></div>
         <div class="fr"><label>備考</label><textarea id="pp-note" rows="2"></textarea></div>
         <div class="fr"><label>出典</label><input type="text" id="pp-source" placeholder="例: 三菱電磁開閉器 p.41"></div>
+        <!-- 【2026-09-20】カタログURL(10列目)。分割済みカタログならページを直接指せる。
+             CAD側の部品カードと、この画面の一覧から開けるようにしてある。 -->
+        <div class="fr"><label>カタログURL</label><input type="text" id="pp-caturl" placeholder="例: https://drive.google.com/file/d/.../view"
+          title="出典のページを開くリンク。ページ単位に分割済みのカタログなら、そのページが直接開きます"></div>
         <div class="fr"><label>外形図DXF(任意)</label><input type="file" id="pp-outline-file" accept=".dxf" onchange="handleOutlineFileSelect(event)"></div>
         <p id="pp-outline-status" style="font-size:10px;color:var(--fg3)"></p>
         <div style="display:flex;gap:6px;margin-top:10px">
@@ -176,7 +180,8 @@
       </div>
 
       <h3>CSV一括登録</h3>
-      <p style="font-size:11px;color:var(--fg3)">1行1部品。形式: メーカー,型番,種別,定格電圧,定格電流,端子番号,接点構成,備考,出典</p>
+      <p style="font-size:11px;color:var(--fg3)">1行1部品。形式: メーカー,型番,種別,定格電圧,定格電流,端子番号,接点構成,備考,出典,カタログURL<br>
+        列は8列以上あれば読めます（足りない列は空、余分な列は無視）。9列までの古いCSVもそのまま読めます。</p>
       <textarea id="pp-csv" rows="8" placeholder="三菱電機,S-T21,coil,AC200V,21A,&quot;A1,A2,1,3,5,2,4,6&quot;,a3b1,"></textarea>
       <div style="margin-top:6px">
         <button class="fp-btn primary" onclick="bulkImportParts()">CSVから一括登録</button>

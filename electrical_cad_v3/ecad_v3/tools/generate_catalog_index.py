@@ -52,7 +52,12 @@ def summarize_file(path):
         "makers": makers,
         "types": types,
         "part_numbers": part_numbers,
-        "bad_rows": [i + 1 for i, r in enumerate(rows) if len(r) != 8],
+        # 【2026-09-20】「ちょうど8列」から「8列以上」へ。出典列(9列目)を足したとき
+        # 列数の検証を8列以上に変えた(HANDOFF「将来列を足しても古いCSVと新しいCSVが
+        # 混在したまま読める。足りない列は空、余分な列は無視」)が、この生成スクリプトが
+        # 8列ちょうどのままで、10列目(カタログURL)を足したCSVを「列数異常」と誤報した。
+        # 8列未満はカンマ混入で壊れた行なので、そちらは従来どおり弾く。
+        "bad_rows": [i + 1 for i, r in enumerate(rows) if len(r) < 8],
     }
 
 
@@ -112,7 +117,7 @@ def main():
         lines.append(f"### `{fn}`（{maker}／{type_str}／{s['count']}件）")
         if s["bad_rows"]:
             lines.append(
-                f"⚠️ 列数が8列でない行があります（行番号: {s['bad_rows']}）。要修正。"
+                f"⚠️ 列数が8列未満の行があります（行番号: {s['bad_rows']}）。カンマ混入の疑い。要修正。"
             )
         lines.append("")
         lines.append(", ".join(s["part_numbers"]))

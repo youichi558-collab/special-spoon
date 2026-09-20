@@ -2,12 +2,12 @@
 
 このファイルは `tools/generate_catalog_index.py` で自動生成されています。手動で編集しないでください。CSVを追加・削除したら再実行してください。
 
-## 概要（CSVファイル数: 35件、型番合計: 605件）
+## 概要（CSVファイル数: 36件、型番合計: 635件）
 
 | ファイル名 | メーカー | 主な種別 | 件数 |
 |---|---|---|---|
-| `fuji_breaker_contactor_batch1.csv` | 富士電機 | ブレーカ(5)・リレーコイル・コンタクタ(3) | 8 |
-| `idec_hw22_switch_batch1.csv` | IDEC | a接点(13)・ランプ(2)・b接点(1) | 16 |
+| `fuji_breaker_contactor_batch1.csv` | 富士電機 | ブレーカ(5)・contactor(3) | 8 |
+| `idec_hw22_switch_batch1.csv` | IDEC | pb(4)・pb_lamp(2)・selector(2)・pb_estop(2)・ランプ(2)・selector_key(1)・selector_lamp(1)・selector_pb(1)・lever(1) | 16 |
 | `keyence_kv_plc_batch1.csv` | KEYENCE | plc_unit(14)・plc(6) | 20 |
 | `keyence_kv_plc_batch2.csv` | KEYENCE | plc_unit(34) | 34 |
 | `keyence_kv_plc_batch3.csv` | KEYENCE | plc_unit(11) | 11 |
@@ -19,9 +19,10 @@
 | `mitsubishi_breaker_batch5.csv` | 三菱電機 | ブレーカ(8) | 8 |
 | `mitsubishi_breaker_batch6.csv` | 三菱電機 | ブレーカ(9) | 9 |
 | `mitsubishi_elcb_batch1.csv` | 三菱電機 | ブレーカ(13) | 13 |
-| `mitsubishi_mc_batch1.csv` | 三菱電機 | リレーコイル・コンタクタ(33) | 33 |
-| `mitsubishi_mc_batch2.csv` | 三菱電機 | リレーコイル・コンタクタ(14) | 14 |
-| `mitsubishi_mc_batch3.csv` | 三菱電機 | リレーコイル・コンタクタ(22) | 22 |
+| `mitsubishi_inverter_batch1.csv` | 三菱電機 | inverter(30) | 30 |
+| `mitsubishi_mc_batch1.csv` | 三菱電機 | contactor(17)・starter(16) | 33 |
+| `mitsubishi_mc_batch2.csv` | 三菱電機 | contactor(7)・starter(7) | 14 |
+| `mitsubishi_mc_batch3.csv` | 三菱電機 | contactor(13)・starter(9) | 22 |
 | `mitsubishi_motor_batch1.csv` | 三菱電機 | モーター(4) | 4 |
 | `mitsubishi_option_batch1.csv` | 三菱電機 | 増設ユニット等(付属品)(8) | 8 |
 | `mitsubishi_option_batch2.csv` | 三菱電機 | 増設ユニット等(付属品)(46) | 46 |
@@ -31,26 +32,26 @@
 | `mitsubishi_servo_amp_batch1.csv` | 三菱電機 | サーボアンプ(14) | 14 |
 | `mitsubishi_servo_amp_batch2.csv` | 三菱電機 | サーボアンプ(28) | 28 |
 | `mitsubishi_servo_amp_batch3.csv` | 三菱電機 | サーボアンプ(12) | 12 |
-| `mitsubishi_servo_dc_mc_batch1.csv` | 三菱電機 | リレーコイル・コンタクタ(12) | 12 |
-| `mitsubishi_servo_motor_batch1.csv` | 三菱電機 | モーター(17) | 17 |
-| `mitsubishi_servo_motor_batch2.csv` | 三菱電機 | モーター(4) | 4 |
-| `mitsubishi_servo_motor_batch3.csv` | 三菱電機 | モーター(27) | 27 |
+| `mitsubishi_servo_dc_mc_batch1.csv` | 三菱電機 | contactor(6)・starter(6) | 12 |
+| `mitsubishi_servo_motor_batch1.csv` | 三菱電機 | servo_motor(17) | 17 |
+| `mitsubishi_servo_motor_batch2.csv` | 三菱電機 | servo_motor(4) | 4 |
+| `mitsubishi_servo_motor_batch3.csv` | 三菱電機 | servo_motor(27) | 27 |
 | `mitsubishi_simple_converter_batch1.csv` | 三菱電機 | 増設ユニット等(付属品)(1) | 1 |
 | `mitsubishi_thermal_batch1.csv` | 三菱電機 | サーマルリレー(20) | 20 |
 | `mitsubishi_touchpanel_batch1.csv` | 三菱電機 | hmi(56) | 56 |
-| `omron_h3cr_timer_batch1.csv` | オムロン | リレーコイル・コンタクタ(13) | 13 |
-| `omron_h3y_timer_batch1.csv` | オムロン | リレーコイル・コンタクタ(8) | 8 |
+| `omron_h3cr_timer_batch1.csv` | オムロン | timer(13) | 13 |
+| `omron_h3y_timer_batch1.csv` | オムロン | timer(8) | 8 |
 | `omron_my_relay_batch1.csv` | オムロン | リレーコイル・コンタクタ(12) | 12 |
 
 ---
 
 ## ファイル別 型番一覧
 
-### `fuji_breaker_contactor_batch1.csv`（富士電機／ブレーカ・リレーコイル・コンタクタ／8件）
+### `fuji_breaker_contactor_batch1.csv`（富士電機／ブレーカ・contactor／8件）
 
 BW32AAG-3P005, BW32AAG-3P010, BW32AAG-3P015, BW32AAG-3P020, BW32AAG-3P030, SC09XA, SC18XA, SC32XA
 
-### `idec_hw22_switch_batch1.csv`（IDEC／a接点・b接点・ランプ／16件）
+### `idec_hw22_switch_batch1.csv`（IDEC／pb・pb_lamp・selector・selector_key・selector_lamp・selector_pb・lever・pb_estop・ランプ／16件）
 
 HW1B-M1P10B, HW1B-M1P11B, HW1B-A1P10B, HW1L-M1P10Q4R, HW1L-M1P11Q4R, HW7D-B11P1001GR, HW1S-3TP11, HW1S-3TP20, HW1K-3TP11, HW1F-2TP10Q4R, HW1R-2AP11B, HW1M-P1010-20, HW1B-V4P11R, HW1B-V4P01R, HW1P-1JPQ4R, HW1P-1JPQ2G
 
@@ -98,15 +99,19 @@ NV63-HV, NV125-HV, NV125-HEV, NV250-HV, NV250-HEV, NV400-HEW, NV400-REW, NV630-H
 
 NV32-SV, NV63-SV, NV125-SV, NV125-SEV, NV250-SV, NV250-SEV, NV400-SW, NV400-SEW, NV630-SW, NV630-SEW, NV800-SEW, NV1000-SB, NV1200-SB
 
-### `mitsubishi_mc_batch1.csv`（三菱電機／リレーコイル・コンタクタ／33件）
+### `mitsubishi_inverter_batch1.csv`（三菱電機／inverter／30件）
+
+FR-D720-0.1K, FR-D720-0.2K, FR-D720-0.4K, FR-D720-0.75K, FR-D720-1.5K, FR-D720-2.2K, FR-D720-3.7K, FR-D720-5.5K, FR-D720-7.5K, FR-D720-11K, FR-D720-15K, FR-D740-0.4K, FR-D740-0.75K, FR-D740-1.5K, FR-D740-2.2K, FR-D740-3.7K, FR-D740-5.5K, FR-D740-7.5K, FR-D740-11K, FR-D740-15K, FR-D720S-0.1K, FR-D720S-0.2K, FR-D720S-0.4K, FR-D720S-0.75K, FR-D720S-1.5K, FR-D720S-2.2K, FR-D710W-0.1K, FR-D710W-0.2K, FR-D710W-0.4K, FR-D710W-0.75K
+
+### `mitsubishi_mc_batch1.csv`（三菱電機／contactor・starter／33件）
 
 S-T10, MSO-T10, S-T12, MSO-T12, S-T20, MSO-T20, S-T21, MSO-T21, S-T25, MSO-T25, S-T32, S-T35, MSO-T35, S-T50, MSO-T50, S-T65, MSO-T65, S-T80, MSO-T80, S-T100, MSO-T100, S-N125, MSO-N125, S-N150, MSO-N150, S-N180, MSO-N180, S-N220, MSO-N220, S-N300, MSO-N300, S-N400, MSO-N400
 
-### `mitsubishi_mc_batch2.csv`（三菱電機／リレーコイル・コンタクタ／14件）
+### `mitsubishi_mc_batch2.csv`（三菱電機／contactor・starter／14件）
 
 S-2×T10, S-2×T12, S-2×T20, S-2×T21, S-2×T25, S-2×T35, S-2×T50, MSO-2×T10, MSO-2×T12, MSO-2×T20, MSO-2×T21, MSO-2×T25, MSO-2×T35, MSO-2×T50
 
-### `mitsubishi_mc_batch3.csv`（三菱電機／リレーコイル・コンタクタ／22件）
+### `mitsubishi_mc_batch3.csv`（三菱電機／contactor・starter／22件）
 
 S-N600AB, S-N800AB, S-2×T65, S-2×T80, S-2×T100, S-2×N125, S-2×N150, S-2×N180, S-2×N220, S-2×N300, S-2×N400, S-2×N600AB, S-2×N800AB, MSO-2×T65, MSO-2×T80, MSO-2×T100, MSO-2×N125, MSO-2×N150, MSO-2×N180, MSO-2×N220, MSO-2×N300, MSO-2×N400
 
@@ -146,19 +151,19 @@ MR-J5-10B, MR-J5-20B, MR-J5-40B, MR-J5-60B, MR-J5-70B, MR-J5-100B, MR-J5-200B, M
 
 MR-J5W2-22G, MR-J5W2-44G, MR-J5W2-77G, MR-J5W2-1010G, MR-J5W3-222G, MR-J5W3-444G, MR-J5W2-22B, MR-J5W2-44B, MR-J5W2-77B, MR-J5W2-1010B, MR-J5W3-222B, MR-J5W3-444B
 
-### `mitsubishi_servo_dc_mc_batch1.csv`（三菱電機／リレーコイル・コンタクタ／12件）
+### `mitsubishi_servo_dc_mc_batch1.csv`（三菱電機／contactor・starter／12件）
 
 SD-T12, MSOD-T12, SD-T21, MSOD-T21, SD-T35, MSOD-T35, SD-T50, MSOD-T50, SD-T65, MSOD-T65, SD-T100, MSOD-T100
 
-### `mitsubishi_servo_motor_batch1.csv`（三菱電機／モーター／17件）
+### `mitsubishi_servo_motor_batch1.csv`（三菱電機／servo_motor／17件）
 
 HK-KT053W, HK-KT13W, HK-KT1M3W, HK-KT13UW, HK-KT23W, HK-KT43W, HK-KT63W, HK-KT23UW, HK-KT43UW, HK-KT7M3W, HK-KT103W, HK-KT63UW, HK-KT7M3UW, HK-KT103UW, HK-KT153W, HK-KT203W, HK-KT202W
 
-### `mitsubishi_servo_motor_batch2.csv`（三菱電機／モーター／4件）
+### `mitsubishi_servo_motor_batch2.csv`（三菱電機／servo_motor／4件）
 
 HK-KT434W, HK-KT634W, HK-KT7M34W, HK-KT1034W
 
-### `mitsubishi_servo_motor_batch3.csv`（三菱電機／モーター／27件）
+### `mitsubishi_servo_motor_batch3.csv`（三菱電機／servo_motor／27件）
 
 HK-MT053W, HK-MT13W, HK-MT1M3W, HK-MT23W, HK-MT43W, HK-MT63W, HK-MT7M3W, HK-MT103W, HK-MT053VW, HK-MT13VW, HK-MT1M3VW, HK-MT23VW, HK-MT43VW, HK-MT63VW, HK-MT7M3VW, HK-MT103VW, HK-ST52W, HK-ST102W, HK-ST172W, HK-ST202AW, HK-ST302W, HK-ST7M2UW, HK-ST172UW, HK-ST202W, HK-ST352W, HK-ST502W, HK-ST702W
 
@@ -174,11 +179,11 @@ TH-T18, TH-T18KP, TH-T25, TH-T25KP, TH-T50, TH-T50KP, TH-T65, TH-T65KP, TH-T100,
 
 GT2715-XTBA, GT2715-XTBD, GT2712-STBA, GT2712-STBD, GT2712-STWA, GT2712-STWD, GT2710-STBA, GT2710-STBD, GT2710-VTBA, GT2710-VTBD, GT2710-VTWA, GT2710-VTWD, GT2708-STBA, GT2708-STBD, GT2708-VTBA, GT2708-VTBD, GT2705-VTBD, GT2512-STBA, GT2512-STBD, GT2510-VTBA, GT2510-VTBD, GT2510-VTWA, GT2510-VTWD, GT2508-VTBA, GT2508-VTBD, GT2508-VTWA, GT2508-VTWD, GT2505-VTBD, GT2512-WXTBD, GT2512-WXTSD, GT2510-WXTBD, GT2510-WXTSD, GT2507-WTBD, GT2507-WTSD, GT2507T-WTSD, GT2512F-STNA, GT2512F-STND, GT2510F-VTNA, GT2510F-VTND, GT2508F-VTNA, GT2508F-VTND, GT2506HS-VTBD, GT2505HS-VTBD, GT2105-QTBDS, GT2105-QMBDS, GT2104-RTBD, GT2104-PMBD, GT2104-PMBDS, GT2104-PMBDS2, GT2104-PMBLS, GT2103-PMBD, GT2103-PMBDS, GT2103-PMBDS2, GT2103-PMBLS, GT2107-WTBD, GT2107-WTSD
 
-### `omron_h3cr_timer_batch1.csv`（オムロン／リレーコイル・コンタクタ／13件）
+### `omron_h3cr_timer_batch1.csv`（オムロン／timer／13件）
 
 H3CR-A, H3CR-AP, H3CR-AS, H3CR-A8, H3CR-A8E, H3CR-A8S, H3CR-F, H3CR-FN, H3CR-G8L, H3CR-G8EL, H3CR-H8L, H3CR-HRL, H3CR-H8RL
 
-### `omron_h3y_timer_batch1.csv`（オムロン／リレーコイル・コンタクタ／8件）
+### `omron_h3y_timer_batch1.csv`（オムロン／timer／8件）
 
 H3Y-2, H3Y-4, H3YN-2, H3YN-21, H3YN-4, H3YN-41, H3YN-4-Z, H3YN-41-Z
 

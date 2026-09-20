@@ -138,7 +138,7 @@ function filteredParts() {
     if (filterNoOutline && p.outlineDxf) return false;
     if (filterNoType && p.type) return false;
     if (filterLegacy && !LEGACY_PART_TYPES[p.type]) return false;
-    if (q && !['ref','maker','type','volt','amp','note','source']
+    if (q && !['ref','maker','type','volt','amp','note','source','catalogUrl']
       .some(k => String(p[k] || '').toLowerCase().includes(q))) return false;
     return true;
   }).sort((a, b) => {
@@ -234,7 +234,7 @@ function fillTypeSelect() {
 function newPart() {
   editingRef = null;
   _pendingOutlineDxf = null;
-  ['maker','ref','volt','amp','term','contacts','note','source'].forEach(id => { const el = $('pp-' + id); if (el) el.value = ''; });
+  ['maker','ref','volt','amp','term','contacts','note','source','caturl'].forEach(id => { const el = $('pp-' + id); if (el) el.value = ''; });
   $('pp-type').value = '';
   $('pp-ref').disabled = false;
   $('pp-outline-status').textContent = '';
@@ -264,6 +264,7 @@ function selectPart(ref) {
   $('pp-contacts').value = p.contacts || '';
   $('pp-note').value = p.note || '';
   $('pp-source').value = p.source || '';
+  $('pp-caturl').value = p.catalogUrl || '';
   $('pp-outline-status').textContent = p.outlineDxf ? `外形図: ${p.outlineDxfName || 'あり'}` : '';
   $('pp-delete').style.display = '';
   $('pp-form-title').textContent = `編集: ${p.ref}`;
@@ -279,7 +280,7 @@ async function savePart() {
     maker: $('pp-maker').value, ref, type: $('pp-type').value,
     volt: $('pp-volt').value, amp: $('pp-amp').value,
     terminals: $('pp-term').value, contacts: $('pp-contacts').value,
-    note: $('pp-note').value, source: $('pp-source').value, custom: true,
+    note: $('pp-note').value, source: $('pp-source').value, catalogUrl: $('pp-caturl').value.trim(), custom: true,
     outlineDxf, outlineDxfName,
   };
   if (existing) Object.assign(existing, part); else state.customParts.push(part);
@@ -363,7 +364,9 @@ async function bulkImportParts() {
   lines.forEach((line, i) => {
     if (/型番|メーカー|maker|ref/i.test(line)) return;
     const cols = parseCSVLine(line);
-    const [maker, ref, type, volt, amp, terminals, contacts, note, source] = cols;
+    // 【2026-09-20】10列目にカタログURLを追加。9列までのCSVは従来どおり読める
+    // (仕様は「8列以上」。足りない列は空、余分な列は無視)。
+    const [maker, ref, type, volt, amp, terminals, contacts, note, source, catalogUrl] = cols;
     if (!ref) { errors.push(`${i + 1}行目: 型番が空です`); skipped++; return; }
     if (type && !PART_TYPE_CODES.includes(type)) {
       if (LEGACY_PART_TYPES[type]) {
@@ -373,7 +376,7 @@ async function bulkImportParts() {
         skipped++; return;
       }
     }
-    const part = { maker: maker || '', ref, type: type || '', volt: volt || '', amp: amp || '', terminals: terminals || '', contacts: contacts || '', note: note || '', source: source || '', custom: true };
+    const part = { maker: maker || '', ref, type: type || '', volt: volt || '', amp: amp || '', terminals: terminals || '', contacts: contacts || '', note: note || '', source: source || '', catalogUrl: catalogUrl || '', custom: true };
     const existing = state.customParts.find(p => p.ref === ref);
     if (existing) {
       const prev = { ...existing };
@@ -457,7 +460,7 @@ async function catalogSearch() {
 async function catalogAddToParts(idx) {
   const r = _catalogResults[idx];
   if (!r) return;
-  const part = { maker: r.maker || '', ref: r.ref, type: r.type || '', volt: r.volt || '', amp: r.amp || '', terminals: r.terminals || '', contacts: r.contacts || '', note: r.note || '', source: r.source || '', custom: true };
+  const part = { maker: r.maker || '', ref: r.ref, type: r.type || '', volt: r.volt || '', amp: r.amp || '', terminals: r.terminals || '', contacts: r.contacts || '', note: r.note || '', source: r.source || '', catalogUrl: r.catalogUrl || '', custom: true };
   const existing = state.customParts.find(p => p.ref === r.ref);
   if (existing) {
     if (!confirm(`「${r.ref}」は既に部品DBにあります。カタログの内容で上書きしますか？（外形図は保持されます）`)) return;
@@ -500,7 +503,7 @@ async function catalogResetPartsDb() {
     const prevByRef = new Map(state.customParts.map(p => [p.ref, p]));
     state.customParts = rows.map(r => carryOutlineDxf({
       maker: r.maker || '', ref: r.ref, type: r.type || '', volt: r.volt || '', amp: r.amp || '',
-      terminals: r.terminals || '', contacts: r.contacts || '', note: r.note || '', source: r.source || '', custom: true,
+      terminals: r.terminals || '', contacts: r.contacts || '', note: r.note || '', source: r.source || '', catalogUrl: r.catalogUrl || '', custom: true,
     }, prevByRef.get(r.ref)));
     renderAll();
     const ok = await saveAll(true);   // 全件入れ替えなので確認は済んでいる。強制で通す

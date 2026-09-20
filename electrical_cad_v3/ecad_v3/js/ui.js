@@ -3409,7 +3409,13 @@ function renderPartsTable2(parts) {
       </div>
       <div style="font-size:10px;color:var(--fg3)">${escH(p.maker)} ${escH(p.volt||'')} ${escH(p.amp||'')}</div>
       ${p.contacts?`<div style="font-size:10px;color:var(--acc)">接点:${escH(p.contacts)}</div>`:''}
-      ${p.source?`<div style="font-size:9px;color:var(--fg3)" title="出典">📖 ${escH(p.source)}</div>`:''}
+      ${p.source?`<div style="font-size:9px;color:var(--fg3)" title="出典">📖 ${
+        // 【2026-09-20】カタログURLがあれば出典をリンクにする。分割済みカタログなら
+        // そのページが直接開く。http/https以外は素通ししない(javascript:等を弾く)。
+        /^https?:\/\//.test(p.catalogUrl||'')
+          ? `<a href="${escH(p.catalogUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--acc)" title="カタログのページを開く">${escH(p.source)}</a>`
+          : escH(p.source)
+      }</div>`:''}
       ${p.outlineDxf
         ? `<div style="font-size:9px;color:var(--acc)">外形図: ${escH(p.outlineDxfName||'あり')} <span onclick="event.stopPropagation();placePartOutline('${_escAttr(p.ref)}')" style="cursor:pointer;text-decoration:underline">配置</span></div>`
         : ''}
