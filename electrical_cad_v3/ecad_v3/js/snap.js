@@ -88,7 +88,17 @@ function getAllSnapPoints(wx, wy) {
         const sc = el.scale || 1;
         const hw = (d.w||0)/2 * sc;
         const termDefs = d.terminals || [];
-        [+hw, -hw].forEach((dx, ti) => {
+        // 【2026-09-20】端子点が未定義のシンボルのフォールバック(本体の左右端)。
+        // 並びは **左が1番目、右が2番目**。端子番号を図面に出せるようにしたとき、
+        // 従来の [+hw, -hw](右が1番目)のままだと「A1,A2」と入れた図面で
+        // A2が左・A1が右に出て読めなかった(盛田さん指摘、2026-09-20)。
+        // この式は snap.js / conn_table.js / conn_check.js / draw.js の4箇所にあり、
+        // **順番がズレると図面と帳票で端子番号の対応が食い違う。必ず4箇所を揃える。**
+        // (tests/test_term_fallback_order.js が4箇所の一致を見ている)
+        // 端子の位置自体は変わらない(同じ2点を数える順番が変わるだけ)ので、
+        // スナップ位置は動かない。配線に保存される termIdx は誰も読んでいない
+        // (conn_table.js はDXF取り込みの配線に無いため距離で再計算する)。
+        [-hw, +hw].forEach((dx, ti) => {
           const rx = dx * Math.cos(rot), ry = dx * Math.sin(rot);
           const dist = Math.hypot(wx - (el.x+rx), wy - (el.y+ry));
           if (dist < bestD) { bestD = dist; best = { x: el.x+rx, y: el.y+ry, snapType:'terminal', elId: el.id, termIdx: ti }; }

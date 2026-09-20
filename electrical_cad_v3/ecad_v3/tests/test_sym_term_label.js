@@ -82,14 +82,16 @@ console.log('[2] cS.terminals には el.scale を掛けない(既存のスナッ
 }
 
 console.log('[3] 端子未定義のシンボルは左右端にフォールバックし、そちらは scale が効く');
+console.log('  ← 並びは「左が1番目」。右が1番目だと A1,A2 と入れた図面で A2 が左に出る');
 {
   const a = symTermPoints({ type:'std', x:100, y:50, scale:1, terminals:'1,2' }, null, { w:40, h:30 });
   ok(a.length === 2, 'フォールバックは2点');
-  near(a[0].x, 120, '右端(+w/2)');
-  near(a[1].x,  80, '左端(-w/2)');
+  near(a[0].x,  80, '1番目は左端(-w/2)');
+  near(a[1].x, 120, '2番目は右端(+w/2)');
+  ok(a[0].label === '1' && a[1].label === '2', '「1,2」なら左が1・右が2');
   const b = symTermPoints({ type:'std', x:100, y:50, scale:2, terminals:'1,2' }, null, { w:40, h:30 });
-  near(b[0].x, 140, 'scale=2で右端が伸びる');
-  near(b[1].x,  60, 'scale=2で左端が伸びる');
+  near(b[0].x,  60, 'scale=2で左端が伸びる');
+  near(b[1].x, 140, 'scale=2で右端が伸びる');
 }
 
 console.log('[4] 端子番号の優先順位（①el.terminals ②定義側label ③出さない）');
