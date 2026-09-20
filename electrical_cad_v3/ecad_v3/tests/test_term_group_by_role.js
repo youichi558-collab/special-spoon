@@ -102,6 +102,54 @@ console.log('  ← 推測で入れて外すより、聞く側へ落とす方が�
   ok(pickGroupByRole([], 'coil') === null, 'グループが空でも落ちない');
 }
 
+console.log('【端子記号にスラッシュが入っていても割らない】');
+console.log('  ← 三菱インバータの主回路は R/L1・S/L2・T/L3。素朴に / で割ると「R」と「L1」に砕ける');
+{
+  const g = parseTerminalGroups('主回路:R/L1,S/L2,T/L3,U,V,W / 制御入力:STF,STR,SD / 出力:A,B,C');
+  ok(g.length === 3, `3グループに分かれる（実際 ${g.length}）`);
+  ok(g[0].name === '主回路', '1つ目のグループ名が「主回路」');
+  ok(g[0].list.join(',') === 'R/L1,S/L2,T/L3,U,V,W',
+     `端子記号のスラッシュが保たれる（実際 ${g[0].list.join(',')}）`);
+  ok(g[0].list.length === 6, `主回路は6端子（実際 ${g[0].list.length}）`);
+  ok(g[1].list.join(',') === 'STF,STR,SD', '制御入力がそのまま');
+  ok(g[2].list.join(',') === 'A,B,C', '出力がそのまま');
+
+  // グループ名が無い従来データでも、スラッシュ入り端子は割れない
+  const flat = parseTerminalGroups('R/L1,S/L2,T/L3,U,V,W');
+  ok(flat.length === 1 && flat[0].list.length === 6,
+     `グループ名なしでも6端子のまま（実際 ${flat[0].list.length}）`);
+  ok(flat[0].list[0] === 'R/L1', '1つ目が R/L1');
+
+  const tight = parseTerminalGroups('主回路:R/L1,S/L2');
+  ok(tight.length === 1 && tight[0].list.join(',') === 'R/L1,S/L2',
+     'グループが1つでも端子記号は割れない');
+
+  // スラッシュを含む端子は主回路だけではない
+  const opt = parseTerminalGroups('主回路:R/L1,S/L2 / オプション:P/+,PR,N/-,P1');
+  ok(opt.length === 2, `2グループ（実際 ${opt.length}）`);
+  ok(opt[1].list.join(',') === 'P/+,PR,N/-,P1',
+     `P/+ や N/- も割れない（実際 ${opt[1].list.join(',')}）`);
+}
+
+console.log('【空白なしの区切りも従来どおり割れる】');
+console.log('  ← 既存のPLC用データ(入力:X0,X1,X2,COM/出力:Y0,Y1,COM)を壊さない');
+{
+  const g = parseTerminalGroups('入力:X0,X1,X2,COM/出力:Y0,Y1,COM');
+  ok(g.length === 2, `2グループに分かれる（実際 ${g.length}）`);
+  ok(g[0].name === '入力' && g[0].list.join(',') === 'X0,X1,X2,COM', '入力グループ');
+  ok(g[1].name === '出力' && g[1].list.join(',') === 'Y0,Y1,COM', '出力グループ');
+
+  // 空白ありでも同じ
+  const g2 = parseTerminalGroups('入力:X0,X1 / 出力:Y0,Y1');
+  ok(g2.length === 2 && g2[1].list.join(',') === 'Y0,Y1', '空白ありでも同じに割れる');
+
+  // 区切りの / と 端子記号の / が同じ文字列に混ざっていても正しく割れる
+  const mix = parseTerminalGroups('主回路:R/L1,S/L2,T/L3/制御:STF,STR,SD');
+  ok(mix.length === 2, `混在でも2グループ（実際 ${mix.length}）`);
+  ok(mix[0].list.join(',') === 'R/L1,S/L2,T/L3', `主回路が保たれる（実際 ${mix[0].list.join(',')}）`);
+  ok(mix[1].list.join(',') === 'STF,STR,SD', '制御が保たれる');
+}
+
 console.log('【グループ名が無い従来データでは選ばない】');
 console.log('  ← カタログCSVは今のところ全件フラット。従来どおり端子点数の判定へ落とす');
 {
