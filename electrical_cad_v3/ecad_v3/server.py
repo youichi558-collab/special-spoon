@@ -36,7 +36,9 @@ HOST = os.environ.get('ECAD_HOST', '127.0.0.1')
 # 【2026-09-20】盛田さん「毎回再起動は要らないと聞いてるが？いる時は再起動を
 # 要請が当たり前だろ」。そのとおりで、実際に時間を無駄にした。
 #
-# JS・HTML・CSS は pull して F5 すれば効く。**Pythonは効かない。**
+# JS・HTML・CSS は pull して **Ctrl+Shift+R でリロード**すれば効く
+# (HANDOFF.md「作業フロー」の標準手順。end_headers() が no-store を返すので
+#  F5 でも実際には届くが、手順はCtrl+Shift+Rで統一する)。**Pythonは効かない。**
 # server.py は起動時に tools/catalog_db/catalog_db.py 等を import してメモリに
 # 持ち続けるので、動かしたまま pull しても古いコードが動き続ける。
 # 2026-09-20、catalog_db.py の10列対応を入れたのに「再取込」を4〜5回やっても
