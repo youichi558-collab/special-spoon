@@ -700,11 +700,58 @@ function placePart(type, ref, terminals) {
     doPlacePart(type, ref, groups.length ? groups[0].list.join(',') : '', '');
     return;
   }
+  // 【2026-09-20】まずシンボルの種別(コイル/主接点/補助接点)で選ぶ。
+  //
+  // 盛田さん「このシンボルは主接点、コイル、補助で選べれて図面のシンボルは
+  // 自動で入ったほうが修正入れるにしても端子番号を調べなくていいから都合がいい」。
+  // 端子点数での判定(下の従来ロジック)は、主接点6点と補助接点が3点…のように
+  // 数がたまたま一致してしまうと外すし、端子点が未設定のシンボル(数が0)では
+  // 一切効かない。種別で選べるならそちらの方が確実。
+  //
+  // 選択中のシンボルの種別が揃っているときだけ使う。混ざっているときは
+  // 1つの端子番号を全部に入れることになり、どれかが必ず間違うため従来どおりに落とす。
+  const roles = [...new Set(targets.map(symTermRole))];
+  if (roles.length === 1 && roles[0]) {
+    const rg = pickGroupByRole(groups, roles[0]);
+    if (rg) { doPlacePart(type, ref, rg.list.join(','), rg.name); return; }
+  }
   // 選択中シンボルの端子点数（複数選択時は全部同じ数のときだけ自動判定に使う）
   const counts = [...new Set(targets.map(symTerminalCount))];
   const g = counts.length === 1 ? pickTerminalGroup(groups, counts[0]) : null;
   if (g) doPlacePart(type, ref, g.list.join(','), g.name);
   else askTerminalGroup(type, ref, groups);
+}
+
+// 配置済みシンボルの種別(cS.role / 標準シンボルの isCoil・isContact)を返す。
+// report.js の symRole と同じ判定。あちらは帳票専用なので、部品割り当てからも
+// 使えるようここに同じ入口を置く（判定の中身は1箇所に寄せたいが、report.js は
+// 帳票を開いたときにしか読まれない前提の作りなので、今回は呼び分けない）。
+function symTermRole(el) {
+  if (!el) return '';
+  const cS = (state.customSymbols || []).find(s => s.type === el.type);
+  if (cS && cS.role) return cS.role;
+  const d = (typeof getDef === 'function' ? getDef(el.type) : null) || {};
+  if (d.role) return d.role;
+  if (d.isCoil) return 'coil';
+  if (d.isContact) return d.contactType === 'b' ? 'contact_b' : 'contact_a';
+  return '';
+}
+
+// 種別に対応する端子グループ名の書き方。部品DBのCSVは人が手で書くので、
+// 「コイル」「操作コイル」「主接点」「主回路」のような揺れを吸収する。
+// 該当が1つに決まらないときは null を返し、従来の端子点数判定へ落とす
+// （推測で入れて外すより、聞いた方がよい）。
+const TERM_GROUP_PATTERNS = {
+  coil:         [/コイル/, /操作/],
+  contact_main: [/主接点/, /主回路/, /^\s*主/],
+  contact_a:    [/補助/i, /^aux/i],
+  contact_b:    [/補助/i, /^aux/i],
+};
+function pickGroupByRole(groups, role) {
+  const pats = TERM_GROUP_PATTERNS[role];
+  if (!pats) return null;
+  const hit = groups.filter(g => pats.some(re => re.test(g.name || '')));
+  return hit.length === 1 ? hit[0] : null;
 }
 
 // 実際に書き込む処理。

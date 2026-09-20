@@ -107,7 +107,17 @@
           <div class="fr"><label>定格電圧</label><input type="text" id="pp-volt" placeholder="AC200V"></div>
           <div class="fr"><label>定格電流</label><input type="text" id="pp-amp" placeholder="10A"></div>
         </div>
-        <div class="fr"><label>端子番号(カンマ区切り)</label><input type="text" id="pp-term" placeholder="A1,A2,1,3,5,2,4,6"></div>
+        <!-- 【2026-09-20】「コイル:A1,A2 / 主接点:… / 補助:…」と書くと、CAD側で
+             シンボルの種別(コイル/主接点/補助接点)から自動で正しい分だけ入る。
+             グループ名を書かなければ従来どおり全端子がそのまま入る(後方互換)。 -->
+        <div class="fr"><label>端子番号(カンマ区切り)</label><input type="text" id="pp-term" placeholder="A1,A2,1,3,5,2,4,6"
+          title="「コイル:A1,A2 / 主接点:L1,L2,L3,T1,T2,T3 / 補助:13,14」のようにグループ名を付けて書くと、CADでシンボルの種別に応じた分だけが自動で入ります">
+          <p style="font-size:10px;color:var(--fg3);margin:3px 0 0;line-height:1.5">
+            1台ぶんの全端子を書きます。展開接続図のようにコイル・主接点・補助接点を
+            別シンボルで描く部品は、<b>「コイル:A1,A2 / 主接点:L1,L2,L3,T1,T2,T3 / 補助:13,14」</b>
+            のようにグループ名を付けると、CAD側でシンボルの種別に応じた分だけが自動で入ります。
+            グループ名なしでも従来どおり動きます。
+          </p></div>
         <div class="fr"><label>接点構成</label><input type="text" id="pp-contacts" placeholder="a3b1"></div>
         <div class="fr"><label>備考</label><textarea id="pp-note" rows="2"></textarea></div>
         <div class="fr"><label>出典</label><input type="text" id="pp-source" placeholder="例: 三菱電磁開閉器 p.41"></div>
