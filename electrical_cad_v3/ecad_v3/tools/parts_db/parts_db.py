@@ -75,6 +75,8 @@ catalog_db.py と同じ発想を部品DBに適用したもの。
 """
 import json
 import os
+import itertools
+import threading
 import sys
 
 APP_NAME = 'ecad'
@@ -90,6 +92,32 @@ SEARCH_FIELDS = ('ref', 'maker', 'type', 'volt', 'amp', 'terminals',
 # 「あるか無いか」だけを has_outline で伝える。中身が要るときは outline() を呼ぶ。
 PUBLIC_FIELDS = SEARCH_FIELDS + ('outlineDxfName', 'voltOpts')
 
+
+
+# ----------------------------------------------------------------
+# 同時に書いても混ざらない一時ファイル名
+# ----------------------------------------------------------------
+# 【2026-09-21】server.py をスレッド化した(起動時にJSが落ちる問題への対処)。
+# それまでは1度に1リクエストしか動かなかったので、書き込みが同時に走ることが
+# 無く、固定名の `xxx.tmp` に書いて os.replace で置き換える形で足りていた。
+#
+# スレッド化すると、同じ固定名に2つの書き込みが同時に入りうる。そうなると
+# **1つのファイルに両方のバイトが混ざり、その壊れたものが os.replace で
+# 本体になる**。os.replace 自体は不可分でも、書いている途中が混ざるので
+# 「書きかけを本体にしない」という元の狙いが破れる。
+#
+# プロセスIDとスレッドIDを足して、書き手ごとに別の名前にする。
+_tmp_seq = itertools.count()
+
+
+def _tmp_name(path):
+    # 連番を足すのは threading.get_ident() だけでは足りないため。
+    # スレッドIDは**生きているスレッドの間でしか一意でなく**、スレッドが
+    # 終わると再利用される(テストで20個中19個が重複して気付いた)。
+    # 実際に同時に書く場面では両方が生きているので衝突しないが、
+    # 条件付きの保証にしておく理由が無い。
+    # itertools.count() の next は CPython では不可分。
+    return '%s.%d.%d.tmp' % (path, os.getpid(), next(_tmp_seq))
 
 def default_data_dir():
     """設定と控えを置くローカルフォルダ。catalog_db.py と同じ場所を使う。
@@ -129,6 +157,10 @@ def mirror_path(data_dir=None):
 _scan_done = False
 _scan_found = []
 _scan_backups = []
+# 【2026-09-21】server.py をスレッド化したので、この3つを同時に2つのスレッドが
+# 触りうる。鍵をかけないと、どちらも「まだ走査していない」と判断して
+# 数十秒の全走査を二重に始める(壊れはしないが、その間ページが余計に待つ)。
+_scan_lock = threading.Lock()
 
 # テストから差し替えるための口。既定(None)は本番の挙動。
 # Windowsのドライブ文字や本物のホームを前提にすると、テストが環境依存になるため。
@@ -225,7 +257,7 @@ def write_mirror(text, data_dir=None):
     os.makedirs(d, exist_ok=True)
     p = mirror_path(d)
     # 書きかけの控えを他のツールが読まないよう、別名に書いてから置き換える。
-    tmp = p + '.tmp'
+    tmp = _tmp_name(p)
     with open(tmp, 'w', encoding='utf-8') as f:
         json.dump(info, f, ensure_ascii=False)
     os.replace(tmp, p)
@@ -321,19 +353,23 @@ class PartsDB:
         古い部品DBに繋がってしまうので、**決めずに候補を残す**(画面に出して選ばせる)。
         """
         global _scan_done, _scan_found, _scan_backups
-        if not _scan_done:
-            _scan_done = True
-            # 数十秒かかる。server.py 経由だとその間ページが待つので、
-            # 黒い窓に「今これをやっている」と出す(無言で固まるのが一番困る)。
-            print('部品DBが設定の場所に見つかりません。ディスクから探しています'
-                  '(数十秒かかることがあります)...', flush=True)
-            try:
-                _scan_found, _scan_backups = find_candidates(SCAN_ROOTS)
-            except Exception as e:
-                print(f'  探索に失敗しました: {e}', flush=True)
-                _scan_found, _scan_backups = [], []
-            else:
-                print(f'  候補 {len(_scan_found)}件', flush=True)
+        # 鍵の中で判定と実行をまとめて行う。判定だけ外に出すと、2つのスレッドが
+        # 同時に「まだ」と見てしまい、二重に走査する。
+        # 2つ目のスレッドはここで待たされるが、待った先では1つ目の結果を使える。
+        with _scan_lock:
+            if not _scan_done:
+                _scan_done = True
+                # 数十秒かかる。server.py 経由だとその間ページが待つので、
+                # 黒い窓に「今これをやっている」と出す(無言で固まるのが一番困る)。
+                print('部品DBが設定の場所に見つかりません。ディスクから探しています'
+                      '(数十秒かかることがあります)...', flush=True)
+                try:
+                    _scan_found, _scan_backups = find_candidates(SCAN_ROOTS)
+                except Exception as e:
+                    print(f'  探索に失敗しました: {e}', flush=True)
+                    _scan_found, _scan_backups = [], []
+                else:
+                    print(f'  候補 {len(_scan_found)}件', flush=True)
         if len(_scan_found) == 1:
             try:
                 return self.set_path(_scan_found[0][0])
@@ -440,7 +476,7 @@ class PartsDB:
         try:
             with open(path, encoding='utf-8') as f:
                 body = f.read()
-            tmp = dst + '.tmp'
+            tmp = _tmp_name(dst)
             with open(tmp, 'w', encoding='utf-8') as f:
                 f.write(body)
             os.replace(tmp, dst)
@@ -488,7 +524,7 @@ class PartsDB:
             # 置き換える。FSAのcreateWritableは開いた瞬間に中身を捨てるので、
             # 途中で落ちるとファイルが空になった —— それが起きない形にする。
             text = json.dumps(info, ensure_ascii=False, indent=2)
-            tmp = path + '.tmp'
+            tmp = _tmp_name(path)
             with open(tmp, 'w', encoding='utf-8') as f:
                 f.write(text)
             os.replace(tmp, path)

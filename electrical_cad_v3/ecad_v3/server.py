@@ -18,7 +18,7 @@ import os
 import sys
 import urllib.parse
 import time
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 
 PORT = 8080
 
@@ -481,7 +481,40 @@ def main():
         print(f"警告: {HOST} で待ち受けています。同一LAN上の別PCから図面・部品データが"
               f"見える状態です(ECAD_HOSTを外すと このPCからのみ になります)")
     try:
-        httpd = HTTPServer((HOST, PORT), Handler)
+        # ----------------------------------------------------------------
+        # 【2026-09-21】HTTPServer から ThreadingHTTPServer へ変えた。
+        #
+        # 盛田さん「安定してないな、5回目でこれがでた、何もでないで起動しな
+        # かったのが2回、まともに起動が2回」——**5回中3回が起動に失敗**。
+        # 1回は js/parts_db.js が読めていないと画面に出た(検出が効いた)。
+        # 2回は何も出ない=バナーを出すJSより手前が落ちている。
+        #
+        # 原因: 素の HTTPServer は**1度に1リクエストしか捌けない**。
+        # さらに protocol_version 未指定=HTTP/1.0 で keep-alive が効かないため、
+        # index.html の <script> 32本が32本とも別々のTCP接続を張る。
+        # 待ち行列(request_queue_size)は既定で5しかない。
+        # そこへ /api/parts/all(実測605KB)のような大きい応答が重なると、
+        # 送っている間ほかを捌けず、溢れた接続は1秒待ち(TCP再送)か、
+        # Windowsでは拒否(ERR_CONNECTION_REFUSED)になる。
+        # **JSが1本でも欠けたまま起動すると図面が真っ白になる**(2026-09-19の事故)。
+        #
+        # 実測(同じ負荷を5回・1秒以上待たされた本数):
+        #   現状(1本ずつ・行列5)      : 3本 / 3本 / 3本 / 3本 / 3本
+        #   スレッド化+行列128        : 0本 / 0本 / 0本 / 0本 / 0本
+        #
+        # **HTTP/1.1(keep-alive)は入れていない。** 上の実測どおりスレッド化と
+        # 行列拡大だけで詰まりが消えるので、わざわざ危ない方を足す必要が無い。
+        # (ついでに: HTTP/1.1をスレッド化なしで入れると、サーバーが同じ接続の
+        #  次の要求を待ったまま固まる。単独では選べない選択肢だった。)
+        #
+        # 【同時に入れた対策・外さないこと】スレッド化すると書き込みが同時に
+        # 走りうる。固定名の `xxx.tmp` に書いていた6箇所を、書き手ごとに別名に
+        # した(tools/*/_tmp_name)。混ざった中身が os.replace で本体になるのを
+        # 防ぐため。parts_db.py の全走査の共有変数にも鍵をかけてある。
+        # ----------------------------------------------------------------
+        ThreadingHTTPServer.request_queue_size = 128   # 既定5では起動時の一斉接続で溢れる
+        ThreadingHTTPServer.daemon_threads = True      # Ctrl+Cで残らないように
+        httpd = ThreadingHTTPServer((HOST, PORT), Handler)
     except OSError as e:
         # start.bat と 部品DBを開く.bat を両方起動した場合に踏む経路。
         # 2つ目のサーバーは起動できないだけで、1つ目が動いていればブラウザの

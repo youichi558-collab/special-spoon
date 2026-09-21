@@ -28,6 +28,8 @@ tools/parts_db/parts_db.py へ移したのと同じ理由で、書き手はサ�
 """
 import json
 import os
+import itertools
+import threading
 import re
 import time
 
@@ -43,6 +45,32 @@ DEFAULT_KEEP = 30
 MAX_KEEP = 999          # Jw_cadのバックアップファイル数と同程度の上限
 MAX_BYTES = 64 * 1024 * 1024   # 1ファイルの上限(暴走で埋め尽くさないため)
 
+
+
+# ----------------------------------------------------------------
+# 同時に書いても混ざらない一時ファイル名
+# ----------------------------------------------------------------
+# 【2026-09-21】server.py をスレッド化した(起動時にJSが落ちる問題への対処)。
+# それまでは1度に1リクエストしか動かなかったので、書き込みが同時に走ることが
+# 無く、固定名の `xxx.tmp` に書いて os.replace で置き換える形で足りていた。
+#
+# スレッド化すると、同じ固定名に2つの書き込みが同時に入りうる。そうなると
+# **1つのファイルに両方のバイトが混ざり、その壊れたものが os.replace で
+# 本体になる**。os.replace 自体は不可分でも、書いている途中が混ざるので
+# 「書きかけを本体にしない」という元の狙いが破れる。
+#
+# プロセスIDとスレッドIDを足して、書き手ごとに別の名前にする。
+_tmp_seq = itertools.count()
+
+
+def _tmp_name(path):
+    # 連番を足すのは threading.get_ident() だけでは足りないため。
+    # スレッドIDは**生きているスレッドの間でしか一意でなく**、スレッドが
+    # 終わると再利用される(テストで20個中19個が重複して気付いた)。
+    # 実際に同時に書く場面では両方が生きているので衝突しないが、
+    # 条件付きの保証にしておく理由が無い。
+    # itertools.count() の next は CPython では不可分。
+    return '%s.%d.%d.tmp' % (path, os.getpid(), next(_tmp_seq))
 
 def _safe_base(name):
     """図面名をファイル名に使える形にする。空になったら '図面'。"""
@@ -127,7 +155,7 @@ class BackupStore:
         try:
             os.makedirs(self.dir, exist_ok=True)
             # 書きかけを残さない: tmpに書き切ってから置き換える
-            tmp = path + '.tmp'
+            tmp = _tmp_name(path)
             with open(tmp, 'w', encoding='utf-8') as f:
                 f.write(body)
                 f.flush()
@@ -135,8 +163,8 @@ class BackupStore:
             os.replace(tmp, path)
         except Exception as e:
             try:
-                if os.path.exists(path + '.tmp'):
-                    os.remove(path + '.tmp')
+                if os.path.exists(tmp):
+                    os.remove(tmp)
             except OSError:
                 pass
             return {'ok': False, 'error': str(e)}
