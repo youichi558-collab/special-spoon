@@ -16,6 +16,7 @@
 import json
 import os
 import sys
+import threading
 import urllib.parse
 import time
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
@@ -468,14 +469,76 @@ class Handler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def handle_error(self, request, client_address):
+        """接続が切れただけのときは静かにする。
+
+        ブラウザがタブを閉じる・再読込する・読み込み中に別ページへ行くと、
+        送信の途中で相手が居なくなり BrokenPipeError / ConnectionResetError に
+        なる。**異常ではない**。素のままだと socketserver が長いトレースバックを
+        黒い窓に吐き、盛田さんが見ている画面(全走査の進捗や「既に起動しています」の
+        案内を出す場所)が埋まって読めなくなる。
+        ThreadingHTTPServer にして同時接続が増えたぶん、起きる頻度も上がった。
+
+        それ以外の例外は従来どおり出す —— 本当の不具合を黙らせないため。
+        """
+        e = sys.exc_info()[1]
+        if isinstance(e, (BrokenPipeError, ConnectionResetError, ConnectionAbortedError)):
+            return
+        super().handle_error(request, client_address)
+
     def log_message(self, fmt, *args):
         # 通常のアクセスログは抑制（重要なものだけ表示）
         if '/api/' in fmt % args:
             super().log_message(fmt, *args)
 
 
+# ----------------------------------------------------------------
+# ブラウザを開く(2026-09-21)
+# ----------------------------------------------------------------
+# 【なぜサーバー側で開くか】従来 start.bat は
+#     start http://localhost:8080     ← ブラウザを先に開く
+#     py server.py                    ← サーバーはその後
+# の順で、**まだ誰も待ち受けていないポートにブラウザが繋ぎに行っていた**。
+# Pythonの起動(インタプリタ+読み込み)に数百ミリ秒かかるので、その間に
+# 繋ぎに行くと「アクセスできません」側に一瞬振れる。たいてい繋がるのは
+# ブラウザ自身の起動の方が遅くて間に合っているだけで、競争になっていた。
+# 盛田さん「一瞬起動が遅れる感覚はまだあるな、ブラウザに画面にたどり着かないと
+# 一瞬でる」。
+#
+# 待ち受けを始めたことを確実に知っているのはサーバー自身なので、ここで開く。
+#
+# 【ポートが既に使われている場合も開く】start.bat が動いている状態で
+# 「部品DBを開く.bat」を叩くと、2つ目のサーバーは起動できずに終了する。
+# だが**既に1つ目が配信しているのでタブは開いてよい**。従来は .bat 側で
+# 先に開いていたためこれが成り立っていた。その挙動を保つ。
+def open_browser(path):
+    """path(例 '/' や '/parts.html')をこのサーバーのURLとして既定のブラウザで開く。"""
+    if not path:
+        return
+    if not path.startswith('/'):
+        path = '/' + path
+    url = f'http://localhost:{PORT}{path}'
+    try:
+        import webbrowser
+        webbrowser.open(url)
+    except Exception as e:
+        # 開けなくてもサーバーは動かす。URLを出して手で開いてもらえばよい。
+        print(f"ブラウザを開けませんでした({e})。次のURLを開いてください: {url}")
+
+
+def parse_open_arg(argv):
+    """--open <path> を取り出す。指定が無ければ None(ブラウザを開かない)。"""
+    for i, a in enumerate(argv):
+        if a == '--open' and i + 1 < len(argv):
+            return argv[i + 1]
+        if a.startswith('--open='):
+            return a.split('=', 1)[1]
+    return None
+
+
 def main():
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    open_path = parse_open_arg(sys.argv[1:])
     print(f"電気回路図エディタ サーバー起動: http://localhost:{PORT}")
     if HOST not in ('127.0.0.1', 'localhost', '::1'):
         print(f"警告: {HOST} で待ち受けています。同一LAN上の別PCから図面・部品データが"
@@ -524,7 +587,18 @@ def main():
         print("CADか部品DBのウィンドウが既に開いているなら、これは正常です"
               "(ブラウザのタブはそのまま使えます)。このウィンドウは閉じてください。")
         print(f"(詳細: {e})")
+        # 既に1つ目が配信しているので、タブは開いてよい(従来 .bat 側が
+        # 先に開いていた挙動を保つ)。
+        open_browser(open_path)
         return
+    # ここまで来ていれば bind/listen は済んでいる。
+    # ただし **別スレッドで開く**。webbrowser.open() が環境によっては
+    # ブラウザの終了まで戻らないことがあり(POSIXのBROWSERにスクリプトを
+    # 指定した場合など)、そこで待つと serve_forever が始まらず、
+    # 開いたブラウザが応答を待ち続ける —— 順番を直したのに同じ競争が残る。
+    # 接続は listen 済みなので待ち行列に入り、serve_forever が始まり次第
+    # 捌かれる。
+    threading.Thread(target=open_browser, args=(open_path,), daemon=True).start()
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
