@@ -113,6 +113,56 @@ def mirror_path(data_dir=None):
     return os.path.join(data_dir or default_data_dir(), MIRROR_NAME)
 
 
+# ----------------------------------------------------------------------------
+# 場所が外れたときの自動復帰(2026-09-21)
+#
+# 盛田さん「なぜ固定パスを使っている、環境が変わったら動かんぞ」。そのとおりで、
+# 設定に入っている絶対パスは**前に見つけた場所の控え**であって正ではない。
+# Drive for Desktop のドライブ文字は環境で変わる(G: / I:)し、PCを変えれば当然違う。
+# それなのに、控えが外れた瞬間に「未設定です」と言って止まる作りだった。
+#
+# 復帰は2段。**速い方から試す。**
+#   ① 末尾パス(ドライブから下)を手がかりに、実在するドライブへ当てる … 一瞬
+#   ② それでも駄目なら find_candidates() で全走査            … 数十秒
+#
+# ②はページを開くたびに走らせるわけにいかないので、**1プロセスで1回だけ**。
+_scan_done = False
+_scan_found = []
+_scan_backups = []
+
+# テストから差し替えるための口。既定(None)は本番の挙動。
+# Windowsのドライブ文字や本物のホームを前提にすると、テストが環境依存になるため。
+DRIVE_ROOTS = None   # _recover_by_tail が当てにいく根
+SCAN_ROOTS = None    # find_candidates に渡す根
+
+
+def drive_roots():
+    """実在するドライブの根。Windows以外では空(当てる先が無い)。"""
+    if DRIVE_ROOTS is not None:
+        return list(DRIVE_ROOTS)
+    if os.name != 'nt':
+        return []
+    return [f'{d}:\\' for d in 'CDEFGHIJKLMNOPQRSTUVWXYZ' if os.path.isdir(f'{d}:\\')]
+
+def path_tail(path):
+    """ドライブ(根)から下の部分。ドライブが変わっても効く手がかり。
+
+    `I:\\マイドライブ\\...\\parts_db.json` → `マイドライブ\\...\\parts_db.json`
+
+    根は drive_roots() を先に当てる(splitdrive だけだと、テストや
+    ネットワークドライブのマウント形が違うときに剥がせないため)。
+    """
+    full = os.path.abspath(path)
+    for root in sorted(drive_roots(), key=len, reverse=True):
+        r = root.rstrip('\\/')
+        if r and (full == r or full.startswith(r + os.sep)):
+            return full[len(r):].lstrip('\\/')
+    _drive, rest = os.path.splitdrive(full)
+    return rest.lstrip('\\/')
+
+
+
+
 def load_config(data_dir=None):
     try:
         with open(config_path(data_dir), encoding='utf-8') as f:
@@ -210,33 +260,116 @@ class PartsDB:
         normalize(json.loads(open(path, encoding='utf-8').read()))  # 読める形か確認
         cfg = load_config(self.data_dir)
         cfg['path'] = path
+        # ドライブ文字が変わったときの手がかり。正は 'path' で、こちらは保険。
+        cfg['path_tail'] = path_tail(path)
         save_config(cfg, self.data_dir)
         return path
 
     def resolve(self):
-        """(実ファイルのパス, 由来) を返す。見つからなければ (None, 理由)。"""
+        """(実ファイルのパス, 由来) を返す。見つからなければ (None, 理由)。
+
+        設定のパスが外れていたら、その場で探し直す(上の「自動復帰」参照)。
+        見つけたら設定も書き換えるので、次からは一発で読める。
+        """
         p = self.configured_path()
+        if p and os.path.isfile(p):
+            self._remember_tail(p)
+            return p, 'path'
+        r = self._recover_by_tail()
+        if r:
+            return r, 'path_recovered'
+        r = self._recover_by_scan()
+        if r:
+            return r, 'path_found'
         if p:
-            if os.path.isfile(p):
-                return p, 'path'
             return None, 'path_missing'
         m = mirror_path(self.data_dir)
         if os.path.isfile(m):
             return m, 'mirror'
         return None, 'unset'
 
+    def _remember_tail(self, path):
+        """末尾パスを持っていない古い設定に、後から足す(次に外れたとき効くように)。"""
+        cfg = load_config(self.data_dir)
+        if cfg.get('path_tail'):
+            return
+        cfg['path_tail'] = path_tail(path)
+        try:
+            save_config(cfg, self.data_dir)
+        except Exception:
+            pass   # 書けなくても読み込みは続けられる
+
+    def _recover_by_tail(self):
+        """ドライブ文字だけ変わった場合の復帰。実在するドライブに末尾を当てる。"""
+        tail = (load_config(self.data_dir).get('path_tail') or '').strip()
+        if not tail:
+            return None
+        for root in drive_roots():
+            cand = os.path.join(root, tail)
+            if os.path.isfile(cand):
+                try:
+                    self.set_path(cand)
+                except Exception:
+                    pass
+                return cand
+        return None
+
+    def _recover_by_scan(self):
+        """全走査での復帰。**1プロセスで1回だけ**(数十秒かかるため)。
+
+        候補が1つに決まるときだけ自動で設定する。複数あるときは選び間違えると
+        古い部品DBに繋がってしまうので、**決めずに候補を残す**(画面に出して選ばせる)。
+        """
+        global _scan_done, _scan_found, _scan_backups
+        if not _scan_done:
+            _scan_done = True
+            # 数十秒かかる。server.py 経由だとその間ページが待つので、
+            # 黒い窓に「今これをやっている」と出す(無言で固まるのが一番困る)。
+            print('部品DBが設定の場所に見つかりません。ディスクから探しています'
+                  '(数十秒かかることがあります)...', flush=True)
+            try:
+                _scan_found, _scan_backups = find_candidates(SCAN_ROOTS)
+            except Exception as e:
+                print(f'  探索に失敗しました: {e}', flush=True)
+                _scan_found, _scan_backups = [], []
+            else:
+                print(f'  候補 {len(_scan_found)}件', flush=True)
+        if len(_scan_found) == 1:
+            try:
+                return self.set_path(_scan_found[0][0])
+            except Exception:
+                return None
+        return None
+
+    @staticmethod
+    def scan_candidates():
+        """直近の全走査で見つかった候補(本体, バックアップ)。画面に出す用。"""
+        return _scan_found, _scan_backups
+
     # ---- 読み込み ------------------------------------------------------
     def load(self):
         """{'ok':bool, 'parts':[...], 'hidden':[...], 'source':str, 'error':str}"""
         path, source = self.resolve()
         if path is None:
+            base = {
+                'unset': '部品DBの場所が未設定です',
+                'path_missing': f'設定された部品DBが見つかりません: {self.configured_path()}',
+            }.get(source, '部品DBを読めません')
+            # 【2026-09-21】自動で探した結果をそのまま出す。
+            # 「未設定です。setpathしてください」だけだと、どこにあるか分からない
+            # 盛田さんが毎回 find を打つことになる(パスはブラウザしか知らないため)。
+            found, _bk = self.scan_candidates()
+            if len(found) > 1:
+                base += ('。自動で探したところ候補が%d個ありました。'
+                         'どれか1つを選んで設定してください: ' % len(found))
+                base += ' / '.join(f'{p}（{n}件）' for p, n, _m in found[:5])
+                base += '  例: py tools/parts_db/parts_db.py setpath "%s"' % found[0][0]
+            elif _scan_done and not found:
+                base += '。自動で探しましたが parts_db.json が見つかりませんでした'
+            else:
+                base += '(py tools/parts_db/parts_db.py find で探せます)'
             return {'ok': False, 'parts': [], 'hidden': [], 'source': source,
-                    'error': {
-                        'unset': '部品DBの場所が未設定です'
-                                 '(py parts_db.py setpath <parts_db.jsonのパス>)',
-                        'path_missing': f'設定された部品DBが見つかりません: '
-                                        f'{self.configured_path()}',
-                    }.get(source, '部品DBを読めません')}
+                    'error': base}
         try:
             st = os.stat(path)
             key = (path, st.st_mtime, st.st_size)
