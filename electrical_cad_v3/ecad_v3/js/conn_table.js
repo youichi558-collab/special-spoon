@@ -282,6 +282,14 @@ function buildTerminalBlockRows() {
 function insertTerminalBlockDiagram(dev) {
   const rows = buildTerminalBlockRows().filter(r => r.tbRef === dev);
   if (!rows.length) return;
+  // 集計対象外の台では描かない。ここで描くと「端子台の配置図」として
+  // PLC等の配置が図面に入ってしまう。見出しのボタン自体も出していないが、
+  // 関数はグローバルなので入口でも止める。
+  if (rows.some(r => isTBExcluded(r.el))) {
+    alert(`${dev} は端子台として集計しない設定になっています。\n`
+      + '端子台表の見出しで「端子台として集計」を入れてから実行してください。');
+    return;
+  }
   if (typeof pushH === 'function') pushH();
 
   // サイズは「図面上の実寸(mm)」を基準に決める。world単位はmm×sc(図枠の拡大率)
@@ -360,13 +368,27 @@ function showTBTable() {
     groups.get(r.tbRef).push(r);
   });
 
-  const unconn = rows.filter(r => !r.conns.length).length;
-  let html = `<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">`
-    + `全${state.pages.length}ページ集計。端子${rows.length}点 / 端子台${groups.size}台`;
-  if (unconn) html += ` / <span style="color:var(--red);font-weight:600">未接続 ${unconn}点</span>`;
-  html += `<br>行をドラッグすると並べ替えできます。並べ替えた順で「番号を振り直す」と端子番号が1から振り直されます。</p>`;
+  // 【2026-09-21】集計する台としない台に分ける。表には両方出す。
+  // 部品DBの種別で自動除外していたのをやめ、デバイス単位で人が決める形にした
+  // (経緯は js/report.js の isTBExcluded 付近のコメントを参照)。
+  // 対象外の台も「消さずに出して、集計から外れていることを見せる」——
+  // 部品表(showBOM)が対象外の部品を別セクションで出しているのと同じ作法。
+  const isExDev = list => list.some(r => isTBExcluded(r.el));
+  const incGroups = new Map(), exGroups = new Map();
+  groups.forEach((list, dev) => (isExDev(list) ? exGroups : incGroups).set(dev, list));
 
-  groups.forEach((list, dev) => {
+  const incRows = [...incGroups.values()].flat();
+  const exRows  = [...exGroups.values()].flat();
+  const unconn  = incRows.filter(r => !r.conns.length).length;
+  let html = `<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">`
+    + `全${state.pages.length}ページ集計。端子${incRows.length}点 / 端子台${incGroups.size}台`;
+  if (unconn) html += ` / <span style="color:var(--red);font-weight:600">未接続 ${unconn}点</span>`;
+  // 外した分は必ず数字で見せる。黙って減っていると出力を誤解するため(部品表と同じ)。
+  if (exRows.length) html += ` / <span style="color:var(--fg3)">集計対象外 ${exGroups.size}台・${exRows.length}点（CSVにも出ません）</span>`;
+  html += `<br>行をドラッグすると並べ替えできます。並べ替えた順で「番号を振り直す」と端子番号が1から振り直されます。`
+    + `<br>PLC・インバータ等の「端子台ではない」台は、見出しの「端子台として集計」を外してください（台ごとに1回で、図面に残ります）。</p>`;
+
+  const devSection = (list, dev) => {
     // 型式は同じデバイスの端子すべてで揃う運用(プロパティ側で統一)なので、
     // 全行に同じ文字を並べず台の見出しに1回だけ出す。揃っていない場合だけ
     // 警告を出して気付けるようにする(古い図面や手作業で崩れたとき用)。
@@ -379,11 +401,16 @@ function showTBTable() {
     html += `<p style="font-size:11px;font-weight:600;margin:8px 0 3px">${dev}`
       + `<span style="color:var(--fg3);font-weight:400">（${list.length}点）</span>`
       + modelTxt
-      + `<button class="fp-btn" style="margin-left:8px;font-size:10px;padding:1px 8px"`
-      + ` onclick="renumberTerminals('${String(dev).replace(/'/g, "\\'")}')">この順で番号を振り直す</button>`
-      + `<button class="fp-btn" style="margin-left:4px;font-size:10px;padding:1px 8px"`
-      + ` onclick="insertTerminalBlockDiagram('${String(dev).replace(/'/g, "\\'")}')"`
-      + ` title="番号・線番を並べた簡易図を画面中央に挿入します(手書きで仕上げてください)">この配置で図を挿入</button></p>`
+      + tbDevToggle(dev, !isExDev(list))
+      // 「番号を振り直す」「図を挿入」は端子台のための操作なので、集計対象の台にだけ出す。
+      // 対象外の台で図を挿入すると、PLCの配置図が端子台として描けてしまう。
+      + (isExDev(list) ? '' :
+          `<button class="fp-btn" style="margin-left:4px;font-size:10px;padding:1px 8px"`
+        + ` onclick="renumberTerminals('${String(dev).replace(/'/g, "\\'")}')">この順で番号を振り直す</button>`
+        + `<button class="fp-btn" style="margin-left:4px;font-size:10px;padding:1px 8px"`
+        + ` onclick="insertTerminalBlockDiagram('${String(dev).replace(/'/g, "\\'")}')"`
+        + ` title="番号・線番を並べた簡易図を画面中央に挿入します(手書きで仕上げてください)">この配置で図を挿入</button>`)
+      + `</p>`
       + `<table class="tbl"><tr><th style="width:22px"></th><th>No</th><th>端子番号</th>`
       + `<th>位置</th><th>接続線番</th></tr>`
       + list.map((r, i) =>
@@ -396,12 +423,35 @@ function showTBTable() {
               ? r.conns.map(n => `<span class="badge badge-b">${n}</span>`).join(' ')
               : '<span style="color:var(--red)">未接続</span>'}</td></tr>`).join('')
       + `</table>`;
-  });
+  };
+
+  incGroups.forEach((list, dev) => devSection(list, dev));
+  if (exGroups.size) {
+    html += `<p style="font-size:11px;font-weight:600;margin:14px 0 3px;padding-top:8px;`
+      + `border-top:1px solid var(--bd2);color:var(--fg3)">集計対象外`
+      + `<span style="font-weight:400">（端子台表の集計・CSV・「図を挿入」の対象外です。`
+      + `表には残してあるので、戻したいときは各台の「端子台として集計」を入れてください）</span></p>`;
+    exGroups.forEach((list, dev) => devSection(list, dev));
+  }
   _reportOpen('tbtbl', '端子台表', html, exportTBCSV);
 }
 
+// デバイス見出しの「端子台として集計」切り替え。
+// 押すとその台の端子すべてに印が付き(setTBExcluded)、表が描き直される。
+// 帳票を閉じて図面に戻る必要は無い。
+function tbDevToggle(dev, included) {
+  const d = String(dev).replace(/'/g, "\\'");
+  return `<label style="margin-left:8px;font-size:10px;font-weight:400;cursor:pointer;color:var(--fg3)" `
+    + `title="この台を端子台として集計するかどうか。同じデバイスの端子すべてに効き、図面に保存されます">`
+    + `<input type="checkbox"${included ? ' checked' : ''} `
+    + `onchange="setTBExcluded('${d}', !this.checked)" style="vertical-align:-1px;margin-right:3px">`
+    + `端子台として集計</label>`;
+}
+
 function exportTBCSV() {
-  const rows = buildTerminalBlockRows();
+  // 画面の集計対象外をCSVにも必ず適用する。画面と出力が食い違うと
+  // 出力を信用できなくなるため(部品表 exportBOMCSV と同じ考え方)。
+  const rows = buildTerminalBlockRows().filter(r => !isTBExcluded(r.el));
   const esc = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
   const csv = ['端子台,No,端子番号,型式,位置,接続線番'];
   const seen = {};

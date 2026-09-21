@@ -10,11 +10,22 @@
 //   端子台TB1の○ = 端子台という部品の端子1個
 //   PLC1の○      = PLC1という1台の装置の接続点(X0等)
 //
-// 部品DBの種別(plc/plc_unit/hmi/servo)から自動判定する方式を採用した。
-// 新しい入力項目もフラグ操作も増やさず、既存の型式欄だけで判定する。
+// 【2026-09-21 方式変更】当初は部品DBの種別から自動判定していた
+// (isDeviceTerminal / DEVICE_PART_TYPES)。これをやめ、**デバイス単位で人が
+// 1回決める**形にした(盛田さん「おれはデバイスで読めと言ってる」)。
 //
-// 【後方互換が最重要】型式が空、または部品DBに無い型式のときは従来どおり
-// 端子台として扱わなければならない。既存図面の端子台が黙って端子台表から
+// 変えた理由:
+//   ・帳票を開くたびに部品DBを引き直すため、部品DBが読めないと答えが変わり、
+//     しかも行が増えるだけなので間違いに気付けなかった
+//   ・端子の型式欄は手入力で、部品DBの型番と一致する保証が無い
+//   ・除外リストは終わりが無く、新種別を足し忘れると黙って混ざる
+//
+// 「端子台の種別(terminal)だけ拾う」案は**不採用**。盛田さん「端子台の選定は
+// 一番最後にだいたい決まる、図面全部書いてから」——作図中の端子台は型式が
+// 空なのが普通で、拾う側にすると端子台表が一番使いたい時期に空になる。
+//
+// 【後方互換が最重要】既定は「端子台として集計する」。型式が空でも部品DBが
+// 空でも端子台は消えてはならない。既存図面の端子台が黙って端子台表から
 // 消えると実害が大きいため、そのケースを重点的に検証する。
 
 const fs = require('fs');
@@ -48,8 +59,7 @@ function makeSandbox(customParts, pages) {
   const sandbox = { console };
   vm.createContext(sandbox);
   vm.runInContext(
-    [grabConst(reportSrc, 'DEVICE_PART_TYPES'),
-     grab(reportSrc, 'isDeviceTerminal'),
+    [grab(reportSrc, 'isTBExcluded'),
      grab(reportSrc, 'collectTerminals'),
      grab(reportSrc, 'groupTerminalsByDevice'),
      grab(uiSrc, 'parseTerminalGroups'),
@@ -76,7 +86,7 @@ const J = (partRef, partModel, label) =>
   ({ type: 'junction', style: 'circle', partRef, partModel, label, id: partRef + '-' + label });
 
 // ------------------------------------------------------------------
-console.log('【装置(PLC等)の端子は端子台表に出さない】');
+console.log('【端子は全部拾う。除外はデバイス単位のフラグだけ】');
 {
   const pages = [{ elements: [
     J('TB1',  '端子台 M4', '1'),
@@ -85,21 +95,40 @@ console.log('【装置(PLC等)の端子は端子台表に出さない】');
     J('PLC1', 'FX3U-32MR', 'Y0'),
     J('SV1',  'MR-J5-10G', 'U'),
     J('GOT1', 'GT2103',    'SD'),
-    J('PLC1', 'FX3U-16EX', 'X20'),
     J('INV1', 'FRN0.4E3S', 'U'),
   ] }];
   const s = makeSandbox(PARTS, pages);
-  const devs = [...s.groupTerminalsByDevice(s.collectTerminals()).keys()];
-  eq(devs, ['TB1'], '端子台TB1だけが残り、PLC1/SV1/GOT1/INV1は除外される');
-  eq(s.collectTerminals().length, 2, '端子数はTB1の2件のみ');
+  const devs = [...s.groupTerminalsByDevice(s.collectTerminals()).keys()].sort();
+  eq(devs, ['GOT1','INV1','PLC1','SV1','TB1'],
+     '部品DBの種別では除外しない(全デバイスが拾われる)');
+  eq(s.collectTerminals().length, 7, '端子は7点すべて拾う');
 
-  ok(s.isDeviceTerminal(J('PLC1','FX3U-32MR','X0')),  'plc は装置端子');
-  ok(s.isDeviceTerminal(J('PLC1','FX3U-16EX','X20')), 'plc_unit は装置端子');
-  ok(s.isDeviceTerminal(J('SV1','MR-J5-10G','U')),    'servo は装置端子');
-  ok(s.isDeviceTerminal(J('GOT1','GT2103','SD')),     'hmi は装置端子');
-  ok(s.isDeviceTerminal(J('INV1','FRN0.4E3S','U')),   'inverter は装置端子');
-  ok(!s.isDeviceTerminal(J('TB1','端子台 M4','1')),    'terminal は端子台(除外しない)');
-  ok(!s.isDeviceTerminal(J('MC1','S-T21','A1')),       'contactor は端子台扱いのまま');
+  // 部品DBを空にしても結果が変わらないこと。ここが今回の眼目
+  // ——帳票が部品DBの状態に左右されないようにするための変更だった。
+  const s2 = makeSandbox([], pages);
+  eq(s2.collectTerminals().length, 7, '部品DBが空でも結果が同じ');
+  eq([...s2.groupTerminalsByDevice(s2.collectTerminals()).keys()].sort(),
+     ['GOT1','INV1','PLC1','SV1','TB1'], '部品DBが空でもデバイス一覧が同じ');
+}
+
+console.log('【デバイス単位のフラグ(el.tbExclude)】');
+{
+  const ex = (partRef, label) => ({ ...J(partRef, '', label), tbExclude: true });
+  const pages = [{ elements: [
+    J('TB1', '', '1'), J('TB1', '', '2'),
+    ex('PLC1', 'X0'), ex('PLC1', 'Y0'),
+  ] }];
+  const s = makeSandbox(PARTS, pages);
+  // collectTerminals は全部返す(表には出すため)。分けるのは表示側。
+  eq(s.collectTerminals().length, 4, '集計対象外の端子も collectTerminals は返す(表に出すため)');
+  const rows = s.collectTerminals();
+  eq(rows.filter(r => !s.isTBExcluded(r.el)).length, 2, '集計対象はTB1の2点');
+  eq(rows.filter(r =>  s.isTBExcluded(r.el)).length, 2, '集計対象外はPLC1の2点');
+
+  ok(s.isTBExcluded({ tbExclude: true }),  'tbExclude:true は集計対象外');
+  ok(!s.isTBExcluded({ tbExclude: false }),'tbExclude:false は集計対象');
+  ok(!s.isTBExcluded({}),                  '印が無ければ集計対象(既定)');
+  ok(!s.isTBExcluded(undefined),           'undefined を渡しても落ちない');
 }
 
 console.log('【後方互換: 既存図面の端子台が黙って消えないこと】');
@@ -116,6 +145,11 @@ console.log('【後方互換: 既存図面の端子台が黙って消えない�
 
   const s2 = makeSandbox([], pages);   // 部品DBが空
   eq(s2.collectTerminals().length, 3, '部品DBが空でも端子台は消えない');
+
+  // 既存図面には tbExclude が無い。既定で端子台として集計されること。
+  pages[0].elements.forEach(el => {
+    ok(!s.isTBExcluded(el), `${el.partRef}: 印の無い既存要素は端子台として集計される`);
+  });
 }
 
 console.log('【●分岐点は従来どおり端子ではない】');
@@ -191,12 +225,20 @@ console.log('  直す必要がある。過去に漏れの前例あり');
   ok(codes.every(c => order.includes(c)),     'PART_TYPE_ORDER が全コードを網羅');
   eq(order.length, codes.length, 'PART_TYPE_ORDER の件数が PART_TYPE_CODES と一致');
 
-  // 装置系は必ず正規のコードであること(綴り間違いの検出)
-  const devTypes = JSON.parse('[' +
-    reportSrc.match(/const DEVICE_PART_TYPES = \[([^\]]*)\]/)[1].replace(/'/g, '"') + ']');
-  devTypes.forEach(t => ok(codes.includes(t),
-    `DEVICE_PART_TYPES の ${t} は正規の種別コード`));
-  ok(devTypes.includes('inverter'), 'インバータが装置端子の対象に入っている');
+  // 【2026-09-21】ここでは以前、DEVICE_PART_TYPES(装置系の種別リスト)の綴りが
+  // 正規の種別コードと合っているかを見ていた。そのリスト自体を廃止したので、
+  // 「復活していないこと」の見張りに変える。種別で自動判定する方式に戻すと、
+  // 帳票の結果が部品DBの状態で変わる問題が再発する(経緯は js/report.js 参照)。
+  ok(!/const DEVICE_PART_TYPES\s*=/.test(reportSrc),
+     '★DEVICE_PART_TYPES が復活していない(種別による自動判定はしない)');
+  ok(!/function isDeviceTerminal\s*\(/.test(reportSrc),
+     '★isDeviceTerminal が復活していない');
+  // 端子台表が部品DB(customParts)を引いていないこと。ここが今回の変更の要。
+  {
+    const ct = reportSrc.slice(reportSrc.indexOf('function collectTerminals'),
+                               reportSrc.indexOf('function groupTerminalsByDevice'));
+    ok(!/customParts/.test(ct), '★collectTerminals が部品DBを引いていない');
+  }
 
   // 定義が js/ui.js に再び紛れ込んでいないこと(5箇所目を作らない、の逆側の見張り)。
   // 部品DB単独画面(parts.html)を作るとき、ここに書かず part_types.js を

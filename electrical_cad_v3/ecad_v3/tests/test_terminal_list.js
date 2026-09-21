@@ -48,11 +48,10 @@ const src = fs.readFileSync(__dirname + '/../js/report.js', 'utf8');
 const pick = re => { const m = src.match(re); if (!m) { console.log('  NG 関数を取り出せません:', re); process.exit(1); } return m[0]; };
 vm.runInContext([
   'function elLocation(el, pageIdx) { return String(pageIdx + 1); }',   // 区画計算は本テストの対象外
-  // 【2026-08-23】collectTerminalsがisDeviceTerminal(PLC等の装置端子の除外判定)に
-  // 依存するようになったため、それも一緒に読み込む。本テストのデータは型式を
-  // 持たないので、この判定は常にfalseになり、期待値は従来どおりで変わらない。
-  pick(/const DEVICE_PART_TYPES = [^\n]*\n/),
-  pick(/function isDeviceTerminal\([\s\S]*?\n\}/),
+  // 【2026-09-21】collectTerminals から装置端子の除外(isDeviceTerminal /
+  // DEVICE_PART_TYPES)が無くなったので、その読み込みもやめた。端子は全部拾い、
+  // 集計に入れるかどうかは表示側(showTBTable)が el.tbExclude で分ける。
+  // 本テストのデータは印を持たないため、期待値は従来どおりで変わらない。
   pick(/function collectTerminals\(\)[\s\S]*?\n\}/),
   pick(/function groupTerminalsByDevice\([\s\S]*?\n\}/),
 ].join('\n'), sandbox);

@@ -824,42 +824,62 @@ function exportRefCSV(devs){
 // グループ化する。並び順は tbOrder(端子台表で並べ替えた結果)があればそれに
 // 従い、無ければページ順→配置順とする(既存図面との互換)。
 // ----------------------------------------------------------------
-// 装置(PLC・インバータ・サーボアンプ・タッチパネル)の端子かどうかの判定
+// 端子台として集計するかどうか(デバイス単位)
 // ----------------------------------------------------------------
-// 【2026-08-23】盛田さんの指摘:
-//   「端子台記号は同じだがPLC,インバーター,サーボアンプは部品要素だが
-//     端子番号をどう扱うのかが疑問」
-//   「端子台表には出さないな、端子台ではないから」
+// 【2026-09-21 作り直し】従来は型式(el.partModel)で部品DBを引き、種別が
+// 装置系(plc/plc_unit/hmi/inverter/servo)なら端子台表から除外していた
+// (isDeviceTerminal / DEVICE_PART_TYPES)。これを全部やめた。
 //
-// これらは図面上は端子台と同じ○/◎で描くが、意味が違う。
-//   端子台TB1の○ = 「端子台という部品の端子1個」
-//   PLC1の○      = 「PLC1という1台の装置の接続点(X0等)」
-// 展開接続図ではPLCの端子は各ページに散らばって描かれる(X0は対応する押ボタンの
-// 隣、Y0は負荷の隣)。物理的には1台なのに図面上は何十箇所にも分かれる。
+// やめた理由(盛田さんとの確認):
+//   ・帳票を開くたびに部品DBを引き直すので、**部品DBが読めないと答えが変わる**。
+//     しかも表は普通に出て行が増えるだけなので、間違いに気付けない
+//   ・端子の型式欄は手入力で、部品DBの型番と一致する保証が無い。綴りがずれても
+//     同じように混ざる
+//   ・除外リストは終わりが無い。inverterは2026-08-23に後から足したもので、
+//     新しい種別が出るたびに足し忘れると黙って混ざる
 //
-// 判定方法として検討したもの:
-//   案1 図面ごとにグループでシンボル登録 → 端子の組み合わせが図面ごとに違うので
-//        毎回登録が必要になり運用に乗らない(盛田さん「毎回シンボル登録は大変」)
-//   案2 端子に「装置端子」フラグを持たせる → デバイス名で分かっているのに
-//        人が二重に指定する手間が残る
-//   案3(採用) 部品DBの種別から自動判定 → 新しい入力項目も操作も増えない
+// 「端子台の種別(terminal)だけ拾う」案も検討したが、**不採用**。
+// 盛田さん「端子台の選定は一番最後にだいたい決まる、図面全部書いてから」。
+// 作図中の端子台は型式が空なのが普通で、拾う側にすると端子台表が
+// 一番使いたい時期(端子を並べ替えて番号を振る時期)に空になる。
 //
-// 型式(el.partModel)で部品DBを引き、種別が装置系なら装置端子とみなす。
-// 型式が空、または部品DBに無い場合は従来どおり端子台として扱うので、
-// 既存図面の挙動は変わらない(後方互換)。
+// 採用したのは**デバイス単位で人が1回決める**形(盛田さん「おれはデバイスで
+// 読めと言ってる」)。TB1/PLC1というデバイスは図面に数台しか無く、1台につき
+// 1回決めれば図面に残る。部品DBは一切引かない。
 //
-// 部品表(collectBOMRows)はもともとjunctionもpartRefで集計しているので、
-// ○に PLC1 と入れれば○が何個あってもPLC1は1台として型番付きで出る。
-// こちらは変更不要。
-// 2026-08-23: inverter(インバータ)は盛田さんの指示でこの日に新設した種別。
-// サーボアンプ(servo)とは別物として分けている。
-const DEVICE_PART_TYPES = ['plc', 'plc_unit', 'hmi', 'inverter', 'servo'];
+// 既定は「端子台として集計する」。型式未設定の端子台が黙って消える方が
+// 実害が大きいため(既存図面の互換。tests/test_device_terminal.js 参照)。
+//
+// フラグは el.tbExclude(true = 集計しない)。端子台は「台」という実体を持たず
+// 同じ partRef の端子が集計時に1台として束ねられる作りなので、型式・panelZone と
+// 同じく**その台の端子すべてに同じ値を配る**(js/ui.js の onJunctionModelChanged と
+// 同じ考え方)。図面データに入るので、PCが変わっても同じ結果になる。
+function isTBExcluded(el) {
+  return !!(el && el.tbExclude);
+}
 
-function isDeviceTerminal(el) {
-  const model = (el && el.partModel || '').trim();
-  if (!model) return false;
-  const p = (state.customParts || []).find(x => x.ref === model);
-  return !!p && DEVICE_PART_TYPES.includes(p.type);
+// 指定デバイスの端子すべてに、集計する/しないを配る。全ページが対象。
+// 帳票(端子台表)から呼ぶ。プロパティ欄には置いていない —— デバイス単位の
+// 判断は、デバイスが一覧になっている帳票で見ながら決める方が自然なため。
+function setTBExcluded(dev, excluded) {
+  if (typeof pushH === 'function') pushH();   // 取り消せるようにする
+  const target = String(dev || '');
+  let n = 0;
+  (state.pages || [{ elements: state.elements }]).forEach(pg => {
+    (pg.elements || []).forEach(el => {
+      if (el.type !== 'junction') return;
+      const ref = (el.partRef || '').trim() || '(デバイス未設定)';
+      if (ref !== target) return;
+      el.tbExclude = excluded ? true : undefined;
+      n++;
+    });
+  });
+  if (typeof draw === 'function') draw();
+  // 端子を選んだままでも欄が古い値のまま残らないようにする
+  // (setBOMVolt と同じ作法。ここを抜くと画面とデータが食い違う)
+  if (typeof updateRightPanel === 'function') updateRightPanel();
+  if (typeof showTBTable === 'function') showTBTable();
+  return n;
 }
 
 function collectTerminals() {
@@ -868,7 +888,9 @@ function collectTerminals() {
     (pg.elements || []).forEach(el => {
       if (el.type !== 'junction') return;
       if (el.style !== 'circle' && el.style !== 'dbl') return;  // ●分岐点は端子ではない
-      if (isDeviceTerminal(el)) return;  // PLC等の装置の端子は端子台ではない
+      // 【2026-09-21】ここで装置の端子を除外するのをやめた(上の説明を参照)。
+      // 端子は全部拾い、集計に入れるかどうかは表示側(showTBTable)が
+      // el.tbExclude で分ける。並べ替え(tbOrder)は集計対象外の台にも要る。
       out.push({ el, page: pi, loc: elLocation(el, pi) });
     });
   });
