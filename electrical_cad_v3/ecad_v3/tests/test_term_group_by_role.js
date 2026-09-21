@@ -225,69 +225,51 @@ console.log('    フラットなデータは今後も混ざるので、従来ど
 
 
 // ================================================================
-// 【2026-09-21】種別の追加(盛田さん「種別を増やしてくれ、仮設定を追加、
-// 自動選択にのせるように」)。
+// 【2026-09-21】種別「仮設定」(tentative)を追加した(盛田さんの指示)。
+// あとで決めるための目印なので、**自動選択には乗せない**。
 //
-// 登録シンボル31個中17個が種別未設定だったのは、**サーマル・限時接点・
-// 接点1〜4に当たる選択肢が無かった**ため。部品DBの実データを数えて、
-// 拾えていなかった上位から4つ足した:
-//   サーマル接点 38 / 限時接点・限時接点1〜4 44 / 接点1〜4 38 / 制御入力 33
-//
-// `tentative`(仮設定)は**自動選択に乗せない**。後で決めるための目印。
+// 【やって戻したこと】同時にサーマル接点・限時接点・接点(番号付き)・制御入力の
+// 4種別も足したが、**盛田さんの承認を取らずに入れたもので、戻した**。
+//   盛田さん「は？限時だから追加？意味わからん、コイルと接点だろ」
+//           「サーマルも接点だろ」
+// 限時もサーマルも**接点**であって、別の種別ではない。端子グループの名前
+// (限時接点1・サーマル接点)に引きずられて種別を細かく割りすぎた。
+// **種別はコイルか接点か(主か補助か)であって、接点の性質で割らない。**
 // ================================================================
 {
-  console.log('\n【2026-09-21 追加した種別】');
-  // このファイルの grab は (name) だけ取り、定数は constBlock。src はモジュール先頭で
-  // 読み込み済み(js/ui.js)。他のテストと書き方が違うので混ぜないこと。
+  console.log('\n【仮設定(tentative)】');
   const sandbox2 = { console };
   require('vm').createContext(sandbox2);
   require('vm').runInContext(
     [constBlock('TERM_GROUP_PATTERNS'), constBlock('TERM_GROUP_EXCLUDE'),
      grab('matchGroupsByRole'), grab('pickGroupByRole')].join('\n'),
     sandbox2);
-
-  // このファイルには ok しか無いので、この節用に eq を用意する
-  const eq = (a, b, m) => ok(JSON.stringify(a) === JSON.stringify(b),
-                             `${m}（期待 ${JSON.stringify(b)} / 実際 ${JSON.stringify(a)}）`);
   const G = n => ({ name: n, list: ['1', '2'] });
-  const pick = (names, role) => {
-    const hit = sandbox2.matchGroupsByRole(names.map(G), role);
-    return hit.map(g => g.name);
-  };
+  const ALL = ['主接点', 'コイル', '補助', '限時接点1', 'サーマル接点'].map(G);
 
-  // 実データに出るグループ名をそのまま使う
-  const ALL = ['主接点', 'コイル', '補助', 'サーマル接点', '限時接点1', '限時接点2',
-               '接点1', '接点2', '制御入力', '主回路オプション'];
+  ok(sandbox2.matchGroupsByRole(ALL, 'tentative').length === 0,
+     '★仮設定は自動選択に乗らない(端子点数の判定へ落ちる)');
+  ok(sandbox2.matchGroupsByRole(ALL, '').length === 0, 'その他も乗らない');
 
-  eq(pick(ALL, 'contact_thermal'), ['サーマル接点'], 'サーマル接点が1つに決まる');
-  eq(pick(ALL, 'contact_timer'), ['限時接点1', '限時接点2'], '限時接点は当たったものだけ出る');
-  eq(pick(ALL, 'ctrl_in'), ['制御入力'], '制御入力が1つに決まる');
+  // 接点の性質で種別を割らない。戻した4つが復活していないことを見張る。
+  const pat = constBlock('TERM_GROUP_PATTERNS');
+  ['contact_thermal', 'contact_timer', 'contact_num', 'ctrl_in'].forEach(r =>
+    ok(!pat.includes(r), `★${r} を種別として復活させていない(接点は接点)`)
+  );
 
-  // ★ここが肝。「接点1」だけを拾い、「主接点」「サーマル接点」「限時接点1」を
-  // 巻き込まないこと。単に /接点/ で書くと全部当たって使い物にならない。
-  eq(pick(ALL, 'contact_num'), ['接点1', '接点2'],
-     '★接点(番号付き)は主接点・サーマル接点・限時接点を巻き込まない');
-
-  // 仮設定は自動選択に乗らない(端子点数の判定へ落ちる)
-  eq(pick(ALL, 'tentative'), [], '★仮設定は自動選択に乗らない');
-  eq(pick(ALL, ''), [], 'その他も従来どおり乗らない');
-
-  // 接点Ref側: 追加した接点は数え、仮設定と制御入力は数えない
-  const rep = require('fs').readFileSync(__dirname + '/../js/report.js', 'utf8');
-  const roles = JSON.parse('[' +
-    rep.match(/const REF_CONTACT_ROLES = \[([\s\S]*?)\]/)[1].replace(/'/g, '"').replace(/\s+/g, ' ') + ']');
-  ['contact_main', 'contact_a', 'contact_b',
-   'contact_thermal', 'contact_timer', 'contact_num'].forEach(r =>
-    ok(roles.includes(r), `接点数に ${r} を数える`));
-  ok(!roles.includes('tentative'), '★仮設定は接点数に数えない(決めていないものを数に入れない)');
-  ok(!roles.includes('ctrl_in'), '制御入力は接点ではないので数えない');
-
-  // 画面の選択肢と実装が揃っていること(片方だけ足すと選べない/効かない)
   const html = require('fs').readFileSync(__dirname + '/../index.html', 'utf8');
-  ['tentative', 'contact_thermal', 'contact_timer', 'contact_num', 'ctrl_in'].forEach(v => {
-    const n = (html.match(new RegExp(`value="${v}"`, 'g')) || []).length;
-    ok(n === 2, `★${v} が種別の選択肢2箇所(登録・端子編集)に揃っている (実際 ${n})`);
-  });
+  ok((html.match(/value="tentative"/g) || []).length === 2,
+     '仮設定が種別の選択肢2箇所(登録・端子編集)に揃っている');
+  ['contact_thermal', 'contact_timer', 'contact_num', 'ctrl_in'].forEach(r =>
+    ok(!html.includes(`value="${r}"`), `★${r} が選択肢に復活していない`)
+  );
+
+  const rep = require('fs').readFileSync(__dirname + '/../js/report.js', 'utf8');
+  const roles = rep.match(/const REF_CONTACT_ROLES = \[([^\]]*)\]/)[1];
+  ok(!/tentative/.test(roles), '仮設定は接点数に数えない');
+  ['contact_thermal', 'contact_timer', 'contact_num'].forEach(r =>
+    ok(!roles.includes(r), `★${r} を接点数に数えていない`)
+  );
 }
 
 console.log(ng ? `\n失敗 ${ng} 件` : '\nすべて通過');
