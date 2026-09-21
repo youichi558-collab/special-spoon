@@ -27,27 +27,18 @@ const BUILTIN_PARTS = [
   { maker:'三菱電機', ref:'NF63-CV',  type:'breaker', volt:'',       amp:'40-63A', terminals:'1,2,3,4,5,6',       contacts:''     },
 ];
 
+// 要素の種別定義。w/h は当たり判定・選択枠・ラベル位置の基準寸法。
+//
+// 【2026-09-21】内蔵の標準シンボル20種(battery/ac/ground/resistor/capacitor/
+// inductor/diode/sw_no/sw_nc/timer_no/timer_nc/push_no/coil/timer_coil/motor/
+// lamp/fuse/breaker/transformer/terminal)をここから削除した。端子点が1つも
+// 定義されておらず、部品DBの端子番号割り当ても接点リファレンスも通らないため、
+// 実務では一度も使われていなかった(盛田さん)。描画側(js/symbols.js)・
+// パネル(BUILTIN_SYMS)・DXF入出力からも併せて削除している。
+//
+// ここに残すのは作図プリミティブだけ。実際に使うシンボルは
+// state.customSymbols(登録シンボル)が loadCustomSymbolDefs() でDEFSに入れる。
 const DEFS = {
-  battery:     { w:72, h:18, label:'電池', jis:'C 0617-2', isCoil:false },
-  ac:          { w:64, h:38, label:'AC',   jis:'C 0617-2', isCoil:false },
-  ground:      { w:32, h:30, label:'GND',  jis:'C 0617-2', isCoil:false },
-  resistor:    { w:64, h:16, label:'R',    jis:'C 0617-4', isCoil:false },
-  capacitor:   { w:54, h:24, label:'C',    jis:'C 0617-4', isCoil:false },
-  inductor:    { w:64, h:12, label:'L',    jis:'C 0617-4', isCoil:false },
-  diode:       { w:64, h:20, label:'D',    jis:'C 0617-5', isCoil:false },
-  sw_no:       { w:64, h:24, label:'SW',   jis:'C 0617-7', isCoil:false, isContact:true, contactType:'a' },
-  sw_nc:       { w:64, h:24, label:'SW',   jis:'C 0617-7', isCoil:false, isContact:true, contactType:'b' },
-  timer_no:    { w:64, h:28, label:'TIM',  jis:'C 0617-7 02-12-05', isCoil:false, isContact:true, contactType:'a' },
-  timer_nc:    { w:64, h:28, label:'TIM',  jis:'C 0617-7 02-12-05', isCoil:false, isContact:true, contactType:'b' },
-  push_no:     { w:64, h:36, label:'PB',   jis:'C 0617-7', isCoil:false },
-  coil:        { w:64, h:28, label:'CR',   jis:'C 0617-7', isCoil:true  },
-  timer_coil:  { w:64, h:34, label:'TIM',  jis:'C 0617-7', isCoil:true, isTimer:true },
-  motor:       { w:64, h:40, label:'M',    jis:'C 0617-6', isCoil:false },
-  lamp:        { w:64, h:36, label:'PL',   jis:'C 0617-10',isCoil:false },
-  fuse:        { w:64, h:14, label:'FU',   jis:'C 0617-4', isCoil:false },
-  breaker:     { w:64, h:28, label:'CB',   jis:'C 0617-7', isCoil:false },
-  transformer: { w:64, h:32, label:'TR',   jis:'C 0617-5', isCoil:false },
-  terminal:    { w:40, h:16, label:'TB',   jis:'C 0617-2', isCoil:false, isTerminal:true },
   text:        { w:0,  h:0,  label:'',     jis:'' },
   rect:        { w:0,  h:0,  label:'',     jis:'' },
   circle:      { w:0,  h:0,  label:'',     jis:'' },
@@ -178,50 +169,11 @@ function activeLayer() {
 }
 
 // ----------------------------------------------------------------
-// 標準シンボル定義（フローティングパネル用）
+// 【2026-09-21】標準シンボル定義(BUILTIN_SYMS)を削除した。
+// シンボルパネル(renderSymFloat)は既にカスタムシンボルしか表示しておらず、
+// 残っていたのは使用履歴(recordRecentSym)だけだった。
+// 登録シンボルの一覧は state.customSymbols が持つ。
 // ----------------------------------------------------------------
-const BUILTIN_SYMS = [
-  { cat:'電源', type:'battery',  label:'電池',
-    svg:`<svg width="36" height="16" viewBox="0 0 34 20"><line x1="2" y1="10" x2="9" y2="10" stroke="currentColor" stroke-width="1.5"/><line x1="9" y1="3" x2="9" y2="17" stroke="currentColor" stroke-width="2.5"/><line x1="13" y1="6" x2="13" y2="14" stroke="currentColor" stroke-width="1.2"/><line x1="17" y1="3" x2="17" y2="17" stroke="currentColor" stroke-width="2.5"/><line x1="21" y1="6" x2="21" y2="14" stroke="currentColor" stroke-width="1.2"/><line x1="25" y1="10" x2="32" y2="10" stroke="currentColor" stroke-width="1.5"/></svg>` },
-  { cat:'電源', type:'ac',       label:'交流電源',
-    svg:`<svg width="36" height="16" viewBox="0 0 34 20"><line x1="2" y1="10" x2="8" y2="10" stroke="currentColor" stroke-width="1.5"/><circle cx="17" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 10 Q14.5 4 17 10 Q19.5 16 22 10" fill="none" stroke="currentColor" stroke-width="1.3"/><line x1="24" y1="10" x2="32" y2="10" stroke="currentColor" stroke-width="1.5"/></svg>` },
-  { cat:'電源', type:'ground',   label:'グランド',
-    svg:`<svg width="36" height="18" viewBox="0 0 34 22"><line x1="17" y1="2" x2="17" y2="9" stroke="currentColor" stroke-width="1.5"/><line x1="7" y1="9" x2="27" y2="9" stroke="currentColor" stroke-width="2"/><line x1="10" y1="13" x2="24" y2="13" stroke="currentColor" stroke-width="1.5"/><line x1="13" y1="17" x2="21" y2="17" stroke="currentColor" stroke-width="1.5"/></svg>` },
-  { cat:'受動素子', type:'resistor', label:'抵抗',
-    svg:`<svg width="36" height="16" viewBox="0 0 34 20"><line x1="2" y1="10" x2="7" y2="10" stroke="currentColor" stroke-width="1.5"/><rect x="7" y="5" width="20" height="10" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="27" y1="10" x2="32" y2="10" stroke="currentColor" stroke-width="1.5"/></svg>` },
-  { cat:'受動素子', type:'capacitor', label:'コンデンサ',
-    svg:`<svg width="36" height="16" viewBox="0 0 34 20"><line x1="2" y1="10" x2="14" y2="10" stroke="currentColor" stroke-width="1.5"/><line x1="14" y1="3" x2="14" y2="17" stroke="currentColor" stroke-width="2.5"/><line x1="18" y1="3" x2="18" y2="17" stroke="currentColor" stroke-width="2.5"/><line x1="18" y1="10" x2="32" y2="10" stroke="currentColor" stroke-width="1.5"/></svg>` },
-  { cat:'受動素子', type:'inductor', label:'コイル(L)',
-    svg:`<svg width="36" height="16" viewBox="0 0 34 20"><line x1="2" y1="10" x2="6" y2="10" stroke="currentColor" stroke-width="1.5"/><path d="M6 10 Q8 3 11 10 Q13 3 16 10 Q18 3 21 10 Q23 3 26 10" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="26" y1="10" x2="32" y2="10" stroke="currentColor" stroke-width="1.5"/></svg>` },
-  { cat:'受動素子', type:'diode',    label:'ダイオード',
-    svg:`<svg width="36" height="16" viewBox="0 0 34 20"><line x1="2" y1="10" x2="11" y2="10" stroke="currentColor" stroke-width="1.5"/><polygon points="11,4 11,16 23,10" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="23" y1="4" x2="23" y2="16" stroke="currentColor" stroke-width="1.5"/><line x1="23" y1="10" x2="32" y2="10" stroke="currentColor" stroke-width="1.5"/></svg>` },
-  { cat:'スイッチ', type:'sw_no',   label:'a接点',
-    svg:`<svg width="36" height="16" viewBox="0 0 34 20"><line x1="2" y1="10" x2="10" y2="10" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="10" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="10" y1="10" x2="24" y2="5" stroke="currentColor" stroke-width="1.5"/><circle cx="24" cy="10" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="24" y1="10" x2="32" y2="10" stroke="currentColor" stroke-width="1.5"/></svg>` },
-  { cat:'スイッチ', type:'sw_nc',   label:'b接点',
-    svg:`<svg width="36" height="16" viewBox="0 0 34 20"><line x1="2" y1="10" x2="10" y2="10" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="10" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="10" y1="10" x2="24" y2="13" stroke="currentColor" stroke-width="1.5"/><circle cx="24" cy="10" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="24" y1="10" x2="32" y2="10" stroke="currentColor" stroke-width="1.5"/><line x1="17" y1="3" x2="17" y2="9" stroke="currentColor" stroke-width="1.2"/></svg>` },
-  { cat:'スイッチ', type:'push_no', label:'押釦(a)',
-    svg:`<svg width="36" height="18" viewBox="0 0 34 22"><line x1="2" y1="12" x2="10" y2="12" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="12" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="10" y1="12" x2="24" y2="7" stroke="currentColor" stroke-width="1.5"/><circle cx="24" cy="12" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="24" y1="12" x2="32" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="17" y1="1" x2="17" y2="6" stroke="currentColor" stroke-width="1.5"/><line x1="13" y1="1" x2="21" y2="1" stroke="currentColor" stroke-width="1.5"/></svg>` },
-  { cat:'スイッチ', type:'timer_no', label:'限時a接点',
-    svg:`<svg width="36" height="20" viewBox="0 0 34 24"><line x1="2" y1="10" x2="10" y2="10" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="10" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="10" y1="10" x2="24" y2="5" stroke="currentColor" stroke-width="1.5"/><circle cx="24" cy="10" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="24" y1="10" x2="32" y2="10" stroke="currentColor" stroke-width="1.5"/><path d="M9 16 A8 8 0 0 0 25 16" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>` },
-  { cat:'スイッチ', type:'timer_nc', label:'限時b接点',
-    svg:`<svg width="36" height="20" viewBox="0 0 34 24"><line x1="2" y1="10" x2="10" y2="10" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="10" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="10" y1="10" x2="24" y2="10" stroke="currentColor" stroke-width="1.5"/><circle cx="24" cy="10" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="24" y1="10" x2="32" y2="10" stroke="currentColor" stroke-width="1.5"/><line x1="17" y1="10" x2="11" y2="0" stroke="currentColor" stroke-width="1.2"/><path d="M9 16 A8 8 0 0 0 25 16" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>` },
-  { cat:'制御機器', type:'coil',       label:'リレーコイル',
-    svg:`<svg width="36" height="16" viewBox="0 0 34 24"><line x1="2" y1="12" x2="7" y2="12" stroke="currentColor" stroke-width="1.5"/><rect x="7" y="4" width="20" height="16" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="17" y="15" text-anchor="middle" font-size="8" fill="currentColor">CR</text><line x1="27" y1="12" x2="32" y2="12" stroke="currentColor" stroke-width="1.5"/></svg>` },
-  { cat:'制御機器', type:'timer_coil', label:'タイマコイル',
-    svg:`<svg width="36" height="16" viewBox="0 0 34 24"><line x1="2" y1="12" x2="7" y2="12" stroke="currentColor" stroke-width="1.5"/><rect x="7" y="4" width="20" height="16" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="17" y="12" text-anchor="middle" font-size="7" fill="currentColor">TIM</text><circle cx="17" cy="18" r="2.5" fill="none" stroke="currentColor" stroke-width="1"/><line x1="27" y1="12" x2="32" y2="12" stroke="currentColor" stroke-width="1.5"/></svg>` },
-  { cat:'制御機器', type:'motor',      label:'モーター',
-    svg:`<svg width="28" height="28" viewBox="0 0 34 34"><circle cx="17" cy="17" r="13" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="2" y1="17" x2="4" y2="17" stroke="currentColor" stroke-width="1.5"/><line x1="30" y1="17" x2="32" y2="17" stroke="currentColor" stroke-width="1.5"/><text x="17" y="21" text-anchor="middle" font-size="11" font-weight="bold" fill="currentColor">M</text></svg>` },
-  { cat:'制御機器', type:'lamp',       label:'ランプ',
-    svg:`<svg width="28" height="28" viewBox="0 0 34 34"><circle cx="17" cy="17" r="12" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="11" y1="11" x2="23" y2="23" stroke="currentColor" stroke-width="1.3"/><line x1="23" y1="11" x2="11" y2="23" stroke="currentColor" stroke-width="1.3"/><line x1="2" y1="17" x2="5" y2="17" stroke="currentColor" stroke-width="1.5"/><line x1="29" y1="17" x2="32" y2="17" stroke="currentColor" stroke-width="1.5"/></svg>` },
-  { cat:'制御機器', type:'fuse',       label:'ヒューズ',
-    svg:`<svg width="36" height="16" viewBox="0 0 34 20"><line x1="2" y1="10" x2="7" y2="10" stroke="currentColor" stroke-width="1.5"/><rect x="7" y="5" width="20" height="10" rx="5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="27" y1="10" x2="32" y2="10" stroke="currentColor" stroke-width="1.5"/></svg>` },
-  { cat:'制御機器', type:'breaker',    label:'ブレーカ',
-    svg:`<svg width="36" height="16" viewBox="0 0 34 24"><line x1="2" y1="12" x2="7" y2="12" stroke="currentColor" stroke-width="1.5"/><rect x="7" y="4" width="20" height="16" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="17" y="15" text-anchor="middle" font-size="7" fill="currentColor">CB</text><line x1="27" y1="12" x2="32" y2="12" stroke="currentColor" stroke-width="1.5"/></svg>` },
-  { cat:'制御機器', type:'transformer', label:'トランス',
-    svg:`<svg width="36" height="22" viewBox="0 0 34 30"><path d="M4 15 Q5 8 8 15 Q9 8 12 15 Q13 8 16 15" fill="none" stroke="currentColor" stroke-width="1.4"/><line x1="16" y1="3" x2="16" y2="27" stroke="currentColor" stroke-width="1" stroke-dasharray="2,2"/><path d="M16 15 Q18 8 21 15 Q22 8 25 15 Q26 8 29 15" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>` },
-  { cat:'制御機器', type:'terminal',   label:'端子台',
-    svg:`<svg width="36" height="16" viewBox="0 0 34 20"><line x1="2" y1="10" x2="32" y2="10" stroke="currentColor" stroke-width="1.5"/><rect x="10" y="4" width="14" height="12" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="14" y1="7" x2="20" y2="13" stroke="currentColor" stroke-width="1"/><line x1="20" y1="7" x2="14" y2="13" stroke="currentColor" stroke-width="1"/></svg>` },
-];
 
 // ================================================================
 // 【2026-09-19】読み込めたことの目印。

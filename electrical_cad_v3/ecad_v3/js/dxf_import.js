@@ -121,7 +121,7 @@ function parseDXF(text, isOwnFile){
     }
   }
 
-  // 未対応ブロック(mapBlockで一致しないINSERT)のフォールバック展開用に、
+  // INSERTのブロック展開用に、
   // BLOCKSセクションの名前付きブロック定義(*で始まる無名ブロックは除く)を事前スキャンする。
   // ここで集めた図形はブロックのローカル座標系(canvas変換済み: y反転のみ、平行移動/回転/縮尺は未適用)で保持し、
   // 実際のINSERT出現時に挿入点・回転・縮尺を適用して配置する。
@@ -248,12 +248,15 @@ function parseDXF(text, isOwnFile){
       if(val==='INSERT'){
         const e=readEnt(pairs,i);
         const bname=e['2']||'';
-        const mapped=mapBlock(bname);
-        if(mapped){
-          const def=getDef(mapped);state.elements.push({id:genId('el'),type:mapped,x:+e['10']||0,y:-(+e['20']||0),label:def?.label||bname,layer:e['8']||'回路',rot:+e['50']||0,flipH:false,flipV:false});ic++;
-        } else {
-          // 未対応ブロック: 消さずにブロック定義の図形を挿入点・回転・縮尺を適用して展開配置する
-          // (自社シンボルとして認識できないだけで、座標情報自体は失わない)
+        {
+          // 【2026-09-21】ブロック名から標準シンボル種別へ変換する mapBlock() を
+          // 廃止した。標準シンボル20種を削除したため、変換してもDEFSに無い種別に
+          // なり、画面に何も描かれない要素(＝図面から消えたのと同じ)になる。
+          // 常に下のブロック展開へ落とすことで、取り込んだシンボルは線・円・弧・
+          // 文字という実体のある図形として残る。図形として残っていれば、シンボル
+          // 登録の「クリップボードから貼り付け」で登録シンボルにもできる。
+          //
+          // ブロック定義の図形を挿入点・回転・縮尺を適用して展開配置する。
           const bd=blockDefs.get(bname);
           if(bd&&bd.length){
             const icx=+e['10']||0, icy=-(+e['20']||0);
@@ -683,22 +686,9 @@ function _lwOf(e){
 function fromUnicodeDXF(str){return str.replace(/\\U\+([0-9A-Fa-f]{4})/g,(_,h)=>String.fromCharCode(parseInt(h,16)));}
 // _detectSjis は js/sjis.js に移した(2026-09-02。外形図DXFの文字コード判定に
 // 部品DB単独画面(parts_page.js)からも使うため。dxf_import.js全体は読み込まずに済む)。
-function mapBlock(name){const n=name.toLowerCase();const m=[
-  ['timer_coil','timer_coil'],['timer_no','timer_no'],['timer_nc','timer_nc'],['timer','timer_coil'],
-  ['coil','coil'],['relay','coil'],
-  ['motor','motor'],['breaker','breaker'],['mccb','breaker'],
-  ['cb','breaker'],['nf','breaker'],['fuse','fuse'],
-  ['lamp','lamp'],['sw_no','sw_no'],['sw_nc','sw_nc'],
-  ['push_no','push_no'],['push','push_no'],
-  ['terminal','terminal'],['tb','terminal'],
-  ['transformer','transformer'],['trans','transformer'],
-  ['battery','battery'],['batt','battery'],
-  ['capacitor','capacitor'],['cap','capacitor'],
-  ['resistor','resistor'],['res','resistor'],
-  ['inductor','inductor'],['ind','inductor'],
-  ['diode','diode'],
-  ['ac','ac'],['ground','ground'],['gnd','ground'],
-];for(const[k,v]of m)if(n.includes(k))return v;return null;}
+// 【2026-09-21】mapBlock() を削除した。DXFのブロック名(coil/relay/mccb 等)を
+// 内蔵の標準シンボル種別へ変換する関数だったが、標準シンボル自体を削除したため
+// 変換先が存在しない。INSERTは全てブロック定義の図形展開で取り込む。
 
 // ================================================================
 // 外形図DXFパーサ（部品DB紐付け用・軽量版）

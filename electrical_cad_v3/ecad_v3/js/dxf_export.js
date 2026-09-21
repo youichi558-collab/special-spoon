@@ -74,10 +74,10 @@ function exportDXF(){
     {n:'DIM',     c:1}, {n:'DIM_VIS',c:1},
   ];
 
-  // シンボル名リスト
-  const SYM_NAMES = ['resistor','capacitor','inductor','diode','sw_no','timer_no','timer_nc',
-    'push_no','sw_nc','coil','timer_coil','breaker','motor','lamp','ground',
-    'battery','fuse','ac','transformer','terminal'];
+  // 【2026-09-21】標準シンボル20種のBLOCK定義(SYM_NAMES / symDefs)を削除した。
+  // 標準シンボル自体を削除したため、出力対象は登録シンボル(customSyms)だけ。
+  // 使われないBLOCKをDXFに書き続けると、読み込む側(TrueView等)で
+  // 「定義はあるが誰も参照していないブロック」として残ってしまう。
 
   // ハンドル事前割当
   const H_VPORT_TBL    = nh(), H_VPORT_ACT   = nh();
@@ -95,16 +95,14 @@ function exportDXF(){
   const H_PLOTSTYLE_DICT = nh(), H_PLOTSTYLE_NORMAL = nh();
   const H_SCALELIST_DICT = nh(), H_TABLESTYLE_DICT = nh(), H_VISUALSTYLE_DICT = nh();
   const H_LAYOUT_MODEL = nh(), H_LAYOUT_PAPER = nh();
-  const symBlkRecH     = SYM_NAMES.map(()=>nh());
   // カスタムシンボル(登録済みシンボル)用。BLOCKS/BLOCK_RECORDの定義が
   // 標準(JIS)シンボルにしか無く、INSERTが存在しないブロックを参照していた
   // (実体のないブロック参照でTrueViewが構造を追えなくなる致命的な不具合)。
-  // 標準シンボルと同じ方式でカスタムシンボルにも定義を追加する(2026-08-02)。
+  // カスタムシンボル(登録シンボル)のBLOCK定義用ハンドルを事前に割り当てる(2026-08-02)。
   const customSyms = (typeof state !== 'undefined' && state.customSymbols) ? state.customSymbols : [];
   const custBlkRecH = customSyms.map(()=>nh());
   const H_MDL_BLK      = nh(), H_MDL_EBLK  = nh();
   const H_PPR_BLK      = nh(), H_PPR_EBLK  = nh();
-  const symBlkH        = SYM_NAMES.map(()=>({b:nh(),e:nh()}));
   const custBlkH       = customSyms.map(()=>({b:nh(),e:nh()}));
 
   // ================================================================
@@ -306,12 +304,9 @@ function exportDXF(){
   p(0,'ENDTAB');
 
   // BLOCK_RECORD
-  p(0,'TABLE', 2,'BLOCK_RECORD', 5,H_BLKREC_TBL, 100,'AcDbSymbolTable', 70, 2+SYM_NAMES.length+customSyms.length);
+  p(0,'TABLE', 2,'BLOCK_RECORD', 5,H_BLKREC_TBL, 100,'AcDbSymbolTable', 70, 2+customSyms.length);
   p(0,'BLOCK_RECORD', 5,H_BLKREC_MDL, 100,'AcDbSymbolTableRecord', 100,'AcDbBlockTableRecord', 2,'*MODEL_SPACE',  70,0);
   p(0,'BLOCK_RECORD', 5,H_BLKREC_PPR, 100,'AcDbSymbolTableRecord', 100,'AcDbBlockTableRecord', 2,'*PAPER_SPACE', 70,0);
-  SYM_NAMES.forEach((name,i)=>{
-    p(0,'BLOCK_RECORD', 5,symBlkRecH[i], 100,'AcDbSymbolTableRecord', 100,'AcDbBlockTableRecord', 2,name, 70,0);
-  });
   customSyms.forEach((s,i)=>{
     p(0,'BLOCK_RECORD', 5,custBlkRecH[i], 100,'AcDbSymbolTableRecord', 100,'AcDbBlockTableRecord', 2,s.type, 70,0);
   });
@@ -333,8 +328,7 @@ function exportDXF(){
 
   // シンボルブロック（AC1015サブクラスマーカー付き）
   // 【2026-08-23修正】カスタムシンボルのshapesに持たせたlineStyle(破線/点線/一点鎖線)を
-  // BLOCK定義側にも反映できるよう、末尾に任意のlt(線種名)引数を追加。標準シンボル
-  // (symDefs)側の呼び出しはlt省略のままなので、実線前提の既存出力は変わらない。
+  // BLOCK定義側にも反映できるよう、末尾に任意のlt(線種名)引数を追加。
   function bL(x1,y1,x2,y2,lt){p(0,'LINE',5,nh(),100,'AcDbEntity',8,'0');if(lt)p(6,lt);p(100,'AcDbLine',10,x1.toFixed(3),20,(-y1).toFixed(3),30,'0.0',11,x2.toFixed(3),21,(-y2).toFixed(3),31,'0.0');}
   function bC(cx,cy,r,lt){p(0,'CIRCLE',5,nh(),100,'AcDbEntity',8,'0');if(lt)p(6,lt);p(100,'AcDbCircle',10,cx.toFixed(3),20,(-cy).toFixed(3),30,'0.0',40,r.toFixed(3));}
   function bA(cx,cy,r,sa,ea,lt){p(0,'ARC',5,nh(),100,'AcDbEntity',8,'0');if(lt)p(6,lt);p(100,'AcDbCircle',10,cx.toFixed(3),20,(-cy).toFixed(3),30,'0.0',40,r.toFixed(3),100,'AcDbArc',50,sa.toFixed(3),51,ea.toFixed(3));}
@@ -351,36 +345,9 @@ function exportDXF(){
   function resolveLT(styleVal){ return styleVal ? (LT_MAP[styleVal]||null) : null; }
   function bT(x,y,h,s){p(0,'TEXT',5,nh(),100,'AcDbEntity',8,'0',100,'AcDbText',10,x.toFixed(3),20,(-y).toFixed(3),30,'0.0',40,String(h),1,s,7,'STANDARD',72,1,11,x.toFixed(3),21,(-y).toFixed(3),31,'0.0',100,'AcDbText',73,0);}
 
-  const symDefs = [
-    ['resistor',   ()=>{bL(-32,0,-18,0);bR(-18,-8,18,8);bL(18,0,32,0);}],
-    ['capacitor',  ()=>{bL(-27,0,-6,0);bL(-6,-12,-6,12);bL(6,-12,6,12);bL(6,0,27,0);}],
-    ['inductor',   ()=>{bL(-32,0,-22,0);for(let i=0;i<4;i++)bA(-16+i*10,0,8,0,180);bL(22,0,32,0);}],
-    ['diode',      ()=>{bL(-32,0,-12,0);bL(-12,-10,-12,10);bL(-12,10,12,0);bL(12,0,-12,-10);bL(12,-10,12,10);bL(12,0,32,0);}],
-    ['sw_no',      ()=>{bL(-32,0,-14,0);bC(-14,0,3);bL(-14,0,14,-9);bC(14,0,3);bL(14,0,32,0);}],
-    ['timer_no',   ()=>{bL(-32,0,-14,0);bC(-14,0,3);bL(-11,0,11,-12);bC(14,0,3);bL(14,0,32,0);bA(0,6,8,0,180);}],
-    ['timer_nc',   ()=>{bL(-32,0,-14,0);bC(-14,0,3);bL(-11,0,11,0);bC(14,0,3);bL(14,0,32,0);bL(0,0,-6,-12);bA(0,6,8,0,180);}],
-    ['push_no',    ()=>{bL(-32,0,-14,0);bC(-14,0,3);bL(-14,0,14,-9);bC(14,0,3);bL(14,0,32,0);bL(0,-14,0,-9);bL(-6,-14,6,-14);}],
-    ['sw_nc',      ()=>{bL(-32,0,-14,0);bC(-14,0,3);bL(-14,0,14,5);bC(14,0,3);bL(14,0,32,0);bL(0,-10,0,-2);}],
-    ['coil',       ()=>{bL(-32,0,-20,0);bR(-20,-14,20,14);bL(20,0,32,0);bT(0,4,9,'CR');}],
-    ['timer_coil', ()=>{bL(-32,0,-20,0);bR(-20,-14,20,14);bL(20,0,32,0);bT(0,0,9,'TIM');bC(0,10,4);}],
-    ['breaker',    ()=>{bL(-32,0,-20,0);bR(-20,-14,20,14);bL(20,0,32,0);bT(0,4,9,'CB');}],
-    ['motor',      ()=>{bC(0,0,20);bL(-32,0,-20,0);bL(20,0,32,0);bT(0,5,14,'M');}],
-    ['lamp',       ()=>{bC(0,0,18);bL(-11,-9,11,9);bL(11,-9,-11,9);bL(-32,0,-18,0);bL(18,0,32,0);}],
-    ['ground',     ()=>{bL(0,-18,0,0);bL(-18,0,18,0);bL(-13,5,13,5);bL(-8,10,8,10);}],
-    ['battery',    ()=>{bL(-36,0,-14,0);bL(-14,-9,-14,9);bL(-7,-6,-7,6);bL(0,-9,0,9);bL(7,-6,7,6);bL(14,-9,14,9);bL(14,0,36,0);}],
-    ['fuse',       ()=>{bL(-32,0,-18,0);bR(-18,-7,18,7);bL(-18,0,18,0);bL(18,0,32,0);}],
-    ['ac',         ()=>{bL(-32,0,-20,0);bC(0,0,19);bL(-14,0,-7,-13);bL(-7,-13,0,0);bL(0,0,7,13);bL(7,13,14,0);bL(19,0,32,0);}],
-    ['transformer',()=>{bL(-32,0,-22,0);bA(-16,0,7,0,180);bA(-8,0,7,0,180);bA(0,0,7,0,180);bL(0,-16,0,16);bA(2,0,7,180,0);bA(10,0,7,180,0);bA(18,0,7,180,0);bL(26,0,32,0);}],
-    ['terminal',   ()=>{bL(-20,0,20,0);bR(-10,-8,10,8);bL(-4,-4,4,4);bL(4,-4,-4,4);}],
-  ];
-  symDefs.forEach(([name,fn],i)=>{
-    p(0,'BLOCK', 5,symBlkH[i].b, 100,'AcDbEntity', 8,'0', 100,'AcDbBlockBegin', 2,name, 70,0, 10,'0.0', 20,'0.0', 30,'0.0', 3,name, 1,'');
-    fn();
-    p(0,'ENDBLK', 5,symBlkH[i].e, 100,'AcDbEntity', 8,'0', 100,'AcDbBlockEnd');
-  });
 
   // カスタムシンボル(登録済みシンボル)のBLOCK定義。
-  // cS.shapes(L/C/A/R/P/T)を、標準シンボルと同じbL/bC/bA/bR/bTヘルパーで描画する。
+  // cS.shapes(L/C/A/R/P/T)を、bL/bC/bA/bR/bTヘルパーでBLOCK内の実体として描画する。
   function bP(pts,closed,lt){
     for(let k=0;k<pts.length-1;k++) bL(pts[k][0],pts[k][1],pts[k+1][0],pts[k+1][1],lt);
     if(closed && pts.length>2) bL(pts[pts.length-1][0],pts[pts.length-1][1],pts[0][0],pts[0][1],lt);
@@ -397,9 +364,7 @@ function exportDXF(){
       else if(sh.t==='C') bC(sh.cx,sh.cy,sh.r,lt);
       else if(sh.t==='A') {
         // カスタムシンボルのshapesはcanvas角度(Y下向き、ccwで向き任意)で保持している。
-        // symDefs(標準シンボル)はDXF規約(Y上向き・ARCは常にCCW)に合わせて角度を
-        // 手作業で選んであるためそのままでよいが、こちらは実際に描いたarc要素由来
-        // なので、単体arc要素のDXF出力(603〜608行目)と同じ規則で変換が必要:
+        // 実際に描いたarc要素由来なので、単体arc要素のDXF出力と同じ規則で変換が必要:
         //   ①Y反転(canvas Y下向き→DXF Y上向き)のため角度を反転
         //   ②DXF ARCは常にCCW前提なので、元がccw=false(時計回り)ならsa/eaを入れ替える
         const dxfAngDeg = a => ((-a)%360+360)%360;

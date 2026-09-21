@@ -376,23 +376,13 @@ function pickSym(el, type) {
   state.pendingRef  = null;
   state.pendingTerm = null;
   setMode('sym', type);
-  recordRecentSym(type);
   updateHint();
 }
 
-// 内蔵シンボルの使用履歴（最大6件・シンボルパネル最上部に表示）
-function recordRecentSym(type) {
-  if (typeof BUILTIN_SYMS === 'undefined' || !BUILTIN_SYMS.some(s => s.type === type)) return;
-  let rec = [];
-  try { rec = JSON.parse(localStorage.getItem('recentBuiltinSyms') || '[]'); } catch(e) {}
-  const i = rec.indexOf(type);
-  if (i >= 0) rec.splice(i, 1);
-  rec.unshift(type);
-  if (rec.length > 6) rec.length = 6;
-  try { localStorage.setItem('recentBuiltinSyms', JSON.stringify(rec)); } catch(e) {}
-  const float = document.getElementById('sym-float');
-  if (float && float.style.display === 'flex') renderSymFloat();
-}
+// 【2026-09-21】recordRecentSym(内蔵シンボルの使用履歴)を削除した。
+// BUILTIN_SYMS(標準シンボル20種)専用の機能で、標準シンボルの削除に伴い
+// 呼んでも常に何もしない状態になっていた。localStorageの
+// 'recentBuiltinSyms' は読み書きしなくなるだけで、残っていても害は無い。
 
 // ----------------------------------------------------------------
 // 部品DB
@@ -748,18 +738,19 @@ function placePart(type, ref, terminals) {
   else askTerminalGroup(type, ref, groups);
 }
 
-// 配置済みシンボルの種別(cS.role / 標準シンボルの isCoil・isContact)を返す。
+// 配置済みシンボルの種別(シンボル登録/端子編集で指定した role)を返す。
 // report.js の symRole と同じ判定。あちらは帳票専用なので、部品割り当てからも
 // 使えるようここに同じ入口を置く（判定の中身は1箇所に寄せたいが、report.js は
 // 帳票を開いたときにしか読まれない前提の作りなので、今回は呼び分けない）。
+//
+// 【2026-09-21】標準シンボルの isCoil / isContact + contactType による判定を
+// 削除した。標準シンボル自体を削除したため、この経路は到達しない。
 function symTermRole(el) {
   if (!el) return '';
   const cS = (state.customSymbols || []).find(s => s.type === el.type);
   if (cS && cS.role) return cS.role;
   const d = (typeof getDef === 'function' ? getDef(el.type) : null) || {};
   if (d.role) return d.role;
-  if (d.isCoil) return 'coil';
-  if (d.isContact) return d.contactType === 'b' ? 'contact_b' : 'contact_a';
   return '';
 }
 

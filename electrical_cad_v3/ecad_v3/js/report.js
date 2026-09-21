@@ -636,8 +636,7 @@ function exportBOMCSV(){
      ].join('\n'),'bom.csv','text/csv');
 }
 // 要素の役割を判定する。
-// カスタムシンボルはシンボル登録/端子編集で指定した role を使う。
-// 標準シンボルは DEFS の isCoil / isContact + contactType から導く。
+// シンボル登録/端子編集で指定した role を使う。
 // ================================================================
 // 図面区画（ゾーン）の算出
 //
@@ -691,11 +690,13 @@ function elLocation(el, pageIdx) {
 // 主接点/補助接点は「部品のどの部分か」で**軸が違う**ため、主接点を
 // contact_a に押し込むと接点リファレンスで a接点として数えられてしまう。
 // 補助接点であることを名前に出して「補助接点(a接点)」とした(値は従来のまま)。
+//
+// 【2026-09-21】標準シンボルの isCoil / isContact + contactType による判定を
+// 削除した。標準シンボル自体を削除したため、この経路は到達しない。
+// 種別はシンボル登録/端子(ピン)編集で指定した role だけを見る。
 function symRole(el){
   const d=getDef(el.type)||{};
   if(d.role)return d.role;
-  if(d.isCoil)return 'coil';
-  if(d.isContact)return d.contactType==='b'?'contact_b':'contact_a';
   return '';
 }
 

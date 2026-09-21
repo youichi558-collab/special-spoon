@@ -237,12 +237,15 @@ console.log('【廃止した種別(sw_no/sw_nc)の扱い】');
   ok(!/sw_no'?\s*:\s*'contact_unit/.test(pageSrc) && !/sw_no.*→.*contact_unit/.test(pageSrc),
      'sw_no→contact_unit の自動変換はしていない(誤分類防止)');
 
-  // 図面側のシンボル種別としては残っていること(既存図面の接点が壊れないため)
+  // 【2026-09-21】ここでは以前、図面側のシンボル種別としての sw_no / sw_nc と
+  // contactType が js/data.js に残っていることを確認していた。標準シンボル20種を
+  // 削除した(盛田さんの指示・一度も使っていない/端子点が無く使い物にならない)ため、
+  // 確認の向きを逆にする。部品DBの LEGACY_PART_TYPES(上の確認)は別物なので残る。
   const dataSrc = fs.readFileSync(__dirname + '/../js/data.js', 'utf8');
-  ok(dataSrc.includes('sw_no:') && dataSrc.includes('sw_nc:'),
-     '図面のシンボル種別としてのsw_no/sw_ncは残っている(既存図面の互換)');
-  ok(dataSrc.includes("contactType:'a'") || dataSrc.includes('contactType: \'a\''),
-     'contactType(接点Refが使う)も残っている');
+  ok(!/^\s*sw_no:/m.test(dataSrc) && !/^\s*sw_nc:/m.test(dataSrc),
+     '図面のシンボル種別としてのsw_no/sw_ncはDEFSから削除されている');
+  ok(!dataSrc.includes('contactType'),
+     'contactType(標準シンボル専用だった)もDEFSから消えている');
 }
 
 console.log(ng ? `\n${ng}件失敗` : '\n全て成功');
