@@ -1959,7 +1959,7 @@ function saveCustomSymbol() {
   state.customSymbols.push(sym);
   saveSymbolsToStorage();
   if (typeof DEFS !== 'undefined') {
-    DEFS[type] = { w, h, cat, name, jis:'', role,
+    DEFS[type] = { w, h, cat, name, role,
       terminals: _srTerms.map((t,i) => ({ id:`t${i}`, x:t.x, y:t.y, label:t.label||'' })) };
   }
   closeFP('sym-reg-p');
@@ -2462,7 +2462,6 @@ function updateRightPanel() {
       <option value=""${!el.lineWidth?' selected':''}>個別（変更なし）</option>${lineWidthOptions(el.lineWidth)}
     </select></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${escH(l.name)}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
-    if (def.jis) html += `<div class="pp-row"><label style="color:var(--fg4)">JIS規格</label><p style="font-size:10px;color:var(--fg3);padding:2px 5px">${def.jis}</p></div>`;
     // メモは既定では図面に出さない(従来どおり)。個別の注記を図面に書きたい
     // ときだけONにする。仕様(label)はデバイス単位で引き継がれて上書きされるため、
     // シンボル個別に書きたい文字(「運転」「停止」等)の逃げ道としてここを使う。

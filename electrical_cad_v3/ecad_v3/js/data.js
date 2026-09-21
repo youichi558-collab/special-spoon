@@ -36,13 +36,17 @@ const BUILTIN_PARTS = [
 // 実務では一度も使われていなかった(盛田さん)。描画側(js/symbols.js)・
 // パネル(BUILTIN_SYMS)・DXF入出力からも併せて削除している。
 //
+// 【2026-09-21】`jis`(JIS規格番号)も落とした。値を持っていたのは削除した
+// 標準シンボル20種だけで、登録シンボルには入れる口が無く、常に空だった。
+// 部品表のJIS列・プロパティのJIS規格行も、空しか出ないので併せて削除した。
+//
 // ここに残すのは作図プリミティブだけ。実際に使うシンボルは
 // state.customSymbols(登録シンボル)が loadCustomSymbolDefs() でDEFSに入れる。
 const DEFS = {
-  text:        { w:0,  h:0,  label:'',     jis:'' },
-  rect:        { w:0,  h:0,  label:'',     jis:'' },
-  circle:      { w:0,  h:0,  label:'',     jis:'' },
-  fline:       { w:0,  h:0,  label:'',     jis:'' },
+  text:        { w:0,  h:0,  label:'' },
+  rect:        { w:0,  h:0,  label:'' },
+  circle:      { w:0,  h:0,  label:'' },
+  fline:       { w:0,  h:0,  label:'' },
 };
 
 const FRAME_TPLS = {

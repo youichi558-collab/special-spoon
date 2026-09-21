@@ -45,7 +45,8 @@ const PART_TYPE_LABELS = {
   lamp: 'ランプ・表示灯',
   breaker: 'ブレーカ', fuse: 'ヒューズ', transformer: 'トランス', terminal: '端子台',
   // インバータとサーボアンプは別物なので分ける(2026-08-23、盛田さん指示で新設)。
-  // どちらも端子が図面に散らばる装置なのでDEVICE_PART_TYPES(report.js)にも入れる。
+  // どちらも端子が図面に散らばる装置。端子台表から外すかどうかは、2026-09-21以降
+  // デバイス単位の設定(el.tbExclude)で人が決める(種別では自動判定しない)。
   inverter: 'インバータ',
   servo: 'サーボアンプ', servo_motor: 'サーボモータ', motor: 'モーター',
   plc: 'PLC(シーケンサ)', plc_unit: 'PLC増設ユニット', hmi: 'タッチパネル・表示器',

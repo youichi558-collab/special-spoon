@@ -675,7 +675,7 @@ const symLib = (() => {
     else state.customSymbols.push(symDef);
 
     if(typeof DEFS!=='undefined')
-      DEFS[symType]={w:dxfW*SCALE,h:dxfH*SCALE,cat:symDef.cat,name:entry.label,label:entry.label,jis:'',terminals:[]};
+      DEFS[symType]={w:dxfW*SCALE,h:dxfH*SCALE,cat:symDef.cat,name:entry.label,label:entry.label,terminals:[]};
 
     pushH();
     const cx=(window.innerWidth/2-state.pan.x)/state.zoom;
