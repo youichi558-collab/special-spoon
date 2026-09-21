@@ -773,7 +773,9 @@ function elLocation(el, pageIdx) {
   return z ? `${pageIdx + 1}/${z}` : String(pageIdx + 1);
 }
 
-// シンボルの種別。'coil' | 'contact_main' | 'contact_a' | 'contact_b' | ''(その他)
+// シンボルの種別。'coil' | 'contact_main' | 'contact_a' | 'contact_b'
+// | 'contact_thermal' | 'contact_timer' | 'contact_num' | 'ctrl_in'
+// | 'tentative'(仮設定・あとで決める) | ''(その他)
 //
 // 【2026-09-20】`contact_main`(主接点)を新設した。従来は a接点/b接点 しか無く、
 // 主接点を置く先が無かった。a接点/b接点は「接点の性質(開くか閉じるか)」、
@@ -792,11 +794,24 @@ function symRole(el){
 
 // 接点として数えるもの。ランプ・押釦・モータ等(その他)は「接点数」に含めない。
 // 含めると「接点数」の意味が壊れるため(盛田さんと確認: 主接点は数える)。
-const REF_CONTACT_ROLES = ['contact_main', 'contact_a', 'contact_b'];
+//
+// 【2026-09-21】種別を追加したのに合わせて、接点として数えるものも増やした。
+// サーマル接点・限時接点・接点1〜4は**どれも接点**なので数える。
+// **これで既存図面の「接点数」が増える場合がある**(今まで種別未設定で
+// 数えられていなかったものに種別を付けると、その分が乗るため)。
+// `tentative`(仮設定)は**数えない** —— まだ決めていないものを数に入れると
+// 「接点数」が信用できなくなる。`ctrl_in`(制御入力)も接点ではないので数えない。
+const REF_CONTACT_ROLES = ['contact_main', 'contact_a', 'contact_b',
+                           'contact_thermal', 'contact_timer', 'contact_num'];
 function refRoleLabel(role){
-  return role==='contact_main' ? '主接点'
-       : role==='contact_a'    ? '補助接点(a接点)'
-       : role==='contact_b'    ? '補助接点(b接点)'
+  return role==='contact_main'    ? '主接点'
+       : role==='contact_a'       ? '補助接点(a接点)'
+       : role==='contact_b'       ? '補助接点(b接点)'
+       : role==='contact_thermal' ? 'サーマル接点'
+       : role==='contact_timer'   ? '限時接点'
+       : role==='contact_num'     ? '接点(番号付き)'
+       : role==='ctrl_in'         ? '制御入力'
+       : role==='tentative'       ? '仮設定'
        : 'その他';
 }
 
@@ -852,10 +867,17 @@ function showRefPanel(){
     // バッジは 主 / a / b / 他 の4種。以前は contact_a か否かの2択だったため、
     // 主接点もその他も「b」と表示されてしまっていた。
     // 主接点はコイル(badge-p)と色が被らないよう badge-o。種別未設定は地味な灰色。
-    const badgeTxt=r=>r==='contact_a'?'a':r==='contact_b'?'b':r==='contact_main'?'主':'他';
+    // 【2026-09-21】種別の追加に合わせてバッジも増やした。
+    // 仮設定は「仮」。まだ決めていないことが一目で分かるようにする。
+    const badgeTxt=r=>r==='contact_a'?'a':r==='contact_b'?'b':r==='contact_main'?'主'
+                    :r==='contact_thermal'?'サ':r==='contact_timer'?'限'
+                    :r==='contact_num'?'接':r==='ctrl_in'?'入'
+                    :r==='tentative'?'仮':'他';
     const badge=c=>{
       const r=c.role;
-      const cls=r==='contact_a'?'badge-g':r==='contact_b'?'badge-b':r==='contact_main'?'badge-o':'';
+      const cls=r==='contact_a'?'badge-g':r==='contact_b'?'badge-b'
+               :r==='contact_main'?'badge-o'
+               :(r==='contact_thermal'||r==='contact_timer'||r==='contact_num')?'badge-b':'';
       const st=cls?'':' style="background:var(--bg4);color:var(--fg3)"';
       return `<span class="badge ${cls}"${st}>${badgeTxt(r)} ${escH(c.loc)}</span>`;
     };

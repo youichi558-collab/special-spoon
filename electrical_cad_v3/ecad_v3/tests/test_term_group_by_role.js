@@ -223,5 +223,72 @@ console.log('    フラットなデータは今後も混ざるので、従来ど
   ok(pickGroupByRole(flat, 'coil') === null, '名前が無いので種別では選べない');
 }
 
+
+// ================================================================
+// 【2026-09-21】種別の追加(盛田さん「種別を増やしてくれ、仮設定を追加、
+// 自動選択にのせるように」)。
+//
+// 登録シンボル31個中17個が種別未設定だったのは、**サーマル・限時接点・
+// 接点1〜4に当たる選択肢が無かった**ため。部品DBの実データを数えて、
+// 拾えていなかった上位から4つ足した:
+//   サーマル接点 38 / 限時接点・限時接点1〜4 44 / 接点1〜4 38 / 制御入力 33
+//
+// `tentative`(仮設定)は**自動選択に乗せない**。後で決めるための目印。
+// ================================================================
+{
+  console.log('\n【2026-09-21 追加した種別】');
+  // このファイルの grab は (name) だけ取り、定数は constBlock。src はモジュール先頭で
+  // 読み込み済み(js/ui.js)。他のテストと書き方が違うので混ぜないこと。
+  const sandbox2 = { console };
+  require('vm').createContext(sandbox2);
+  require('vm').runInContext(
+    [constBlock('TERM_GROUP_PATTERNS'), constBlock('TERM_GROUP_EXCLUDE'),
+     grab('matchGroupsByRole'), grab('pickGroupByRole')].join('\n'),
+    sandbox2);
+
+  // このファイルには ok しか無いので、この節用に eq を用意する
+  const eq = (a, b, m) => ok(JSON.stringify(a) === JSON.stringify(b),
+                             `${m}（期待 ${JSON.stringify(b)} / 実際 ${JSON.stringify(a)}）`);
+  const G = n => ({ name: n, list: ['1', '2'] });
+  const pick = (names, role) => {
+    const hit = sandbox2.matchGroupsByRole(names.map(G), role);
+    return hit.map(g => g.name);
+  };
+
+  // 実データに出るグループ名をそのまま使う
+  const ALL = ['主接点', 'コイル', '補助', 'サーマル接点', '限時接点1', '限時接点2',
+               '接点1', '接点2', '制御入力', '主回路オプション'];
+
+  eq(pick(ALL, 'contact_thermal'), ['サーマル接点'], 'サーマル接点が1つに決まる');
+  eq(pick(ALL, 'contact_timer'), ['限時接点1', '限時接点2'], '限時接点は当たったものだけ出る');
+  eq(pick(ALL, 'ctrl_in'), ['制御入力'], '制御入力が1つに決まる');
+
+  // ★ここが肝。「接点1」だけを拾い、「主接点」「サーマル接点」「限時接点1」を
+  // 巻き込まないこと。単に /接点/ で書くと全部当たって使い物にならない。
+  eq(pick(ALL, 'contact_num'), ['接点1', '接点2'],
+     '★接点(番号付き)は主接点・サーマル接点・限時接点を巻き込まない');
+
+  // 仮設定は自動選択に乗らない(端子点数の判定へ落ちる)
+  eq(pick(ALL, 'tentative'), [], '★仮設定は自動選択に乗らない');
+  eq(pick(ALL, ''), [], 'その他も従来どおり乗らない');
+
+  // 接点Ref側: 追加した接点は数え、仮設定と制御入力は数えない
+  const rep = require('fs').readFileSync(__dirname + '/../js/report.js', 'utf8');
+  const roles = JSON.parse('[' +
+    rep.match(/const REF_CONTACT_ROLES = \[([\s\S]*?)\]/)[1].replace(/'/g, '"').replace(/\s+/g, ' ') + ']');
+  ['contact_main', 'contact_a', 'contact_b',
+   'contact_thermal', 'contact_timer', 'contact_num'].forEach(r =>
+    ok(roles.includes(r), `接点数に ${r} を数える`));
+  ok(!roles.includes('tentative'), '★仮設定は接点数に数えない(決めていないものを数に入れない)');
+  ok(!roles.includes('ctrl_in'), '制御入力は接点ではないので数えない');
+
+  // 画面の選択肢と実装が揃っていること(片方だけ足すと選べない/効かない)
+  const html = require('fs').readFileSync(__dirname + '/../index.html', 'utf8');
+  ['tentative', 'contact_thermal', 'contact_timer', 'contact_num', 'ctrl_in'].forEach(v => {
+    const n = (html.match(new RegExp(`value="${v}"`, 'g')) || []).length;
+    ok(n === 2, `★${v} が種別の選択肢2箇所(登録・端子編集)に揃っている (実際 ${n})`);
+  });
+}
+
 console.log(ng ? `\n失敗 ${ng} 件` : '\nすべて通過');
 process.exit(ng ? 1 : 0);
