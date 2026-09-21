@@ -37,7 +37,7 @@ function paste(els) {
   vm.runInContext(
     [grab('srWorldShapesForEl'), grab('srEffectiveLW'), grab('srXformPt'), grab('srXformAngle'),
      grab('flattenSymbolElToShapes'), grab('srGridAlignShapes'), grab('srElKindName'),
-     grab('srPasteFromClipboard')].join('\n'),
+     grab('srSkipMessage'), grab('srPasteFromClipboard')].join('\n'),
     sandbox
   );
   sandbox.state = { customSymbols: [], clipboard: { els, wires: [] } };
@@ -59,10 +59,14 @@ function pasteFull(els) {
   vm.runInContext(
     [grab('srWorldShapesForEl'), grab('srEffectiveLW'), grab('srXformPt'), grab('srXformAngle'),
      grab('flattenSymbolElToShapes'), grab('srGridAlignShapes'), grab('srElKindName'),
-     grab('srPasteFromClipboard')].join('\n'),
+     grab('srSkipMessage'), grab('srPasteFromClipboard')].join('\n'),
     sandbox
   );
-  sandbox.state = { customSymbols: [], clipboard: { els, wires: [] } };
+  sandbox.state = {
+    // custom_aaa は「登録はあるが図形が空」。custom_zzz は登録そのものが無い
+    customSymbols: [{ type:'custom_aaa', name:'テスト図形なし', shapes: [] }],
+    clipboard: { els, wires: [] },
+  };
   sandbox.LAYERS = [];
   sandbox.SR_GRID = 5;
   sandbox._srShapes = [];
@@ -223,6 +227,23 @@ console.log('  ← 以前は「8個の要素は…」と数だけで、何が落
   ok(/標準シンボル「コイル」 1個/.test(r.alert || ''), '標準シンボルは名前付きで出る');
   // 文末の説明文にも「端子台」の語が出るので、スキップ一覧の書式で見る
   ok(!/端子台 \d+個/.test(r.alert || ''), '端子台はもうスキップされない');
+}
+
+console.log('\n【落ちたカスタムシンボルは、2通りを区別して知らせる】');
+console.log('  ← 盛田さんの画面に custom_ms9yggdu_zfx と型番だけ出て、何か分からなかった');
+{
+  // ① 登録はあるが図形が空 → 名前を出す
+  const a = pasteFull([{ type:'custom_aaa', x:0, y:0 }]);
+  ok(/カスタムシンボル「テスト図形なし」/.test(a.alert || ''),
+     `登録があれば名前で出る (${(a.alert||'').split('\n')[1]})`);
+  ok(/図形が登録されていません/.test(a.alert || ''), '図形が空だと分かる');
+
+  // ② 登録そのものが無い(孤児) → そう言う
+  const b = pasteFull([{ type:'custom_zzz', x:0, y:0 }]);
+  ok(/登録が見つからないシンボル\(custom_zzz\)/.test(b.alert || ''),
+     `登録が無ければそう出る (${(b.alert||'').split('\n')[1]})`);
+  ok(/貼り付けられる要素がありませんでした/.test(b.alert || ''),
+     '1つも貼り付けられなかったときも、何が落ちたかを名前で出す');
 }
 
 console.log(ng ? `\n${ng}件失敗` : '\n全て成功');

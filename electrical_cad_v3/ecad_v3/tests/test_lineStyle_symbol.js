@@ -206,7 +206,7 @@ console.log('   変換処理で改めてlineStyleが運ばれていなければ�
   vm.runInContext(
     [grab('srWorldShapesForEl'), grab('srEffectiveLW'), grab('srXformPt'), grab('srXformAngle'),
      grab('flattenSymbolElToShapes'), grab('srGridAlignShapes'), grab('srElKindName'),
-     grab('srPasteFromClipboard')].join('\n'),
+     grab('srSkipMessage'), grab('srPasteFromClipboard')].join('\n'),
     pasteSandbox
   );
   pasteSandbox.state = {

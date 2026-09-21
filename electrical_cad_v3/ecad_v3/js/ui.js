@@ -1471,7 +1471,11 @@ function srPasteFromClipboard() {
     });
   });
   cb.wires.forEach(w => { (w.pts||[]).forEach(p => addPt(p.x, p.y)); });
-  if (!isFinite(minX)) { alert('対応していない図形のみが選択されています(標準シンボル・接続点・寸法線等は貼り付け非対応)'); return; }
+  // 全部スキップされた場合。ここも「何が落ちたか」を名前で出す。
+  // 【2026-09-21】以前は「対応していない図形のみが選択されています(標準シンボル・
+  // 接続点・寸法線等)」という固定文だった。接続点(端子台)は貼り付けられるように
+  // なったので文面が嘘になっていたうえ、何が落ちたのかも分からなかった。
+  if (!isFinite(minX)) { alert(srSkipMessage(skipped, true)); return; }
 
   // (bW/bH はフィット縮小をやめたため未使用)
   const cx = (minX+maxX)/2, cy = (minY+maxY)/2;
@@ -1543,13 +1547,17 @@ function srPasteFromClipboard() {
   srFitToContent();
   srRender();
 
+  if (Object.keys(skipped).length) alert(srSkipMessage(skipped, false));
+}
+
+// スキップした要素の知らせ。all=true は「1つも貼り付けられなかった」場合。
+function srSkipMessage(skipped, all) {
   const names = Object.keys(skipped);
-  if (names.length) {
-    alert('貼り付けに対応していない要素をスキップしました:\n  '
-      + names.map(k => `${k} ${skipped[k]}個`).join('\n  ')
-      + '\n\n図形(線・円・四角・三角・円弧・文字)、端子台、'
-      + '登録済みカスタムシンボルは貼り付けられます。');
-  }
+  return (all ? '貼り付けられる要素がありませんでした:\n  '
+              : '貼り付けに対応していない要素をスキップしました:\n  ')
+    + (names.length ? names.map(k => `${k} ${skipped[k]}個`).join('\n  ') : '(不明)')
+    + '\n\n図形(線・円・四角・三角・円弧・文字)、端子台、'
+    + '登録済みカスタムシンボルは貼り付けられます。';
 }
 
 // スキップした要素を人に分かる名前で返す。
@@ -1560,6 +1568,12 @@ function srElKindName(el) {
   const named = { junction:'端子台', bezier:'ベジェ曲線', dim:'寸法線',
                   angle_dim:'角度寸法', leader:'引出線' };
   if (named[el.type]) return named[el.type];
+  // カスタムシンボルが落ちるのは2通りある。どちらかで手の打ち方が変わるので分ける。
+  // 【2026-09-21】盛田さんの画面に `custom_ms9yggdu_zfx 1個` と型番だけ出て、
+  // それが何なのか分からなかった。
+  const cS = (state.customSymbols || []).find(x => x.type === el.type);
+  if (cS) return `カスタムシンボル「${cS.name || cS.label || el.type}」(図形が登録されていません)`;
+  if (/^custom_/.test(el.type)) return `登録が見つからないシンボル(${el.type})`;
   const d = (typeof getDef === 'function' ? getDef(el.type) : null);
   if (d && d.name) return `標準シンボル「${d.name}」`;
   return el.type;
