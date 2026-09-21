@@ -79,9 +79,44 @@ function _safeInit(label, fn, critical) {
   // localStorageからシンボルライブラリを読み込む
   _safeInit('シンボルライブラリ読込', loadSymbolsFromStorage);
 
-  // 部品DB（外部ファイル）を自動復元
-  _safeInit('部品DB自動復元', () => {
-    if (typeof partsDb !== 'undefined') partsDb.autoRestore();
+  // 部品DB（外部ファイル）を読む。
+  //
+  // 【2026-09-21】起動処理の中で読むのをやめ、**ページの読み込みが全部
+  // 終わってから**読むようにした。
+  //
+  // 理由: server.py は HTTPServer(シングルスレッド)で、1度に1リクエストしか
+  // 捌けない。しかも protocol_version 未指定=HTTP/1.0 なので keep-alive が
+  // 効かず、index.html の <script> 32本が32本とも別々のTCP接続を張る。
+  // 待ち行列(request_queue_size)は既定の5しかない。
+  // そこへ /api/parts/all(実測605KB、部品DBで一番大きい応答)を同時に投げると、
+  // サーバーがそれを送っている間、残りのJSが待たされる。溢れた接続は
+  // 1秒待ち(TCP再送)か、環境によっては拒否(ERR_CONNECTION_REFUSED)になる。
+  // **JSが1本でも欠けたまま起動すると図面が真っ白になる**(2026-09-19の事故)。
+  // 盛田さんの「起動が不安定」「部品DBが0件・読み込み中のまま」はこれ。
+  //
+  // 後回しにできる理由: 帳票(端子台表)が部品DBを引かなくなったため、
+  // 起動直後に部品DBが無くて困るものが無くなった(2026-09-21前半の変更)。
+  // 部品DBが要るのは「部品を割り当てる」「コイル電圧の選択肢を出す」
+  // 「端子番号の候補を出す」——どれも人が操作したときで、起動時ではない。
+  // 読み終わると mergeEmbedded が renderPartsAll() を呼ぶので、
+  // 部品パネルは自動で埋まる。
+  //
+  // 【注意】サーバー側(シングルスレッド・backlog 5・HTTP/1.0)は直していない。
+  // これは押し寄せる量を減らして症状を避ける対策で、根本原因はサーバー側に残る。
+  _safeInit('部品DBの読み込み予約', () => {
+    if (typeof partsDb === 'undefined') return;
+    const start = () => {
+      try { partsDb.autoRestore(); }
+      catch (e) { console.error('[boot] 部品DBの読み込みでエラーが発生しました:', e); }
+    };
+    // load(全リソース読み込み完了)を待ち、さらに手が空くまで待ってから読む。
+    // requestIdleCallback が無い環境では setTimeout で代用する。
+    const later = () => {
+      if (typeof requestIdleCallback === 'function') requestIdleCallback(start, { timeout: 2000 });
+      else setTimeout(start, 0);
+    };
+    if (document.readyState === 'complete') later();
+    else window.addEventListener('load', later, { once: true });
   });
 
   // ダークモード初期適用
