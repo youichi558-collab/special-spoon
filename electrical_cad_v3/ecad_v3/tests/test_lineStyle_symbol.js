@@ -205,7 +205,8 @@ console.log('   変換処理で改めてlineStyleが運ばれていなければ�
   vm.createContext(pasteSandbox);
   vm.runInContext(
     [grab('srWorldShapesForEl'), grab('srEffectiveLW'), grab('srXformPt'), grab('srXformAngle'),
-     grab('flattenSymbolElToShapes'), grab('srGridAlignShapes'), grab('srPasteFromClipboard')].join('\n'),
+     grab('flattenSymbolElToShapes'), grab('srGridAlignShapes'), grab('srElKindName'),
+     grab('srPasteFromClipboard')].join('\n'),
     pasteSandbox
   );
   pasteSandbox.state = {
@@ -220,8 +221,10 @@ console.log('   変換処理で改めてlineStyleが運ばれていなければ�
   pasteSandbox.LAYERS = [];
   pasteSandbox.SR_GRID = 5;
   pasteSandbox._srShapes = [];
+  pasteSandbox._srTerms  = [];
   pasteSandbox.srFitToContent = () => {};
   pasteSandbox.srRender = () => {};
+  pasteSandbox.srUpdateTermList = () => {};
   pasteSandbox.srPasteFromClipboard();
   const pasted = pasteSandbox._srShapes;
   eq(pasted.find(s=>s.t==='L').lineStyle, 'dash', 'fline貼り付け: dashが残る');

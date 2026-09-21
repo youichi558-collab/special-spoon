@@ -36,17 +36,43 @@ function paste(els) {
   vm.createContext(sandbox);
   vm.runInContext(
     [grab('srWorldShapesForEl'), grab('srEffectiveLW'), grab('srXformPt'), grab('srXformAngle'),
-     grab('flattenSymbolElToShapes'), grab('srGridAlignShapes'), grab('srPasteFromClipboard')].join('\n'),
+     grab('flattenSymbolElToShapes'), grab('srGridAlignShapes'), grab('srElKindName'),
+     grab('srPasteFromClipboard')].join('\n'),
     sandbox
   );
   sandbox.state = { customSymbols: [], clipboard: { els, wires: [] } };
   sandbox.LAYERS = [];
   sandbox.SR_GRID = 5;
   sandbox._srShapes = [];
+  sandbox._srTerms  = [];
   sandbox.srFitToContent = () => {};
   sandbox.srRender = () => {};
+  sandbox.srUpdateTermList = () => {};
   sandbox.srPasteFromClipboard();
   return sandbox._srShapes;
+}
+
+// 端子台の貼り付けは「絵」と「端子点」の両方を見たいので、両方返す版。
+function pasteFull(els) {
+  const sandbox = { console, snapLineWidth: v => v, alert(m){ sandbox._alert = m; } };
+  vm.createContext(sandbox);
+  vm.runInContext(
+    [grab('srWorldShapesForEl'), grab('srEffectiveLW'), grab('srXformPt'), grab('srXformAngle'),
+     grab('flattenSymbolElToShapes'), grab('srGridAlignShapes'), grab('srElKindName'),
+     grab('srPasteFromClipboard')].join('\n'),
+    sandbox
+  );
+  sandbox.state = { customSymbols: [], clipboard: { els, wires: [] } };
+  sandbox.LAYERS = [];
+  sandbox.SR_GRID = 5;
+  sandbox._srShapes = [];
+  sandbox._srTerms  = [];
+  sandbox.srFitToContent = () => {};
+  sandbox.srRender = () => {};
+  sandbox.srUpdateTermList = () => {};
+  sandbox.getDef = t => ({ coil: { name: 'コイル' } })[t] || null;
+  sandbox.srPasteFromClipboard();
+  return { shapes: sandbox._srShapes, terms: sandbox._srTerms, alert: sandbox._alert };
 }
 
 const len = s => Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
@@ -152,6 +178,51 @@ console.log('【整数座標の図形は整数のまま(グリッド整列が従
   const allInt = out.every(s => Number.isInteger(s.x1) && Number.isInteger(s.y1) &&
                                 Number.isInteger(s.x2) && Number.isInteger(s.y2));
   ok(allInt, '元が整数座標なら結果も整数のまま');
+}
+
+// ------------------------------------------------------------------
+// 端子台(junction)の貼り付け
+//
+// 【2026-09-21】盛田さんがインバータを「四角の上に端子台を並べて」描き、
+// シンボル登録へ貼り付けたら全部スキップされた
+// (「8個の要素は貼り付けに対応していないため…」)。
+// シンボル側は「絵(shapes)」と「配線がつながる点(terminals)」が別物なので、
+// 端子台1個を 円の図形 + 端子点 に分解して持ち込む。
+// ------------------------------------------------------------------
+console.log('\n【端子台を貼り付けると、円の絵と端子点の両方になる】');
+{
+  const r = pasteFull([
+    { type:'rect', x:0, y:0, w:60, h:40 },
+    { type:'junction', x:10, y:0, r:5, style:'circle' },
+    { type:'junction', x:30, y:0, r:5, style:'dbl' },
+  ]);
+  const circles = r.shapes.filter(s => s.t === 'C');
+  ok(r.shapes.some(s => s.t === 'R'), '四角はそのまま絵になる');
+  ok(circles.length === 3, `白丸1つ＋二重丸2つで円は3つ (実際 ${circles.length})`);
+  ok(r.terms.length === 2, `端子点は端子台の数だけ (実際 ${r.terms.length})`);
+  ok(!r.alert, 'スキップの警告は出ない');
+
+  // 端子点は端子台の中心に一致する(=配線がそこに繋がる)
+  const tset = r.terms.map(t => `${t.x},${t.y}`).sort().join(' / ');
+  const cset = circles.filter(c => c.r === 5).map(c => `${c.cx},${c.cy}`).sort().join(' / ');
+  ok(tset === cset, `端子点が円の中心と一致する (端子点 ${tset} / 円 ${cset})`);
+  ok(r.terms.every(t => t.label === ''), '端子番号は持ち込まない(部品DB側で割り当てる)');
+}
+
+console.log('\n【スキップしたものは種類の名前で知らせる】');
+console.log('  ← 以前は「8個の要素は…」と数だけで、何が落ちたか画面から分からなかった');
+{
+  const r = pasteFull([
+    { type:'rect', x:0, y:0, w:10, h:10 },
+    { type:'dim', x:0, y:0 },
+    { type:'bezier', x:0, y:0 },
+    { type:'coil', x:0, y:0 },
+  ]);
+  ok(/寸法線 1個/.test(r.alert || ''), `寸法線が名前で出る (${r.alert})`);
+  ok(/ベジェ曲線 1個/.test(r.alert || ''), 'ベジェ曲線が名前で出る');
+  ok(/標準シンボル「コイル」 1個/.test(r.alert || ''), '標準シンボルは名前付きで出る');
+  // 文末の説明文にも「端子台」の語が出るので、スキップ一覧の書式で見る
+  ok(!/端子台 \d+個/.test(r.alert || ''), '端子台はもうスキップされない');
 }
 
 console.log(ng ? `\n${ng}件失敗` : '\n全て成功');

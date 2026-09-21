@@ -1425,10 +1425,30 @@ function srWorldShapesForEl(el) {
   ];
   if (el.type === 'arc') return [{ t:'A', cx:el.x, cy:el.y, r:el.r||0, sa:(el.startA||0)*180/Math.PI, ea:(el.endA||0)*180/Math.PI, ccw:!!el.ccw, lineWidth:srEffectiveLW(el), lineStyle:el.lineStyle }];
   if (el.type === 'text') return [{ t:'T', text:el.text||'', x:el.x, y:el.y, fs:el.fs||14 }];
+  // 端子台(junction)。
+  //
+  // 【2026-09-21】盛田さんがインバータを「四角の上に端子台を並べて」描き、
+  // それをシンボル登録へ貼り付けたら全部スキップされた
+  // （「8個の要素は貼り付けに対応していないため…」）。
+  //
+  // シンボル側では「絵(shapes)」と「配線がつながる点(terminals)」が別物なので、
+  // 端子台1個を **円の図形 + 端子点** の2つに分解して持ち込む。
+  // 端子点の方は srPasteFromClipboard が同じ座標変換で拾う（ここでは絵だけ返す）。
+  //
+  // シンボルの図形は輪郭のみで塗りつぶしを持たないため、塗り丸(style:'dot'、
+  // 配線の分岐点)も輪郭の円になる。端子台として使う白丸('circle')・二重丸('dbl')は
+  // 元々輪郭なので見た目は変わらない。
+  if (el.type === 'junction') {
+    const r = el.r || 5;
+    const lw = srEffectiveLW(el);
+    const out = [{ t:'C', cx:el.x, cy:el.y, r, lineWidth:lw }];
+    if (el.style === 'dbl') out.push({ t:'C', cx:el.x, cy:el.y, r: r*0.55, lineWidth:lw });
+    return out;
+  }
   // 配置済みシンボル(カスタム/ライブラリ)インスタンス → 実際の配置で平坦化
   const cS = state.customSymbols.find(s => s.type === el.type);
   if (cS && cS.shapes && cS.shapes.length) return flattenSymbolElToShapes(el, cS);
-  return null; // 標準シンボル・junction・bezier・dim等は非対応
+  return null; // 標準シンボル・bezier・dim等は非対応
 }
 
 function srPasteFromClipboard() {
@@ -1438,10 +1458,10 @@ function srPasteFromClipboard() {
   // バウンディングボックス計算
   let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
   const addPt = (x,y) => { minX=Math.min(minX,x); minY=Math.min(minY,y); maxX=Math.max(maxX,x); maxY=Math.max(maxY,y); };
-  let skipped = 0;
+  const skipped = {};       // 種類名 → 個数。「8個」だけでは何が落ちたか分からない
   cb.els.forEach(el => {
     const ws = srWorldShapesForEl(el);
-    if (!ws) { skipped++; return; }
+    if (!ws) { const k = srElKindName(el); skipped[k] = (skipped[k]||0)+1; return; }
     ws.forEach(s => {
       if (s.t==='L') { addPt(s.x1,s.y1); addPt(s.x2,s.y2); }
       else if (s.t==='C'||s.t==='A') { addPt(s.cx-s.r,s.cy-s.r); addPt(s.cx+s.r,s.cy+s.r); }
@@ -1479,7 +1499,9 @@ function srPasteFromClipboard() {
 
   // 変換してSR形式に
   const shapes = [];
+  const terms  = [];        // 端子台から起こす端子点(絵とは別に持つ)
   cb.els.forEach(el => {
+    if (el.type === 'junction') terms.push({ x: tx(el.x), y: ty(el.y), label: '' });
     const ws = srWorldShapesForEl(el);
     if (!ws) return;
     ws.forEach(s => {
@@ -1511,11 +1533,36 @@ function srPasteFromClipboard() {
       shapes.push({t:'L', x1:tx(pts[i].x),y1:ty(pts[i].y), x2:tx(pts[i+1].x),y2:ty(pts[i+1].y)});
     }
   });
-  srGridAlignShapes(shapes);
+  // グリッドに乗せるための平行移動は図形と端子点で同じだけ動かす
+  // (別々にすると端子点が絵からずれる)
+  const g = srGridAlignShapes(shapes);
+  terms.forEach(t => { t.x += g.dx; t.y += g.dy; });
   _srShapes = shapes;
+  _srTerms  = terms;
+  srUpdateTermList();
   srFitToContent();
   srRender();
-  if (skipped > 0) alert(`${skipped}個の要素は貼り付けに対応していないためスキップされました(標準シンボル・接続点・寸法線・ベジェ曲線等)`);
+
+  const names = Object.keys(skipped);
+  if (names.length) {
+    alert('貼り付けに対応していない要素をスキップしました:\n  '
+      + names.map(k => `${k} ${skipped[k]}個`).join('\n  ')
+      + '\n\n図形(線・円・四角・三角・円弧・文字)、端子台、'
+      + '登録済みカスタムシンボルは貼り付けられます。');
+  }
+}
+
+// スキップした要素を人に分かる名前で返す。
+// 【2026-09-21】以前は「8個の要素は…」と数だけ出していた。盛田さんが端子台を
+// 7個置いたのに8個と出て、残り1個が何なのか画面からは分からなかった。
+function srElKindName(el) {
+  if (!el || !el.type) return '不明';
+  const named = { junction:'端子台', bezier:'ベジェ曲線', dim:'寸法線',
+                  angle_dim:'角度寸法', leader:'引出線' };
+  if (named[el.type]) return named[el.type];
+  const d = (typeof getDef === 'function' ? getDef(el.type) : null);
+  if (d && d.name) return `標準シンボル「${d.name}」`;
+  return el.type;
 }
 
 // 貼り付けた図形群を「形を変えずに」整数平行移動し、
