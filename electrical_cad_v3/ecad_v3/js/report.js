@@ -594,19 +594,24 @@ function showBOM(){
   const mainRows     = withNoRefIdx.filter(({r})=>!r.noRef && (r.zone||'')!=='外');
   const excludedRows = withNoRefIdx.filter(({r})=>!r.noRef && (r.zone||'')==='外');
   const noRefRows    = withNoRefIdx.filter(({r})=>r.noRef);
+  // 【2026-09-21】デバイスを先頭列へ移した。
+  // 盛田さん「ただデバイスが頭にないのは問題だな、使いづらい」。
+  // 部品表はExcelに出して人が転記する運用で、転記先(実物)も
+  // 機器名[SYMBOL]が先頭。読む順が揃っていないと転記しにくい。
+  // 中身(デバイス単位の集計)は元から正しいので、並べ替えだけ。
   const rowHtml = ({r,i}) =>
     `<tr${r.noRef?' style="background:var(--rbg)"':''}>`
+    +`<td style="font-weight:600">${r.noRef?'<span style="color:var(--red)">未設定</span>':(escH(r.refs.join(', '))||'-')}</td>`
     +`<td>${escH(r.label)}${r.warn?` <span style="color:var(--red);font-size:10px">⚠${escH(r.warn)}</span>`:''}</td>`
     +voltCell(r,i)
     +`<td>${escH(r.type)}</td><td style="color:var(--acc)">${escH(r.jis)}</td>`
-    +`<td style="font-size:10px;color:var(--fg3)">${r.noRef?'<span style="color:var(--red)">未設定</span>':(escH(r.refs.join(', '))||'-')}</td>`
     +`<td style="font-weight:600">${r.count}</td><td style="color:var(--fg3)">${escH(r.parts)}</td></tr>`;
   const section = (title, list) => {
     if (!list.length) return '';
     const cnt = list.reduce((s,{r})=>s+r.count,0);
     return `<p style="font-size:11px;font-weight:600;margin:10px 0 3px">${title}`
       + `<span style="color:var(--fg3);font-weight:400">（${cnt}台）</span></p>`
-      + `<table class="tbl"><tr><th>型番/名称</th><th>コイル電圧</th><th>種別</th><th>JIS</th><th>デバイス</th><th>数量(台)</th><th>構成数</th></tr>`
+      + `<table class="tbl"><tr><th>デバイス</th><th>型番/名称</th><th>コイル電圧</th><th>種別</th><th>JIS</th><th>数量(台)</th><th>構成数</th></tr>`
       + list.map(rowHtml).join('') + `</table>`;
   };
   let html = rows.length
@@ -631,8 +636,10 @@ function exportBOMCSV(){
   // 画面の絞り込みをCSVにも必ず適用する。画面と出力が食い違うと
   // 出力を信用できなくなるため(2026-08-23)。
   const rows=_bomFilterRows(collectBOMRows());
-  dl(['型番/名称,コイル電圧,種別,JIS規格,デバイス,対象外,数量(台),構成数,備考',
-      ...rows.map(r=>`${r.label},${r.volt||''},${r.type},${r.jis},"${r.noRef?'未設定':r.refs.join('/')}",${r.zone==='外'?'対象外':''},${r.count},${r.parts},${r.warn||''}`)
+  // 【2026-09-21】画面と同じくデバイスを先頭列にする。
+  // 画面とCSVで並びが違うと転記のときに読み替えが要るため、必ず揃える。
+  dl(['デバイス,型番/名称,コイル電圧,種別,JIS規格,対象外,数量(台),構成数,備考',
+      ...rows.map(r=>`"${r.noRef?'未設定':r.refs.join('/')}",${r.label},${r.volt||''},${r.type},${r.jis},${r.zone==='外'?'対象外':''},${r.count},${r.parts},${r.warn||''}`)
      ].join('\n'),'bom.csv','text/csv');
 }
 // 要素の役割を判定する。
