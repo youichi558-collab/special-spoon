@@ -43,6 +43,7 @@ const WRITERS = [
   ['setBOMVolt',        rep, 'el.partVolt(コイル電圧)'],
   ['setTBExcluded',     rep, 'el.tbExclude(端子台として集計)'],
   ['setBOMMaker',       rep, 'el.partMaker(メーカー)'],
+  ['_setBOMField',      rep, 'el.partName/partNote(名称・備考)'],
 ];
 WRITERS.forEach(([name, src, what]) => {
   const b = body(src, name);

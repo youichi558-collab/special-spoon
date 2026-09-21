@@ -429,7 +429,7 @@ function collectBOMRows(){
       const key=normalizeRef(raw);
       if(key){
         if(!devices[key])devices[key]={spellings:new Map(),models:new Set(),types:new Set(),
-                                       volts:new Set(),makers:new Set(),zones:new Set(),els:[],parts:0};
+                                       volts:new Set(),makers:new Set(),names:new Set(),notes:new Set(),zones:new Set(),els:[],parts:0};
         const dv=devices[key];
         dv.spellings.set(raw,(dv.spellings.get(raw)||0)+1);
         dv.parts++;
@@ -446,6 +446,11 @@ function collectBOMRows(){
         // 打った値がここに入る。
         const mk=(el.partMaker||'').trim();
         if(mk)dv.makers.add(mk);
+        // 名称(「電磁接触器」等)と備考。どちらも部品表で手打ちする。
+        const nm=(el.partName||'').trim();
+        if(nm)dv.names.add(nm);
+        const nt=(el.partNote||'').trim();
+        if(nt)dv.notes.add(nt);
         // 手配区分(盤内/盤外)。空文字列=盤内(既定)。同じデバイス内で揃うはず。
         dv.zones.add(el.panelZone||'');
       }else{
@@ -453,6 +458,7 @@ function collectBOMRows(){
         const k=`${el.type}|${name}`;
         if(!noRef[k])noRef[k]={type:el.type,model:(el.partModel||'').trim(),label:name,
                                maker:(el.partMaker||'').trim(),
+                               pname:(el.partName||'').trim(),pnote:(el.partNote||'').trim(),
                                refs:[],count:0,parts:0,jis:getDef(el.type)?.jis||'',noRef:true,warn:''};
         noRef[k].count++; noRef[k].parts++;
       }
@@ -465,7 +471,7 @@ function collectBOMRows(){
       const key=normalizeRef(raw);
       if(!key)return;
       if(!devices[key])devices[key]={spellings:new Map(),models:new Set(),types:new Set(),
-                                     volts:new Set(),makers:new Set(),zones:new Set(),els:[],parts:0};
+                                     volts:new Set(),makers:new Set(),names:new Set(),notes:new Set(),zones:new Set(),els:[],parts:0};
       const dv=devices[key];
       dv.spellings.set(raw,(dv.spellings.get(raw)||0)+1);
       const m=(g.partModel||'').trim();
@@ -491,15 +497,27 @@ function collectBOMRows(){
     // 「DBの状態で結果が変わる」形にはしない。
     const makers=[...dv.makers];
     let maker=makers[0]||'';
-    if(!maker&&model){
+    const names=[...dv.names];
+    let pname=names[0]||'';
+    if((!maker||!pname)&&model){
       const pm=(state.customParts||[]).find(x=>x.ref===model);
-      if(pm&&pm.maker)maker=pm.maker;
+      if(pm){
+        if(!maker&&pm.maker)maker=pm.maker;
+        // 名称は部品DBの種別ラベル(「電磁接触器」等)で埋めておく。手で直せる。
+        if(!pname&&typeof PART_TYPE_LABELS!=='undefined'&&PART_TYPE_LABELS[pm.type])
+          pname=PART_TYPE_LABELS[pm.type];
+      }
     }
+    // 備考は**自動で埋めない**。部品DBの note はカタログの説明文(平均256文字)で、
+    // 実物の部品表の備考(「延長処理必要」「位置決め用」等の手配メモ)とは別物。
+    // 流し込むと列が説明文で埋まって使えなくなる。
+    const notes=[...dv.notes];
+    const pnote=notes[0]||'';
     const zones=[...dv.zones];
     const zone=zones[0]||'';
     // 型番が同じでもコイル電圧・手配区分が違えば別部品なので行を分ける
     const k=(model||`(型番未設定)|${primary}`)+'\u0000'+volt+'\u0000'+zone;
-    if(!byModel[k])byModel[k]={type:primary,model,volt,maker,zone,label:model||'(型番未設定)',
+    if(!byModel[k])byModel[k]={type:primary,model,volt,maker,pname,pnote,zone,label:model||'(型番未設定)',
                                refs:[],els:[],count:0,parts:0,jis:getDef(primary)?.jis||'',noRef:false,warn:''};
     const row=byModel[k];
     row.refs.push(ref);
@@ -605,13 +623,17 @@ function showBOM(){
   // 帳票に型式打ち込みになるからメーカー欄も帳票手打ちだな」)。
   // コイル電圧(voltCell/setBOMVolt)と同じ作法で、その行の全要素へ書き戻す。
   // 部品DBに登録済みの型番は値が既に入っているので打ち直さなくてよい。
-  const makerCell = (r, i) => {
-    if (r.noRef) return `<td style="color:var(--fg3)">${escH(r.maker||'')}</td>`;
-    return `<td><input type="text" value="${escH(r.maker||'')}" placeholder="—"`
-      + ` onchange="setBOMMaker(${i}, this.value)"`
-      + ` style="width:90px;font-size:11px;background:var(--bg3);color:var(--fg);`
+  // 手打ちできるセルを作る共通部分(メーカー・名称・備考)。
+  const typedCell = (r, i, val, fn, w) => {
+    if (r.noRef) return `<td style="color:var(--fg3)">${escH(val||'')}</td>`;
+    return `<td><input type="text" value="${escH(val||'')}" placeholder="—"`
+      + ` onchange="${fn}(${i}, this.value)"`
+      + ` style="width:${w}px;font-size:11px;background:var(--bg3);color:var(--fg);`
       + `border:1px solid var(--bd2);border-radius:3px;padding:1px 3px"></td>`;
   };
+  const makerCell = (r, i) => typedCell(r, i, r.maker, 'setBOMMaker', 90);
+  const nameCell  = (r, i) => typedCell(r, i, r.pname, 'setBOMName', 110);
+  const noteCell  = (r, i) => typedCell(r, i, r.pnote, 'setBOMNote', 150);
   // rowsのindexはCSV/setBOMVolt等で使うため、絶対indexを保ったまま盤内/盤外で
   // グループ分けして表示する(盛田さんの「部品表に集計されるなら盤内盤外で
   // 分けるようにできると良い」への対応)。noRef(デバイス未設定)は区分の対象外
@@ -630,17 +652,19 @@ function showBOM(){
   const rowHtml = ({r,i}) =>
     `<tr${r.noRef?' style="background:var(--rbg)"':''}>`
     +`<td style="font-weight:600">${r.noRef?'<span style="color:var(--red)">未設定</span>':(escH(r.refs.join(', '))||'-')}</td>`
+    +nameCell(r,i)
     +`<td>${escH(r.label)}${r.warn?` <span style="color:var(--red);font-size:10px">⚠${escH(r.warn)}</span>`:''}</td>`
     +makerCell(r,i)
     +voltCell(r,i)
     +`<td>${escH(r.type)}</td><td style="color:var(--acc)">${escH(r.jis)}</td>`
-    +`<td style="font-weight:600">${r.count}</td><td style="color:var(--fg3)">${escH(r.parts)}</td></tr>`;
+    +`<td style="font-weight:600">${r.count}</td><td style="color:var(--fg3)">${escH(r.parts)}</td>`
+    +noteCell(r,i)+`</tr>`;
   const section = (title, list) => {
     if (!list.length) return '';
     const cnt = list.reduce((s,{r})=>s+r.count,0);
     return `<p style="font-size:11px;font-weight:600;margin:10px 0 3px">${title}`
       + `<span style="color:var(--fg3);font-weight:400">（${cnt}台）</span></p>`
-      + `<table class="tbl"><tr><th>デバイス</th><th>型番/名称</th><th>メーカー</th><th>コイル電圧</th><th>種別</th><th>JIS</th><th>数量(台)</th><th>構成数</th></tr>`
+      + `<table class="tbl"><tr><th>デバイス</th><th>名称</th><th>型番/名称</th><th>メーカー</th><th>コイル電圧</th><th>種別</th><th>JIS</th><th>数量(台)</th><th>構成数</th><th>備考</th></tr>`
       + list.map(rowHtml).join('') + `</table>`;
   };
   let html = rows.length
@@ -673,14 +697,32 @@ function setBOMMaker(idx, maker){
   if(typeof updateRightPanel==='function')updateRightPanel();
   showBOM();
 }
+// 名称・備考も部品表のセルから直接打てる(setBOMMaker と同じ作法)。
+function setBOMName(idx, v){ _setBOMField(idx, 'partName', v); }
+function setBOMNote(idx, v){ _setBOMField(idx, 'partNote', v); }
+function _setBOMField(idx, prop, v){
+  const r=(window._bomRows||[])[idx];
+  if(!r)return;
+  if(typeof pushH==='function')pushH();   // 変更前の状態を履歴に積む
+  const val=(v||'').trim();
+  (r.els||[]).forEach(el=>{ el[prop]=val||undefined; });
+  if(typeof draw==='function')draw();
+  if(typeof updateRightPanel==='function')updateRightPanel();
+  showBOM();
+}
 function exportBOMCSV(){
   // 画面の絞り込みをCSVにも必ず適用する。画面と出力が食い違うと
   // 出力を信用できなくなるため(2026-08-23)。
   const rows=_bomFilterRows(collectBOMRows());
   // 【2026-09-21】画面と同じくデバイスを先頭列にする。
   // 画面とCSVで並びが違うと転記のときに読み替えが要るため、必ず揃える。
-  dl(['デバイス,型番/名称,メーカー,コイル電圧,種別,JIS規格,対象外,数量(台),構成数,備考',
-      ...rows.map(r=>`"${r.noRef?'未設定':r.refs.join('/')}",${r.label},${r.maker||''},${r.volt||''},${r.type},${r.jis},${r.zone==='外'?'対象外':''},${r.count},${r.parts},${r.warn||''}`)
+  // 【2026-09-21】末尾の「備考」列は元々**警告文**(型番が複数 等)だった。
+  // 実物の部品表の備考(手配メモ)を足すにあたり、紛らわしいので「警告」に改名した。
+  const q=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
+  dl(['デバイス,名称,型番/名称,メーカー,コイル電圧,種別,JIS規格,対象外,数量(台),構成数,備考,警告',
+      ...rows.map(r=>[r.noRef?'未設定':r.refs.join('/'),r.pname||'',r.label,r.maker||'',
+                      r.volt||'',r.type,r.jis,r.zone==='外'?'対象外':'',
+                      r.count,r.parts,r.pnote||'',r.warn||''].map(q).join(','))
      ].join('\n'),'bom.csv','text/csv');
 }
 // 要素の役割を判定する。

@@ -412,7 +412,10 @@
     </div>
 
     <!-- フローティングパネル群 -->
-    <div class="fp" id="report-p" style="width:660px;max-width:95vw">
+    <!-- 【2026-09-21】660px → 1040px。部品表に名称・メーカー・備考の列を足したら
+         10列になり、660pxでは「コイル電圧」が縦1文字ずつに潰れ、型番が3行に
+         折れて読めなくなった。max-width:95vw があるので狭い画面でも溢れない。 -->
+    <div class="fp" id="report-p" style="width:1040px;max-width:95vw">
       <div style="display:flex;align-items:center;margin-bottom:6px">
         <h3 id="report-title" style="flex:1;margin:0"></h3>
         <span onclick="closeFP('report-p')" style="cursor:pointer;font-size:18px;color:var(--fg3);padding:0 4px">×</span>
