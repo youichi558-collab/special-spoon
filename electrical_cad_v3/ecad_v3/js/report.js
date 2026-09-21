@@ -1000,6 +1000,15 @@ function renumberTerminals(dev) {
   if (typeof pushH === 'function') pushH();
   list.forEach((r, i) => { r.el.label = String(i + 1); });
   if (typeof draw === 'function') draw();
+  // 【2026-09-21修正】updateRightPanel() を呼んでいなかった。
+  // 端子を1つ選んだまま「この順で番号を振り直す」を押すと、図面とデータの
+  // 端子番号は変わるのに**プロパティの「端子番号」欄(pp-jlabel)だけ古い値が
+  // 残る**。その状態で欄の値が要素へ書き戻されると、振り直した番号が
+  // 古い番号に戻ってしまう(applyProps が pp-jlabel を el.label に入れるため)。
+  // 帳票から要素を書き換える他の経路(setBOMVolt / setTBExcluded)は
+  // 最初から呼んでいて、ここだけ抜けていた。
+  // tbDrop は el.tbOrder しか書かず、それはプロパティ欄に出ないので不要。
+  if (typeof updateRightPanel === 'function') updateRightPanel();
   showTBTable();
 }
 
