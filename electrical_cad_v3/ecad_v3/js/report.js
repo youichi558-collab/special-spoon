@@ -634,6 +634,13 @@ function showBOM(){
   const makerCell = (r, i) => typedCell(r, i, r.maker, 'setBOMMaker', 90);
   const nameCell  = (r, i) => typedCell(r, i, r.pname, 'setBOMName', 110);
   const noteCell  = (r, i) => typedCell(r, i, r.pnote, 'setBOMNote', 150);
+  // 【2026-09-21】「種別」列は表示から外した。標準シンボルがあった頃は
+  // coil/breaker と読めたが、登録シンボルばかりの今は custom_xxx という
+  // **内部名**が出るだけで意味を成さない(実物の部品表にも無い列)。
+  //
+  // **行の `type` フィールド自体は消さないこと。** 型番が未設定のときの
+  // まとめキー(`(型番未設定)|${primary}`)と表示名に使っている。
+  // 表示を消すのとフィールドを消すのは別。
   // rowsのindexはCSV/setBOMVolt等で使うため、絶対indexを保ったまま盤内/盤外で
   // グループ分けして表示する(盛田さんの「部品表に集計されるなら盤内盤外で
   // 分けるようにできると良い」への対応)。noRef(デバイス未設定)は区分の対象外
@@ -656,7 +663,6 @@ function showBOM(){
     +`<td>${escH(r.label)}${r.warn?` <span style="color:var(--red);font-size:10px">⚠${escH(r.warn)}</span>`:''}</td>`
     +makerCell(r,i)
     +voltCell(r,i)
-    +`<td>${escH(r.type)}</td>`
     +`<td style="font-weight:600">${r.count}</td><td style="color:var(--fg3)">${escH(r.parts)}</td>`
     +noteCell(r,i)+`</tr>`;
   const section = (title, list) => {
@@ -664,7 +670,7 @@ function showBOM(){
     const cnt = list.reduce((s,{r})=>s+r.count,0);
     return `<p style="font-size:11px;font-weight:600;margin:10px 0 3px">${title}`
       + `<span style="color:var(--fg3);font-weight:400">（${cnt}台）</span></p>`
-      + `<table class="tbl"><tr><th>デバイス</th><th>名称</th><th>型番/名称</th><th>メーカー</th><th>コイル電圧</th><th>種別</th><th>数量(台)</th><th>構成数</th><th>備考</th></tr>`
+      + `<table class="tbl"><tr><th>デバイス</th><th>名称</th><th>型番/名称</th><th>メーカー</th><th>コイル電圧</th><th>数量(台)</th><th>構成数</th><th>備考</th></tr>`
       + list.map(rowHtml).join('') + `</table>`;
   };
   let html = rows.length
@@ -719,9 +725,9 @@ function exportBOMCSV(){
   // 【2026-09-21】末尾の「備考」列は元々**警告文**(型番が複数 等)だった。
   // 実物の部品表の備考(手配メモ)を足すにあたり、紛らわしいので「警告」に改名した。
   const q=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
-  dl(['デバイス,名称,型番/名称,メーカー,コイル電圧,種別,対象外,数量(台),構成数,備考,警告',
+  dl(['デバイス,名称,型番/名称,メーカー,コイル電圧,対象外,数量(台),構成数,備考,警告',
       ...rows.map(r=>[r.noRef?'未設定':r.refs.join('/'),r.pname||'',r.label,r.maker||'',
-                      r.volt||'',r.type,r.zone==='外'?'対象外':'',
+                      r.volt||'',r.zone==='外'?'対象外':'',
                       r.count,r.parts,r.pnote||'',r.warn||''].map(q).join(','))
      ].join('\n'),'bom.csv','text/csv');
 }
