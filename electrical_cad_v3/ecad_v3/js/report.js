@@ -429,7 +429,7 @@ function collectBOMRows(){
       const key=normalizeRef(raw);
       if(key){
         if(!devices[key])devices[key]={spellings:new Map(),models:new Set(),types:new Set(),
-                                       volts:new Set(),zones:new Set(),els:[],parts:0};
+                                       volts:new Set(),makers:new Set(),zones:new Set(),els:[],parts:0};
         const dv=devices[key];
         dv.spellings.set(raw,(dv.spellings.get(raw)||0)+1);
         dv.parts++;
@@ -441,12 +441,18 @@ function collectBOMRows(){
         // 複数あれば設定ミスなので警告に出す。
         const vv=(el.partVolt||'').trim();
         if(vv)dv.volts.add(vv);
+        // 【2026-09-21】メーカー。盛田さん「メーカー名は必要、発注もできん」。
+        // 図面の要素自身に持たせる(型番・仕様と同じ扱い)。部品表から手で
+        // 打った値がここに入る。
+        const mk=(el.partMaker||'').trim();
+        if(mk)dv.makers.add(mk);
         // 手配区分(盤内/盤外)。空文字列=盤内(既定)。同じデバイス内で揃うはず。
         dv.zones.add(el.panelZone||'');
       }else{
         const name=(el.partModel||'').trim()||el.label||el.type;
         const k=`${el.type}|${name}`;
         if(!noRef[k])noRef[k]={type:el.type,model:(el.partModel||'').trim(),label:name,
+                               maker:(el.partMaker||'').trim(),
                                refs:[],count:0,parts:0,jis:getDef(el.type)?.jis||'',noRef:true,warn:''};
         noRef[k].count++; noRef[k].parts++;
       }
@@ -459,7 +465,7 @@ function collectBOMRows(){
       const key=normalizeRef(raw);
       if(!key)return;
       if(!devices[key])devices[key]={spellings:new Map(),models:new Set(),types:new Set(),
-                                     volts:new Set(),zones:new Set(),els:[],parts:0};
+                                     volts:new Set(),makers:new Set(),zones:new Set(),els:[],parts:0};
       const dv=devices[key];
       dv.spellings.set(raw,(dv.spellings.get(raw)||0)+1);
       const m=(g.partModel||'').trim();
@@ -479,11 +485,21 @@ function collectBOMRows(){
     const primary=[...dv.types][0]||'';
     const volts=[...dv.volts];
     const volt=volts[0]||'';
+    // メーカー: 図面に入っていればそれを使う。入っていなければ部品DBから補う
+    // (登録済みの部品は打ち直さなくて済む)。**部品DBが読めなくても空欄に
+    // なるだけで、値が黙って変わることはない** —— 端子台表のような
+    // 「DBの状態で結果が変わる」形にはしない。
+    const makers=[...dv.makers];
+    let maker=makers[0]||'';
+    if(!maker&&model){
+      const pm=(state.customParts||[]).find(x=>x.ref===model);
+      if(pm&&pm.maker)maker=pm.maker;
+    }
     const zones=[...dv.zones];
     const zone=zones[0]||'';
     // 型番が同じでもコイル電圧・手配区分が違えば別部品なので行を分ける
     const k=(model||`(型番未設定)|${primary}`)+'\u0000'+volt+'\u0000'+zone;
-    if(!byModel[k])byModel[k]={type:primary,model,volt,zone,label:model||'(型番未設定)',
+    if(!byModel[k])byModel[k]={type:primary,model,volt,maker,zone,label:model||'(型番未設定)',
                                refs:[],els:[],count:0,parts:0,jis:getDef(primary)?.jis||'',noRef:false,warn:''};
     const row=byModel[k];
     row.refs.push(ref);
@@ -493,6 +509,7 @@ function collectBOMRows(){
     const ws=[];
     if(spells.length>1)ws.push(`${ref}に表記ゆれ(${spells.map(s=>s[0]).join(' / ')})`);
     if(models.length>1)ws.push(`${ref}に型番が複数(${models.join(' / ')})`);
+    if(makers.length>1)ws.push(`${ref}にメーカーが複数(${makers.join(' / ')})`);
     if(volts.length>1)ws.push(`${ref}にコイル電圧が複数(${volts.join(' / ')})`);
     // 2026-08-23: 「手配区分が複数」→「対象外の設定が食い違う」に言い換え。
     // 同じデバイスなのに一部だけ対象外になっているのは設定ミスの可能性が高い。
@@ -584,6 +601,17 @@ function showBOM(){
       + opts.map(o => `<option value="${escH(o)}"${o === cur ? ' selected' : ''}>${escH(o)}</option>`).join('')
       + `</select></td>`;
   };
+  // メーカー欄。**帳票で直接打てる**(盛田さん「プロパティ手打ちは論外、
+  // 帳票に型式打ち込みになるからメーカー欄も帳票手打ちだな」)。
+  // コイル電圧(voltCell/setBOMVolt)と同じ作法で、その行の全要素へ書き戻す。
+  // 部品DBに登録済みの型番は値が既に入っているので打ち直さなくてよい。
+  const makerCell = (r, i) => {
+    if (r.noRef) return `<td style="color:var(--fg3)">${escH(r.maker||'')}</td>`;
+    return `<td><input type="text" value="${escH(r.maker||'')}" placeholder="—"`
+      + ` onchange="setBOMMaker(${i}, this.value)"`
+      + ` style="width:90px;font-size:11px;background:var(--bg3);color:var(--fg);`
+      + `border:1px solid var(--bd2);border-radius:3px;padding:1px 3px"></td>`;
+  };
   // rowsのindexはCSV/setBOMVolt等で使うため、絶対indexを保ったまま盤内/盤外で
   // グループ分けして表示する(盛田さんの「部品表に集計されるなら盤内盤外で
   // 分けるようにできると良い」への対応)。noRef(デバイス未設定)は区分の対象外
@@ -603,6 +631,7 @@ function showBOM(){
     `<tr${r.noRef?' style="background:var(--rbg)"':''}>`
     +`<td style="font-weight:600">${r.noRef?'<span style="color:var(--red)">未設定</span>':(escH(r.refs.join(', '))||'-')}</td>`
     +`<td>${escH(r.label)}${r.warn?` <span style="color:var(--red);font-size:10px">⚠${escH(r.warn)}</span>`:''}</td>`
+    +makerCell(r,i)
     +voltCell(r,i)
     +`<td>${escH(r.type)}</td><td style="color:var(--acc)">${escH(r.jis)}</td>`
     +`<td style="font-weight:600">${r.count}</td><td style="color:var(--fg3)">${escH(r.parts)}</td></tr>`;
@@ -611,7 +640,7 @@ function showBOM(){
     const cnt = list.reduce((s,{r})=>s+r.count,0);
     return `<p style="font-size:11px;font-weight:600;margin:10px 0 3px">${title}`
       + `<span style="color:var(--fg3);font-weight:400">（${cnt}台）</span></p>`
-      + `<table class="tbl"><tr><th>デバイス</th><th>型番/名称</th><th>コイル電圧</th><th>種別</th><th>JIS</th><th>数量(台)</th><th>構成数</th></tr>`
+      + `<table class="tbl"><tr><th>デバイス</th><th>型番/名称</th><th>メーカー</th><th>コイル電圧</th><th>種別</th><th>JIS</th><th>数量(台)</th><th>構成数</th></tr>`
       + list.map(rowHtml).join('') + `</table>`;
   };
   let html = rows.length
@@ -632,14 +661,26 @@ function setBOMVolt(idx, volt){
   if(typeof updateRightPanel==='function')updateRightPanel();
   showBOM();   // 型番＋電圧でまとめ直す
 }
+// 部品表のセルからメーカーを変更する。その行の全要素に書き戻して表を作り直す。
+// setBOMVolt と同じ作法(pushH で取り消せるようにし、プロパティ欄も追随させる)。
+function setBOMMaker(idx, maker){
+  const r=(window._bomRows||[])[idx];
+  if(!r)return;
+  if(typeof pushH==='function')pushH();   // 変更前の状態を履歴に積む
+  const v=(maker||'').trim();
+  (r.els||[]).forEach(el=>{ el.partMaker=v||undefined; });
+  if(typeof draw==='function')draw();
+  if(typeof updateRightPanel==='function')updateRightPanel();
+  showBOM();
+}
 function exportBOMCSV(){
   // 画面の絞り込みをCSVにも必ず適用する。画面と出力が食い違うと
   // 出力を信用できなくなるため(2026-08-23)。
   const rows=_bomFilterRows(collectBOMRows());
   // 【2026-09-21】画面と同じくデバイスを先頭列にする。
   // 画面とCSVで並びが違うと転記のときに読み替えが要るため、必ず揃える。
-  dl(['デバイス,型番/名称,コイル電圧,種別,JIS規格,対象外,数量(台),構成数,備考',
-      ...rows.map(r=>`"${r.noRef?'未設定':r.refs.join('/')}",${r.label},${r.volt||''},${r.type},${r.jis},${r.zone==='外'?'対象外':''},${r.count},${r.parts},${r.warn||''}`)
+  dl(['デバイス,型番/名称,メーカー,コイル電圧,種別,JIS規格,対象外,数量(台),構成数,備考',
+      ...rows.map(r=>`"${r.noRef?'未設定':r.refs.join('/')}",${r.label},${r.maker||''},${r.volt||''},${r.type},${r.jis},${r.zone==='外'?'対象外':''},${r.count},${r.parts},${r.warn||''}`)
      ].join('\n'),'bom.csv','text/csv');
 }
 // 要素の役割を判定する。

@@ -42,6 +42,7 @@ const WRITERS = [
   ['renumberTerminals', rep, 'el.label(端子番号)'],
   ['setBOMVolt',        rep, 'el.partVolt(コイル電圧)'],
   ['setTBExcluded',     rep, 'el.tbExclude(端子台として集計)'],
+  ['setBOMMaker',       rep, 'el.partMaker(メーカー)'],
 ];
 WRITERS.forEach(([name, src, what]) => {
   const b = body(src, name);
