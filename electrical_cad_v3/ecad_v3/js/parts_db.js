@@ -42,14 +42,34 @@ const partsDb = (() => {
     return extra.length;
   }
 
+  // 【2026-09-21】1回失敗したら数秒あけて数回やり直す。
+  //
+  // server.py はシングルスレッド・HTTP/1.0・待ち行列5で、起動直後は
+  // <script>32本の接続で混んでいる。そこへ部品DBの要求が当たると
+  // 取りこぼされることがある。従来は1回きりで諦めていたため、
+  // 一度外すとページを再読み込みするまで0件のままだった
+  // (盛田さん「今立ち上げたら読み込んでなかったな、リロードで読んだ」)。
+  //
+  // やり直すのは**繋がらなかったとき**だけ。サーバーは応答したが部品DBの
+  // 場所が違う等(ok:false)は、何度やっても同じなので繰り返さない。
+  const RETRY_WAIT = [1500, 3000, 6000];   // 3回まで、だんだん間をあける
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
   // 起動時：ローカルサーバー経由で部品DBを読む。CADはこれ以外の経路を持たない。
-  async function autoRestore() {
+  async function autoRestore(attempt) {
+    const n = attempt || 0;
     let st;
     try {
       st = await (await fetch('/api/parts/stats')).json();
     } catch (e) {
+      if (n < RETRY_WAIT.length) {
+        setStatus(`部品DB: 読み込みに失敗しました。やり直しています…（${n + 1}/${RETRY_WAIT.length}）`);
+        await sleep(RETRY_WAIT[n]);
+        return autoRestore(n + 1);
+      }
       setStatus('部品DBを読み込めません（ローカルサーバーに接続できません。start.bat を起動してください）');
       setBanner('⚠ 部品DBを読み込めませんでした（ローカルサーバーに接続できません）。'
+        + `${RETRY_WAIT.length}回やり直しても繋がりませんでした。`
         + 'start.bat を起動してからCADを開き直してください。'
         + '部品の登録・編集は「部品DBを開く.bat」（部品DB単独画面）で行います。');
       return;
@@ -63,6 +83,13 @@ const partsDb = (() => {
       data = await (await fetch('/api/parts/all')).json();
       if (!data || !data.ok) throw new Error((data && data.error) || '不明なエラー');
     } catch (e) {
+      // stats は返ったのに all が落ちた = 取りこぼしの可能性があるのでやり直す。
+      // 605KBと一番大きい応答なので、混んでいるときはここが落ちやすい。
+      if (n < RETRY_WAIT.length) {
+        setStatus(`部品DB: 読み込みに失敗しました。やり直しています…（${n + 1}/${RETRY_WAIT.length}）`);
+        await sleep(RETRY_WAIT[n]);
+        return autoRestore(n + 1);
+      }
       setStatus(`部品DBを読み込めませんでした(${e.message})`);
       setBanner(`⚠ 部品DBを読み込めませんでした(${e.message})。`
         + '部品DBの場所を確認してください（py tools\\parts_db\\parts_db.py setpath ...）。'
@@ -88,6 +115,9 @@ const partsDb = (() => {
     saveMode: () => (connected ? 'server' : null),
     savePath: () => serverPath,
     partsCount: () => (state.customParts || []).length,
+    // 手動で読み直す。部品DB単独画面で部品を足したときや、起動時に
+    // 読み損ねたときに、CADを開き直さずに済むようにする。
+    reload: () => autoRestore(0),
   };
 })();
 

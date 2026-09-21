@@ -46,6 +46,11 @@ function load({ routes = {}, initialParts = [] } = {}) {
       body: { appendChild: el => { sandbox._banner = el; } },
     },
     window: {},
+    // 【2026-09-21】autoRestore が失敗時にやり直すようになり、待ちに
+    // setTimeout を使う。テストでは待たずに即やり直させる(本番の待ち時間
+    // 1.5+3+6秒をそのまま待つとテストが遅くなるだけで、確かめたいのは
+    // 「やり直した末にどうなるか」なので)。
+    setTimeout: (fn) => { fn(); return 0; },
     renderPartsAll: () => {},
     fetch: async url => {
       calls.push(url);

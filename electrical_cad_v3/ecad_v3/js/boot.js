@@ -104,19 +104,37 @@ function _safeInit(label, fn, critical) {
   // 【注意】サーバー側(シングルスレッド・backlog 5・HTTP/1.0)は直していない。
   // これは押し寄せる量を減らして症状を避ける対策で、根本原因はサーバー側に残る。
   _safeInit('部品DBの読み込み予約', () => {
-    if (typeof partsDb === 'undefined') return;
+    // 【2026-09-21 追記】parts_db.js 自体が読めていない場合。
+    // 以前はここで黙って return していたため、バナーも出ず
+    // 「0件 / 読み込み中...」のまま立ち上がっていた(盛田さんが遭遇した状態)。
+    // 黙って諦めない。下のJS欠け検出でもファイル名を出す。
+    if (typeof partsDb === 'undefined') {
+      _bootBanner('⚠ 部品DBの読み込み機能(js/parts_db.js)が読めていません。'
+        + 'この状態では部品を割り当てられません。'
+        + 'Ctrl+Shift+R で読み込み直してください');
+      return;
+    }
     const start = () => {
       try { partsDb.autoRestore(); }
       catch (e) { console.error('[boot] 部品DBの読み込みでエラーが発生しました:', e); }
     };
-    // load(全リソース読み込み完了)を待ち、さらに手が空くまで待ってから読む。
-    // requestIdleCallback が無い環境では setTimeout で代用する。
+    // load(全リソース読み込み完了)を待ち、さらに手が空いてから読む。
+    //
+    // 【2026-09-21 追記】**loadだけに頼らない**。loadは「今まさに混んでいる」
+    // ときに遅れるイベントで、JSが1本詰まれば部品DBの読み込みもろとも
+    // 待たされる。避けたかった当のものに足を縛っていた。
+    // 3秒経ったらloadを待たずに読みに行く(どちらか早い方・二重には呼ばない)。
+    let fired = false;
+    const once = () => { if (fired) return; fired = true; start(); };
     const later = () => {
-      if (typeof requestIdleCallback === 'function') requestIdleCallback(start, { timeout: 2000 });
-      else setTimeout(start, 0);
+      if (typeof requestIdleCallback === 'function') requestIdleCallback(once, { timeout: 2000 });
+      else setTimeout(once, 0);
     };
     if (document.readyState === 'complete') later();
-    else window.addEventListener('load', later, { once: true });
+    else {
+      window.addEventListener('load', later, { once: true });
+      setTimeout(once, 3000);   // loadが来なくても必ず読む
+    }
   });
 
   // ダークモード初期適用
@@ -140,6 +158,37 @@ function _safeInit(label, fn, critical) {
   _safeInit('接続点スタイルボタン同期', () => { if (typeof syncJunctionStyleBtns === 'function') syncJunctionStyleBtns(); });
   // 端子番号の表示は自動保存から復元されるので、ボタンの点灯を実状態に合わせる
   _safeInit('端子番号ボタン同期', () => { if (typeof syncTermNoBtn === 'function') syncTermNoBtn(); });
+  // 【2026-09-21】JSが読み込めていないことを起動時に知らせる。
+  //
+  // _asMissingScripts() は2026-09-19から在るのに、**自動保存が走ったときしか
+  // 見ていなかった**。起動直後に何も編集しなければ誰も呼ばないので、
+  // JSが虫食いのまま黙って立ち上がる。盛田さんの「部品DBが0件・読み込み中の
+  // まま」「起動が不安定」は、これで気付けないまま作業に入っていた。
+  //
+  // server.py はシングルスレッド・HTTP/1.0・待ち行列5なので、起動時に
+  // <script>32本が押し寄せると溢れた接続が拒否される(ERR_CONNECTION_REFUSED)。
+  // どのファイルが落ちたかまで出す —— 原因の切り分けに要る。
+  //
+  // 【重要】判定は setTimeout で**この場から外して**行う。目印
+  // (window.__ecadLoaded)は各ファイルの**末尾**に置いてあり、boot.js の
+  // 目印が付くのはこの init() が終わったあと。ここで直に数えると
+  // boot.js 自身が毎回「欠けている」ことになり、正常な起動でも必ず
+  // バナーが出てしまう(実際にそうなっていたのを画面で見つけた)。
+  // boot.js は index.html の最後の <script> なので、この場を抜けた時点で
+  // 全ファイルの目印が出揃っている。
+  _safeInit('JS読み込み欠けの検出', () => {
+    setTimeout(() => {
+      try {
+        if (typeof _asMissingScripts !== 'function') return;
+        const missing = _asMissingScripts();
+        if (!missing.length) return;
+        _bootBanner(`⚠ JSが読み込めていません（${missing.join(' / ')}）。`
+          + 'この状態では正しく動きません。自動保存も止めてあります（保存済みデータは無傷です）。'
+          + 'Ctrl+Shift+R で読み込み直してください');
+      } catch (e) { console.error('[boot] JS読み込み欠けの検出でエラー:', e); }
+    }, 0);
+  });
+
   // 図面のバックアップ(ファイル)のタイマーを開始する。
   // ブラウザ内の「自動保存」とは別物で、start.bat が動いているときだけ効く。
   _safeInit('バックアップ開始', () => { if (typeof bkStart === 'function') bkStart(); });
