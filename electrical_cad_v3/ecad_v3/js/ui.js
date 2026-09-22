@@ -526,8 +526,8 @@ function symTermOffHtml(el) {
       +  `<label style="white-space:nowrap;font-size:10px">${p.i + 1} ${escH(symTermPosHint(p, pts))}</label>`
       +  `<span style="display:flex;gap:3px;align-items:center;font-size:10px;color:var(--fg3)">`
       +  `<input type="text" class="pp-tnum" data-ti="${p.i}" value="${escH(p.label || '')}" placeholder="番号" title="この端子に書く番号。空にすると何も出ません" oninput="previewTermNum()">`
-      +  `X<input type="number" class="pp-toff-x" data-ti="${p.i}" value="${escH(Number(o[0]) || 0)}" step="1" title="右へずらすと＋、左へずらすと－" oninput="previewTermNo()">`
-      +  `Y<input type="number" class="pp-toff-y" data-ti="${p.i}" value="${escH(Number(o[1]) || 0)}" step="1" title="下へずらすと＋、上へずらすと－" oninput="previewTermNo()">`
+      +  `X<input type="number" class="pp-toff-x" data-ti="${p.i}" value="${escH(Number(o[0]) || 0)}" step="5" title="右へずらすと＋、左へずらすと－" oninput="previewTermNo()">`
+      +  `Y<input type="number" class="pp-toff-y" data-ti="${p.i}" value="${escH(Number(o[1]) || 0)}" step="5" title="下へずらすと＋、上へずらすと－" oninput="previewTermNo()">`
       +  `</span></div>`;
   });
   h += `<div class="pp-row" style="gap:6px"><button onclick="resetTermNoOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button>`
