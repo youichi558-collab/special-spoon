@@ -789,6 +789,11 @@ function pickGroupByRole(groups, role) {
   return hit.length === 1 ? hit[0] : null;
 }
 
+// 定格電圧欄が「選択肢の羅列」ではなく型式で一意に決まる単一値である種別。
+// 例: FR-D720系は三相200V固定、FR-D740系は三相400V固定。
+// これらは選択の手間なしに定格電圧欄をそのまま仕様欄へ使ってよい(doPlacePart参照)。
+const DIRECT_VOLT_TYPES = ['inverter', 'servo', 'servo_motor'];
+
 // 実際に書き込む処理。
 //
 // 【2026-08-22修正】盛田さんの指摘: 既に書いた図面（仕様欄に手書きでデバイス名・注記等を
@@ -818,7 +823,10 @@ function doPlacePart(type, ref, terminals, groupName) {
       if ((el.label || '').trim()) {
         labelSkipped++;
       } else {
-        const lines = [el.partVolt || '', p.amp || '', p.contacts || '']
+        // インバータ・サーボは型式自体で電圧が決まる(例: FR-D720系は200V固定)ので、
+        // コイル電圧のような選択(el.partVolt)を経由せず、定格電圧欄をそのまま使う。
+        const voltLine = el.partVolt || (DIRECT_VOLT_TYPES.includes(p.type) ? (p.volt || '') : '');
+        const lines = [voltLine, p.amp || '', p.contacts || '']
           .map(x => String(x).trim())
           .filter(x => x && x !== '-');
         if (lines.length) { el.label = lines.join('\n'); labelFilled++; }
