@@ -126,15 +126,19 @@ body{font-family:'Segoe UI',sans-serif;font-size:12px;background:var(--bg);color
    見切れて読めなかった(盛田さん指摘)。font 11px・幅46pxにして数字が収まる幅を確保した。
    【2026-09-22修正】このとき「スピンボタンを消す」も一緒にやったが、盛田さん
    「そもそも消せという指示は出してない」の指摘で見直した。termOffは端子点からの
-   相対値(c2092fdで固定)なので実際の調整量は数単位〜数十単位どまりで、幅46pxのままでも
-   スピンボタンと共存して見切れないことをブラウザで確認できた(3桁の極端な値でのみ見切れる。
-   その範囲は現実的ではない)。他の位置補正欄(仕様・デバイス名・型式)にもスピンボタンは
-   出ているので、消したままにする理由がなかった。スピンボタンは復活させる。 */
+   相対値(c2092fdで固定)なので実際の調整量は数単位〜数十単位どまりで、他の位置補正欄
+   (仕様・デバイス名・型式)にもスピンボタンは出ているので、消したままにする理由が
+   なかった。スピンボタンは復活させた。
+   【重要】ここでLinux上のPlaywrightで「幅46px・右寄せのままでも見切れない」と
+   確認したが、実機(Windows)では見切れていた(盛田さん screenshot で指摘)。
+   スピンボタンの幅はOS・ブラウザで実際に差があるらしく、**開発環境での再現確認を
+   実機の確認の代わりにしない**こと(HANDOFF.mdの教訓と同じ)。text-align:leftに
+   直して解決した。 */
 /* .pp-row input[type=number] が (0,2,1) なので、クラスだけだと font-size/height が
    効かない。input を付けて (0,2,1) 以上にしてから上書きする。 */
 .pp-row input.pp-tnum{width:50px;flex:0 0 auto;}
 .pp-row input.pp-toff-x,.pp-row input.pp-toff-y{
-  width:46px;flex:0 0 auto;font-size:11px;height:24px;text-align:right;}
+  width:46px;flex:0 0 auto;font-size:11px;height:24px;text-align:left;}
 .pp-details{margin:0 10px 6px;border:1px solid var(--bd2);border-radius:4px;background:var(--bg2);}
 .pp-details .pp-row{padding:4px 10px;}
 .pp-details summary{padding:5px 10px;font-size:10px;color:var(--fg3);cursor:pointer;user-select:none;list-style:none;}
