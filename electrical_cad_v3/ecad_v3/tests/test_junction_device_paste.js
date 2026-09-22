@@ -76,10 +76,13 @@ console.log('【DEVICE_PROP_KEYSに端子専用の除外は無い(labelもpartRe
   ok(s.DEVICE_PROP_KEYS.includes('partModel'),'partModel(型式)が含まれる');
 }
 
-console.log('【DEVICE_PROP_KEYSの項目自体は変更していない(2026-08-03時点のまま)】');
+console.log('【DEVICE_PROP_KEYSの項目は指示された分だけ変える(無断で広げない)】');
 console.log('  ← 盛田さん「項目を変えろとは一言も言ってないぞ？」。統一の過程で');
 console.log('    panelZoneを一度足してしまったが、シンボル側の挙動まで意図せず');
 console.log('    変えてしまう誤りだったので撤回した。');
+console.log('  ← 2026-09-22、盛田さん「端子番号も含めていい」の指示でterminals/');
+console.log('    termOff/termFsを追加(同じ形のシンボルを何個も置くたびに端子ごとの');
+console.log('    番号・位置補正・文字サイズを打ち直す手間があったため)。');
 {
   const s = makeSandbox();
   ok(!s.DEVICE_PROP_KEYS.includes('panelZone'),
@@ -89,7 +92,8 @@ console.log('    変えてしまう誤りだったので撤回した。');
     'partRef','devHide','showDev','devFs','devColor','devOffX','devOffY',
     'partModel','partVolt','showModel','modelFs','modelColor','modelOffX','modelOffY',
     'textRot',
-  ], 'DEVICE_PROP_KEYSが2026-08-03時点と完全に同じ項目・同じ順序');
+    'terminals', 'termOff', 'termFs',
+  ], 'DEVICE_PROP_KEYSが指示された項目(2026-08-03時点+2026-09-22追加分)と一致');
 }
 
 console.log('【copyDeviceProps: 端子からもコピーできる(以前は明示的に弾いていた)】');
@@ -132,6 +136,32 @@ console.log('【貼り付け対象に端子が混ざっていても除外され�
 
   eq(junctionTarget.devFs, 20, '端子にも貼り付く(以前はここが除外されていた)');
   eq(symbolTarget.devFs, 20, 'シンボルにも貼り付く');
+}
+
+console.log('【copyDeviceProps/pasteDeviceProps: 端子番号・位置補正・文字サイズもコピーされる(2026-09-22追加)】');
+{
+  const s = makeSandbox();
+  s._rp._el = {
+    id: 'sym1', type: 'coil',
+    terminals: 'L1,L2,L3,T1,T2,T3', termOff: [[1,2],[0,0],[-1,3]], termFs: 8,
+  };
+  s.copyDeviceProps();
+  eq(s.deviceClipboard.terminals, 'L1,L2,L3,T1,T2,T3', '端子番号(terminals)がコピーされる');
+  eq(s.deviceClipboard.termFs, 8, '端子番号の文字サイズ(termFs)がコピーされる');
+  eq(s.deviceClipboard.termOff, [[1,2],[0,0],[-1,3]], '端子ごとの位置補正(termOff)がコピーされる');
+
+  const s2 = TERM({ id: 's2', type: 'coil' });
+  const s3 = TERM({ id: 's3', type: 'coil' });
+  s.state = { sel: { els: new Set(['s2','s3']) }, elements: [s2, s3] };
+  s.pasteDeviceProps();
+  eq(s2.termOff, [[1,2],[0,0],[-1,3]], 's2: termOffが貼り付く');
+  eq(s3.termOff, [[1,2],[0,0],[-1,3]], 's3: termOffが貼り付く');
+
+  s2.termOff[0][0] = 999; // s2側だけ動かす
+  ok(s3.termOff[0][0] !== 999,
+     's2のtermOffを動かしてもs3は影響を受けない(貼り付け先どうしで配列を共有していない)');
+  ok(s.deviceClipboard.termOff[0][0] !== 999,
+     's2のtermOffを動かしてもクリップボードは影響を受けない(参照を共有していない)');
 }
 
 console.log(ng ? `\n${ng}件失敗` : '\n全て成功');

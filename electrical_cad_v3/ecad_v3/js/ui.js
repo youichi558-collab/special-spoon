@@ -2938,6 +2938,10 @@ const DEVICE_PROP_KEYS = [
   'partRef','devHide','showDev','devFs','devColor','devOffX','devOffY',
   'partModel','partVolt','showModel','modelFs','modelColor','modelOffX','modelOffY',
   'textRot',
+  // 【2026-09-22】盛田さん「端子番号も含めていい」の指示で追加。同じ形のシンボル
+  // (リレー主接点3個並び等)を図面に何個も置くたびに、端子ごとの番号・位置補正・
+  // 文字サイズをゼロから打ち直す/ずらす手間があったため。
+  'terminals', 'termOff', 'termFs',
 ];
 
 function copyDeviceProps() {
@@ -2949,7 +2953,12 @@ function copyDeviceProps() {
   if (!el) { alert('コピー元の要素を1つ選択してください'); return; }
   applyRightPanel(); // パネルの未確定編集を先に反映してからコピーする
   deviceClipboard = {};
-  DEVICE_PROP_KEYS.forEach(k => { if (el[k] !== undefined) deviceClipboard[k] = el[k]; });
+  DEVICE_PROP_KEYS.forEach(k => {
+    if (el[k] === undefined) return;
+    // termOffは[x,y]の配列。参照をそのまま持たせると、貼り付け先どうしが
+    // 同じ配列を共有してしまい、片方をいじると全部動く事故になる。複製する。
+    deviceClipboard[k] = (k === 'termOff') ? el[k].map(o => [...o]) : el[k];
+  });
   updateRightPanel();
 }
 function pasteDeviceProps() {
@@ -2965,7 +2974,9 @@ function pasteDeviceProps() {
   pushH();
   targets.forEach(el => {
     DEVICE_PROP_KEYS.forEach(k => {
-      if (deviceClipboard[k] === undefined) delete el[k]; else el[k] = deviceClipboard[k];
+      if (deviceClipboard[k] === undefined) { delete el[k]; return; }
+      // 複数の貼り付け先が同じtermOff配列を共有しないよう、ここでも複製する。
+      el[k] = (k === 'termOff') ? deviceClipboard[k].map(o => [...o]) : deviceClipboard[k];
     });
   });
   draw();
