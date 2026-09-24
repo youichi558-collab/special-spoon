@@ -368,7 +368,9 @@ function _exportPDFPages(indices, filename) {
           }  // end for loop
 
     if (pdf) {
-      pdf.save(filename);
+      // 【2026-09-24】保存先フォルダ(settings.js)に対応。使えなければ従来の pdf.save。
+      if (typeof stWriteOut === 'function') stWriteOut(filename, pdf.output('blob'), () => pdf.save(filename));
+      else pdf.save(filename);
     } else {
       alert('出力できるページがありませんでした。');
     }

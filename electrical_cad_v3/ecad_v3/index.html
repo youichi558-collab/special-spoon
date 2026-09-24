@@ -253,6 +253,13 @@
         </div>
         <div class="rg-label">控え</div>
       </div>
+      <!-- 【2026-09-24】CAD全体の設定。最初の項目は保存先(js/settings.js) -->
+      <div class="rg">
+        <div class="rg-btns">
+          <div class="rb rb-sm" onclick="openSettingsPanel()" title="CAD全体の設定です。保存先フォルダをここで選びます（選んだフォルダは次回も覚えています）"><svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="2" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M7 1.5v2M7 10.5v2M1.5 7h2M10.5 7h2M3.1 3.1l1.4 1.4M9.5 9.5l1.4 1.4M3.1 10.9l1.4-1.4M9.5 4.5l1.4-1.4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>設定</div>
+        </div>
+        <div class="rg-label">設定</div>
+      </div>
     </div>
     <div id="rp-report" class="rg-wrap" style="display:none;gap:0">
       <div class="rg">
@@ -707,6 +714,15 @@
       </div>
     </div>
 
+    <!-- CAD全体の設定(2026-09-24)。最初の項目は保存先。js/settings.js 参照 -->
+    <div class="fp" id="settings-p" style="width:480px;max-width:95vw">
+      <h3>設定</h3>
+      <div id="st-body"></div>
+      <div style="display:flex;gap:6px;margin-top:12px">
+        <button class="fp-btn" onclick="closeFP('settings-p')">閉じる</button>
+      </div>
+    </div>
+
     <!-- 端子番号グループの選択パネル(2026-08-22)
          1つの型式が複数のシンボルに分かれる部品を割り当てるとき、
          シンボルの端子点数から自動判定できなかった場合に出す。 -->
@@ -828,6 +844,7 @@
 <script src="js/parts_db.js"></script>
 <script src="js/part_options.js"></script>
 <script src="js/backup.js"></script>
+<script src="js/settings.js"></script>
 <script src="js/autosave.js"></script>
 <script src="js/boot.js"></script>
 <!-- フローティングシンボルパネル -->

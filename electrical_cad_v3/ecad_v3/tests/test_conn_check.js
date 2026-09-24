@@ -39,6 +39,9 @@ const sandbox = {
 };
 vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync(__dirname + '/../js/report.js', 'utf8'), sandbox);
+// CSVのファイル名は js/edit.js の _csvName(図面名_用途.csv) をそのまま使う
+{ const e = fs.readFileSync(__dirname + '/../js/edit.js', 'utf8'); const s = e.indexOf('function _csvName(');
+  vm.runInContext(e.slice(s, e.indexOf('\n}', s) + 2), sandbox); }
 vm.runInContext(fs.readFileSync(__dirname + '/../js/conn_table.js', 'utf8'), sandbox);
 
 // 2ページぶん。端子は端子台(junction)とカスタムシンボルの両方を用意する。
@@ -126,7 +129,7 @@ eq(eval_('_connSortMode'), 'wire', '不正な値は線番順にフォールバ�
 // ------------------------------------------------------------------
 console.log('【CSV出力: 状態列がある / カンマがクォートされる】');
 domEls['report-csv-btn'].onclick();
-ok(lastCsv && lastCsv.name === 'connection_check.csv', 'ファイル名が connection_check.csv');
+ok(lastCsv && lastCsv.name === '図面_接続チェック.csv', 'ファイル名が 図面名_接続チェック.csv(図面名未設定なら「図面」)');
 ok(lastCsv.content.split('\n')[0].includes('状態'), 'ヘッダーに状態列がある');
 ok(lastCsv.content.includes('端子未特定'), '本文に状態が出力される');
 ok(lastCsv.content.split('\n')[1].startsWith('"'), '各値がクォートされている（生カンマ対策）');

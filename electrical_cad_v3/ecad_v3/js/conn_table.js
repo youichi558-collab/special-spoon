@@ -224,7 +224,7 @@ function exportConnCSV() {
     csvRows.push([r.wireNo || '', r.page, f.name, f.term, t.name, t.term,
                   _connRowIssue(r), r.layer].map(esc).join(','));
   });
-  dl(csvRows.join('\n'), 'connection_check.csv', 'text/csv');
+  dl(csvRows.join('\n'), _csvName('接続チェック'), 'text/csv');
 }
 
 // ----------------------------------------------------------------
@@ -459,7 +459,7 @@ function exportTBCSV() {
     seen[r.tbRef] = (seen[r.tbRef] || 0) + 1;
     csv.push([r.tbRef, seen[r.tbRef], r.termNo, r.tbModel, r.loc, r.conns.join('/')].map(esc).join(','));
   });
-  dl(csv.join('\n'), 'terminal_block_table.csv', 'text/csv');
+  dl(csv.join('\n'), _csvName('端子台表'), 'text/csv');
 }
 
 // ================================================================

@@ -398,7 +398,7 @@ function exportWireCSV(){
       rows.push(`${w.wireNo||''},${pname},${Math.round(p0.x)},${Math.round(p0.y)},${Math.round(p1.x)},${Math.round(p1.y)},${w.layer||''}`);
     });
   });
-  dl(rows.join('\n'), 'wire_numbers.csv', 'text/csv');
+  dl(rows.join('\n'), _csvName('配線番号'), 'text/csv');
 }
 // デバイス名の表記ゆれを吸収するための正規化。
 // 集計のキーにのみ使い、画面表示には元の表記を使う。
@@ -729,7 +729,7 @@ function exportBOMCSV(){
       ...rows.map(r=>[r.noRef?'未設定':r.refs.join('/'),r.pname||'',r.label,r.maker||'',
                       r.volt||'',r.zone==='外'?'対象外':'',
                       r.count,r.parts,r.pnote||'',r.warn||''].map(q).join(','))
-     ].join('\n'),'bom.csv','text/csv');
+     ].join('\n'),_csvName('部品表'),'text/csv');
 }
 // 要素の役割を判定する。
 // シンボル登録/端子編集で指定した role を使う。
@@ -905,7 +905,7 @@ function exportRefCSV(devs){
       lines.push([name,coilLoc,refRoleLabel(c.role),c.loc].map(esc).join(','));
     });
   });
-  dl(lines.join('\n'),'cross_reference.csv','text/csv');
+  dl(lines.join('\n'),_csvName('相互参照'),'text/csv');
 }
 // 端子台の端子を集める共通ヘルパー。「端子台表」(showTBTable)から使う。
 //

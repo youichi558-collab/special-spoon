@@ -188,6 +188,14 @@ function dedupeIds(pages) {
   return fixed;
 }
 
+// CSVのファイル名は「図面名_用途.csv」(2026-09-24、盛田さん「図面名+用途で出ないと
+// 判らん」)。以前は wire_numbers.csv 等の固定名で、保存先フォルダに直接書くと
+// 別の図面のCSVを上書きしてしまうため。
+function _csvName(purpose) {
+  const base = (state.saveFileName || '図面').replace(/[\\/:*?"<>|]/g, '_');
+  return `${base}_${purpose}.csv`;
+}
+
 function _pageFileName(pg, idx) {
   const base = (state.saveFileName || '図面').replace(/[\\/:*?"<>|]/g, '_');
   const name = (pg.name || ('Sheet'+(idx+1))).replace(/[\\/:*?"<>|]/g, '_');
@@ -323,11 +331,20 @@ function loadProject(input) {
 }
 
 function dl(text, fname, mime) {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([text], { type: mime }));
-  a.download = fname;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  const blob = new Blob([text], { type: mime });
+  const download = () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fname;
+    a.click();
+    // 保存先フォルダ経由(非同期)から落ちてきたときは、すぐ解放するとファイル名が
+    // 失われて「download」になることがあった(Chromiumで確認)。少し待って解放する。
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+  // 【2026-09-24】設定画面で保存先フォルダを選んでいればそこへ直接書く(settings.js)。
+  // 未設定・許可切れ・書けないときは今までどおりダウンロード。
+  if (typeof stWriteOut === 'function') stWriteOut(fname, blob, download);
+  else download();
 }
 
 // ----------------------------------------------------------------
