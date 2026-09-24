@@ -93,7 +93,8 @@ console.log('    番号・位置補正・文字サイズを打ち直す手間が
     'partModel','partVolt','showModel','modelFs','modelColor','modelOffX','modelOffY',
     'textRot',
     'terminals', 'termOff', 'termFs',
-  ], 'DEVICE_PROP_KEYSが指示された項目(2026-08-03時点+2026-09-22追加分)と一致');
+    'specHide',
+  ], 'DEVICE_PROP_KEYSが指示された項目(2026-08-03時点+2026-09-22/09-24追加分)と一致');
 }
 
 console.log('【copyDeviceProps: 端子からもコピーできる(以前は明示的に弾いていた)】');

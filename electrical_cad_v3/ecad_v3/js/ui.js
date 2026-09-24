@@ -2166,6 +2166,13 @@ function updateRightPanel() {
     const gy = minY===Infinity ? 0 : Math.round(minY*100)/100;
     const gw = maxX===Infinity ? 0 : Math.round((maxX-minX)*100)/100;
     const gh = maxY===Infinity ? 0 : Math.round((maxY-minY)*100)/100;
+    // 【2026-09-24】複数選択パネルでも _el/_wire を空にする(下の単一選択側と同じ対策)。
+    // 以前はここで空にしておらず、直前に1つだけ選んでいた要素(=多くはコピー元)を
+    // 指したまま残っていた。貼り付けボタンで画面を作り直すと focusout が発火して
+    // applyRightPanel() が走り、この画面に無い欄を空として読んでコピー元の
+    // デバイス名・仕様を消し、表示チェックもOFFにしていた(盛田さん「貼り付けた後に
+    // 別の数値が上書きされる」)。複数選択パネルの操作は rp._el を使わない。
+    rp._el = null; rp._wire = null;
     const isGrouped = selGroups.length > 0;
     const label = isGrouped ? `グループ選択 (${selGroups.length}個)` : `複数選択 (${totalSel}個)`;
     const groupBtn = isGrouped
@@ -2942,6 +2949,10 @@ const DEVICE_PROP_KEYS = [
   // (リレー主接点3個並び等)を図面に何個も置くたびに、端子ごとの番号・位置補正・
   // 文字サイズをゼロから打ち直す/ずらす手間があったため。
   'terminals', 'termOff', 'termFs',
+  // 【2026-09-24】「仕様を図面に表示」チェック。デバイス(devHide)・型式(showModel)の
+  // 表示チェックは元から対象だったが、仕様だけ漏れていて、貼り付けのたびに
+  // チェックを外し直す手間になっていた(盛田さん指摘)。
+  'specHide',
 ];
 
 function copyDeviceProps() {

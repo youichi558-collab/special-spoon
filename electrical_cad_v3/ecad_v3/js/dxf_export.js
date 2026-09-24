@@ -714,7 +714,9 @@ function exportDXF(){
       // 文字の向きはel.textRot(デバイス/型式/仕様で共通、シンボル回転とは独立)で指定する。
       // DXFはy軸を反転して出力する(fy=-y)ため、その座標系では回転の向きも反転する
       // (INSERT回転の修正 d57c3c0 と同じ理由)。TEXT側でも同じ符号補正(360-角度)をかける。
-      if(el.label){
+      // 【2026-09-24】「仕様を図面に表示」OFF(specHide)は画面(draw.js)では隠していたが、
+      // DXFでは判定が無く出力されていた(盛田さん指摘)。draw.jsと同じ条件にする。
+      if(el.label && !el.specHide){
         const lox=el.labelOffX||0, loy=el.labelOffY||(d.h*sc/2+15*sc);
         const fs = el.labelFs||11;
         const lh = Math.round(fs*1.25);
