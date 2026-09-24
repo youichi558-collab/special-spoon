@@ -186,6 +186,12 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--acc);}
 .fp-btn:hover{background:var(--bg3);}
 .fp-btn.primary{background:var(--acc);color:#fff;border-color:var(--acc);}
 .fp-btn.primary:hover{opacity:.9;}
+/* 【2026-09-24】押した瞬間の反応。盛田さん「csv出力ボタンがおかしいぞ押されてる動きがない」
+   「ボタン本体の色替えとか、動きの話だ」。保存先フォルダへ直接書くようになり
+   ブラウザのダウンロード表示が出なくなったため、押した手応えが無かった。
+   プロパティ欄のボタン(.pp-apply)と同じ沈み方にそろえる。 */
+.fp-btn:active{opacity:.7;transform:scale(0.97);}
+.fp-btn.primary:active{filter:brightness(.8);}
 .fp-btn.danger{color:var(--red);border-color:var(--red);}
 .fp-btn.danger:hover{background:var(--rbg);}
 .sr-tool.active{background:var(--acc);color:#fff;border-color:var(--acc);}
