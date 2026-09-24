@@ -19,6 +19,13 @@
 // ブラウザを再起動すると書き込み許可が外れることがある(ブラウザの仕様)。
 // 外れていたら設定画面に赤字で出し、「許可し直す」で戻せるようにした。
 //
+// 【2026-09-24・実機確認後の修正】盛田さん「保存関係はできてる」「上書きは今はng、
+// 理由は無言で上書きになってる」「csvは出力ボタンの問題か出力がされてるのかが
+// 分からなくなる」「設定ボタンの位置がng、リボンに大項目で入れること」。
+//   - 同じ名前のファイルがあれば確認してから上書き(キャンセルなら保存しない)
+//   - フォルダに書いたら画面に通知を数秒出す(ダウンロードのバーが出ないため)
+//   - 設定はリボンの「設定」タブ。設定画面(ポップアップ)は廃止し、タブの中に直接置く
+//
 // 【失敗したら今までどおりダウンロード】未設定・許可が外れた・書けなかった
 // (ExcelでCSVを開いたまま等)ときは、従来のダウンロードに落とす。
 // 保存そのものが失われないことを最優先にする。
@@ -64,10 +71,33 @@ async function stOutDirStatus() {
   return { handle: h, state: st };
 }
 
+// 画面の通知。フォルダへ直接書くとブラウザのダウンロード表示が出ないため、
+// 「本当に出力されたのか」が分からなくなる(盛田さん指摘)。数秒だけ目立つ位置に出す。
+function stToast(msg, kind) {
+  const h = document.getElementById('s-hint'); if (h) h.textContent = msg;
+  if (!document.body || !document.createElement) return;
+  let t = document.getElementById('st-toast');
+  if (!t) {
+    t = document.createElement('div'); t.id = 'st-toast';
+    t.style.cssText = 'position:fixed;left:50%;bottom:48px;transform:translateX(-50%);z-index:9999;'
+      + 'padding:8px 16px;border-radius:4px;font-size:13px;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.4);'
+      + 'max-width:80vw;pointer-events:none;white-space:pre-line';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.background = kind === 'ng' ? '#c0392b' : kind === 'warn' ? '#b9770e' : '#1e7d3a';
+  t.style.display = 'block';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.display = 'none'; }, kind === 'ok' ? 3000 : 6000);
+}
+
+async function _stExists(dir, fname) {
+  try { await dir.getFileHandle(fname); return true; } catch (e) { return false; }
+}
+
 // ファイルを書き出す。保存先フォルダに書ければそこへ、だめならダウンロード。
 // dl()(edit.js)とPDF出力から呼ぶ。
 async function stWriteOut(fname, blob, fallback) {
-  const hint = msg => { const h = document.getElementById('s-hint'); if (h) h.textContent = msg; };
   const { handle, state } = await stOutDirStatus();
   if (!handle) { fallback(); return; }                     // 未設定 → 今までどおり
   let st = state;
@@ -77,7 +107,13 @@ async function stWriteOut(fname, blob, fallback) {
   }
   if (st !== 'granted') {
     fallback();
-    hint(`保存先フォルダ「${handle.name}」への許可が外れています。今回はダウンロードフォルダに保存しました（設定から許可し直せます）`);
+    stToast(`保存先フォルダ「${handle.name}」への許可が外れています。\n今回はダウンロードフォルダに保存しました（設定タブで許可し直せます）`, 'warn');
+    return;
+  }
+  // 無言で上書きしない(盛田さん「上書きは今はng、理由は無言で上書きになってる」)
+  if (await _stExists(handle, fname)
+      && !confirm(`「${fname}」は保存先「${handle.name}」に既にあります。\n上書きしますか？`)) {
+    stToast(`保存を取りやめました: ${fname}`, 'warn');
     return;
   }
   try {
@@ -85,49 +121,39 @@ async function stWriteOut(fname, blob, fallback) {
     const w  = await fh.createWritable();
     await w.write(blob);
     await w.close();
-    hint(`保存しました: ${handle.name}\\${fname}`);
+    stToast(`保存しました: ${handle.name}\\${fname}`, 'ok');
   } catch (e) {
     fallback();
-    hint(`「${handle.name}」に書けませんでした（${e.message}）。今回はダウンロードフォルダに保存しました`);
+    stToast(`「${handle.name}」に書けませんでした（${e.message}）。\n今回はダウンロードフォルダに保存しました`, 'ng');
   }
 }
 
-// ---- 設定画面 ----------------------------------------------------
-async function openSettingsPanel() {
-  await stRenderPanel();
-  openFP('settings-p');
-}
-
-async function stRenderPanel() {
-  const box = document.getElementById('st-body');
+// ---- 設定タブ(リボン) ------------------------------------------------
+// タブを開くたびに状態を描き直す(許可が外れたかどうかは開くまで分からないため)。
+async function stRenderRibbon() {
+  const box = document.getElementById('st-outdir');
   if (!box) return;
   const { handle, state } = await stOutDirStatus();
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
   let status;
   if (!handle) {
-    status = `<span style="color:var(--fg3)">未設定（ブラウザのダウンロードフォルダに保存されます）</span>`;
+    status = `<span style="color:var(--fg3)">未設定（ダウンロードフォルダに保存）</span>`;
   } else if (state === 'granted') {
-    status = `<span style="font-family:monospace">${esc(handle.name)}</span>`;
+    status = `<span style="font-family:monospace;font-weight:600">${esc(handle.name)}</span>`;
   } else {
-    status = `<span style="font-family:monospace">${esc(handle.name)}</span>`
-           + `<br><span style="color:var(--red)">書き込みの許可が外れています。「許可し直す」を押してください。`
-           + `外れている間はダウンロードフォルダに保存されます</span>`;
+    status = `<span style="font-family:monospace;font-weight:600">${esc(handle.name)}</span>`
+           + ` <span style="color:var(--red)">許可が外れています（今はダウンロードフォルダに保存）</span>`;
   }
   const supported = !!window.showDirectoryPicker;
-  box.innerHTML = `
-    <div style="font-size:12px;font-weight:600;margin-bottom:4px">保存先</div>
-    <div style="font-size:11px;color:var(--fg3);margin-bottom:6px">
-      図面（保存・全頁保存）と出力（DXF・PDF・SVG・CSV）をすべてこのフォルダに保存します。
-      同じ名前のファイルがあれば上書きします。
-    </div>
-    <div style="font-size:11px;margin-bottom:8px">今の保存先: ${status}</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="fp-btn primary" onclick="stPickOutDir()"${supported ? '' : ' disabled'}>フォルダを選ぶ</button>
-      ${handle && state !== 'granted' ? `<button class="fp-btn" onclick="stRegrant()">許可し直す</button>` : ''}
-      ${handle ? `<button class="fp-btn" onclick="stClearOutDir()">解除（ダウンロードフォルダに戻す）</button>` : ''}
-    </div>
-    ${supported ? '' : `<div style="font-size:11px;color:var(--red);margin-top:6px">このブラウザはフォルダの選択に対応していません（Chrome か Edge で開いてください）</div>`}
-  `;
+  const btn = (fn, label, title) => `<div class="rb rb-sm" onclick="${fn}" title="${title}">${label}</div>`;
+  box.innerHTML =
+      `<div style="font-size:11px;padding:0 6px;white-space:nowrap"><span style="color:var(--fg3)">今の保存先:</span> ${status}</div>`
+    + (supported
+        ? btn('stPickOutDir()', 'フォルダを選ぶ', '図面の保存と出力(DXF・PDF・SVG・CSV)をすべてこのフォルダへ書きます。選んだフォルダは次回も覚えています')
+        : `<span style="font-size:11px;color:var(--red)">このブラウザはフォルダの選択に対応していません（Chrome か Edge で開いてください）</span>`)
+    + (handle && state !== 'granted' ? btn('stRegrant()', '許可し直す', 'ブラウザを再起動すると書き込みの許可が外れることがあります') : '')
+    + (handle ? btn('stClearOutDir()', '解除', '保存先を解除し、ダウンロードフォルダへ戻します') : '');
+  if (typeof syncRibbonHeight === 'function') syncRibbonHeight();
 }
 
 async function stPickOutDir() {
@@ -138,16 +164,16 @@ async function stPickOutDir() {
     if (e && e.name === 'AbortError') return;             // キャンセル
     alert('フォルダを選べませんでした: ' + e.message);
   }
-  stRenderPanel();
+  stRenderRibbon();
 }
 async function stRegrant() {
   const h = await _stGet(ST_OUT_KEY);
   if (h) { try { await h.requestPermission({ mode: 'readwrite' }); } catch (e) {} }
-  stRenderPanel();
+  stRenderRibbon();
 }
 async function stClearOutDir() {
   await _stPut(ST_OUT_KEY, null);
-  stRenderPanel();
+  stRenderRibbon();
 }
 
 if (typeof window !== 'undefined') (window.__ecadLoaded = window.__ecadLoaded || {})['settings.js'] = 1;
