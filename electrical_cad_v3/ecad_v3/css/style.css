@@ -192,6 +192,18 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--acc);}
    プロパティ欄のボタン(.pp-apply)と同じ沈み方にそろえる。 */
 .fp-btn:active{opacity:.7;transform:scale(0.97);}
 .fp-btn.primary:active{filter:brightness(.8);}
+/* 【2026-09-24】全ボタンに押した瞬間の反応を付ける。盛田さん「ボタン系は結構そういうのあった
+   と思う、全ボタンチェックだな」。ブラウザで全クリック要素の「押している間」の見た目を
+   調べ、変化が無かったものをここでまとめて足した(タブ・右クリックメニュー・表の行は別途確認中)。 */
+.rb:active{background:var(--abg);border-color:var(--acc);transform:scale(0.95);}      /* リボンのボタン */
+.rb.on:active{filter:brightness(.8);}               /* ON中(中点Snap等)は背景が既に同系色なので暗くして区別 */
+#quickbar > [onclick]:active{filter:brightness(.8);transform:scale(0.95);}          /* 選択/配線/№採番 等 */
+button:not(.rep-tab):active{filter:brightness(.85);transform:scale(0.96);}          /* 素のボタン全般(PDFプレビュー・レイヤー窓 等) */
+#rp-expand-btn:active{opacity:.6;}                  /* transform は位置決めに使っているので触らない */
+[id$="-float-title"] span[onclick]:active,
+#report-p span[onclick]:active{opacity:.4;transform:scale(0.85);}   /* 窓の × (色はインライン指定があるので不透明度で) */
+#prt-float a[onclick]:active{opacity:.6;}           /* 部品DB「読み直す」 */
+.page-tab-add:active{filter:brightness(.8);transform:scale(0.95);}                  /* シート追加 ＋ */
 .fp-btn.danger{color:var(--red);border-color:var(--red);}
 .fp-btn.danger:hover{background:var(--rbg);}
 .sr-tool.active{background:var(--acc);color:#fff;border-color:var(--acc);}
