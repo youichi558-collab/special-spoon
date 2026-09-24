@@ -520,14 +520,16 @@ function symTermOffHtml(el) {
       +  `下の欄を編集すると余りは消えます。</p>`;
   }
   h += `<div class="pp-row"><label>文字サイズ</label><input type="number" id="pp-tfs" value="${escH(el.termFs || 9)}" step="1" min="5" max="24" oninput="previewTermNo()"></div>`;
+  // X,Yの刻み幅は1(2026-09-24、盛田さん「端子だけ1」)。仕様・デバイス・型式の
+  // 位置補正は5のまま。9-22に5へ揃えたが、端子番号の微調整には粗すぎた。
   pts.forEach(p => {
     const o = (el.termOff || [])[p.i] || [0, 0];
     h += `<div class="pp-row" style="align-items:center">`
       +  `<label style="white-space:nowrap;font-size:10px">${p.i + 1} ${escH(symTermPosHint(p, pts))}</label>`
       +  `<span style="display:flex;gap:3px;align-items:center;font-size:10px;color:var(--fg3)">`
       +  `<input type="text" class="pp-tnum" data-ti="${p.i}" value="${escH(p.label || '')}" placeholder="番号" title="この端子に書く番号。空にすると何も出ません" oninput="previewTermNum()">`
-      +  `X<input type="number" class="pp-toff-x" data-ti="${p.i}" value="${escH(Number(o[0]) || 0)}" step="5" title="右へずらすと＋、左へずらすと－" oninput="previewTermNo()">`
-      +  `Y<input type="number" class="pp-toff-y" data-ti="${p.i}" value="${escH(Number(o[1]) || 0)}" step="5" title="下へずらすと＋、上へずらすと－" oninput="previewTermNo()">`
+      +  `X<input type="number" class="pp-toff-x" data-ti="${p.i}" value="${escH(Number(o[0]) || 0)}" step="1" title="右へずらすと＋、左へずらすと－" oninput="previewTermNo()">`
+      +  `Y<input type="number" class="pp-toff-y" data-ti="${p.i}" value="${escH(Number(o[1]) || 0)}" step="1" title="下へずらすと＋、上へずらすと－" oninput="previewTermNo()">`
       +  `</span></div>`;
   });
   h += `<div class="pp-row" style="gap:6px"><button onclick="resetTermNoOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button>`
@@ -966,7 +968,7 @@ function onPartModelChanged() {
 //
 // MC1のようなデバイスは主接点・コイル・補助接点と図面上の複数箇所に置かれる。
 // 2つ目以降で型番・仕様を打ち直すのは手間なので、既にあるデバイスを候補から
-// 選ぶだけで型番・仕様・端子番号が引き継がれるようにする。
+// 選ぶだけで型番・仕様が引き継がれるようにする(端子番号は2026-09-24から引き継がない)。
 // 候補は「図面上で実際に使われているデバイス記号」だけ（別途の登録画面は持たない）。
 // ----------------------------------------------------------------
 
@@ -1092,7 +1094,7 @@ function junctionTermOptionsHtml(el) {
   return out.join('');
 }
 
-// デバイスを選び直したら、そのデバイスの型番・仕様・端子番号を引き継ぐ。
+// デバイスを選び直したら、そのデバイスの型番・仕様を引き継ぐ(端子番号は引き継がない、下記)。
 // 【重要】型式の表示ON/OFF(showModel)は引き継がない。MC1は図面上に複数あるが
 // 型番を出すのは代表の1つだけなので、引き継ぐと全部に型番が出てしまう。
 function onPartRefChanged() {
@@ -1114,7 +1116,10 @@ function onPartRefChanged() {
   };
   if (info.model)     { el.partModel = info.model;     setVal('pp-partmodel', info.model); }
   if (info.spec)      { el.label     = info.spec;      setVal('pp-label',     info.spec); }
-  if (info.terminals) { el.terminals = info.terminals; setVal('pp-term',      info.terminals); }
+  // 【2026-09-24】端子番号は引き継がない(盛田さん「同じデバイスでも端子番号は違う」)。
+  // コイル(A1,A2)と接点(13,14)のように、同じデバイスでもシンボルごとに番号が違う。
+  // 引き継ぐと、貼り付けた番号や打った番号が別シンボルの番号で上書きされていた。
+  // 端子台側(onJunctionRefChanged)も端子番号は引き継がない作りで、これで揃う。
   if (info.volt)      { el.partVolt  = info.volt; }
   if (info.zone)      { el.panelZone = info.zone;
                         const _z = document.getElementById('pp-zone');

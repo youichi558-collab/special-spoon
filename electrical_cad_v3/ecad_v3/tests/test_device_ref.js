@@ -47,7 +47,6 @@ const el={partRef:'',partModel:'',label:'',terminals:'',showModel:false};
 const info=map.get('MC1');
 if(info.model)el.partModel=info.model;
 if(info.spec)el.label=info.spec;
-if(info.terminals)el.terminals=info.terminals;
 el.partRef='MC1';
 eq(el.partModel,'MSO-T12','型番が入る');
 eq(el.label,'AC100V','仕様が入る');
