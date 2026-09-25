@@ -470,6 +470,9 @@ function collectBOMRows(){
   state.pages.forEach(pg=>{
     (pg.elements||[]).forEach(el=>{
       if(skip.includes(el.type))return;
+      // 【2026-09-25】配線の分岐点(●)は部品ではない(盛田さん)。以前は「デバイス未設定」に
+      // junction ○台 として載っていた。style未設定も●扱い(draw.js と同じ)。端子台の○/◎は残す。
+      if(el.type==='junction'&&(el.style||'dot')==='dot')return;
       const raw=(el.partRef||'').trim();
       const key=normalizeRef(raw);
       if(key){
@@ -525,9 +528,16 @@ function collectBOMRows(){
     });
   });
 
-  // 型番(無ければ種別)ごとにデバイスを束ねて台数を出す
+  // 【2026-09-25】**1デバイス=1行。型式でまとめない。**
+  // 以前は型番＋コイル電圧＋対象外が同じデバイスを1行に束ね(「CR1, CR1A, CR3, CR2A」
+  // MY4N 4台)、メーカー・名称・備考・電圧をその行の全デバイスへまとめて書き戻していた。
+  // 盛田さん「型式で折りたたむのはNG、間違ってたらどう修正するのか？」——1台だけ
+  // 違う値を入れたくても直せない。2026-09-21の「畳まない」もこの意味だった
+  // (HANDOFFには機器名の略記(NFB2,3)の話としてしか残っていなかった)。
+  // 並びはデバイス名の自然順(CR2 < CR10)。
   const byModel={};
-  Object.values(devices).forEach(dv=>{
+  Object.keys(devices).sort((a,b)=>a.localeCompare(b,'ja',{numeric:true})).forEach(devKey=>{
+    const dv=devices[devKey];
     // 表示名は最も多く使われている表記を採用する
     const spells=[...dv.spellings.entries()].sort((a,b)=>b[1]-a[1]);
     const ref=spells[0][0];
@@ -560,8 +570,7 @@ function collectBOMRows(){
     const pnote=notes[0]||'';
     const zones=[...dv.zones];
     const zone=zones[0]||'';
-    // 型番が同じでもコイル電圧・手配区分が違えば別部品なので行を分ける
-    const k=(model||`(型番未設定)|${primary}`)+'\u0000'+volt+'\u0000'+zone;
+    const k=devKey;   // 1デバイス=1行(上のコメント参照)
     if(!byModel[k])byModel[k]={type:primary,model,volt,maker,pname,pnote,zone,label:model||'(型番未設定)',
                                refs:[],els:[],count:0,parts:0,noRef:false,warn:''};
     const row=byModel[k];
@@ -652,7 +661,7 @@ function showBOM(){
     +(hidden?`<span style="font-size:11px;color:var(--red)">（${hidden}台を非表示中・CSVにも出ません）</span>`:'')
     +`</p>`;
   // 部品表でもコイル電圧を変えられるようにする(プロパティとどちらでも変更できる)。
-  // 変更するとその行に属する要素すべてに反映され、型番＋電圧で行がまとめ直される。
+  // 変更するとその行(=そのデバイス)の要素すべてに反映される。
   window._bomRows = rows;
   const voltCell = (r, i) => {
     if (r.noRef || !r.model) return '<td style="color:var(--fg3)">-</td>';
@@ -734,7 +743,7 @@ function setBOMVolt(idx, volt){
   (r.els||[]).forEach(el=>{ el.partVolt=volt||undefined; });
   if(typeof draw==='function')draw();
   if(typeof updateRightPanel==='function')updateRightPanel();
-  showBOM();   // 型番＋電圧でまとめ直す
+  showBOM();
 }
 // 部品表のセルからメーカーを変更する。その行の全要素に書き戻して表を作り直す。
 // setBOMVolt と同じ作法(pushH で取り消せるようにし、プロパティ欄も追随させる)。

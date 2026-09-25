@@ -64,24 +64,22 @@ sandbox.state = {
 sandbox.state.elements = sandbox.state.pages[0].elements;
 
 // ------------------------------------------------------------------
-console.log('【collectBOMRows: 手配区分ごとに行が分かれる】');
+console.log('【collectBOMRows: 1デバイス=1行(2026-09-25 型式でまとめない)】');
 const rows = sandbox.collectBOMRows();
+// 【2026-09-25】以前は型番+電圧+zoneが同じデバイスを1行に束ねていた(MC1/MC2で1行・2台)。
+// 盛田さん「型式で折りたたむのはNG、間違ってたらどう修正するのか？」で1デバイス=1行に。
 const s_t10Rows = rows.filter(r => r.model === 'S-T10');
-eq(s_t10Rows.length, 1, '盤内のMC1/MC2は同じ行にまとまる(zone未設定=盤内で一致)');
-eq(s_t10Rows[0].count, 2, 'その行の台数は2');
-eq(s_t10Rows[0].zone, '', '盤内の行はzoneが空文字');
+eq(s_t10Rows.map(r => r.refs.join()), ['MC1', 'MC2'], '同じ型番でもMC1とMC2は別の行');
+eq(s_t10Rows.map(r => r.count), [1, 1], '各行の台数は1');
+eq(s_t10Rows[0].zone, '', '通常の行はzoneが空文字');
 
 const hw1bRows = rows.filter(r => r.model === 'HW1B-M1P10B');
-// PB1(盤外のみ)とPB2(盤外要素+盤内要素が混在)は、どちらも代表zoneが'外'に
-// なる(Setは追加順を保持し、PB2は外→空の順で追加されるため代表は'外')。
-// そのため型番+zoneのキーが一致し同じ行にまとまる。これはコイル電圧の
-// 食い違いと同じ既存の挙動(代表値でキー化し、食い違いは警告で示す)を踏襲する。
-eq(hw1bRows.length, 1, 'PB1とPB2は代表zoneが一致するため同じ行にまとまる');
-const hw1bRow = hw1bRows[0];
-eq(hw1bRow.count, 2, '合算した台数は2');
-eq(hw1bRow.zone, '外', '代表zoneは外');
-ok(hw1bRow.warn.includes('対象外の設定が食い違'), 'PB2側の設定の食い違いが警告として出る');
-ok(hw1bRow.warn.includes('PB2'), '警告にどのデバイス(PB2)の話かが分かる');
+eq(hw1bRows.map(r => r.refs.join()), ['PB1', 'PB2'], 'PB1とPB2も別の行');
+const pb2 = hw1bRows.find(r => r.refs[0] === 'PB2');
+// PB2は外→空の順で追加されるため代表zoneは'外'。食い違いは警告で示す
+eq(pb2.zone, '外', 'PB2の代表zoneは外');
+ok(pb2.warn.includes('対象外の設定が食い違'), 'PB2の設定の食い違いが警告として出る');
+ok(pb2.warn.includes('PB2'), '警告にどのデバイス(PB2)の話かが分かる');
 
 // ------------------------------------------------------------------
 console.log('【showBOM: 盤内/盤外でセクション分けして表示】');
