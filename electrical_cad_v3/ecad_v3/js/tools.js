@@ -111,6 +111,11 @@ const selectTool = {
 const wireTool = {
   onDown(wx, wy, e) {
     const sp = snapWirePoint(wx, wy, state.wirePoints.at(-1)?.x, state.wirePoints.at(-1)?.y);
+    // 【2026-09-25】直前の点と同じ点を押したら何もしない。以前はダブルクリック等で
+    // 長さ0の配線ができ、線番13の線の途中に見えない未採番の配線が残っていた
+    // (盛田さん「線番あるのに線番なしで判定されてるのが１箇所ある」)。寸法線と同じ判定。
+    const last = state.wirePoints.at(-1);
+    if (last && Math.hypot(sp.x - last.x, sp.y - last.y) < 0.1) return;
     state.wirePoints.push({ x: sp.x, y: sp.y });
     // スナップ先の端子情報を記録
     if (!state.wireSnapPts) state.wireSnapPts = [];
