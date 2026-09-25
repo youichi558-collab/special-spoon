@@ -90,7 +90,7 @@ function compactAllWireNumbers() {
   if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
   if (!confirm('現在使われている線番の欠番を詰めます(例: W001,W003,W005 → W001,W002,W003)。\n元に戻す場合はCtrl+Zで戻せます。実行しますか？')) return;
   pushH();
-  const netsByPage = state.pages.map(pg => groupWiresByNet(pg.wires||[]));
+  const netsByPage = state.pages.map(pg => groupWiresByNet(pg.wires||[], null, pg.elements));
   const usedByPrefix = new Map(); // prefix -> Map(num -> digits)
   state.pages.forEach((pg,pi) => {
     netsByPage[pi].forEach(idxs => {
@@ -128,7 +128,15 @@ function compactAllWireNumbers() {
 // ページ内の配線を、端点が重なっているもの同士(=同一ネット)でグループ化する。
 // autoWireNumber()と編集可能な線番表(wireNoTable)の両方で共通利用する。
 // 戻り値: [[wireIdx, wireIdx, ...], ...]  (1グループ=1ネット)
-function groupWiresByNet(wires, tol) {
+//
+// 【2026-09-25】elements(そのページの要素)を渡すと、分岐点(●)も見る。
+// 以前は配線の「端どうし」の重なりしか見ておらず、T字の分岐(1本が●を通り抜け、
+// 別の1本がそこで終わる)が別ネットに割れていた。盛田さんのSheet3では分岐点24個中
+// 18個がこの形で、分岐先の線が未採番のまま別の行になっていた。
+// 盛田さんの決定は「●がある所だけつなぐ」(B)。●の無いT字・単なる交差はつながない。
+// ●に端が乗っている配線と、●の上を通り抜けている配線を全部同じネットにする。
+// style未設定のjunctionは●扱い(draw.js の drawJunctionEl と同じ)。○/◎(端子台)は対象外。
+function groupWiresByNet(wires, tol, elements) {
   tol = tol || WIRE_NET_TOL;
   if (!wires.length) return [];
   const bx = x => Math.round(x / tol);
@@ -156,6 +164,26 @@ function groupWiresByNet(wires, tol) {
       });
     }
   }));
+
+  // 分岐点(●)に触れている配線(端が乗る・途中を通る)をまとめる
+  const segDist = (p, a, b) => {
+    const dx = b.x - a.x, dy = b.y - a.y, L = dx*dx + dy*dy;
+    const t = L ? Math.max(0, Math.min(1, ((p.x-a.x)*dx + (p.y-a.y)*dy) / L)) : 0;
+    return Math.hypot(a.x + t*dx - p.x, a.y + t*dy - p.y);
+  };
+  (elements || []).forEach(el => {
+    if (el.type !== 'junction' || (el.style || 'dot') !== 'dot') return;
+    let first = -1;
+    wires.forEach((w, i) => {
+      const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
+      let touch = false;
+      for (let k = 0; k + 1 < pts.length && !touch; k++) {
+        if (segDist(el, pts[k], pts[k+1]) <= tol) touch = true;
+      }
+      if (!touch) return;
+      if (first < 0) first = i; else union(first, i);
+    });
+  });
 
   const groups = new Map();
   wires.forEach((_,i) => {
@@ -194,7 +222,7 @@ function autoWireNumber(){
   state.pages.forEach(pg => {
     const wires = pg.wires || [];
     if (!wires.length) return;
-    const groups = groupWiresByNet(wires);
+    const groups = groupWiresByNet(wires, null, pg.elements);
     groups.forEach(idxs => {
       // 線番表でチェックを外した(noAutoNum)ネットは自動割付の対象外
       if (idxs.some(i => wires[i].noAutoNum)) { excludedCnt++; return; }
@@ -232,7 +260,7 @@ function wireNoTable(msg){
     const pname = pg.name || ('Sheet'+(pi+1));
     const wires = pg.wires || [];
     total += wires.length;
-    const groups = groupWiresByNet(wires);
+    const groups = groupWiresByNet(wires, null, pg.elements);
     groups.forEach(idxs => {
       const existingNums = [...new Set(idxs.map(i => wires[i].wireNo).filter(Boolean))];
       const wireNo = existingNums[0] || '';
