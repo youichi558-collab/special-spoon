@@ -259,6 +259,10 @@ function restoreAutosave() {
     if (typeof stripLegacyColors === 'function') stripLegacyColors(state.pages);
     // 重複IDの修復（旧genIdの衝突対策。詳細はedit.jsのdedupeIds参照）
     if (typeof dedupeIds === 'function') dedupeIds(state.pages);
+    // 長さ0の配線(見えない配線)を消す(詳細はedit.jsのremoveZeroLengthWires参照)。
+    // リロードが盛田さんの通常運用なので、ここでも消した本数をステータス欄に出す。
+    // 本数は下の「前回の作業を自動復元しました」の後ろに付け足す(別に出すと上書きされる)。
+    const zeroWires = (typeof removeZeroLengthWires === 'function') ? removeZeroLengthWires(state.pages) : 0;
     // グループの幽霊参照（削除済み要素のID）を掃除
     if (typeof pruneGroups === 'function') state.pages.forEach(pg => pruneGroups(pg));
     state.currentPage  = Math.min(d.currentPage || 0, state.pages.length - 1);
@@ -290,6 +294,7 @@ function restoreAutosave() {
         ? `⚠ 直近の自動保存が空だったため、1世代前から復元しました${ts}。`
           + `内容を確認してJSONファイルに保存してください`
         : `前回の作業を自動復元しました${ts}`;
+      if (zeroWires) h.textContent += `／長さ0の配線(見えない配線)を ${zeroWires} 本削除しました`;
     }, 0);
   } catch (e) {
     // JSONとしては正しく読めたのに、その後の復元処理で落ちたケース。

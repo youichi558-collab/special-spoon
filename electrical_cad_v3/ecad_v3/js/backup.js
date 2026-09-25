@@ -259,11 +259,11 @@ async function bkRestore(name) {
     const j = await (await fetch('/api/backup/get?name=' + encodeURIComponent(name))).json();
     if (!j.ok) throw new Error(j.error || '読めませんでした');
     pushH();
-    const { fixedIds } = applyProjectData(j.data);
+    const { fixedIds, zeroWires } = applyProjectData(j.data);
     closeFP('backup-p');
-    alert(fixedIds > 0
-      ? `「${name}」を開きました。\n\n重複していた図形IDを ${fixedIds} 件修復しました。`
-      : `「${name}」を開きました。`);
+    alert(`「${name}」を開きました。`
+      + (fixedIds > 0 ? `\n\n重複していた図形IDを ${fixedIds} 件修復しました。` : '')
+      + (zeroWires > 0 ? `\n\n長さ0の配線(見えない配線)を ${zeroWires} 本削除しました。` : ''));
   } catch (e) {
     alert('開けませんでした: ' + e.message);
   }

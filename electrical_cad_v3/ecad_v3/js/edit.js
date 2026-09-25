@@ -128,6 +128,28 @@ function repairLayers(pages) {
   return n;
 }
 
+// 長さ0の配線(始点と終点が同じ)を取り除く。取り除いた本数を返す。
+// 【2026-09-25】配線ツールで同じ点を2回押すと長さ0の配線ができていた(tools.js は同日修正)。
+// 描いても見えず、どこともつながらないが、線番の判定では別の線として「未採番」の行に
+// 出たり、●の上に乗ってネットに紛れ込んだりする。盛田さん「長さ０は目視できん」で、
+// 手で探して消せないため、読み込み時に自動で消すことにした(盛田さん了承)。
+// 盛田さんのSheet3には4本あった。見た目と接続は変わらない。
+function removeZeroLengthWires(pages) {
+  let n = 0;
+  (pages || []).forEach(pg => {
+    if (!pg.wires) return;
+    const keep = pg.wires.filter(w => {
+      const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
+      let len = 0;
+      for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i].x - pts[i-1].x, pts[i].y - pts[i-1].y);
+      return !(len < 0.1);
+    });
+    n += pg.wires.length - keep.length;
+    pg.wires = keep;
+  });
+  return n;
+}
+
 // 図面ファイル内で重複してしまっている要素ID・配線IDを検出し、後から出てきた方に
 // 新しいIDを振り直す。
 //
@@ -300,13 +322,14 @@ function applyProjectData(d) {
       const fixedLayers = repairLayers(state.pages);
       if (fixedLayers) console.log(`レイヤーが失われた要素を${fixedLayers}件修復しました`);
       const fixedIds = dedupeIds(state.pages);
+      const zeroWires = removeZeroLengthWires(state.pages);
       state.pages.forEach(pg => pruneGroups(pg));
       // 読み込んだ直後は「保存済みの状態」なので未保存マークを消す。
       // 上の修正以前に保存されたファイルには dirty:true が焼き込まれているため、
       // ここでも落としておかないと開いた瞬間に●が出たままになる。
       state.pages.forEach(pg => { pg.dirty = false; });
       renderSymFloat(); renderPartsAll(); renderPageTabs(); draw(); updateRightPanel();
-      return { fixedIds };
+      return { fixedIds, zeroWires };
 }
 
 function loadProject(input) {
@@ -316,10 +339,12 @@ function loadProject(input) {
     try {
       const d = JSON.parse(e.target.result);
       pushH();
-      const { fixedIds } = applyProjectData(d);
-      alert(fixedIds > 0
-        ? `読込完了\n\n重複していた図形IDを ${fixedIds} 件修復しました。\n`
-          + `(このファイルは、図形が勝手に一緒に動く・消える不具合が起きうる状態でした)\n`
+      const { fixedIds, zeroWires } = applyProjectData(d);
+      alert(fixedIds > 0 || zeroWires > 0
+        ? `読込完了\n`
+          + (fixedIds > 0 ? `\n重複していた図形IDを ${fixedIds} 件修復しました。\n`
+            + `(このファイルは、図形が勝手に一緒に動く・消える不具合が起きうる状態でした)\n` : '')
+          + (zeroWires > 0 ? `\n長さ0の配線(見えない配線)を ${zeroWires} 本削除しました。\n` : '')
           + `上書き保存すると修復後の状態になります。`
         : '読込完了');
     } catch(err) {
