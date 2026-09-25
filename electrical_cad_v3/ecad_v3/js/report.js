@@ -819,6 +819,11 @@ function showRefPanel(){
   state.pages.forEach((pg,pi)=>{
     (pg.elements||[]).forEach(el=>{
       if(skip.includes(el.type))return;
+      // 【2026-09-25】配線の分岐点(●)は部品ではないので載せない。盛田さん「分岐点を外して」。
+      // 以前は「(デバイス未設定)」の行に分岐点が「他」バッジで何十個も並んでいた。
+      // 端子台の端子(○/◎)は端子台デバイスの位置として残す。
+      // style未設定は●扱い(draw.js の drawJunctionEl と同じ判定)。
+      if(el.type==='junction'&&(el.style||'dot')==='dot')return;
       // 【2026-09-20】以前はここで role 未設定のシンボルを丸ごと落としていた。
       // 盛田さん「主接点が出るのは問題ない、というかその他も載ってていいと思うんだが」。
       // この表は「このデバイスの部品が図面のどこにあるか」の索引として使うので、
