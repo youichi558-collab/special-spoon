@@ -300,6 +300,7 @@ function wireNoTable(msg){
   html += `<br>線番欄を直接編集すると、そのネット(繋がっている配線群)全体に即反映されます。`;
   html += `<br>チェックを外すと「線番割付」ボタンでの自動採番の対象外になります(手入力は可能なまま)。`;
   html += `<br>配線を追加/削除した後は、この一覧を開き直して未採番(赤)や分断(橙)がないか確認してください。`;
+  html += `<br>行を押すと、この一覧を閉じて図面のその配線へ移動し、選択します(線番はプロパティ欄でも打てます)。`;
   html += `<br><button onclick="compactAllWireNumbers()" title="削除等で欠番になった線番を詰めます(例: W001,W003,W005 → W001,W002,W003)。編集中に自動では動きません、このボタンを押した時だけ実行されます" style="margin-top:4px;font-size:10px;padding:2px 8px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)">欠番を詰める</button>`;
   html += `</p>`;
   html += `<table class="tbl"><tr><th></th><th></th><th>線番</th><th>ページ</th><th>本数</th><th></th></tr>`;
@@ -318,7 +319,10 @@ function wireNoTable(msg){
       : `<button disabled style="${btnStyle};opacity:.3">▼</button>`;
     const delBtn = `<button title="このネットの配線ごと削除し、欠番を自動で詰めます" onclick="deleteNetFromList(${r.pageIdx},[${r.idxs.join(',')}])" style="${btnStyle};color:var(--red)">×</button>`;
     const chk = `<input type="checkbox" ${r.autoNum?'checked':''} title="チェックを外すと「線番割付」ボタンでの自動採番の対象外になります" onchange="toggleNetAutoNum(${r.pageIdx},[${r.idxs.join(',')}],this.checked)">`;
-    html += `<tr ${title}>` +
+    // 【2026-09-25】行を押すと図面のそのネットへ飛ぶ(盛田さん「線番が無いことはわかるが
+    // それがどれなのかは不明」)。欄・ボタン・チェックを押したときは飛ばない。
+    const jump = `onclick="if(!/^(INPUT|BUTTON|SELECT)$/.test(event.target.tagName))jumpToNet(${r.pageIdx},[${r.idxs.join(',')}])"`;
+    html += `<tr ${title} ${jump} style="cursor:pointer">` +
       `<td>${chk}</td>` +
       `<td style="white-space:nowrap">${upBtn}${downBtn}</td>` +
       `<td><input type="text" value="${escH(r.wireNo)}" placeholder="未採番" ` +
@@ -331,6 +335,41 @@ function wireNoTable(msg){
   });
   html += `</table>`;
   _reportOpen('wire', '線番 一覧(編集可)', html, exportWireCSV);
+}
+
+// 線番表の行を押したとき: そのネットのページへ切り替え、配線を選択して画面中央に出し、
+// 2秒点滅させる(検索 search.js の jumpToHit と同じ動き・同じ点滅マーカー)。
+// 点滅はネットの最初の配線の中点。未採番の行はたいてい1本なのでその線そのものを指す。
+// 帳票パネル(幅1040px)が画面中央を覆って飛んだ先が見えないため、パネルは閉じる。
+// 配線は選ばれたままなので、右のプロパティの「線番」欄にそのまま打てる。
+function jumpToNet(pageIdx, idxs) {
+  const pg = state.pages[pageIdx];
+  if (!pg || !pg.wires) return;
+  const ws = idxs.map(i => pg.wires[i]).filter(Boolean);
+  if (!ws.length) return;
+  if (typeof closeFP === 'function') closeFP('report-p');
+  if (pageIdx !== state.currentPage && typeof switchPage === 'function') switchPage(pageIdx);
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  ws.forEach(w => (w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}]).forEach(p => {
+    x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y);
+  }));
+  if (state.zoom < 1) state.zoom = 1;
+  state.pan.x = cv.width  / 2 - (x0 + x1) / 2 * state.zoom;
+  state.pan.y = cv.height / 2 - (y0 + y1) / 2 * state.zoom;
+  state.sel.els.clear(); state.sel.wires.clear();
+  ws.forEach(w => { if (w.id) state.sel.wires.add(w.id); });
+  if (typeof updateResizeHandles === 'function') updateResizeHandles();
+  if (typeof updateRightPanel === 'function') updateRightPanel();
+  const f = ws[0].pts || [{x:ws[0].x1,y:ws[0].y1},{x:ws[0].x2,y:ws[0].y2}];
+  const a = f[0], b = f[f.length - 1];
+  state.searchHit = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, t0: Date.now() };
+  const anim = () => {
+    if (!state.searchHit) return;
+    if (Date.now() - state.searchHit.t0 > 2000) { state.searchHit = null; draw(); return; }
+    draw();
+    requestAnimationFrame(anim);
+  };
+  anim();
 }
 
 // 線番表のチェックボックス: ネット単位で「線番割付(自動採番)」の対象外にする。
