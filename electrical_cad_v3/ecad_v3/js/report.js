@@ -86,11 +86,28 @@ function compactWireNumbersAfterRemoval(deletedNos) {
 // 削除のたびに自動発動すると「編集中に勝手に番号が変わって訳が分からなくなる」
 // ため自動化はせず、盛田さんが線番表を開いて任意のタイミングで押した時だけ
 // 動く手動操作とした。実行前に確認ダイアログを出す(Ctrl+Zで戻せる旨も表示)。
+//
+// 【2026-09-25】1つのネットに異なる線番が混在しているときは実行しない(盛田さんの決定A)。
+// 混在ネットは最初の番号しか「使用中」に数えないため、残りの番号が空き扱いになり、
+// 別の線がその番号へ詰められて重複していた(例: W01/W02混在+W03 → W03がW02になる)。
+// 分岐点(●)でつなぐようにした(同日)ため、分岐先に別番号が入っていた図面で起きやすい。
+// どちらの番号に揃えるかは人が決めることなので、線番表でそろえてもらう。
 function compactAllWireNumbers() {
   if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
+  const netsByPage = state.pages.map(pg => groupWiresByNet(pg.wires||[], null, pg.elements));
+  let mixed = 0;
+  state.pages.forEach((pg,pi) => netsByPage[pi].forEach(idxs => {
+    if (new Set(idxs.map(i => pg.wires[i].wireNo).filter(Boolean)).size > 1) mixed++;
+  }));
+  if (mixed) {
+    alert(`つながっている配線(ネット)の中に異なる線番が混在している箇所が${mixed}件あります。\n`
+      + `このまま詰めると線番が重複するため、実行しません。\n`
+      + `線番表の橙色の欄で番号をそろえてから、もう一度押してください。`);
+    wireNoTable(`⚠混在${mixed}件のため欠番を詰めませんでした(橙色の欄をそろえてください)`);
+    return;
+  }
   if (!confirm('現在使われている線番の欠番を詰めます(例: W001,W003,W005 → W001,W002,W003)。\n元に戻す場合はCtrl+Zで戻せます。実行しますか？')) return;
   pushH();
-  const netsByPage = state.pages.map(pg => groupWiresByNet(pg.wires||[], null, pg.elements));
   const usedByPrefix = new Map(); // prefix -> Map(num -> digits)
   state.pages.forEach((pg,pi) => {
     netsByPage[pi].forEach(idxs => {
