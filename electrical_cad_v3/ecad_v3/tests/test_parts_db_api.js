@@ -36,7 +36,8 @@ const eq = (a, b, m) => {
 const ok = (cond, m) => { if (!cond) { ng++; console.log('  NG', m); } else console.log('  OK', m); };
 
 const root = path.join(__dirname, '..');
-const read = p => fs.readFileSync(path.join(root, p), 'utf8');
+// Windowsで取り出すと改行がCRLFになり、'\n'を目印にした切り出しが外れるのでLFにそろえる
+const read = p => fs.readFileSync(path.join(root, p), 'utf8').replace(/\r\n/g, '\n');
 
 (async () => {
     // --------------------------------------------------------------

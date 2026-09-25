@@ -53,7 +53,8 @@ vm.createContext(sandbox);
 
 // ui.js は巨大で他モジュール依存もあるため、必要な関数だけを切り出してevalする。
 // (ファイル全体をevalすると未定義参照でトップレベルが落ちるため)
-const src = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8');
+// Windowsで取り出すと改行がCRLFになり、'\n'を目印にした切り出しが外れるのでLFにそろえる
+const src = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8').replace(/\r\n/g, '\n');
 const start = src.indexOf('function parseTerminalGroups');
 const endMark = '\n// ----------------------------------------------------------------\n// コイル電圧（2026-08-20）';
 const end = src.indexOf(endMark);

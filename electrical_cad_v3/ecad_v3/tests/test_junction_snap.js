@@ -5,7 +5,8 @@
 // 描き方(端子の手前で止めて反対側から出す)と食い違う。円周で止められれば
 // DXF出力で貫通した配線を白塗りマスクで隠す小細工も要らなくなる。
 const fs=require('fs');
-const src=fs.readFileSync(__dirname+'/../js/snap.js','utf8');
+// Windowsで取り出すと改行がCRLFになり、'\n'を目印にした切り出しが外れるのでLFにそろえる
+const src=fs.readFileSync(__dirname+'/../js/snap.js','utf8').replace(/\r\n/g,'\n');
 const body=src.match(/    if \(el\.type === 'junction'\) \{[\s\S]*?\n      return;\n    \}/)[0];
 // 実コードを関数として動かす
 const snapJ=(el,wx,wy,bestD0)=>{

@@ -29,7 +29,8 @@ const eq = (a, b, m) => {
 };
 const ok = (cond, m) => { if (!cond) { ng++; console.log('  NG', m); } else console.log('  OK', m); };
 
-const SRC = fs.readFileSync(__dirname + '/../js/parts_page.js', 'utf8');
+// Windowsで取り出すと改行がCRLFになり、'\n'を目印にした切り出しが外れるのでLFにそろえる
+const SRC = fs.readFileSync(__dirname + '/../js/parts_page.js', 'utf8').replace(/\r\n/g, '\n');
 
 function fn(name) {
   let start = SRC.indexOf(`function ${name}(`);
