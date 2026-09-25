@@ -152,7 +152,13 @@ function compactAllWireNumbers() {
 // 18個がこの形で、分岐先の線が未採番のまま別の行になっていた。
 // 盛田さんの決定は「●がある所だけつなぐ」(B)。●の無いT字・単なる交差はつながない。
 // ●に端が乗っている配線と、●の上を通り抜けている配線を全部同じネットにする。
-// style未設定のjunctionは●扱い(draw.js の drawJunctionEl と同じ)。○/◎(端子台)は対象外。
+// style未設定のjunctionは●扱い(draw.js の drawJunctionEl と同じ)。
+//
+// 【2026-09-25 同日追記】端子台の端子(○/◎)も、両側の線を同じネットにする。
+// 盛田さん「端子台接続になっているから線番がないわけではない」。端子の円の縁から出た
+// 線どうし(TB2の端子(半径3)の上下: 267 と 273)は中心から離れていて端が重ならず、
+// 片側が未採番の別行になっていた。端子の円に**端が乗っている**配線(中心から半径+許容誤差
+// 以内)をつなぐ。端子の上を通り抜けるだけの配線はつながない。Sheet3で未採番4→0・混在0。
 function groupWiresByNet(wires, tol, elements) {
   tol = tol || WIRE_NET_TOL;
   if (!wires.length) return [];
@@ -189,7 +195,21 @@ function groupWiresByNet(wires, tol, elements) {
     return Math.hypot(a.x + t*dx - p.x, a.y + t*dy - p.y);
   };
   (elements || []).forEach(el => {
-    if (el.type !== 'junction' || (el.style || 'dot') !== 'dot') return;
+    if (el.type !== 'junction') return;
+    const style = el.style || 'dot';
+    if (style === 'circle' || style === 'dbl') {
+      // 端子台の端子: 円に端が乗っている配線をつなぐ(上のコメント参照)
+      const reach = (el.r || 5) + tol;
+      let first = -1;
+      wires.forEach((w, i) => {
+        const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
+        const ends = [pts[0], pts[pts.length-1]];
+        if (!ends.some(p => Math.hypot(p.x - el.x, p.y - el.y) <= reach)) return;
+        if (first < 0) first = i; else union(first, i);
+      });
+      return;
+    }
+    if (style !== 'dot') return;
     let first = -1;
     wires.forEach((w, i) => {
       const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];

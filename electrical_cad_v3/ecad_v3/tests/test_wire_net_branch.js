@@ -54,6 +54,21 @@ ok(!sameNet(g([trunk, branch, { x1: 200, y1: 0, x2: 300, y2: 0 }],
               [{ type: 'junction', x: 50, y: 0, style: 'dot' }]), 0, 2),
    '●に触れていない配線は巻き込まない');
 
+console.log('\n【端子台の端子(○/◎)は両側の線をつなぐ(2026-09-25追記)】');
+// 盛田さん「端子台接続になっているから線番がないわけではない」。
+// Sheet3のTB2端子5(360,270 半径3): 上の線は267で、下の線は273で終わっていた
+const upper = { x1: 360, y1: 250, x2: 360, y2: 267 };
+const lower = { x1: 360, y1: 273, x2: 360, y2: 280 };
+ok(sameNet(g([upper, lower], [{ type: 'junction', x: 360, y: 270, r: 3, style: 'circle' }]), 0, 1),
+   '○の縁から出た上下の線は同じネット');
+ok(sameNet(g([upper, lower], [{ type: 'junction', x: 360, y: 270, r: 3, style: 'dbl' }]), 0, 1),
+   '◎でも同じ');
+ok(!sameNet(g([upper, lower], []), 0, 1), '端子が無ければつながない(端が6離れている)');
+ok(!sameNet(g([upper, { x1: 360, y1: 290, x2: 360, y2: 300 }], [{ type: 'junction', x: 360, y: 270, r: 3, style: 'circle' }]), 0, 1),
+   '端子から離れた所で終わる線はつながない');
+ok(!sameNet(g([upper, { x1: 340, y1: 270, x2: 380, y2: 270 }], [{ type: 'junction', x: 360, y: 270, r: 3, style: 'circle' }]), 0, 1),
+   '端子の上を通り抜けるだけの線はつながない');
+
 console.log('\n【端どうしの重なりは従来どおり】');
 ok(sameNet(g([{ x1: 0, y1: 0, x2: 10, y2: 0 }, { x1: 10, y1: 0, x2: 20, y2: 0 }], []), 0, 1),
    '端が重なる2本は●が無くても同じネット');
