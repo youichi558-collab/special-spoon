@@ -159,6 +159,8 @@ function compactAllWireNumbers() {
 // 線どうし(TB2の端子(半径3)の上下: 267 と 273)は中心から離れていて端が重ならず、
 // 片側が未採番の別行になっていた。端子の円に**端が乗っている**配線(中心から半径+許容誤差
 // 以内)をつなぐ。端子の上を通り抜けるだけの配線はつながない。Sheet3で未採番4→0・混在0。
+// 線の端は**一番近い端子にだけ**つなぐ(端子を詰めて並べると、判定範囲に隣の端子の線まで
+// 入ってしまうため。tests/test_tb_diagram.js は端子を10間隔で並べている)。
 function groupWiresByNet(wires, tol, elements) {
   tol = tol || WIRE_NET_TOL;
   if (!wires.length) return [];
@@ -194,22 +196,27 @@ function groupWiresByNet(wires, tol, elements) {
     const t = L ? Math.max(0, Math.min(1, ((p.x-a.x)*dx + (p.y-a.y)*dy) / L)) : 0;
     return Math.hypot(a.x + t*dx - p.x, a.y + t*dy - p.y);
   };
-  (elements || []).forEach(el => {
-    if (el.type !== 'junction') return;
-    const style = el.style || 'dot';
-    if (style === 'circle' || style === 'dbl') {
-      // 端子台の端子: 円に端が乗っている配線をつなぐ(上のコメント参照)
-      const reach = (el.r || 5) + tol;
-      let first = -1;
-      wires.forEach((w, i) => {
-        const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
-        const ends = [pts[0], pts[pts.length-1]];
-        if (!ends.some(p => Math.hypot(p.x - el.x, p.y - el.y) <= reach)) return;
-        if (first < 0) first = i; else union(first, i);
+  // 端子台の端子(○/◎): 線の端ごとに、判定範囲(半径+許容誤差)内で一番近い端子を探し、
+  // 同じ端子に端が乗っている配線をつなぐ(上のコメント参照)
+  const terms = (elements || []).filter(el => el.type === 'junction' && (el.style === 'circle' || el.style === 'dbl'));
+  if (terms.length) {
+    const firstAt = new Map();   // 端子 → その端子に乗っている最初の配線
+    wires.forEach((w, i) => {
+      const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
+      [pts[0], pts[pts.length-1]].forEach(p => {
+        let best = null, bestD = Infinity;
+        terms.forEach(t => {
+          const d = Math.hypot(p.x - t.x, p.y - t.y);
+          if (d <= (t.r || 5) + tol && d < bestD) { bestD = d; best = t; }
+        });
+        if (!best) return;
+        if (firstAt.has(best)) union(firstAt.get(best), i); else firstAt.set(best, i);
       });
-      return;
-    }
-    if (style !== 'dot') return;
+    });
+  }
+
+  (elements || []).forEach(el => {
+    if (el.type !== 'junction' || (el.style || 'dot') !== 'dot') return;
     let first = -1;
     wires.forEach((w, i) => {
       const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
@@ -231,6 +238,45 @@ function groupWiresByNet(wires, tol, elements) {
   return [...groups.values()];
 }
 
+// ----------------------------------------------------------------
+// 【2026-09-25】線番は「1ネットに1か所」(盛田さんの決定A)。
+// 盛田さんの図面は、ネットのうち1本にだけ線番が入り、文字も1か所に出ている。
+// 以前は線番割付・線番表の編集・入れ替えがネットの**全部の線**に書き込み、線番の文字は
+// 線ごとに描かれるため、図面中に L1 が9か所・N1 が6か所…と並んだ(盛田さん「押したら壊れる」)。
+// ●・端子台でネットをつなぐようにした(同日)ので書き込む線が増えて表面化した。
+// 以後、書き込みは _setNetWireNo だけを通し、読む側(接続表・端子台表・配線番号CSV)は
+// netWireNoOf でネットの番号を引く。
+// ----------------------------------------------------------------
+
+// ネットに線番を書く。既に番号のある線(=文字が出ている所)だけを書き換え、
+// どこにも無ければ一番長い線1本に入れる(文字が読みやすい所)。空文字なら番号を消す。
+function _setNetWireNo(wires, idxs, v) {
+  const has = idxs.filter(i => wires[i] && wires[i].wireNo);
+  if (!v) { has.forEach(i => { wires[i].wireNo = ''; }); return; }
+  if (has.length) { has.forEach(i => { wires[i].wireNo = v; }); return; }
+  const len = w => {
+    const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
+    let s = 0;
+    for (let k = 1; k < pts.length; k++) s += Math.hypot(pts[k].x - pts[k-1].x, pts[k].y - pts[k-1].y);
+    return s;
+  };
+  let best = -1;
+  idxs.forEach(i => { if (wires[i] && (best < 0 || len(wires[i]) > len(wires[best]))) best = i; });
+  if (best >= 0) wires[best].wireNo = v;
+}
+
+// ページの配線ごとに「その配線が属するネットの線番」を返す(配列、添字=配線の番号)。
+// ネット内のどれにも番号が無ければ ''。混在していれば最初に見つかった番号。
+function netWireNoOf(pg) {
+  const wires = (pg && pg.wires) || [];
+  const out = wires.map(() => '');
+  groupWiresByNet(wires, null, pg && pg.elements).forEach(idxs => {
+    const no = idxs.map(i => wires[i].wireNo).find(Boolean) || '';
+    idxs.forEach(i => { out[i] = no; });
+  });
+  return out;
+}
+
 // 一括割付: 全ページ通しで未採番の配線のみに連番を割り付け(既存線番との衝突は自動回避)。
 // 【修正 2026-08-14】以前は配線オブジェクト1本ごとに別番号を振っていたため、
 // ジャンクションを挟んで複数オブジェクトに分かれて描かれた同一ネット(電気的に
@@ -247,7 +293,7 @@ function groupWiresByNet(wires, tol, elements) {
 // 用途として残し、細かい調整・分断時の直しは編集可能な線番表(wireNoTable)側で行う
 // 想定(自動検知はしない・一覧を見て手で直す運用)。
 function autoWireNumber(){
-  const start = prompt('一括割付の開始線番（例: W001）\n未採番の配線のみ、全ページ通しで割り付けます。\n接続されている配線群(同一ネット)は自動でまとめて同じ番号になります。\n(線番表でチェックを外したネットは対象外になります)', state.wireNoRule || 'W001');
+  const start = prompt('一括割付の開始線番（例: W001）\n線番がどこにも無いネット(繋がっている配線群)だけに、全ページ通しで割り付けます。\n番号は1ネットにつき1か所(一番長い線)に入ります。既に番号のあるネットには触りません。\n(線番表でチェックを外したネットは対象外になります)', state.wireNoRule || 'W001');
   if (!start || !start.trim()) return;
   state.wireNoRule = start.trim();
   if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
@@ -265,17 +311,18 @@ function autoWireNumber(){
       if (idxs.some(i => wires[i].noAutoNum)) { excludedCnt++; return; }
       const existingNums = new Set(idxs.map(i => wires[i].wireNo).filter(Boolean));
       if (existingNums.size > 1) conflictCnt++; // 同一ネット内に異なる既存線番が混在(上書きはしない)
-      let num = existingNums.size ? [...existingNums][0] : null;
-      if (!num) {
-        while (used.has(next)) next = incRef(next);
-        num = next; used.add(next); next = incRef(next);
-        netCnt++;
-      }
-      idxs.forEach(i => { if (!wires[i].wireNo) { wires[i].wireNo = num; wireCnt++; } });
+      // 【2026-09-25】番号のあるネットには触らない。以前はネット内の空の線すべてに
+      // 同じ番号を写していたため、図面に同じ線番の文字が何か所も並んだ(_setNetWireNo参照)。
+      if (existingNums.size) return;
+      while (used.has(next)) next = incRef(next);
+      const num = next; used.add(next); next = incRef(next);
+      netCnt++;
+      _setNetWireNo(wires, idxs, num);   // 一番長い線1本に入れる
+      wireCnt++;
     });
   });
 
-  let msg = `${wireCnt}本(${netCnt}ネット新規)に線番を割付しました（全ページ・未採番のみ、接続されている配線群は同じ番号）`;
+  let msg = `未採番だった${netCnt}ネットに線番を割付しました（全ページ・1ネットにつき1か所。既に番号のあるネットには触りません）`;
   if (conflictCnt) msg += `\n⚠同一ネット内に異なる既存線番が混在している箇所が${conflictCnt}件ありました(上書きしていません。線番表で確認・修正してください)`;
   if (excludedCnt) msg += `\nチェックを外したネット${excludedCnt}件は対象外にしました`;
   wireNoTable(msg);
@@ -431,8 +478,9 @@ function swapNetWireNo(pageA, idxsA, noA, pageB, idxsB, noB) {
   const pgA = state.pages[pageA], pgB = state.pages[pageB];
   if (!pgA || !pgB) return;
   pushH();
-  idxsA.forEach(i => { if (pgA.wires[i]) pgA.wires[i].wireNo = noB; });
-  idxsB.forEach(i => { if (pgB.wires[i]) pgB.wires[i].wireNo = noA; });
+  // 1ネット1か所を保つ(_setNetWireNo参照)。文字の位置は各ネットで今出ている所のまま
+  _setNetWireNo(pgA.wires, idxsA, noB);
+  _setNetWireNo(pgB.wires, idxsB, noA);
   draw();
   wireNoTable();
 }
@@ -478,14 +526,14 @@ function applyNetWireNo(pageIdx, wireIdxs, value) {
           w.wireNo = q.prefix + String(q.num + 1).padStart(q.digits, '0');
         });
       }
-      wireIdxs.forEach(i => { if (pg.wires[i]) pg.wires[i].wireNo = v; });
+      _setNetWireNo(pg.wires, wireIdxs, v);   // 1ネット1か所(_setNetWireNo参照)
       draw();
       wireNoTable();
       return;
     }
   }
   pushH();
-  wireIdxs.forEach(i => { if (pg.wires[i]) pg.wires[i].wireNo = v; });
+  _setNetWireNo(pg.wires, wireIdxs, v);   // 1ネット1か所(_setNetWireNo参照)
   draw();
   wireNoTable();
 }
@@ -496,10 +544,11 @@ function exportWireCSV(){
   const rows = ['線番,ページ,始点X,始点Y,終点X,終点Y,レイヤー'];
   state.pages.forEach((pg, pi) => {
     const pname = pg.name || ('Sheet'+(pi+1));
-    (pg.wires||[]).forEach(w => {
+    const netNo = netWireNoOf(pg);   // 番号は1ネット1か所なので、ネットの番号を出す
+    (pg.wires||[]).forEach((w, wi) => {
       const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
       const p0 = pts[0], p1 = pts[pts.length-1];
-      rows.push(`${w.wireNo||''},${pname},${Math.round(p0.x)},${Math.round(p0.y)},${Math.round(p1.x)},${Math.round(p1.y)},${w.layer||''}`);
+      rows.push(`${netNo[wi]||''},${pname},${Math.round(p0.x)},${Math.round(p0.y)},${Math.round(p1.x)},${Math.round(p1.y)},${w.layer||''}`);
     });
   });
   dl(rows.join('\n'), _csvName('配線番号'), 'text/csv');

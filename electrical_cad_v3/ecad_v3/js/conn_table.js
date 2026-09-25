@@ -91,12 +91,14 @@ function buildConnectionRows() {
   state.pages.forEach((pg, pi) => {
     const pname = pg.name || ('Sheet'+(pi+1));
     const termPts = collectTerminalPoints(pg.elements || []);
-    (pg.wires || []).forEach(w => {
+    // 【2026-09-25】線番は1ネット1か所なので、配線自身ではなくネットの番号を出す(report.js netWireNoOf)
+    const netNo = netWireNoOf(pg);
+    (pg.wires || []).forEach((w, wi) => {
       const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
       const p0 = pts[0], p1 = pts[pts.length-1];
       const from = findNearestTerminal(p0.x, p0.y, termPts, CONN_TABLE_TOL);
       const to   = findNearestTerminal(p1.x, p1.y, termPts, CONN_TABLE_TOL);
-      rows.push({ page: pname, wireNo: w.wireNo || '', layer: w.layer || '', from, to });
+      rows.push({ page: pname, wireNo: netNo[wi] || '', layer: w.layer || '', from, to });
     });
   });
   return rows;
@@ -244,10 +246,12 @@ function exportConnCSV() {
 // 端子に繋がっている線番を集める
 function _tbConnsOf(el, pg) {
   const conns = new Set();
-  (pg.wires || []).forEach(w => {
+  // 【2026-09-25】線番は1ネット1か所なので、ネットの番号を出す(report.js netWireNoOf)
+  const netNo = netWireNoOf(pg);
+  (pg.wires || []).forEach((w, wi) => {
     const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
     [pts[0], pts[pts.length-1]].forEach(p => {
-      if (Math.hypot(p.x-el.x, p.y-el.y) <= CONN_TABLE_TOL) conns.add(w.wireNo || '未採番');
+      if (Math.hypot(p.x-el.x, p.y-el.y) <= CONN_TABLE_TOL) conns.add(netNo[wi] || '未採番');
     });
   });
   return [...conns];

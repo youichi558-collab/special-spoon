@@ -56,6 +56,9 @@ sandbox.state = {
         { id:11, type:'junction', style:'circle', partRef:'TB1', label:'1', x:0,   y:0 },
         { id:12, type:'junction', style:'dot',                    x:100, y:0 },  // 分岐点
         { id:13, type:'my_coil', partRef:'MC1', x:200, y:0, rot:0, terminals:'13,14' },
+        // 未採番の配線(w4)用。他の線とつながらない場所に置く
+        { id:14, type:'junction', style:'circle', partRef:'TB1', label:'2', x:0,   y:100 },
+        { id:15, type:'my_coil', partRef:'MC2', x:200, y:100, rot:0, terminals:'13,14' },
       ],
       wires: [
         // TB1-1 → 分岐点（分岐点側は特定できない＝分岐点としか出ない）
@@ -64,8 +67,11 @@ sandbox.state = {
         { id:'w2', wireNo:'W101', layer:'L1', x1:100, y1:0, x2:190, y2:0 },
         // 端点が端子から大きく外れている（目視では繋がって見えるがズレている）
         { id:'w3', wireNo:'W102', layer:'L1', x1:0,   y1:60, x2:80, y2:60 },
-        // 線番が振られていない
-        { id:'w4', wireNo:'',     layer:'L1', x1:0,   y1:0,  x2:210, y2:0 },
+        // 線番が振られていない。
+        // 【2026-09-25】以前は (0,0)-(210,0) で、始点がW101のw1と重なっていた。線番は
+        // 1ネット1か所になりネットの番号で出すので、それでは W101 と出る(正しい)。
+        // 他の線とつながらない TB1-2 → MC2 の線にした。
+        { id:'w4', wireNo:'',     layer:'L1', x1:0,   y1:100, x2:190, y2:100 },
       ],
     },
     { name:'P2', frameObj:null, elements: [], wires: [] },
