@@ -476,7 +476,8 @@ function drawSymTermNos() {
 // ここでは再計算しない。runUnconnectedCheck()で計算されたものを表示する)
 function drawUnconnectedMarkers() {
   ctx.save();
-  (state._unconnectedResults || []).forEach(r => {
+  // 結果は全ページ分を持つので、今のページの分だけ描く
+  (state._unconnectedResults || []).filter(r => r.pageIdx === undefined || r.pageIdx === state.currentPage).forEach(r => {
     ctx.beginPath();
     ctx.arc(r.x, r.y, 6/state.zoom, 0, Math.PI*2);
     ctx.fillStyle = 'rgba(255,152,0,0.85)';

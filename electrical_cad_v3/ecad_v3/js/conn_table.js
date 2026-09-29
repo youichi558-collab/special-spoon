@@ -12,7 +12,7 @@
 // 距離判定で再計算する。
 // ================================================================
 
-const CONN_TABLE_TOL = 5; // 許容誤差(ワールド座標単位)。conn_check.jsのCONN_CHECK_TOLと同じ値
+const CONN_TABLE_TOL = 5; // 許容誤差(ワールド座標単位)。接続チェック・未接続の端子(js/conn_check.jsのボタン)・端子台表で共通
 const CONN_TABLE_SYM_ONLY_TYPES = ['text','rect','circle','fline','triangle','arc','junction','bezier','dim','angle_dim','leader'];
 
 // ページ内の全「端子点」(シンボルの端子＋端子台の端子/分岐点)を集めた配列を返す
@@ -36,7 +36,8 @@ function collectTerminalPoints(pageElements) {
     const cS  = state.customSymbols.find(s => s.type === el.type);
     const rot = (el.rot || 0) * Math.PI / 180;
     const termList = (el.terminals || '').split(',').map(t => t.trim());
-    const dispName = el.partRef || el.label || el.type;
+    // デバイス名も仕様も無いシンボルは、登録シンボルの名前で出す(以前は内部名 custom_xxx が出た)。登録も無ければ「(登録なし)」
+    const dispName = el.partRef || el.label || (cS && (cS.name || cS.label)) || (String(el.type).startsWith('custom_') ? '(登録なし)' : el.type);
 
     if (cS && cS.terminals && cS.terminals.length) {
       // 端子の定義位置に置いたシンボルの倍率を掛ける(絵は倍率で縮むため。snap.js・draw.js symTermPoints と同じ)
@@ -174,6 +175,47 @@ function analyzeConnections() {
   return out;
 }
 
+// 未接続の端子: シンボルの端子に、配線の端が(許容誤差 CONN_TABLE_TOL 以内に)1本も来ていないもの。
+// 【2026-09-29】ツールバーの「⚠未接続」(js/conn_check.js)は以前、別の作り(現在のページだけ・独自の座標計算)だった。
+// **接続チェックと同じ端子の位置(collectTerminalPoints)・同じ許容誤差・全ページ**で数えるようにここへ集めた(conn_check.js の計算は無くした)。
+// 対象は従来どおりシンボルの端子だけ。分岐点(●)と端子台の端子(○◎)は含めない(端子台の未接続は端子台表が出す)。非表示レイヤーの要素は除く。
+// 戻り値: [{ pageIdx, page, elId, termIdx, x, y, name, term }](ページ順 → デバイス名・端子番号の順)
+function analyzeUnconnectedTerminals() {
+  if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
+  const out = [], tol = CONN_TABLE_TOL, bk = v => Math.round(v / tol);
+  state.pages.forEach((pg, pi) => {
+    const els = pg.elements || [], wires = pg.wires || [];
+    const pname = pg.name || ('Sheet' + (pi + 1));
+    const layerOf = new Map(els.map(e => [e.id, e.layer]));
+    const idx = new Map();
+    wires.forEach(w => {
+      const pts = w.pts || [{ x: w.x1, y: w.y1 }, { x: w.x2, y: w.y2 }];
+      [pts[0], pts[pts.length - 1]].forEach(p => {
+        const k = `${bk(p.x)},${bk(p.y)}`;
+        if (!idx.has(k)) idx.set(k, []);
+        idx.get(k).push(p);
+      });
+    });
+    const hasEnd = (x, y) => {
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+        const b = idx.get(`${bk(x) + dx},${bk(y) + dy}`);
+        if (b && b.some(p => Math.hypot(p.x - x, p.y - y) <= tol)) return true;
+      }
+      return false;
+    };
+    const mine = [];
+    collectTerminalPoints(els).forEach(t => {
+      if (t.kind !== 'symbol') return;
+      const lay = (typeof LAYERS !== 'undefined') ? LAYERS.find(l => l.name === layerOf.get(t.elId)) : null;
+      if (lay && !lay.visible) return;
+      if (!hasEnd(t.x, t.y)) mine.push({ pageIdx: pi, page: pname, elId: t.elId, termIdx: t.termIdx, x: t.x, y: t.y, name: t.dispName || '-', term: t.dispTerm || '-' });
+    });
+    mine.sort((a, b) => (a.name + ' ' + a.term).localeCompare(b.name + ' ' + b.term, 'ja', { numeric: true }));
+    out.push(...mine);
+  });
+  return out;
+}
+
 // 重さ: 2=問題(浮いている端・未採番) / 1=警告(●の無いT字) / 0=なし
 function _connSeverity(n) {
   if (!n.wireNo || n.dangling.length) return 2;
@@ -254,12 +296,14 @@ function showConnTable() {
   const btn = (mode, label) =>
     `<button class="fp-btn" style="font-size:10px;padding:1px 8px;${_connSortMode === mode ? 'font-weight:700' : ''}"`
     + ` onclick="setConnSort('${mode}')">${label}</button>`;
+  const unc = analyzeUnconnectedTerminals();
   let msg = `<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">`
     + `全${state.pages.length}ページ集計。ネット ${nets.length}件(配線 ${nWires}本)`;
+  if (unc.length) msg += ` / <span style="color:var(--red);font-weight:600">未接続の端子 ${unc.length}か所</span>`;
   if (nDang)  msg += ` / <span style="color:var(--red);font-weight:600">浮いている端 ${nDang}か所</span>`;
   if (nNoNo)  msg += ` / <span style="color:var(--red);font-weight:600">未採番 ${nNoNo}件</span>`;
   if (nTee)   msg += ` / <span style="font-weight:600">●の無いT字 ${nTee}か所</span>`;
-  if (!nBad && !nTee) msg += ` / 問題なし`;
+  if (!nBad && !nTee && !unc.length) msg += ` / 問題なし`;
   msg += `<br>並べ替え: ${btn('wire', '線番順')} ${btn('part', '部品順')}`;
   msg += `<br>1行=つながっている配線のまとまり(ネット)。分岐点(●)でつながった先の端子も、同じ行に並びます。`
     + `問題は端ごとに出します: <b>浮いている端</b>=端が端子にも他の配線にも●にも触れていないもの(許容誤差${CONN_TABLE_TOL})。`
@@ -267,7 +311,14 @@ function showConnTable() {
   msg += `<br>行(と赤い⚠)を押すと、この一覧を閉じて図面のその場所へ移動します。`;
   msg += `</p>`;
 
-  const html = msg + `<table class="tbl"><tr><th>線番</th><th>ページ</th><th>配線</th><th>接続している端子</th><th>状態</th></tr>${body}</table>`;
+  // 未接続の端子(配線の端が1本も来ていない端子)。行を押すとその端子へ飛ぶ
+  const uncHtml = unc.length
+    ? `<p style="font-size:11px;font-weight:600;margin:12px 0 3px">未接続の端子<span style="color:var(--fg3);font-weight:400">（${unc.length}か所。シンボルの端子に配線の端が来ていないもの。行を押すとその端子へ飛びます。ツールバーの「⚠未接続」で図面にマーカーも出せます）</span></p>`
+      + `<table class="tbl"><tr><th>端子</th><th>ページ</th></tr>`
+      + unc.map(u => `<tr onclick="jumpToRefEl(${u.pageIdx},${_jsArg(u.elId)},{x:${u.x},y:${u.y}})" title="クリックで図面のこの端子へ飛ぶ" style="cursor:pointer;background:rgba(200,60,60,.10)">`
+        + `<td><span class="badge badge-b">${escH(_connTermTxt(u))}</span></td><td>${escH(u.page)}</td></tr>`).join('') + `</table>`
+    : '';
+  const html = msg + `<table class="tbl"><tr><th>線番</th><th>ページ</th><th>配線</th><th>接続している端子</th><th>状態</th></tr>${body}</table>` + uncHtml;
   _reportOpen('conntbl', '接続チェック', html, exportConnCSV);
 }
 
@@ -278,6 +329,10 @@ function exportConnCSV() {
   nets.forEach(n => {
     csvRows.push([n.wireNo || '', n.page, n.idxs.length, _connTermList(n).join(' / '),
                   _connProblems(n).map(p => p.txt).join(' / ')].map(esc).join(','));
+  });
+  // 未接続の端子も、画面と同じく同じ表の末尾に足す(配線本数0・状態=未接続の端子)
+  analyzeUnconnectedTerminals().forEach(u => {
+    csvRows.push(['', u.page, 0, _connTermTxt(u), '未接続の端子(配線の端が来ていない)'].map(esc).join(','));
   });
   dl(csvRows.join('\n'), _csvName('接続チェック'), 'text/csv');
 }

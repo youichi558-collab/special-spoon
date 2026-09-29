@@ -166,5 +166,44 @@ ok(lastCsv.content.includes('浮いている端') && lastCsv.content.includes('�
 ok(lastCsv.content.split('\n')[0].includes('接続している端子') && lastCsv.content.includes('MC1:13 / TB1:1'), 'ネットごとの端子の一覧が出る');
 ok(lastCsv.content.split('\n')[1].startsWith('"'), '各値がクォートされている（生カンマ対策）');
 
+// ------------------------------------------------------------------
+console.log('【未接続の端子: 接続チェックと同じ作り(全ページ・同じ端子の位置・同じ許容誤差)】');
+{
+  const u = sandbox.analyzeUnconnectedTerminals();
+  eq(u.map(x => x.name + ':' + x.term), ['MC1:14', 'MC2:14'], 'シンボルの端子で、配線の端が来ていないものだけ(端子台の○・分岐点は含めない)');
+  ok(u.every(x => x.pageIdx === 0 && x.page === 'P1' && typeof x.elId !== 'undefined' && Number.isFinite(x.x)), '結果にページ・要素ID・座標がある');
+  // 全ページ: 2ページ目のシンボル(配線なし)も拾う。非表示レイヤーの要素は除く
+  sandbox.LAYERS = [{ name: 'L1', visible: true }, { name: 'HID', visible: false }];
+  sandbox.state.pages[1].elements = [
+    { id: 71, type: 'my_coil', partRef: 'MC7', x: 0, y: 0, rot: 0, terminals: 'A1,A2', layer: 'L1' },
+    { id: 72, type: 'my_coil', partRef: 'MC8', x: 500, y: 0, rot: 0, layer: 'HID' } ];
+  const u2 = sandbox.analyzeUnconnectedTerminals();
+  eq(u2.filter(x => x.pageIdx === 1).map(x => x.name + ':' + x.term), ['MC7:A1', 'MC7:A2'], '2ページ目の未接続の端子も拾う(以前は現在のページだけ)');
+  ok(!u2.some(x => x.name === 'MC8'), '非表示レイヤーの要素は除く');
+  sandbox.state.pages[1].elements = [];
+  // 配線の端が端子の許容誤差内に来れば接続している(接続チェックの端子の判定と同じ)
+  sandbox.state.pages[0].wires.push({ id: 'w9', wireNo: 'W109', layer: 'L1', x1: 210, y1: 4, x2: 260, y2: 4 });
+  eq(sandbox.analyzeUnconnectedTerminals().map(x => x.name + ':' + x.term), ['MC2:14'], '端子から4(許容誤差5以内)に端が来ていれば接続している');
+  sandbox.state.pages[0].wires.pop();
+  // 表に「未接続の端子」の節が出て、行を押すとその端子へ飛ぶ
+  sandbox.showConnTable();
+  const b2 = domEls['report-body'].innerHTML;
+  ok(/未接続の端子 2か所/.test(b2) && /未接続の端子<span/.test(b2), '接続チェックの表に「未接続の端子」の件数と節がある');
+  ok(/jumpToRefEl\(0,(?:&quot;|")?13(?:&quot;|")?,\{x:210,y:0\}\)/.test(b2) || /jumpToRefEl\(0,[^)]*\{x:210,y:0\}\)/.test(b2), '行を押すと、その端子の位置へ飛ぶ(ページ・要素ID・端子の座標)');
+  // CSVにも(画面と同じ内容)
+  domEls['report-csv-btn'].onclick();
+  ok(lastCsv.content.includes('"MC1:14","未接続の端子(配線の端が来ていない)"') && lastCsv.content.includes('"MC2:14"'), 'CSVの末尾にも未接続の端子が出る');
+  // ツールバーの「⚠未接続」: 全ページの結果を持ち、接続チェックの表を開く(alertは出さない)
+  vm.runInContext(fs.readFileSync(__dirname + '/../js/conn_check.js', 'utf8'), sandbox);
+  let alerted = 0; sandbox.alert = () => { alerted++; };
+  sandbox.syncUnconnectedBtn = () => {}; sandbox.state.showUnconnected = false; sandbox.state._unconnectedResults = [];
+  domEls['report-title'].textContent = '';
+  sandbox.runUnconnectedCheck();
+  ok(sandbox.state.showUnconnected === true && sandbox.state._unconnectedResults.length === 2, 'ボタンで結果を持ち、マーカー表示をONにする');
+  ok(domEls['report-title'].textContent === '接続チェック' && alerted === 0, '一覧(接続チェックの表)を開く。alertは出さない');
+  ok(fs.readFileSync(__dirname + '/../js/draw.js', 'utf8').includes('r.pageIdx === state.currentPage'), 'マーカーは今のページの分だけ描く(結果は全ページ分を持つ)');
+  ok(!/Math\.hypot|cS\.terminals/.test(fs.readFileSync(__dirname + '/../js/conn_check.js', 'utf8').replace(/\/\/.*$/gm, '')), 'conn_check.js に独自の座標計算は無い(計算は conn_table.js に1つ)');
+}
+
 console.log(ng ? `\n${ng}件失敗` : '\n全て成功');
 process.exit(ng ? 1 : 0);

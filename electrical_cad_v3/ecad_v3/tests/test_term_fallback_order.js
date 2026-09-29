@@ -25,7 +25,8 @@ const ok = (cond, m) => { if (!cond) { ng++; console.log('  NG', m); } else cons
 
 const root = path.join(__dirname, '..');
 // 端子点フォールバックを持つファイル。増やしたらここにも足すこと。
-const FILES = ['js/snap.js', 'js/conn_table.js', 'js/conn_check.js', 'js/draw.js'];
+// (2026-09-29 conn_check.js の独自の座標計算は conn_table.js に集めたので、写しは3箇所になった)
+const FILES = ['js/snap.js', 'js/conn_table.js', 'js/draw.js'];
 
 console.log('【4箇所とも「左が1番目」で揃っている】');
 const found = {};

@@ -1212,13 +1212,14 @@ function setRefModel(ki,v){
 }
 // 確認列の⚠を押したとき: 帳票を閉じて、その要素のあるページへ移り、選択して画面中央に出して2秒点滅させる
 // (線番表の jumpToNet・検索の jumpToHit と同じ動き)。
-function jumpToRefEl(pageIdx,id){
+// 第3引数 focus({x,y})を渡すと、その点を中央・点滅にする(端子を指すとき。省略時は要素の代表点)。
+function jumpToRefEl(pageIdx,id,focus){
   const pg=state.pages[pageIdx];
   const el=pg&&(pg.elements||[]).find(e=>e.id===id);
   if(!el)return;
   if(typeof closeFP==='function')closeFP('report-p');
   if(pageIdx!==state.currentPage&&typeof switchPage==='function')switchPage(pageIdx);
-  const a=elAnchor(el);
+  const a=focus||elAnchor(el);
   if(state.zoom<1)state.zoom=1;
   state.pan.x=cv.width/2-a.x*state.zoom;
   state.pan.y=cv.height/2-a.y*state.zoom;
