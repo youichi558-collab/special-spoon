@@ -277,16 +277,26 @@ function xrefCompute() {
   return { blocks, contacts, byEl };
 }
 
-// 図面に出す内容(なるべく使い回す)。要素が多い図面では毎回は計算し直さない。
-let _xrefCache = null;
+// 【2026-09-29】**常時は計算しない**(盛田さん「クロスリファレンスを常時走らせるのはやめよう」)。
+// 以前は描画のたびに計算し直していたため、図面を編集・読込するたびに勝手に出て、勝手に変わった
+// (保存データを新しいページに読み込むと、同じデバイス名が1つに束ねられて内容がおかしくなった)。
+// 今は**押したときだけ計算して、その結果を保持**する(未接続チェックと同じ作り)。
+//   ・ボタン「クロスリファレンス」を押す(または「更新」)→ xrefRefresh() で計算して表示。もう一度押すと隠して結果を捨てる
+//   ・図面を直しても自動では更新されない。直したら「更新」を押す(表示・DXF出力とも、今の結果のまま)
+//   ・新規作成・置き換え読込・ページの削除/並べ替えは、結果が図面と合わなくなるので隠して捨てる(xrefReset)
+//   ・倍率・CRタブの個別設定を直したときだけ、表示中なら計算し直す(操作した本人が結果を見たいので)
+let _xrefResult = null;
+const _xrefEmpty = () => ({ blocks: [], contacts: new Map(), byEl: new Map() });
+function xrefRefresh() { _xrefResult = xrefCompute(); return _xrefResult; }
+function xrefReset() {
+  _xrefResult = null;
+  state.showXref = false;
+  if (typeof syncXrefBtn === 'function') syncXrefBtn();
+}
+// 図面に出す内容。**ここでは計算しない**(保持している結果を返すだけ。表示OFF・未計算なら空)
 function xrefGet() {
-  if (state.showXref === false) return { blocks: [], contacts: new Map(), byEl: new Map() };
-  const n = (state.pages || []).reduce((s, pg) => s + (pg.elements ? pg.elements.length : 0) + (pg.wires ? pg.wires.length : 0), 0);
-  const now = Date.now();
-  if (n > 3000 && _xrefCache && now - _xrefCache.ts < 800) return _xrefCache.v;
-  const v = xrefCompute();
-  _xrefCache = { ts: now, v };
-  return v;
+  if (state.showXref !== true || !_xrefResult) return _xrefEmpty();
+  return _xrefResult;
 }
 
 if (typeof window !== 'undefined') (window.__ecadLoaded = window.__ecadLoaded || {})['xref.js'] = 1;

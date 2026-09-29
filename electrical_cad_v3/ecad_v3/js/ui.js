@@ -2222,6 +2222,7 @@ function movePage(from, to) {
   if (from < 0 || from >= state.pages.length || to < 0 || to >= state.pages.length) return;
   if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
   pushH();
+  if (typeof xrefReset === 'function') xrefReset();   // ページの並びが変わるので、クロスリファレンスの結果は捨てる
   const cur = state.pages[state.currentPage];
   const [pg] = state.pages.splice(from, 1);
   state.pages.splice(to, 0, pg);
@@ -2261,6 +2262,7 @@ function deletePage(idx) {
   const name = state.pages[idx].name || ('Sheet'+(idx+1));
   if (!confirm(`「${name}」を削除しますか？`)) return;
   pushH();
+  if (typeof xrefReset === 'function') xrefReset();   // ページ番号がずれるので、クロスリファレンスの結果は捨てる
   // 現在ページのデータを先に保存
   state.pages[state.currentPage].elements = state.elements;
   state.pages[state.currentPage].wires    = state.wires;
@@ -3057,11 +3059,14 @@ function applyRightPanel() {
     el.noteOffY  = v('pp-noy') !== '' ? parseInt(v('pp-noy')) : undefined;
     // クロスリファレンスの個別設定(CRタブがあるときだけ。空欄=自動)
     if (document.getElementById('pp-xshow')) {
+      const xPrev = [el.xrefHide, el.xrefOffX, el.xrefOffY, el.xrefMul].join('|');
       el.xrefHide = document.getElementById('pp-xshow').checked ? undefined : true;
       const num = id => { const t = v(id); const n = parseFloat(t); return (t !== '' && Number.isFinite(n)) ? n : undefined; };
       el.xrefOffX = num('pp-xox');
       el.xrefOffY = num('pp-xoy');
       const m = num('pp-xmul'); el.xrefMul = (m > 0 && m <= 3) ? m : undefined;
+      // CRタブを直したときだけ、表示中なら計算し直す(それ以外の編集では計算しない)
+      if (state.showXref === true && xPrev !== [el.xrefHide, el.xrefOffX, el.xrefOffY, el.xrefMul].join('|')) xrefRefresh();
     }
     el.wireNo    = v('pp-wireno');
     // 回転系フィールド(pp-rot/pp-trot)は<input type=number>にmax指定が無いため、
@@ -3243,6 +3248,7 @@ function pasteTabProps(tab) {
   });
   const h = document.getElementById('s-hint');
   if (h) h.textContent = `「${label}」タブの項目を ${targets.length}個に貼り付けました`;
+  if (tab === 'cr' && state.showXref === true) xrefRefresh();
   draw();
   updateRightPanel();
 }
@@ -3525,11 +3531,21 @@ function toggleTermNoDisp() {
   updateRightPanel();   // 位置補正欄は表示ONのときだけ出す
 }
 // コイルと接点の相互参照(js/xref.js)を図面に出す/隠す。前回値を覚える。
+// **押したときだけ計算する**(js/xref.js の説明)。表示中に押すと隠して結果を捨てる。前回値は覚えない(起動時は必ずOFF)。
 function toggleXrefDisp() {
-  state.showXref = !(state.showXref !== false);
-  if (typeof stSetPref === 'function') stSetPref('showXref', state.showXref);
+  if (state.showXref === true) { xrefReset(); }
+  else { state.showXref = true; xrefRefresh(); }
   syncXrefBtn();
   draw();
+  updateRightPanel();   // CRタブの位置補正欄は表示ONのときだけ出す
+}
+// 「更新」: 図面を直したあとに、今の図面で計算し直して表示する(OFFなら表示ONにして計算)
+function refreshXrefDisp() {
+  state.showXref = true;
+  xrefRefresh();
+  syncXrefBtn();
+  draw();
+  updateRightPanel();
 }
 // 全体の文字サイズの倍率(0.3〜2)。前回値を覚える。範囲外・数字でなければ既定0.7に戻す。
 function setXrefScale(v) {
@@ -3537,11 +3553,12 @@ function setXrefScale(v) {
   if (!(n >= 0.3 && n <= 2)) n = 0.7;
   state.xrefScale = Math.round(n * 100) / 100;
   if (typeof stSetPref === 'function') stSetPref('xrefScale', state.xrefScale);
+  if (state.showXref === true) xrefRefresh();   // 表示中なら、倍率を変えた結果をすぐ見せる
   syncXrefBtn();
   draw();
 }
 function syncXrefBtn() {
-  document.getElementById('rb-xref')?.classList.toggle('on', state.showXref !== false);
+  document.getElementById('rb-xref')?.classList.toggle('on', state.showXref === true);
   const i = document.getElementById('xref-scale');
   if (i) i.value = state.xrefScale;
 }

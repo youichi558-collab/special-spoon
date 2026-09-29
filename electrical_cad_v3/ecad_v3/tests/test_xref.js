@@ -217,6 +217,47 @@ console.log('\n【接点Refの確認列: 番号が出ない理由(xrefDiagnose)�
   ok(/クロスリファレンス確認/.test(rep) && /setRefModel\(\$\{ki\}/.test(rep) && /jumpToRefEl\(/.test(rep), '接点Refの表に確認列と、型式欄・飛ぶ操作がある');
 }
 
+console.log('\n【常時は計算しない(2026-09-29): 押したときだけ計算し、結果を保持する】');
+{
+  const els = [coil('CR1', 100, 100), cont('ca', 'CR1', 100, 200, '9,5')];
+  setup(els);
+  let n = 0; const orig = sb.xrefCompute;
+  sb.xrefCompute = () => { n++; return orig(); };
+  sb.state.showXref = true;
+  ok(sb.xrefGet().blocks.length === 0 && n === 0, '押す前(未計算)は空で、計算もしない');
+  sb.xrefRefresh();
+  ok(n === 1 && sb.xrefGet().blocks.length === 1, '「更新」で1回だけ計算して表示する');
+  for (let i = 0; i < 50; i++) sb.xrefGet();
+  ok(n === 1, '描画のたび(xrefGet)には計算しない(50回呼んでも計算は1回のまま)');
+  // 図面を直しても勝手には変わらない
+  sb.state.pages[0].elements.push(coil('CR2', 300, 100), cont('ca', 'CR2', 300, 200, '9,5'));
+  ok(sb.xrefGet().blocks.length === 1 && n === 1, '図面を直しても、自動では更新されない(古い結果のまま)');
+  sb.xrefRefresh();
+  ok(sb.xrefGet().blocks.length === 2, '「更新」を押すと今の図面で計算し直す');
+  // 隠す・捨てる
+  sb.state.showXref = false;
+  ok(sb.xrefGet().blocks.length === 0, '表示OFFなら出さない');
+  sb.state.showXref = true; sb.syncXrefBtn = () => {};
+  sb.xrefReset();
+  ok(sb.state.showXref === false && sb.xrefGet().blocks.length === 0, 'xrefReset で隠して結果を捨てる');
+  sb.state.showXref = true;
+  ok(sb.xrefGet().blocks.length === 0, '捨てたあとに表示だけONにしても、計算し直すまで空(古い結果は出ない)');
+  sb.xrefCompute = orig;
+}
+
+console.log('\n【結果を捨てる操作・計算し直す操作が入っている(片方だけ抜けるのを防ぐ)】');
+{
+  const ui = R('js/ui.js'), edit = R('js/edit.js');
+  ok(/function toggleXrefDisp\(\) \{\s*if \(state\.showXref === true\) \{ xrefReset\(\); \}\s*else \{ state\.showXref = true; xrefRefresh\(\); \}/.test(ui), 'ボタン: 表示中に押すと隠して捨て、OFFなら計算して表示');
+  ok(/function refreshXrefDisp\(\) \{\s*state\.showXref = true;\s*xrefRefresh\(\);/.test(ui), '「更新」: 計算して表示');
+  ok(/if \(state\.showXref === true\) xrefRefresh\(\);\s*\/\/ 表示中なら、倍率/.test(ui), '倍率を変えたら、表示中なら計算し直す');
+  ok(/xPrev !== \[el\.xrefHide/.test(ui) && /if \(tab === 'cr' && state\.showXref === true\) xrefRefresh\(\)/.test(ui), 'CRタブの変更・貼り付けのときだけ計算し直す');
+  ok(/function movePage[\s\S]*?xrefReset\(\)/.test(ui) && /function deletePage[\s\S]*?xrefReset\(\)/.test(ui), 'ページの並べ替え・削除で捨てる');
+  ok(/function applyProjectData\(d\) \{\s*if \(typeof xrefReset === 'function'\) xrefReset\(\)/.test(edit), '置き換え読込(バックアップ復元も)で捨てる');
+  ok(/function newProject\(\)[\s\S]*?xrefReset\(\)/.test(edit) && /function insertCoverPage\(\) \{\s*_syncCurrentPage\(\);\s*if \(typeof xrefReset/.test(edit), '新規作成・表紙の挿入で捨てる');
+  ok(!/xrefCompute\(\)/.test(R('js/draw.js')) && !/xrefCompute\(\)/.test(R('js/dxf_export.js')), '描画・DXFは xrefCompute を直接呼ばない');
+}
+
 console.log('\n【組み込み(片方だけ消えて黙って出なくなるのを防ぐ)】');
 {
   ok(/<script src="js\/xref\.js"><\/script>/.test(R('index.html')), 'index.htmlが xref.js を読む');
@@ -225,7 +266,10 @@ console.log('\n【組み込み(片方だけ消えて黙って出なくなるの�
   ok(/zoneColLabel\(c\)/.test(R('js/dxf_export.js')) && /zoneRowLabel\(r\)/.test(R('js/dxf_export.js')),
     'DXFの枠の区画ラベルは画面と同じ(列=数字・行=英字)。以前はDXFだけ 列=英字・行=数字 だった');
   ok(/renderPartsAll\(\);[\s\S]{0,400}draw\(\)/.test(R('js/parts_db.js')), '部品DBを読み込んだ後に描き直す(空き接点の枠は部品DBの端子欄から作るため)');
-  ok(/showXref/.test(R('js/settings.js')) && /rb-xref/.test(R('index.html')), '表示の入切と前回値がある');
+  ok(/rb-xref/.test(R('index.html')) && /refreshXrefDisp\(\)/.test(R('index.html')), '表示の入切ボタンと「更新」ボタンがある');
+  ok(!/showXref/.test(R('js/settings.js')), '前回値は覚えない(起動時は必ずOFF。常時は計算しない)');
+  ok(/showXref:\s*false/.test(R('js/state.js')), '既定はOFF');
+  ok(/state\.showXref !== true/.test(R('js/draw.js')) && /state\.showXref===true/.test(R('js/dxf_export.js')), '画面もDXFも、表示ONのときだけ出す');
 }
 
 console.log(ng ? `\n失敗 ${ng}件` : '\n全て成功');

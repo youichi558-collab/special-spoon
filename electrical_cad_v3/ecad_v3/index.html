@@ -336,7 +336,8 @@
       <div class="rg">
         <div class="rg-btns">
           <div class="rb rb-sm" style="gap:3px;cursor:default" title="クロスリファレンスの文字の大きさ(倍率)。全部のコイル・接点の文字が一度に変わります。既定0.7">倍率<input type="number" id="xref-scale" value="0.7" min="0.3" max="2" step="0.1" style="width:46px" onchange="setXrefScale(this.value)"></div>
-          <div class="rb rb-sm on" id="rb-xref" onclick="toggleXrefDisp()" title="コイルと接点の相互参照を図面に表示します。コイル側は図の一番下に「デバイス名・型式・電圧・接点の位置(a 9-5 1/F2 …)」、接点側はデバイス名の下に「(コイルの位置)」。PDF・DXF出力にも出ます">クロスリファレンス</div>
+          <div class="rb rb-sm" id="rb-xref" onclick="toggleXrefDisp()" title="コイルと接点の相互参照を、今の図面から計算して図面に表示します(押したときだけ計算します。もう一度押すと隠します)。コイル側は図の一番下に「デバイス名・型式・電圧・接点の位置(a 9-5 1/F2 …)」、接点側はデバイス名の下に「(コイルの位置)」。PDF・DXF出力にも出ます">クロスリファレンス</div>
+          <div class="rb rb-sm" id="rb-xref-refresh" onclick="refreshXrefDisp()" title="図面を直したあとに、クロスリファレンスを今の図面で計算し直します(自動では更新されません)">更新</div>
           <div class="rb rb-sm" id="rb-termno" onclick="toggleTermNoDisp()" title="シンボルの端子番号を図面に表示します。プロパティの「端子番号」欄(例: A1,A2,13,14)に入れた番号、または部品DBから割り当てた番号を、各端子の位置に書きます。PDF・DXF出力にも出ます。図面全体でまとめて切り替わります。"><svg viewBox="0 0 14 14"><circle cx="3.5" cy="7" r="1.8" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M1 7h.7M5.3 7h2.2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><path d="M9.2 5.2h1.4v3.6M12 8.8h1" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>端子番号</div>
         </div>
         <div class="rg-label">図面</div>

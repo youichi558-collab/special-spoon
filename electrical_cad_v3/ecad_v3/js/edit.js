@@ -299,6 +299,7 @@ function _legacyProjectPages(d) {
 //
 // 戻り値: { fixedIds } — 修復した重複IDの件数(呼び出し側が知らせるのに使う)
 function applyProjectData(d) {
+      if (typeof xrefReset === 'function') xrefReset();   // 別の図面に置き換わるので、クロスリファレンスの結果は捨てる(自動では出し直さない)
       // バージョン別マイグレーション
       if (d.version === 2) {
         state.pages        = d.pages || [{ name:'Sheet1', elements:[], wires:[], groups:[], guides:[], frameObj:null }];
@@ -805,6 +806,7 @@ function clearAll() {
 function newProject() {
   if (!confirm('新規作成します。保存していない変更（自動保存されたものも含む）は失われます。よろしいですか？')) return;
 
+  if (typeof xrefReset === 'function') xrefReset();   // 別の図面になるので、クロスリファレンスの結果は捨てる
   state.pages = [{ name: 'Sheet1', elements: [], wires: [], groups: [], guides: [], frameObj: null }];
   state.currentPage = 0;
   state.saveFileName = '';
@@ -1510,6 +1512,7 @@ document.addEventListener('keydown', e => {
 // ================================================================
 function insertCoverPage() {
   _syncCurrentPage();
+  if (typeof xrefReset === 'function') xrefReset();   // ページ番号がずれるので、クロスリファレンスの結果は捨てる
 
   const frames = state.pages.map((p,i) => ({
     idx: i, name: p.name || ('Sheet'+(i+1)), f: p.frameObj || {},

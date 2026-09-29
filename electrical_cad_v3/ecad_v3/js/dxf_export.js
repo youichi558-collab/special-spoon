@@ -756,7 +756,7 @@ function exportDXF(){
       }
       // 【2026-09-29】コイルと接点の相互参照(js/xref.js)。画面(draw.jsのdrawXref)と同じ内容・同じ位置。
       // 位置・文字は xrefGet() の結果をそのまま使う(式を写さない)。
-      if(state.showXref!==false && typeof xrefGet==='function'){
+      if(state.showXref===true && typeof xrefGet==='function'){
         const xl=xrefGet();
         const xb=xl.byEl.get(el.id);
         if(xb && xb.pi===state.currentPage){

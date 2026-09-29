@@ -229,7 +229,6 @@ function stApplyPrefs() {
   if (p.drawLw != null && setSel('draw-lw', p.drawLw)) state.drawLineWidth = p.drawLw === '' ? null : parseFloat(p.drawLw);
   if (p.pdfDpi != null) setSel('pdf-dpi', p.pdfDpi);
   if (p.pdfFmt != null) setSel('pdf-fmt', p.pdfFmt);
-  if (typeof p.showXref === 'boolean') state.showXref = p.showXref;
   if (p.xrefScale >= 0.3 && p.xrefScale <= 2) state.xrefScale = +p.xrefScale;   // クロスリファレンスの表示(js/xref.js)
 }
 

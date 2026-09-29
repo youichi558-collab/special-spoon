@@ -409,7 +409,7 @@ function symTermOff(el, i) {
 // 文字なしPDF(state.pdfSkipText)のときは他の文字と同様に出さない。
 // 色はデバイス名と同じ(el.devColor か既定の青)。DXFは dxf_export.js が同じ内容・同じ位置で出す。
 function drawXref() {
-  if (state.showXref === false || state.pdfSkipText || typeof xrefGet !== 'function') return;
+  if (state.showXref !== true || state.pdfSkipText || typeof xrefGet !== 'function') return;
   const L = xrefGet();
   ctx.save();
   ctx.textAlign = 'center';
