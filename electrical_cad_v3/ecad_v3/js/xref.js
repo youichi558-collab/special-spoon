@@ -41,6 +41,16 @@ function xrefTermPair(str) {
   const a = String(str || '').split(',').map(s => parseInt(s.trim(), 10));
   return (a.length === 2 && a.every(Number.isFinite)) ? a : null;
 }
+// 接点シンボルの端子番号(2つ)。①図面のシンボルに入れた番号(el.terminals) ②なければシンボル定義の既定の番号
+// (ピンエディタで入れたラベル)。他の機能(端子番号の表示・接続チェック=conn_table.js)と同じ優先順位。
+function xrefElTerms(el) {
+  if (String(el.terminals || '').trim()) return xrefTermPair(el.terminals);
+  const cS = (state.customSymbols || []).find(x => x.type === el.type);
+  if (cS && Array.isArray(cS.terminals) && cS.terminals.length === 2) {
+    return xrefTermPair(cS.terminals.map(t => t.label || '').join(','));
+  }
+  return null;
+}
 function xrefSamePair(a, b) {
   return !!a && !!b && ((a[0] === b[0] && a[1] === b[1]) || (a[0] === b[1] && a[1] === b[0]));
 }
@@ -81,7 +91,7 @@ function xrefCollect() {
       if (!d) { d = { name: raw, coils: [], contacts: [] }; devs.set(key, d); }
       const rec = { el, pi, loc: elLocation(el, pi) };
       if (role === 'coil') d.coils.push(rec);
-      else d.contacts.push(Object.assign(rec, { kind: role === 'contact_a' ? 'a' : 'b', terms: xrefTermPair(el.terminals) }));
+      else d.contacts.push(Object.assign(rec, { kind: role === 'contact_a' ? 'a' : 'b', terms: xrefElTerms(el) }));
     });
   });
   return devs;

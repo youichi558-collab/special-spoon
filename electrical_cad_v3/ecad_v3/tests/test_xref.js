@@ -74,6 +74,17 @@ console.log('\n【並んだコイルは文字がぶつからない】');
   eq(b.x - a.x >= (a.w + b.w) / 2, true, '間隔が文字の幅より広い');
 }
 
+console.log('\n【端子番号がシンボル定義の既定ラベルだけにある接点(手で打っていない)】');
+{
+  const els = [coil('CR1', 360, 375), cont('ca', 'CR1', 390, 191, '', {})];
+  const L0 = setup(els);
+  ok(L0.blocks[0].lines.some(l => l.t === 'a 9-5') && !L0.blocks[0].lines.some(l => l.t === 'a 9-5 (1/6B)'), '端子番号が無ければ a 9-5 の枠は空欄のまま(接点は別の行に出る)');
+  sb.state.customSymbols = [{ type: 'ca', terminals: [{ label: '9' }, { label: '5' }] }];
+  const L1 = sb.xrefCompute();
+  ok(L1.blocks[0].lines.some(l => l.t === 'a 9-5 (1/6B)'), 'シンボル定義の既定の番号(9,5)を使って枠に当たる');
+  sb.state.customSymbols = [];
+}
+
 console.log('\n【型式が無い・部品DBに無い: 使用中の接点だけ出す】');
 {
   const els = [coil('R9', 100, 100, { partModel: '', partVolt: '' }), cont('ca', 'R9', 200, 50, '13,14', { partModel: '' }),
