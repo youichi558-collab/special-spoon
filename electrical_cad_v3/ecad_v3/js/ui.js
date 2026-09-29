@@ -2556,6 +2556,7 @@ function updateRightPanel() {
       <button onclick="pasteDeviceProps()" title="コピーした内容を、選択中のシンボル(複数可・形が違ってもOK)へまとめて貼り付けます" style="flex:1;font-size:11px;padding:3px 6px;background:${deviceClipboard?'var(--accent,#1d6fb5)':'var(--bg3)'};border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:${deviceClipboard?'#fff':'var(--fg)'}"${deviceClipboard?'':' disabled'}>一括貼り付け</button>
     </div>`;
     const _hasCR = ['coil', 'contact_a', 'contact_b'].includes(symRole(el));   // クロスリファレンスの対象(js/xref.js)
+    html += `<div class="pp-row" style="gap:6px"><label>シンボル</label><span id="pp-symname" style="padding:2px 0;color:var(--fg2);font-size:11px" title="この要素の元になっている登録シンボルの名前と、接点Ref用の種別です">${escH(rpSymbolLabel(el))}</span></div>`;
     html += rpTabsHeader(_hasCR) + rpPaneOpen('basic');
     { const devC = el.devColor||(state.darkMode?'#4da3ff':'#1d6fb5');
     html += `<div class="pp-group" style="border-left:4px solid ${devC}"><div class="pp-group-cap" style="color:${devC}">◆ デバイス</div>`;
@@ -3145,6 +3146,18 @@ const TAB_PROP_KEYS = {
 };
 const TAB_PROP_KEEP = ['layer'];      // コピー元に無くても貼り付け先から消さない項目
 let tabClipboard = {};                // { タブ名: { 項目: 値 } }
+
+// 選択中の要素が、どの登録シンボルか(名前と役割)。プロパティの一番上に1行で出す(逆引き)。
+// 役割はシンボルの登録・端子編集で決めた種別(接点Ref用)。クロスリファレンスの対象かどうかもここで分かる。
+function rpSymbolLabel(el) {
+  if (!el) return '';
+  const cS = (state.customSymbols || []).find(s => s.type === el.type);
+  const name = (cS && (cS.name || cS.label)) || '';
+  const roleName = { coil: 'コイル', contact_main: '主接点', contact_a: 'a接点', contact_b: 'b接点', tentative: '仮設定' };
+  const role = symRole(el);
+  const r = roleName[role] || (role ? role : '種別なし');
+  return `${name || '(名前なし)'}／${r}`;
+}
 
 function rpTabsHeader(showCR) {
   return `<div class="rp-tabs">` + RP_TABS.filter(t => t.key !== 'cr' || showCR).map(t =>

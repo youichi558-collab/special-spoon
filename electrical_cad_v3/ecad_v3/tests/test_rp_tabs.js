@@ -20,7 +20,7 @@ let alerts = [], drawn = 0;
 const sb = { console, alert: m => alerts.push(m), draw: () => { drawn++; }, updateRightPanel: () => {}, applyRightPanel: () => {}, pushH: () => { sb._pushed = (sb._pushed || 0) + 1; },
   document: { getElementById: id => (id === 's-hint' ? hint : id === 'rp-body' ? sb._rp : null) } };
 vm.createContext(sb);
-vm.runInContext([pick(/const RP_TABS = \[[\s\S]*?\n\];/), pick(/const TAB_PROP_KEYS = \{[\s\S]*?\n\};/), pick(/const TAB_PROP_KEEP = [^\n]*/),
+vm.runInContext([pick(/function rpSymbolLabel\([\s\S]*?\n\}/), pick(/const RP_TABS = \[[\s\S]*?\n\];/), pick(/const TAB_PROP_KEYS = \{[\s\S]*?\n\};/), pick(/const TAB_PROP_KEEP = [^\n]*/),
   'let tabClipboard = {};', pick(/function rpTabsHeader\([\s\S]*?\n\}/), pick(/function rpPaneOpen\([\s\S]*?\n\}/), pick(/function rpPaneClose\([^\n]*/),
   pick(/function copyTabProps\([\s\S]*?\n\}/), pick(/function pasteTabProps\([\s\S]*?\n\}/), pick(/const DEVICE_PROP_KEYS = \[[\s\S]*?\n\];/)].join('\n'), sb);
 
@@ -40,6 +40,17 @@ console.log('【タブの構成】');
   ok(['label', 'partRef', 'partModel', 'terminals', 'termOff'].every(k => dev.has(k)), '一括コピー(DEVICE_PROP_KEYS)は従来どおり残っている');
   ok(sb.rpTabsHeader().includes('基本') && sb.rpTabsHeader().includes('メモ'), 'タブの見出しが作れる');
   ok(sb.rpPaneOpen('term').includes("copyTabProps('term')") && sb.rpPaneOpen('term').includes("pasteTabProps('term')"), '各タブにコピー・貼り付けボタンがある');
+}
+
+console.log('\n【シンボルの逆引き: 選んだ要素の登録シンボル名と役割】');
+{
+  sb.symRole = el => ({ a1: 'contact_a', c1: 'coil', z: '' }[el.type] || '');
+  sb.state = { customSymbols: [{ type: 'a1', name: 'a接点' }, { type: 'c1', name: '補助継電器' }, { type: 'z', label: 'ランプ' }] };
+  eq(sb.rpSymbolLabel({ type: 'a1' }), 'a接点／a接点', '名前と役割が出る');
+  eq(sb.rpSymbolLabel({ type: 'c1' }), '補助継電器／コイル', 'コイル');
+  eq(sb.rpSymbolLabel({ type: 'z' }), 'ランプ／種別なし', 'nameが無ければlabel、役割が無ければ「種別なし」');
+  eq(sb.rpSymbolLabel({ type: 'nope' }), '(名前なし)／種別なし', '登録が無い要素でも落ちない');
+  ok(/pp-symname/.test(ui), 'プロパティの上に1行出している');
 }
 
 console.log('\n【タブコピーは、そのタブの項目だけを運ぶ】');
