@@ -920,6 +920,9 @@ const COMMON_VOLTS = ['AC200V', 'AC100V', 'DC24V'];
 function defaultPartVolt(model) {
   const o = partVoltOptions(model);
   if (!o.length) return '';
+  // 【2026-09-29】前回選んだ電圧(型番に関係なく)が、この型番でも選べるならそれ(settings.js)
+  const last = (typeof stPrefs === 'function') ? stPrefs().partVolt : '';
+  if (last && o.includes(last)) return last;
   for (const v of COMMON_VOLTS) if (o.includes(v)) return v;
   return o[0];        // よく使う電圧が無ければ先頭
 }
@@ -945,7 +948,7 @@ function partVoltRowHtml(el) {
       + `<input type="text" id="pp-partvolt" value="${_esc(cur)}" readonly`
       + ` style="background:var(--bg3);color:var(--fg2)" title="この型番は1種類のみです"></div>`;
   }
-  return `<div class="pp-row"><label>コイル電圧</label><select id="pp-partvolt">`
+  return `<div class="pp-row"><label>コイル電圧</label><select id="pp-partvolt" onchange="stSetPref('partVolt',this.value)">`
     + opts.map(o => `<option value="${_esc(o)}"${o === cur ? ' selected' : ''}>${_esc(o)}</option>`).join('')
     + `</select></div>`;
 }
@@ -1021,7 +1024,10 @@ function applyDefaultChoices(el) {
     const opts = ch ? ch[c.opt] : [];
     if (!opts.length) { delete el[c.field]; return; }
     if (el[c.field] && opts.includes(el[c.field])) return;
-    const d = (c.dflt && opts.includes(c.dflt)) ? c.dflt : (opts.length === 1 ? opts[0] : '');
+    // 【2026-09-29】前回選んだ値(型番に関係なく)が、この型番でも選べるならそれ(settings.js)
+    const last = (typeof stPrefs === 'function') ? stPrefs()['part_' + c.opt] : '';
+    const d = (last && opts.includes(last)) ? last
+            : (c.dflt && opts.includes(c.dflt)) ? c.dflt : (opts.length === 1 ? opts[0] : '');
     if (d) el[c.field] = d; else delete el[c.field];
   });
 }
@@ -1045,7 +1051,7 @@ function partChoiceRowsHtml(el) {
         + ` style="background:var(--bg3);color:var(--fg2)" title="この型番は1種類のみです"></div>`;
     }
     const cur = el[c.field] || ((c.dflt && opts.includes(c.dflt)) ? c.dflt : '');
-    return `<div class="pp-row"><label>${c.name}</label><select id="${c.id}">`
+    return `<div class="pp-row"><label>${c.name}</label><select id="${c.id}" onchange="stSetPref('part_${c.opt}',this.value)">`
       + (c.dflt ? '' : `<option value=""${cur ? '' : ' selected'}>(未選択)</option>`)
       + opts.map(o => `<option value="${_esc(o)}"${o === cur ? ' selected' : ''}>${_esc(o)}</option>`).join('')
       + `</select></div>`;

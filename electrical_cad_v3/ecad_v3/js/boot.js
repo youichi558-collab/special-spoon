@@ -62,6 +62,8 @@ function _safeInit(label, fn, critical) {
   // critical: ここが失敗すると空の初期状態で立ち上がり、自動保存が
   // 元データを上書きして復旧不能になる(2026-08-23の事故)。必ず知らせる。
   _safeInit('自動保存の復元', restoreAutosave, true);
+  // 作図・出力の前回値(グリッド・Snap・線幅・PDF)。図面データとは別の専用キー(settings.js)
+  _safeInit('前回値の復元', () => { if (typeof stApplyPrefs === 'function') stApplyPrefs(); });
 
   // 復元に失敗して自動保存がロックされていれば、それも画面に出す。
   // 例外が出ずに静かに復元しきれなかった場合もここで拾える。

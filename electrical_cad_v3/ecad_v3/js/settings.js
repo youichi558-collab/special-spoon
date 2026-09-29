@@ -176,4 +176,55 @@ async function stClearOutDir() {
   stRenderRibbon();
 }
 
+// ================================================================
+// 前回値を覚える(2026-09-29)
+//
+// 盛田さん「プルダウンの部分は一度選んだら、前回値記憶できないか？」「型番関係なくだな」
+// 「全部で」。2026-09-21 に「毎回リセットされる設定を覚えるようにしてから設定画面に
+// まとめる」と決めていた(HANDOFF.md)。その「覚える」段をここでやる(設定画面はまだ)。
+//
+// 【置き場所】localStorage の専用キー ecad_prefs。図面データ(自動保存・図面ファイル)には
+// 入れない。好みは図面の中身ではなく、人に図面を渡したときに付いていくべきでないため
+// (9-21の指摘「好みが図面データに混ざっている」)。各自が自分のPCで使う前提(9-29の決定)。
+//
+// 【覚えるもの】
+//   部品の選択(型番に関係なく、最後に選んだ値): コイル電圧・極数・定格電流・動作特性
+//     → 次に型番を割り当てたとき、その型番で選べる値なら最初から選ばれる。選べなければ従来の既定
+//   作図・出力: グリッド・端点Snap・中点Snap・線幅(作図)・PDFの解像度・PDFの形式
+// 【覚えないもの】端子の見た目(分岐点/端子○/端子◎のボタンを押すたびに決まる)・端子のサイズ
+//   (今の画面に入力欄が無い)。レイヤー・線種など要素のプロパティは、その要素の値なので対象外。
+// ================================================================
+const ST_PREFS_KEY = 'ecad_prefs';
+
+function stPrefs() {
+  try { return JSON.parse(localStorage.getItem(ST_PREFS_KEY) || '{}') || {}; }
+  catch (e) { return {}; }
+}
+// 値が空(未選択)なら覚えている値を消す
+function stSetPref(key, val) {
+  try {
+    const p = stPrefs();
+    if (val === undefined || val === null || val === '') delete p[key]; else p[key] = val;
+    localStorage.setItem(ST_PREFS_KEY, JSON.stringify(p));
+  } catch (e) {}
+}
+
+// 起動時に作図・出力の前回値を state と画面へ戻す(boot.js から、自動保存の復元の後に呼ぶ)
+function stApplyPrefs() {
+  const p = stPrefs();
+  const setSel = (id, v) => {
+    const e = document.getElementById(id);
+    if (e && [...e.options].some(o => o.value === String(v))) { e.value = String(v); return true; }
+    return false;
+  };
+  if (p.grid != null && setSel('grid-sel', p.grid)) state.G = +p.grid;
+  if (typeof p.snapEnd === 'boolean') state.snapEnd = p.snapEnd;
+  if (typeof p.snapMid === 'boolean') state.snapMid = p.snapMid;
+  document.getElementById('rb-snapend')?.classList.toggle('on', !!state.snapEnd);
+  document.getElementById('rb-snapmid')?.classList.toggle('on', !!state.snapMid);
+  if (p.drawLw != null && setSel('draw-lw', p.drawLw)) state.drawLineWidth = p.drawLw === '' ? null : parseFloat(p.drawLw);
+  if (p.pdfDpi != null) setSel('pdf-dpi', p.pdfDpi);
+  if (p.pdfFmt != null) setSel('pdf-fmt', p.pdfFmt);
+}
+
 if (typeof window !== 'undefined') (window.__ecadLoaded = window.__ecadLoaded || {})['settings.js'] = 1;

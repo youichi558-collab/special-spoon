@@ -577,10 +577,12 @@ function toggleOrtho() {
 function toggleSnapEnd() {
   state.snapEnd = !state.snapEnd;
   document.getElementById('rb-snapend')?.classList.toggle('on', state.snapEnd);
+  if (typeof stSetPref === 'function') stSetPref('snapEnd', state.snapEnd);   // 前回値(settings.js)
 }
 function toggleSnapMid() {
   state.snapMid = !state.snapMid;
   document.getElementById('rb-snapmid')?.classList.toggle('on', state.snapMid);
+  if (typeof stSetPref === 'function') stSetPref('snapMid', state.snapMid);   // 前回値(settings.js)
 }
 
 // ================================================================

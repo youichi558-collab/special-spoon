@@ -848,6 +848,7 @@ function setBOMVolt(idx, volt){
   const r=(window._bomRows||[])[idx];
   if(!r)return;
   if(typeof pushH==='function')pushH();   // 変更前の状態を履歴に積む
+  if(typeof stSetPref==='function')stSetPref('partVolt',volt);   // 前回値(settings.js)
   (r.els||[]).forEach(el=>{ el.partVolt=volt||undefined; });
   if(typeof draw==='function')draw();
   if(typeof updateRightPanel==='function')updateRightPanel();
