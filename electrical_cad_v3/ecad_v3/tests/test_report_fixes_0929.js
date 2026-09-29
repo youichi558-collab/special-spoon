@@ -222,5 +222,29 @@ console.log('\n【部品表・接点Refのデバイス単位の⚠を押すと�
   ok(/jumpToRefEl\(1,&quot;d1&quot;\)"[^>]*>⚠ コイルが2個/.test(h), '接点Ref: コイルが複数の⚠は、最初のコイル(2ページ目)へ飛ぶ');
 }
 
+console.log('\n【部品表: デバイス未設定の行を押すと、図面のその部品へ飛ぶ(複数なら押すたびに次へ)】');
+{
+  sb.symRole = () => '';
+  sb.partVoltOptions = () => [];
+  const p1 = page([{ id: 'l1', type: 'lamp', label: '運転' }, { id: 'z1', type: 'zz' }]);
+  const p2 = page([{ id: 'l2', type: 'lamp', label: '運転' }, { id: 'l3', type: 'lamp', label: '運転' }]);
+  setState([p1, p2]);
+  vm.runInContext('showBOM()', sb);
+  const h = sb.htmlOut;
+  ok(/onclick="jumpBOMNoRef\(\d+\)"[^>]*>[^<]*<span style="color:var\(--red\)">未設定<\/span>/.test(h), '「未設定」の文字が押せる');
+  ok(/onclick="jumpBOMNoRef\(\d+\)"[^>]*>運転 <span[^>]*>\(3\)<\/span>/.test(h), '型番欄の名前も押せて、3個あることが分かる');
+  const rows = vm.runInContext('window._bomRows', sb);
+  const idx = rows.findIndex(r => r.noRef && r.label === '運転');
+  ok(rows[idx].locs.length === 3, '飛び先が3つ(ページ番号つき)');
+  const calls = []; sb.jumpToRefEl = (pi, id) => calls.push(pi + ':' + id);
+  for (let i = 0; i < 4; i++) vm.runInContext(`jumpBOMNoRef(${idx})`, sb);
+  ok(calls.join() === '0:l1,1:l2,1:l3,0:l1', `押すたびに次の部品へ、最後まで行ったら最初に戻る(実際 ${calls.join()})`);
+  const one = rows.findIndex(r => r.noRef && r.label !== '運転');
+  calls.length = 0; vm.runInContext(`jumpBOMNoRef(${one})`, sb);
+  ok(calls.join() === '0:z1', '1個だけの行はその部品へ飛ぶ');
+  vm.runInContext('jumpBOMNoRef(999)', sb);
+  ok(calls.length === 1, '存在しない行番号では何もしない');
+}
+
 console.log(ng ? `\n失敗 ${ng} 件` : '\nすべて通過');
 process.exit(ng ? 1 : 0);

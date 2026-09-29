@@ -635,8 +635,9 @@ function collectBOMRows(){
         if(!noRef[k])noRef[k]={type:el.type,model:(el.partModel||'').trim(),label:name,
                                maker:(el.partMaker||'').trim(),
                                pname:(el.partName||'').trim(),pnote:(el.partNote||'').trim(),
-                               refs:[],count:0,parts:0,noRef:true,warn:''};
+                               refs:[],count:0,parts:0,noRef:true,warn:'',locs:[]};
         noRef[k].count++; noRef[k].parts++;
+        noRef[k].locs.push({pi,id:el.id});   // 図面へ飛ぶための位置(デバイス未設定の行を押したとき)
       }
     });
     // グループが持つデバイス(部品外形図など)も集計する。
@@ -868,19 +869,24 @@ function showBOM(){
   // 【2026-09-29】型番も帳票で直接打てる(盛田さん「部品表で型番修正できないが？」)。メーカー・名称・備考と同じ作法で、
   // そのデバイスの全要素へ書き戻す(setBOMModel)。型番が複数あって食い違っているときも、ここで1つに揃えられる。
   // デバイス未設定の行は、書き戻す先のデバイスが無いので打てない(従来の表示のまま)。
+  // デバイス未設定の行(=そのまとまりの部品が図面のどこにあるか分からない)を押すと、図面のその部品へ飛ぶ。
+  // 同じ種類・名前の部品が複数あるときは、押すたびに次の部品へ飛ぶ(盛田さん「部品表のデバイス未確定も飛べるように」)。
+  const noRefJump = (r, i, inner) => (r.locs && r.locs.length)
+    ? `<span style="cursor:pointer;text-decoration:underline dotted" onclick="jumpBOMNoRef(${i})" title="クリックで図面のこの部品へ飛ぶ${r.locs.length > 1 ? `(${r.locs.length}個あります。押すたびに次の部品へ)` : ''}">${inner}${r.locs.length > 1 ? ` <span style="font-weight:400;color:var(--fg3)">(${r.locs.length})</span>` : ''}</span>`
+    : inner;
   const modelCell = (r, i) => {
     // ⚠を押すと、図面のそのデバイス(コイル、無ければ最初の記号)へ飛ぶ(盛田さん「デバイス単位の⚠も飛べるように」)
     const warn = r.warn ? (r.jump
       ? `<div style="color:var(--red);font-size:10px;cursor:pointer;text-decoration:underline dotted" title="クリックで図面のこのデバイスへ飛ぶ" onclick="jumpToRefEl(${r.jump.pi},${_jsArg(r.jump.id)})">⚠${escH(r.warn)}</div>`
       : `<div style="color:var(--red);font-size:10px">⚠${escH(r.warn)}</div>`) : '';
-    if (r.noRef) return `<td>${escH(r.label)}${warn}</td>`;
+    if (r.noRef) return `<td>${noRefJump(r, i, escH(r.label))}${warn}</td>`;
     return `<td><input type="text" value="${escH(r.model||'')}" placeholder="(型番未設定)"`
       + ` onchange="setBOMModel(${i}, this.value)" title="このデバイスの全要素(コイル・接点・端子)に同じ型番を入れます"`
       + ` style="width:170px;font-size:11px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:3px;padding:1px 3px">${warn}</td>`;
   };
   const rowHtml = ({r,i}) =>
     `<tr${r.noRef?' style="background:var(--rbg)"':''}>`
-    +`<td style="font-weight:600">${r.noRef?'<span style="color:var(--red)">未設定</span>':(escH(r.refs.join(', '))||'-')}</td>`
+    +`<td style="font-weight:600">${r.noRef?noRefJump(r,i,'<span style="color:var(--red)">未設定</span>'):(escH(r.refs.join(', '))||'-')}</td>`
     +nameCell(r,i)
     +modelCell(r,i)
     +specCell(r,i)
@@ -927,6 +933,16 @@ function setBOMMaker(idx, maker){
   if(typeof draw==='function')draw();
   if(typeof updateRightPanel==='function')updateRightPanel();
   showBOM();
+}
+// デバイス未設定の行から、図面のその部品へ飛ぶ。同じ行(同じ種類・名前)に複数あるときは、押すたびに次の部品へ。
+function jumpBOMNoRef(idx){
+  const r=(window._bomRows||[])[idx];
+  if(!r||!r.locs||!r.locs.length)return;
+  const m=(window._bomJumpNext=window._bomJumpNext||{});
+  const key=r.type+'|'+r.label;
+  const n=(m[key]||0)%r.locs.length;
+  m[key]=n+1;
+  jumpToRefEl(r.locs[n].pi,r.locs[n].id);
 }
 // 型番を部品表のセルから直接打つ。そのデバイスの全要素と、同じデバイスのグループ(外形図)に書き戻す。
 // 電圧など、ほかの項目は触らない(型番を変えたあと電圧が選択肢に無ければ、電圧欄に「選択肢に無い」と出る)。
