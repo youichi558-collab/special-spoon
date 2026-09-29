@@ -3350,8 +3350,19 @@ function toggleXrefDisp() {
   syncXrefBtn();
   draw();
 }
+// 全体の文字サイズの倍率(0.3〜2)。前回値を覚える。範囲外・数字でなければ既定0.7に戻す。
+function setXrefScale(v) {
+  let n = parseFloat(v);
+  if (!(n >= 0.3 && n <= 2)) n = 0.7;
+  state.xrefScale = Math.round(n * 100) / 100;
+  if (typeof stSetPref === 'function') stSetPref('xrefScale', state.xrefScale);
+  syncXrefBtn();
+  draw();
+}
 function syncXrefBtn() {
   document.getElementById('rb-xref')?.classList.toggle('on', state.showXref !== false);
+  const i = document.getElementById('xref-scale');
+  if (i) i.value = state.xrefScale;
 }
 function syncTermNoBtn() {
   document.getElementById('rb-termno')?.classList.toggle('on', !!state.showTermNo);

@@ -102,6 +102,19 @@ console.log('\n【対象外】');
   eq([off.blocks.length, off.contacts.size], [0, 0], '表示OFFなら何も出さない');
 }
 
+console.log('\n【文字の大きさ(既定は0.7倍=盛田さんの選択)】');
+{
+  const els = [coil('CR1', 360, 375, { devFs: 10 }), cont('ca', 'CR1', 390, 191, '9,5', { devFs: 10 })];
+  const L = setup(els);
+  eq([L.blocks[0].nameFs, L.blocks[0].fs].map(v => Math.round(v * 1e6) / 1e6), [7, 5.25], 'コイル側: デバイス名=devFsの0.7倍、他の行はその0.75倍');
+  eq(Math.abs(L.contacts.get(els[1].id).fs - 5.95) < 1e-9, true, '接点側: devFsの0.85倍の0.7倍');
+  sb.state.xrefScale = 1;
+  const big = sb.xrefCompute();
+  eq(big.blocks[0].nameFs, 10, '倍率1なら等倍');
+  sb.state.xrefScale = 'abc';
+  eq(sb.xrefCompute().blocks[0].nameFs, 7, '数字でなければ既定0.7に戻す');
+}
+
 console.log('\n【組み込み(片方だけ消えて黙って出なくなるのを防ぐ)】');
 {
   ok(/<script src="js\/xref\.js"><\/script>/.test(R('index.html')), 'index.htmlが xref.js を読む');

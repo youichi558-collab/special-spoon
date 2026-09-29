@@ -30,8 +30,9 @@
 const XREF_BAND   = 20;   // コイルの左右にこの幅の中を「そのコイルの列」とみなして、一番下を探す
 const XREF_MARGIN = 12;   // 一番下からこれだけ空けて書き始める
 
-// 図面全体の文字サイズの倍率(既定1)。位置・サイズの調整の仕組みは盛田さんに確認してから足す
-function xrefScale() { const v = Number(state.xrefScale); return (v > 0 && v <= 3) ? v : 1; }
+// 図面全体の文字サイズの倍率(既定0.7=盛田さんが選んだ大きさ)。表示タブの入力欄(ui.js の setXrefScale)で変える。
+// 個別の調整項目はプロパティ欄に足さない(盛田さん「プロパティが多すぎる」)
+function xrefScale() { const v = Number(state.xrefScale); return (v > 0 && v <= 3) ? v : 0.7; }
 
 function xrefRole(el) { return (typeof symRole === 'function') ? symRole(el) : ''; }
 
