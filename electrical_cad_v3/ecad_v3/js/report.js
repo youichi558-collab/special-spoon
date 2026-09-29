@@ -830,6 +830,10 @@ function showBOM(){
   const makerCell = (r, i) => typedCell(r, i, r.maker, 'setBOMMaker', 90);
   const nameCell  = (r, i) => typedCell(r, i, r.pname, 'setBOMName', 110);
   const noteCell  = (r, i) => typedCell(r, i, r.pnote, 'setBOMNote', 150);
+  // 仕様(図面の仕様欄=el.label)。型番とは別の欄なので別の列。**帳票で直接打てる**(型番・メーカー・名称・備考・電圧と同じ)。
+  // 書き戻す先がない行(端子台だけ・デバイス未設定)は「-」。
+  const specCell  = (r, i) => (r.noRef || !(r.els || []).some(el => el.type !== 'junction'))
+    ? '<td style="color:var(--fg3)">-</td>' : typedCell(r, i, r.spec, 'setBOMSpec', 170);
   // 【2026-09-21】「種別」列は表示から外した。標準シンボルがあった頃は
   // coil/breaker と読めたが、登録シンボルばかりの今は custom_xxx という
   // **内部名**が出るだけで意味を成さない(実物の部品表にも無い列)。
@@ -867,7 +871,7 @@ function showBOM(){
     +`<td style="font-weight:600">${r.noRef?'<span style="color:var(--red)">未設定</span>':(escH(r.refs.join(', '))||'-')}</td>`
     +nameCell(r,i)
     +modelCell(r,i)
-    +`<td style="color:var(--fg2)">${escH(r.spec||'')}</td>`   // 仕様(図面の仕様欄)。型番とは別の欄なので別の列
+    +specCell(r,i)
     +makerCell(r,i)
     +voltCell(r,i)
     +`<td style="font-weight:600">${r.count}</td><td style="color:var(--fg3)">${escH(r.parts)}</td>`
@@ -877,7 +881,7 @@ function showBOM(){
     const cnt = list.reduce((s,{r})=>s+r.count,0);
     return `<p style="font-size:11px;font-weight:600;margin:10px 0 3px">${title}`
       + `<span style="color:var(--fg3);font-weight:400">（${cnt}台）</span></p>`
-      + `<table class="tbl"><tr><th>デバイス</th><th>名称</th><th>型番/名称</th><th title="図面の「仕様」欄の内容(プロパティで直します)">仕様</th><th>メーカー</th><th>コイル電圧</th><th>数量(台)</th><th>構成数</th><th>備考</th></tr>`
+      + `<table class="tbl"><tr><th>デバイス</th><th>名称</th><th>型番/名称</th><th title="図面の「仕様」欄の内容。ここで直せます(そのデバイスの記号に入ります)">仕様</th><th>メーカー</th><th>コイル電圧</th><th>数量(台)</th><th>構成数</th><th>備考</th></tr>`
       + list.map(rowHtml).join('') + `</table>`;
   };
   let html = rows.length
@@ -924,6 +928,27 @@ function setBOMModel(idx, v){
   if(key)state.pages.forEach(pg=>(pg.groups||[]).forEach(g=>{
     if(normalizeRef(g.partRef)===key)g.partModel=val||undefined;
   }));
+  if(typeof draw==='function')draw();
+  if(typeof updateRightPanel==='function')updateRightPanel();
+  showBOM();
+}
+// 仕様を部品表のセルから直接打つ。**仕様はデバイスで1つ**なので、そのデバイスの記号(端子台の端子は除く)に同じ値を入れる。
+// ただし図面の見た目を勝手に増やさないため、**もともと仕様が入っている記号だけ**を書き換える(表示するかは各記号の「仕様を図面に表示」のまま)。
+// どの記号にも仕様が無いデバイスは、コイル(無ければ最初の記号)1つだけに入れる(そこに仕様が出る)。空にすると全記号の仕様を消す。
+function setBOMSpec(idx, v){
+  const r=(window._bomRows||[])[idx];
+  if(!r||r.noRef)return;
+  const targets=(r.els||[]).filter(el=>el.type!=='junction');
+  if(!targets.length)return;
+  if(typeof pushH==='function')pushH();   // 変更前の状態を履歴に積む
+  const val=(v||'').trim();
+  if(!val){
+    targets.forEach(el=>{ delete el.label; });
+  }else{
+    const has=targets.filter(el=>String(el.label||'').trim());
+    const dest=has.length?has:[targets.find(el=>symRole(el)==='coil')||targets[0]];
+    dest.forEach(el=>{ el.label=val; });
+  }
   if(typeof draw==='function')draw();
   if(typeof updateRightPanel==='function')updateRightPanel();
   showBOM();

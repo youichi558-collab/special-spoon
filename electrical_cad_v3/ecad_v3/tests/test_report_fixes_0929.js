@@ -170,12 +170,32 @@ console.log('\n【部品表: 仕様(図面の仕様欄)を、型番とは別の�
   ok(row('TB1').spec === '', '端子台の端子のlabel(端子番号)は仕様として出さない');
   ok(/CP3に仕様が複数\(A \/ B\)/.test(row('CP3').warn), '同じデバイスで仕様が食い違っていたら警告(仕様はデバイスで1つのはず)');
   vm.runInContext('showBOM()', sb);
-  ok(/<th[^>]*>仕様<\/th>/.test(sb.htmlOut) && /<td style="color:var\(--fg2\)">2P 5A 動作特性D<\/td>/.test(sb.htmlOut), '画面に「仕様」列が出る');
+  ok(/<th[^>]*>仕様<\/th>/.test(sb.htmlOut) && /<input type="text" value="2P 5A 動作特性D"[^>]*setBOMSpec\(\d+, this\.value\)/.test(sb.htmlOut), '画面に「仕様」列が出て、打てる入力欄になっている');
+  ok(/<tr[^>]*><td style="font-weight:600">TB1<\/td>(?:(?!<\/tr>).)*?<td style="color:var\(--fg3\)">-<\/td>/.test(sb.htmlOut.replace(/\n/g, '')), '端子台だけのデバイスは「-」(書き戻す先が無い)');
   let csv = ''; sb.dl = (c) => { csv = c; }; sb._csvName = n => n + '.csv';
   vm.runInContext('exportBOMCSV()', sb);
   const lines = csv.split('\n');
   ok(lines[0].startsWith('デバイス,名称,型番/名称,仕様,メーカー'), 'CSVの見出しにも「仕様」');
   ok(lines.some(l => l.startsWith('"CP1","","CP30-BA","2P 5A 動作特性D"')), 'CSVの行にも仕様が入る');
+
+  // 部品表から仕様を打つ
+  const idx = ref => vm.runInContext('window._bomRows', sb).findIndex(r => r.refs[0] === ref);
+  let pushed = 0; sb.pushH = () => { pushed++; };
+  vm.runInContext(`setBOMSpec(${idx('CP1')}, ' 2P 10A ')`, sb);
+  ok(els[0].label === '2P 10A', 'もともと仕様が入っている記号に、打った仕様が入る(前後の空白は落とす)');
+  ok(els[1].label === '', '仕様が空だった記号には入れない(図面に仕様が増えない)');
+  ok(pushed === 1, '取り消せる(pushH)');
+  vm.runInContext(`setBOMSpec(${idx('CP3')}, 'C')`, sb);
+  ok(els[3].label === 'C' && els[4].label === 'C', '食い違っていた仕様が、打った値に揃う');
+  ok(!/CP3に仕様が複数/.test(sb.htmlOut), '揃ったら警告が消える(表が作り直される)');
+  ok(els[5].label === '5', '端子台の端子の番号(label)は触らない');
+  // どの記号にも仕様が無いデバイス: コイル(無ければ最初)だけに入れる
+  const e2 = [{ id: 'a', type: 'brk', partRef: 'K1' }, { id: 'b', type: 'coil', partRef: 'K1' }, { id: 'c', type: 'brk', partRef: 'K1' }];
+  setState([page(e2)]); vm.runInContext('showBOM()', sb);
+  vm.runInContext(`setBOMSpec(${vm.runInContext('window._bomRows', sb).findIndex(r => r.refs[0] === 'K1')}, 'AC100V')`, sb);
+  ok(e2[1].label === 'AC100V' && !e2[0].label && !e2[2].label, '仕様が無いデバイスは、コイル1つだけに入る');
+  vm.runInContext(`setBOMSpec(${vm.runInContext('window._bomRows', sb).findIndex(r => r.refs[0] === 'K1')}, '')`, sb);
+  ok(e2.every(e => e.label === undefined), '空にすると、全記号の仕様が消える');
 }
 
 console.log(ng ? `\n失敗 ${ng} 件` : '\nすべて通過');
