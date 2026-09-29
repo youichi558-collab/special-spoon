@@ -30,6 +30,9 @@
 const XREF_BAND   = 20;   // コイルの左右にこの幅の中を「そのコイルの列」とみなして、一番下を探す
 const XREF_MARGIN = 12;   // 一番下からこれだけ空けて書き始める
 
+// 図面全体の文字サイズの倍率(既定1)。位置・サイズの調整の仕組みは盛田さんに確認してから足す
+function xrefScale() { const v = Number(state.xrefScale); return (v > 0 && v <= 3) ? v : 1; }
+
 function xrefRole(el) { return (typeof symRole === 'function') ? symRole(el) : ''; }
 
 // '9,5' → [9,5]。2つの数字でなければ null
@@ -173,13 +176,13 @@ function xrefCompute() {
       const dy = el.devOffY !== undefined ? el.devOffY : -(dev.h * (el.scale || 1) / 2 + 6);
       contacts.set(el.id, {
         x: el.x + (el.devOffX || 0), y: el.y + dy + dfs * 1.25,
-        fs: Math.max(4, Math.round(dfs * 0.85)), text: `(${coilLocs})`,
+        fs: Math.max(2, dfs * 0.85 * xrefScale()), text: `(${coilLocs})`,
       });
     });
     d.coils.forEach(c => {
       const el = c.el, pg = state.pages[c.pi];
-      const nameFs = el.devFs || 11;
-      const fs = Math.max(4, Math.round(nameFs * 0.75));
+      const nameFs = (el.devFs || 11) * xrefScale();
+      const fs = Math.max(2, nameFs * 0.75);
       const lines = xrefCoilLines(d, c);
       const w = Math.max(...lines.map((l, i) => xrefTextW(l.t, i === 0 ? nameFs : fs)));
       const bot = xrefBottom(pg, el.x - XREF_BAND, el.x + XREF_BAND);
