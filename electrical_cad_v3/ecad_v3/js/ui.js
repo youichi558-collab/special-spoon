@@ -2380,8 +2380,8 @@ function updateRightPanel() {
       // をそのまま使う。label(端子番号)も貼り付け対象に含まれる点は把握した上での
       // 判断(端子番号の重複は既存の重複警告機能で検出できる)。
       html += `<div class="pp-row" style="gap:6px">
-        <button onclick="copyDeviceProps()" title="このシンボルのデバイス名・型番・仕様・文字設定を丸ごとコピーします" style="flex:1;font-size:11px;padding:3px 6px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">デバイス/型式/仕様をコピー</button>
-        <button onclick="pasteDeviceProps()" title="コピーした内容を、選択中の要素(複数可・種類が違ってもOK)へまとめて貼り付けます" style="flex:1;font-size:11px;padding:3px 6px;background:${deviceClipboard?'var(--accent,#1d6fb5)':'var(--bg3)'};border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:${deviceClipboard?'#fff':'var(--fg)'}"${deviceClipboard?'':' disabled'}>貼り付け</button>
+        <button onclick="copyDeviceProps()" title="このシンボルのデバイス名・型番・仕様・文字設定を丸ごとコピーします" style="flex:1;font-size:11px;padding:3px 6px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">一括コピー</button>
+        <button onclick="pasteDeviceProps()" title="コピーした内容を、選択中の要素(複数可・種類が違ってもOK)へまとめて貼り付けます" style="flex:1;font-size:11px;padding:3px 6px;background:${deviceClipboard?'var(--accent,#1d6fb5)':'var(--bg3)'};border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:${deviceClipboard?'#fff':'var(--fg)'}"${deviceClipboard?'':' disabled'}>一括貼り付け</button>
       </div>`;
       // 【2026-08-23】一般要素側(◆デバイス/◆型式/◆仕様)と揃えた。盛田さん
       // 「その辺の項目はシンボルプロパティと合わせた方が良さそうだがどう思う？」
@@ -2552,9 +2552,10 @@ function updateRightPanel() {
     // 【2026-08-03追加】形の違うシンボル間でもデバイス名/型番/文字設定をまとめて
     // 複製できるよう、コピー・貼り付けボタンを先頭に置く(複数選択への一括貼り付けも可)。
     html += `<div class="pp-row" style="gap:6px">
-      <button onclick="copyDeviceProps()" title="このシンボルのデバイス名・型番・仕様・文字設定を丸ごとコピーします" style="flex:1;font-size:11px;padding:3px 6px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">デバイス/型式/仕様をコピー</button>
-      <button onclick="pasteDeviceProps()" title="コピーした内容を、選択中のシンボル(複数可・形が違ってもOK)へまとめて貼り付けます" style="flex:1;font-size:11px;padding:3px 6px;background:${deviceClipboard?'var(--accent,#1d6fb5)':'var(--bg3)'};border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:${deviceClipboard?'#fff':'var(--fg)'}"${deviceClipboard?'':' disabled'}>貼り付け</button>
+      <button onclick="copyDeviceProps()" title="このシンボルのデバイス名・型番・仕様・文字設定を丸ごとコピーします" style="flex:1;font-size:11px;padding:3px 6px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">一括コピー</button>
+      <button onclick="pasteDeviceProps()" title="コピーした内容を、選択中のシンボル(複数可・形が違ってもOK)へまとめて貼り付けます" style="flex:1;font-size:11px;padding:3px 6px;background:${deviceClipboard?'var(--accent,#1d6fb5)':'var(--bg3)'};border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:${deviceClipboard?'#fff':'var(--fg)'}"${deviceClipboard?'':' disabled'}>一括貼り付け</button>
     </div>`;
+    html += rpTabsHeader() + rpPaneOpen('basic');
     { const devC = el.devColor||(state.darkMode?'#4da3ff':'#1d6fb5');
     html += `<div class="pp-group" style="border-left:4px solid ${devC}"><div class="pp-group-cap" style="color:${devC}">◆ デバイス</div>`;
     // デバイス欄は入力欄＋候補リスト(datalist)。候補は図面上で実際に使われている
@@ -2605,9 +2606,11 @@ function updateRightPanel() {
     html += `<div class="pp-row"><button onclick="cancelLabelOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button></div>`;
     html += `</details>`;
     html += `</div>`; }
+    html += rpPaneClose() + rpPaneOpen('term');
     html += `<div class="pp-row"><label>端子番号</label><input type="text" id="pp-term" value="${escH(el.terminals||'')}" placeholder="例: A1,A2,13,14" title="このシンボルの端子番号をカンマ区切りで。下の「端子番号」欄で1端子ずつ入れた方が確実です" oninput="syncTermNumInputs()"></div>`;
     html += symTermOffHtml(el);
     html += `<div class="pp-row"><label>線番</label><input type="text" id="pp-wireno" value="${escH(el.wireNo||'')}"></div>`;
+    html += rpPaneClose() + rpPaneOpen('shape');
     html += `<div class="pp-row"><label>回転(°)</label><input type="number" id="pp-rot" value="${escH(el.rot||0)}" step="90"></div>`;
     html += `<div class="pp-row"><label>文字の回転角度(°)</label><input type="number" id="pp-trot" value="${escH(el.textRot||0)}" step="90" title="このシンボルのデバイス名・型式・仕様すべてに共通で効きます。シンボル自体の回転(上の「回転(°)」)とは連動しません。位置は各項目のオフセット(X/Y補正)で個別に指定してください"></div>`;
     html += `<div class="pp-row"><label>スケール</label><input type="number" id="pp-scale" value="${escH(el.scale||1)}" step="0.1" min="0.1" max="5" oninput="previewScale()"></div>`;
@@ -2621,6 +2624,7 @@ function updateRightPanel() {
       <option value=""${!el.lineWidth?' selected':''}>個別（変更なし）</option>${lineWidthOptions(el.lineWidth)}
     </select></div>`;
     html += `<div class="pp-row"><label>レイヤー</label><select id="pp-layer">${LAYERS.map(l=>`<option value="${escH(l.name)}"${el.layer===l.name?' selected':''}>${l.name}</option>`).join('')}</select></div>`;
+    html += rpPaneClose() + rpPaneOpen('memo');
     // メモは既定では図面に出さない(従来どおり)。個別の注記を図面に書きたい
     // ときだけONにする。仕様(label)はデバイス単位で引き継がれて上書きされるため、
     // シンボル個別に書きたい文字(「運転」「停止」等)の逃げ道としてここを使う。
@@ -2631,7 +2635,7 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="color" id="pp-ncolor" value="${escH(el.noteColor||'#555555')}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('pp-ncolor','pp-ncolorcode')"><input type="text" id="pp-ncolorcode" value="${escH(el.noteColor||'#555555')}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-ncolorcode','pp-ncolor')">${colorCodeBtns('pp-ncolorcode','pp-ncolor')}</div></div>`;
     html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-nox" value="${escH(el.noteOffX!==undefined?el.noteOffX:'')}" placeholder="自動" step="5"></div>`;
     html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-noy" value="${escH(el.noteOffY!==undefined?el.noteOffY:'')}" placeholder="自動" step="5"></div>`;
-    html += `</details>`;
+    html += `</details>`;    html += rpPaneClose();
   }
 
   // rp.innerHTML を設定する前に _el/_wire をクリアする。
@@ -2641,6 +2645,7 @@ function updateRightPanel() {
   rp._el = null; rp._wire = null;
   rp.innerHTML = html;
   rp._el = el; rp._wire = wire;
+  if (typeof rpApplyTab === 'function') rpApplyTab();
   const applyBtn = document.getElementById('rp-apply-btn');
   if (applyBtn) applyBtn.style.display = 'none'; // 即適用モードでは非表示
 
@@ -3085,6 +3090,101 @@ function applyRightPanel() {
 // 全端子が同じ番号になる点は把握した上での判断(端子番号の重複は既存の
 // 重複警告機能で検出できる)。この点は項目自体の話ではなく、シンボルと同じ
 // 項目セットを使った結果として自然に生じる挙動。
+// ================================================================
+// プロパティ(右パネル)のタブ分け(2026-09-29)
+//
+// 盛田さん「先にプロパティ整理しろ、すでに項目が多くてスクロールになっている、折りたたみかタブ分けが必要」
+// → 参考図を見て「タブでいい、タブで分けてコピー変える、今の一括コピーとタブコピーを作ってくれ」。
+//
+// シンボルの枠だけをタブに分ける(基本/端子/形/メモ)。入力欄のIDは変えていない。隠れているタブの欄も
+// DOMには残るので、applyRightPanel は従来どおり全部の欄を読める(タブを切り替えても値は失われない)。
+// 選んでいるタブは覚えておく(別のシンボルを選んでも同じタブのまま=同じ作業を続けやすい)。
+//
+// 【コピーは2種類】
+//   一括コピー(パネルの一番上): 従来どおり DEVICE_PROP_KEYS(デバイス・型式・仕様・端子番号・文字設定)を丸ごと
+//   タブコピー(各タブの上): そのタブの項目だけ。TAB_PROP_KEYS
+// ================================================================
+const RP_TABS = [
+  { key: 'basic', label: '基本' },
+  { key: 'term',  label: '端子' },
+  { key: 'shape', label: '形' },
+  { key: 'memo',  label: 'メモ' },
+];
+// タブごとにコピーする項目(要素のプロパティ名)。線番(wireNo)は入れない(コピーすると同じ番号が重複するため)
+const TAB_PROP_KEYS = {
+  basic: [
+    'partRef', 'devHide', 'showDev', 'devFs', 'devColor', 'devOffX', 'devOffY', 'panelZone',
+    'partModel', 'partVolt', 'partPoles', 'partAmp', 'partChar', 'showModel', 'modelFs', 'modelColor', 'modelOffX', 'modelOffY',
+    'label', 'labelAlign', 'labelColor', 'labelFs', 'labelOffX', 'labelOffY', 'specHide',
+  ],
+  term:  ['terminals', 'termOff', 'termFs'],
+  shape: ['rot', 'textRot', 'scale', 'lineStyle', 'lineWidth', 'layer'],
+  memo:  ['note', 'showNote', 'noteFs', 'noteColor', 'noteOffX', 'noteOffY'],
+};
+const TAB_PROP_KEEP = ['layer'];      // コピー元に無くても貼り付け先から消さない項目
+let tabClipboard = {};                // { タブ名: { 項目: 値 } }
+
+function rpTabsHeader() {
+  return `<div class="rp-tabs">` + RP_TABS.map(t =>
+    `<div class="rp-tab" data-tab="${t.key}" onclick="rpTab('${t.key}')">${t.label}</div>`).join('') + `</div>`;
+}
+function rpPaneOpen(tab) {
+  const label = (RP_TABS.find(t => t.key === tab) || {}).label || '';
+  return `<div class="rp-pane" data-tab="${tab}"><div class="rp-tabcopy">`
+    + `<button onclick="copyTabProps('${tab}')" title="この「${label}」タブの項目だけをコピーします(他のタブの項目は運びません)">${label}をコピー</button>`
+    + `<button onclick="pasteTabProps('${tab}')" title="コピーした「${label}」タブの項目を、選択中の要素(複数可)へ貼り付けます">貼り付け</button></div>`;
+}
+function rpPaneClose() { return `</div>`; }
+
+function rpApplyTab() {
+  const rp = document.getElementById('rp-body'); if (!rp) return;
+  const cur = state.rpTab || 'basic';
+  rp.querySelectorAll('.rp-tab').forEach(e => e.classList.toggle('on', e.dataset.tab === cur));
+  rp.querySelectorAll('.rp-pane').forEach(e => e.classList.toggle('on', e.dataset.tab === cur));
+}
+function rpTab(name) {
+  state.rpTab = name;
+  if (typeof rpApplyTab === 'function') rpApplyTab();
+}
+
+function copyTabProps(tab) {
+  const rp = document.getElementById('rp-body');
+  const el = rp && rp._el;
+  if (!el) { alert('コピー元の要素を1つ選択してください'); return; }
+  applyRightPanel();   // パネルの未確定編集を先に反映してからコピーする(一括コピーと同じ)
+  const clip = {};
+  (TAB_PROP_KEYS[tab] || []).forEach(k => {
+    if (el[k] === undefined) return;
+    clip[k] = (k === 'termOff') ? el[k].map(o => [...o]) : el[k];
+  });
+  tabClipboard[tab] = clip;
+  const label = (RP_TABS.find(t => t.key === tab) || {}).label || tab;
+  const h = document.getElementById('s-hint');
+  if (h) h.textContent = `「${label}」タブの項目をコピーしました`;
+  updateRightPanel();
+}
+function pasteTabProps(tab) {
+  const clip = tabClipboard[tab];
+  const label = (RP_TABS.find(t => t.key === tab) || {}).label || tab;
+  if (!clip) { alert(`先に「${label}をコピー」でコピーしてください`); return; }
+  const rp = document.getElementById('rp-body');
+  const targets = state.sel.els.size
+    ? state.elements.filter(e => state.sel.els.has(e.id))
+    : (rp && rp._el ? [rp._el] : []);
+  if (!targets.length) { alert('貼り付け先の要素を選択してください'); return; }
+  pushH();
+  targets.forEach(el => {
+    TAB_PROP_KEYS[tab].forEach(k => {
+      if (clip[k] === undefined) { if (!TAB_PROP_KEEP.includes(k)) delete el[k]; return; }
+      el[k] = (k === 'termOff') ? clip[k].map(o => [...o]) : clip[k];
+    });
+  });
+  const h = document.getElementById('s-hint');
+  if (h) h.textContent = `「${label}」タブの項目を ${targets.length}個に貼り付けました`;
+  draw();
+  updateRightPanel();
+}
+
 const DEVICE_PROP_KEYS = [
   'label','labelAlign','labelColor','labelFs','labelOffX','labelOffY',
   'partRef','devHide','showDev','devFs','devColor','devOffX','devOffY',
@@ -3120,7 +3220,7 @@ function copyDeviceProps() {
   updateRightPanel();
 }
 function pasteDeviceProps() {
-  if (!deviceClipboard) { alert('先に「コピー」でデバイス/型式/仕様をコピーしてください'); return; }
+  if (!deviceClipboard) { alert('先に「一括コピー」でデバイス/型式/仕様をコピーしてください'); return; }
   // 【2026-08-23】端子(junction)も貼り付け対象に含める(上のcopyDevicePropsと同じ理由)。
   // labelフィールドは端子では「端子番号」を意味するため、端子どうしの貼り付けでは
   // 全端子が同じ番号になる。この点は把握した上で、盛田さんの指示どおりシンボルと
