@@ -410,13 +410,15 @@ function drawXref() {
     const b = L.byEl.get(el.id);
     if (b && b.pi === state.currentPage) {
       ctx.fillStyle = col;
+      ctx.textAlign = 'left';                     // コイル側は左寄せ(接点側の括弧書きは中央のまま)
       let y = b.y;
       b.lines.forEach((ln, i) => {
         const fs = i === 0 ? b.nameFs : b.fs;
         y += i === 0 ? b.nameFs : b.fs * 1.25;
         ctx.font = `${i === 0 ? 'bold ' : ''}${fs}px sans-serif`;
-        ctx.fillText(ln.t, b.x, y);
+        ctx.fillText(ln.t, b.left, y);
       });
+      ctx.textAlign = 'center';
     }
     const c = L.contacts.get(el.id);
     if (c) {

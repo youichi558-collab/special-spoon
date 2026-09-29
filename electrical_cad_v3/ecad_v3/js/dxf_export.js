@@ -763,7 +763,7 @@ function exportDXF(){
           let yy=xb.y;
           xb.lines.forEach((ln,i)=>{
             yy+= i===0 ? xb.nameFs : xb.fs*1.25;
-            eText(layer, xb.x, yy, i===0?xb.nameFs:xb.fs, ln.t, 0, 'center');
+            eText(layer, xb.left, yy, i===0?xb.nameFs:xb.fs, ln.t, 0, 'left');
           });
         }
         const xc=xl.contacts.get(el.id);
