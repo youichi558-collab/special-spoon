@@ -582,7 +582,7 @@ function collectBOMRows(){
       const raw=(el.partRef||'').trim();
       const key=normalizeRef(raw);
       if(key){
-        if(!devices[key])devices[key]={spellings:new Map(),models:new Set(),types:new Set(),
+        if(!devices[key])devices[key]={spellings:new Map(),models:new Set(),modelCnt:new Map(),coilModel:'',types:new Set(),
                                        volts:new Set(),makers:new Set(),names:new Set(),notes:new Set(),zones:new Set(),els:[],parts:0};
         const dv=devices[key];
         dv.spellings.set(raw,(dv.spellings.get(raw)||0)+1);
@@ -590,7 +590,11 @@ function collectBOMRows(){
         dv.types.add(el.type);
         dv.els.push(el);
         const m=(el.partModel||'').trim();
-        if(m)dv.models.add(m);
+        if(m){
+          dv.models.add(m);
+          dv.modelCnt.set(m,(dv.modelCnt.get(m)||0)+1);
+          if(!dv.coilModel&&symRole(el)==='coil')dv.coilModel=m;
+        }
         // コイル電圧は同じデバイス内では1つに決まるはず。
         // 複数あれば設定ミスなので警告に出す。
         const vv=(el.partVolt||'').trim();
@@ -608,7 +612,10 @@ function collectBOMRows(){
         // 手配区分(盤内/盤外)。空文字列=盤内(既定)。同じデバイス内で揃うはず。
         dv.zones.add(el.panelZone||'');
       }else{
-        const name=(el.partModel||'').trim()||el.label||el.type;
+        // 型番も名前も無いときは登録シンボルの名前を出す(以前は内部名 custom_xxx が出た)。登録も無ければ「(登録なし)」
+        const cS=(state.customSymbols||[]).find(s=>s.type===el.type);
+        const symName=(cS&&(cS.name||cS.label))||(String(el.type).startsWith('custom_')?'(登録なし)':el.type);
+        const name=(el.partModel||'').trim()||el.label||symName;
         const k=`${el.type}|${name}`;
         if(!noRef[k])noRef[k]={type:el.type,model:(el.partModel||'').trim(),label:name,
                                maker:(el.partMaker||'').trim(),
@@ -624,12 +631,12 @@ function collectBOMRows(){
       const raw=(g.partRef||'').trim();
       const key=normalizeRef(raw);
       if(!key)return;
-      if(!devices[key])devices[key]={spellings:new Map(),models:new Set(),types:new Set(),
+      if(!devices[key])devices[key]={spellings:new Map(),models:new Set(),modelCnt:new Map(),coilModel:'',types:new Set(),
                                      volts:new Set(),makers:new Set(),names:new Set(),notes:new Set(),zones:new Set(),els:[],parts:0};
       const dv=devices[key];
       dv.spellings.set(raw,(dv.spellings.get(raw)||0)+1);
       const m=(g.partModel||'').trim();
-      if(m)dv.models.add(m);
+      if(m){dv.models.add(m);dv.modelCnt.set(m,(dv.modelCnt.get(m)||0)+1);}
       dv.zones.add(g.panelZone||'');
     });
   });
@@ -647,8 +654,14 @@ function collectBOMRows(){
     // 表示名は最も多く使われている表記を採用する
     const spells=[...dv.spellings.entries()].sort((a,b)=>b[1]-a[1]);
     const ref=spells[0][0];
+    // 【2026-09-29】型番が複数あるとき、表に出す型番は「一番多く使われている型番」。同数ならコイルの型番、
+    // それも無ければ先に見つかった方。以前は最初に見つかった要素の型番で、要素の並び順で決まっていた
+    // (Sheet3のCR2は4個がMY4Nなのに、最初に見つかった1個の「MY2N AC100V」が出て、名称・メーカー・電圧が空欄になった)。
+    // 複数あること自体は下の警告(型番が複数)で必ず出る。
     const models=[...dv.models];
-    const model=models[0]||'';
+    const topN=Math.max(0,...dv.modelCnt.values());
+    const tops=models.filter(x=>dv.modelCnt.get(x)===topN);
+    const model=tops.length>1&&tops.includes(dv.coilModel)?dv.coilModel:(tops[0]||'');
     const primary=[...dv.types][0]||'';
     const volts=[...dv.volts];
     const volt=volts[0]||'';

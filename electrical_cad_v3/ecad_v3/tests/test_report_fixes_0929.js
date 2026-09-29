@@ -74,5 +74,33 @@ console.log('\n【端子台表: 綴りが違っても同じデバイスなら1�
   ok(bomTB.length === 2, `部品表も同じ2台(実際 ${JSON.stringify(bomTB)})`);
 }
 
+console.log('\n【部品表: 型番が複数あるとき、一番多い型番を出す】');
+{
+  sb.symRole = el => (el.type === 'coil' ? 'coil' : '');
+  const e = (id, type, model) => ({ id, type, partRef: 'CR2', partModel: model });
+  const row = els => { setState([page(els)]); return vm.runInContext('collectBOMRows()', sb).find(r => r.refs[0] === 'CR2'); };
+  // Sheet3のCR2: 最初に見つかったのが少数派(MY2N AC100V 1個)、あとにMY4Nが4個
+  let r = row([e('1', 'ca', 'MY2N AC100V'), e('2', 'coil', 'MY4N'), e('3', 'ca', 'MY4N'), e('4', 'cb', 'MY4N'), e('5', 'cb', 'MY4N')]);
+  ok(r.model === 'MY4N', `多数派(MY4N)を出す。以前は最初に見つかった MY2N AC100V(実際 ${r.model})`);
+  ok(/型番が複数\(MY2N AC100V \/ MY4N\)/.test(r.warn), '複数あることは警告に出る');
+  r = row([e('1', 'ca', 'A1'), e('2', 'coil', 'B2')]);
+  ok(r.model === 'B2', '同数ならコイルの型番');
+  r = row([e('1', 'ca', 'A1'), e('2', 'cb', 'B2')]);
+  ok(r.model === 'A1', '同数でコイルも無ければ、先に見つかった方');
+  r = row([e('1', 'ca', ''), e('2', 'cb', '')]);
+  ok(r.model === '' && r.label === '(型番未設定)', '型番が無ければ従来どおり「(型番未設定)」');
+}
+
+console.log('\n【部品表: デバイス未設定の行に内部名(custom_xxx)を出さない】');
+{
+  setState([page([{ id: 'x', type: 'custom_ms9y_zfx' }, { id: 'y', type: 'custom_abc', label: 'ラベル' }, { id: 'z', type: 'custom_reg' }])]);
+  sb.state.customSymbols = [{ type: 'custom_reg', name: '押しボタン' }];
+  const rows = vm.runInContext('collectBOMRows()', sb).filter(r => r.noRef);
+  const lab = t => (rows.find(r => r.type === t) || {}).label;
+  ok(lab('custom_ms9y_zfx') === '(登録なし)', `登録の無いシンボルは「(登録なし)」(実際 ${lab('custom_ms9y_zfx')})`);
+  ok(lab('custom_abc') === 'ラベル', '要素にラベルがあればそれを出す');
+  ok(lab('custom_reg') === '押しボタン', '登録シンボルの名前を出す');
+}
+
 console.log(ng ? `\n失敗 ${ng} 件` : '\nすべて通過');
 process.exit(ng ? 1 : 0);
