@@ -2,7 +2,7 @@
 
 このファイルは `tools/generate_catalog_index.py` で自動生成されています。手動で編集しないでください。CSVを追加・削除したら再実行してください。
 
-## 概要（CSVファイル数: 36件、型番合計: 635件）
+## 概要（CSVファイル数: 37件、型番合計: 636件）
 
 | ファイル名 | メーカー | 主な種別 | 件数 |
 |---|---|---|---|
@@ -18,6 +18,7 @@
 | `mitsubishi_breaker_batch4.csv` | 三菱電機 | ブレーカ(6) | 6 |
 | `mitsubishi_breaker_batch5.csv` | 三菱電機 | ブレーカ(8) | 8 |
 | `mitsubishi_breaker_batch6.csv` | 三菱電機 | ブレーカ(9) | 9 |
+| `mitsubishi_cp_batch1.csv` | 三菱電機 | ブレーカ(1) | 1 |
 | `mitsubishi_elcb_batch1.csv` | 三菱電機 | ブレーカ(13) | 13 |
 | `mitsubishi_inverter_batch1.csv` | 三菱電機 | inverter(30) | 30 |
 | `mitsubishi_mc_batch1.csv` | 三菱電機 | contactor(17)・starter(16) | 33 |
@@ -94,6 +95,10 @@ NF63-SVF, NF63-CV, NV63-SVF, NV63-CV, NV125-CV, NV250-CV, NV400-CW, NV630-CW
 ### `mitsubishi_breaker_batch6.csv`（三菱電機／ブレーカ／9件）
 
 NV63-HV, NV125-HV, NV125-HEV, NV250-HV, NV250-HEV, NV400-HEW, NV400-REW, NV630-HEW, NV800-HEW
+
+### `mitsubishi_cp_batch1.csv`（三菱電機／ブレーカ／1件）
+
+CP30-BA
 
 ### `mitsubishi_elcb_batch1.csv`（三菱電機／ブレーカ／13件）
 

@@ -816,6 +816,7 @@ function doPlacePart(type, ref, terminals, groupName) {
     el.partModel = ref;
     if (terminals) el.terminals = terminals;
     applyDefaultVolt(el);          // AC200V優先で代表値を入れる
+    applyDefaultChoices(el);       // ブレーカ系: 極数は2P(電流・特性は未選択)
     // 仕様欄に主要項目（電圧・電流・接点構成）を入れる。
     // 図面には「AC100V」のように1つだけ書くので、電圧は選択肢の羅列ではなく
     // 選ばれた1つを入れる。要らない行はその場で消してもらう前提。
@@ -827,11 +828,17 @@ function doPlacePart(type, ref, terminals, groupName) {
       } else {
         // インバータ・サーボは型式自体で電圧が決まる(例: FR-D720系は200V固定)ので、
         // コイル電圧のような選択(el.partVolt)を経由せず、定格電圧欄をそのまま使う。
-        const voltLine = el.partVolt || (DIRECT_VOLT_TYPES.includes(p.type) ? (p.volt || '') : '');
-        const lines = [voltLine, p.amp || '', p.contacts || '']
-          .map(x => String(x).trim())
-          .filter(x => x && x !== '-');
-        if (lines.length) { el.label = lines.join('\n'); labelFilled++; }
+        if (partChoices(ref)) {
+          // 選択項目のある部品(ブレーカ系): 選択肢の一覧ではなく、選んだ値だけを入れる
+          const t = partChoiceLabel(el);
+          if (t) { el.label = t; labelFilled++; }
+        } else {
+          const voltLine = el.partVolt || (DIRECT_VOLT_TYPES.includes(p.type) ? (p.volt || '') : '');
+          const lines = [voltLine, p.amp || '', p.contacts || '']
+            .map(x => String(x).trim())
+            .filter(x => x && x !== '-');
+          if (lines.length) { el.label = lines.join('\n'); labelFilled++; }
+        }
       }
     }
   });
@@ -961,6 +968,123 @@ function onPartModelChanged() {
     document.getElementById('pp-partmodel')?.closest('.pp-row')
       ?.insertAdjacentHTML('afterend', html);
   }
+  refreshPartChoiceRows(el, model);
+}
+
+// ----------------------------------------------------------------
+// ブレーカ系の選択項目: 極数・定格電流・動作特性(2026-09-29)
+//
+// 盛田さん「プルダウンでいい」「仕様のコピーも忘れるなよ」。サーキットプロテクタ(CP)は
+// 極数・定格電流・動作特性を選んで初めて型式が決まる。選択肢を部品DBの電流列に全部書くと、
+// 配置した図面の仕様欄にも一覧がそのまま入って使えない(補助リレーと同じ「羅列」)。
+// そこでコイル電圧(el.partVolt)と同じく、選択肢は部品DBに持ち、図面の要素が1つ選ぶ。
+//
+// 【書き方】部品DBの電流列(amp)に次の形で書く(列・画面・CSVの作りは変えていない)。
+//   極数:1P・2P / 電流:0.1A・0.25A・…・30A / 特性:瞬時形(I)・中速形(M)
+// この書き方の行だけがプルダウンになる。従来の書き方(「3,5,10A」等)の行は今までどおり。
+// 選んだ値は el.partPoles / el.partAmp / el.partChar に持つ。
+// 【コピー】3項目とも DEVICE_PROP_KEYS と、デバイス引き継ぎ(collectDeviceInfo)に入れてある。
+// 入れ忘れると貼り付け・デバイス選び直しで選択が消える(2026-09-24に specHide が同じ理由で漏れた)。
+// 【既存の「構成子」(js/part_options.js)とは別物】あちらは段階1(ロジックのみ)で画面につながって
+// おらず、CSVも通らない。将来つなぐときは、この書き方を構成子へ移す形になる。
+// ----------------------------------------------------------------
+const PART_CHOICES = [
+  { name: '極数',     opt: 'poles', field: 'partPoles', id: 'pp-partpoles', dflt: '2P' },
+  { name: '定格電流', opt: 'amp',   field: 'partAmp',   id: 'pp-partamp' },
+  { name: '動作特性', opt: 'char',  field: 'partChar',  id: 'pp-partchar' },
+];
+const PART_CHOICE_SEG = { '極数': 'poles', '電流': 'amp', '特性': 'char' };
+
+// 型番 → { poles:[], amp:[], char:[] }。この書き方でない部品(型番なし・未登録も)は null。
+function partChoices(model) {
+  if (!model) return null;
+  const p = (state.customParts || []).find(x => x.ref === model);
+  if (!p || !p.amp) return null;
+  const out = { poles: [], amp: [], char: [] };
+  let hit = false;
+  String(p.amp).split(/\s*\/\s*/).forEach(seg => {
+    const m = seg.match(/^(極数|電流|特性)\s*[:：]\s*(.+)$/);
+    if (!m) return;
+    hit = true;
+    out[PART_CHOICE_SEG[m[1]]] = m[2].split(/[・、,]/).map(s => s.trim()).filter(Boolean);
+  });
+  return hit ? out : null;
+}
+
+// 要素の選択を、その型番で選べる値だけに整える。極数は既定の2P。
+// 電流・特性は決め打ちしない(間違った既定が図面と発注に黙って出るより、未選択の方が気づける)。
+// 選択肢が1つだけならそれが確定値。選べない型番なら3項目とも消す。
+function applyDefaultChoices(el) {
+  if (!el) return;
+  const ch = el.partModel ? partChoices(el.partModel) : null;
+  PART_CHOICES.forEach(c => {
+    const opts = ch ? ch[c.opt] : [];
+    if (!opts.length) { delete el[c.field]; return; }
+    if (el[c.field] && opts.includes(el[c.field])) return;
+    const d = (c.dflt && opts.includes(c.dflt)) ? c.dflt : (opts.length === 1 ? opts[0] : '');
+    if (d) el[c.field] = d; else delete el[c.field];
+  });
+}
+
+// 仕様欄に入れる文字。1行目「2P 5A」、2行目に動作特性。未選択の項目は入れない。
+function partChoiceLabel(el) {
+  const l1 = [el.partPoles, el.partAmp].filter(Boolean).join(' ');
+  return [l1, el.partChar].filter(Boolean).join('\n');
+}
+
+// プロパティパネルの選択欄。選択肢が複数ならプルダウン、1つだけなら読み取り専用。
+function partChoiceRowsHtml(el) {
+  const ch = partChoices(el.partModel);
+  if (!ch) return '';
+  return PART_CHOICES.map(c => {
+    const opts = ch[c.opt];
+    if (!opts.length) return '';
+    if (opts.length === 1) {
+      return `<div class="pp-row"><label>${c.name}</label>`
+        + `<input type="text" id="${c.id}" value="${_esc(opts[0])}" readonly`
+        + ` style="background:var(--bg3);color:var(--fg2)" title="この型番は1種類のみです"></div>`;
+    }
+    const cur = el[c.field] || ((c.dflt && opts.includes(c.dflt)) ? c.dflt : '');
+    return `<div class="pp-row"><label>${c.name}</label><select id="${c.id}">`
+      + (c.dflt ? '' : `<option value=""${cur ? '' : ' selected'}>(未選択)</option>`)
+      + opts.map(o => `<option value="${_esc(o)}"${o === cur ? ' selected' : ''}>${_esc(o)}</option>`).join('')
+      + `</select></div>`;
+  }).join('');
+}
+
+// 型番を打ち替えたら選択欄も入れ替える(前の型番の選択が残らないように)。
+function refreshPartChoiceRows(el, model) {
+  PART_CHOICES.forEach(c => document.getElementById(c.id)?.closest('.pp-row')?.remove());
+  const tmp = { partModel: model };
+  PART_CHOICES.forEach(c => { tmp[c.field] = el[c.field]; });
+  const html = partChoiceRowsHtml(tmp);
+  if (!html) return;
+  const anchor = document.getElementById('pp-partvolt')?.closest('.pp-row')
+              || document.getElementById('pp-partmodel')?.closest('.pp-row');
+  anchor?.insertAdjacentHTML('afterend', html);
+}
+
+// パネルの選択を要素へ書く。仕様欄が「前の選択から自動で作った文字」のままなら新しい選択に
+// 合わせて作り直し、人が手で書き換えていれば触らない(手書きを守る。doPlacePartと同じ考え方)。
+function applyPartChoicesFromPanel(el) {
+  const before = partChoiceLabel(el);
+  if (!(el.partModel && partChoices(el.partModel))) {
+    PART_CHOICES.forEach(c => { delete el[c.field]; });
+    return;
+  }
+  PART_CHOICES.forEach(c => {
+    const node = document.getElementById(c.id);
+    if (!node) return;
+    if (node.value) el[c.field] = node.value; else delete el[c.field];
+  });
+  applyDefaultChoices(el);
+  const after = partChoiceLabel(el);
+  if (after === before) return;
+  const cur = (el.label || '').trim();
+  if (cur && cur !== before) return;
+  el.label = after;
+  const t = document.getElementById('pp-label');
+  if (t) t.value = after;     // 欄が古いままだと、次の適用で元の文字に書き戻される
 }
 
 // ----------------------------------------------------------------
@@ -980,7 +1104,7 @@ function collectDeviceInfo() {
   const put = (ref, src) => {
     ref = (ref || '').trim();
     if (!ref) return;
-    const cur = map.get(ref) || { model:'', spec:'', terminals:'', volt:'', zone:'' };
+    const cur = map.get(ref) || { model:'', spec:'', terminals:'', volt:'', zone:'', poles:'', amp:'', char:'' };
     // 端子台(junction)の label は「端子番号」で、シンボルの label(仕様)とは別物。
     // ここで拾ってしまうと、TB1の端子番号「1」がデバイスTB1の仕様として扱われ、
     // デバイス引き継ぎで他の端子へ番号がコピーされて全部同じ番号になる。
@@ -989,6 +1113,9 @@ function collectDeviceInfo() {
     if (!cur.spec      && src.label && !isJunction)  cur.spec      = src.label;
     if (!cur.terminals && src.terminals)             cur.terminals = src.terminals;
     if (!cur.volt      && src.partVolt)              cur.volt      = src.partVolt;
+    if (!cur.poles     && src.partPoles)             cur.poles     = src.partPoles;
+    if (!cur.amp       && src.partAmp)               cur.amp       = src.partAmp;
+    if (!cur.char      && src.partChar)              cur.char      = src.partChar;
     if (!cur.zone      && src.panelZone)             cur.zone      = src.panelZone;
     map.set(ref, cur);
   };
@@ -1121,6 +1248,10 @@ function onPartRefChanged() {
   // 引き継ぐと、貼り付けた番号や打った番号が別シンボルの番号で上書きされていた。
   // 端子台側(onJunctionRefChanged)も端子番号は引き継がない作りで、これで揃う。
   if (info.volt)      { el.partVolt  = info.volt; }
+  // 極数・定格電流・動作特性も引き継ぐ(選び直しの手間と、仕様欄とのずれを防ぐ)
+  if (info.poles)     { el.partPoles = info.poles; }
+  if (info.amp)       { el.partAmp   = info.amp; }
+  if (info.char)      { el.partChar  = info.char; }
   if (info.zone)      { el.panelZone = info.zone;
                         const _z = document.getElementById('pp-zone');
                         if (_z) _z.checked = (info.zone === '外'); }
@@ -1130,6 +1261,7 @@ function onPartRefChanged() {
   onPartModelChanged();
   const pv = document.getElementById('pp-partvolt');
   if (pv && info.volt) pv.value = info.volt;
+  // 選択欄は onPartModelChanged で要素の値から作り直されている
 
   draw();
 }
@@ -2440,6 +2572,7 @@ function updateRightPanel() {
     html += `<div class="pp-group" style="border-left:4px solid ${mdlC}"><div class="pp-group-cap" style="color:${mdlC}">◆ 型式</div>`;
     html += `<div class="pp-row"><label>型番</label><input type="text" id="pp-partmodel" value="${escH(el.partModel||'')}" placeholder="例: S-T10（メーカー型番）" onchange="onPartModelChanged()"></div>`;
     html += partVoltRowHtml(el);
+    html += partChoiceRowsHtml(el);
     html += `<div class="pp-row"><label>型式を図面に表示</label><input type="checkbox" id="pp-showmodel"${el.showModel?' checked':''} title="チェックしたシンボルにだけ型番が描画されます。接点側はOFFのままにしてください"></div>`;
     html += `<details class="pp-details" style="border-left:4px solid ${mdlC}"><summary>型式表示の詳細（色・サイズ・位置）</summary>`;
     html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-mfs" value="${escH(el.modelFs||el.labelFs||11)}" step="1" min="6" max="32" oninput="previewModelOff()"></div>`;
@@ -2878,6 +3011,7 @@ function applyRightPanel() {
     el.partModel = v('pp-partmodel');
     { const pv = document.getElementById('pp-partvolt');
       if (pv) el.partVolt = pv.value || undefined; else applyDefaultVolt(el); }
+    applyPartChoicesFromPanel(el);
     el.devFs     = parseInt(v('pp-dfs')) || undefined;
     el.devColor  = v('pp-dcolorcode') || v('pp-dcolor') || undefined;
     el.devOffX   = v('pp-dox') !== '' ? parseInt(v('pp-dox')) : undefined;
@@ -2958,6 +3092,8 @@ const DEVICE_PROP_KEYS = [
   // 表示チェックは元から対象だったが、仕様だけ漏れていて、貼り付けのたびに
   // チェックを外し直す手間になっていた(盛田さん指摘)。
   'specHide',
+  // 【2026-09-29】ブレーカ系の選択(極数・定格電流・動作特性)。盛田さん「仕様のコピーも忘れるなよ」。
+  'partPoles', 'partAmp', 'partChar',
 ];
 
 function copyDeviceProps() {

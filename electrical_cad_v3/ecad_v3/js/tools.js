@@ -187,6 +187,8 @@ const symTool = {
       wireNo: '',
       note:   '',
     });
+    // ブレーカ系は極数の既定(2P)を入れる。仕様欄は既定値を入れない方針のまま(上のlabel参照)
+    if (typeof applyDefaultChoices === 'function') applyDefaultChoices(state.elements[state.elements.length - 1]);
     state.preview = null;
   },
 

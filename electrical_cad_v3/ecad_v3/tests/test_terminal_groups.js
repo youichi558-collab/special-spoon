@@ -44,6 +44,9 @@ const sandbox = {
   updateRightPanel: () => {},
   pushH: () => {},
   applyDefaultVolt: () => {},
+  applyDefaultChoices: () => {},   // ブレーカ系の選択項目(2026-09-29)
+  partChoices: () => null,
+  partChoiceLabel: () => '',
   partsDb: { scheduleSave: () => {}, writeNow: async () => {} },
   console,
   escH: require('./_esch.js').escH,   // 実体は js/state.js のもの

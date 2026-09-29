@@ -34,6 +34,12 @@ eval([
   pick(/function partVoltOptions\([\s\S]*?\n\}/),
   pick(/function defaultPartVolt\([\s\S]*?\n\}/),
   pick(/function applyDefaultVolt\([\s\S]*?\n\}/),
+  // ブレーカ系の選択項目(2026-09-29)。doPlacePartが使う
+  pick(/const PART_CHOICES = \[[\s\S]*?\n\];/),
+  pick(/const PART_CHOICE_SEG = \{[\s\S]*?\};/),
+  pick(/function partChoices\([\s\S]*?\n\}/),
+  pick(/function applyDefaultChoices\([\s\S]*?\n\}/),
+  pick(/function partChoiceLabel\([\s\S]*?\n\}/),
   pick(/function collectDeviceInfo\([\s\S]*?\n\}/),
   // 端子番号の名前付きグループ対応(2026-08-22)でplacePartが分割されたので、
   // 付随する関数もここで読み込む
