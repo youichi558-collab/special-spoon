@@ -582,7 +582,7 @@ function collectBOMRows(){
       const raw=(el.partRef||'').trim();
       const key=normalizeRef(raw);
       if(key){
-        if(!devices[key])devices[key]={spellings:new Map(),models:new Set(),modelCnt:new Map(),coilModel:'',types:new Set(),
+        if(!devices[key])devices[key]={spellings:new Map(),models:new Set(),modelCnt:new Map(),coilModel:'',specs:new Set(),types:new Set(),
                                        volts:new Set(),makers:new Set(),names:new Set(),notes:new Set(),zones:new Set(),els:[],parts:0};
         const dv=devices[key];
         dv.spellings.set(raw,(dv.spellings.get(raw)||0)+1);
@@ -594,6 +594,12 @@ function collectBOMRows(){
           dv.models.add(m);
           dv.modelCnt.set(m,(dv.modelCnt.get(m)||0)+1);
           if(!dv.coilModel&&symRole(el)==='coil')dv.coilModel=m;
+        }
+        // 仕様(図面の「仕様」欄=el.label。例: `2P 5A`)。**仕様はデバイスで1つ**(盛田さん。型番とは別の欄)。
+        // 端子台の端子(junction)のlabelは端子番号なので除く。改行は空白に直す。
+        if(el.type!=='junction'){
+          const sp=String(el.label||'').trim().replace(/\s*\n\s*/g,' ');
+          if(sp)dv.specs.add(sp);
         }
         // コイル電圧は同じデバイス内では1つに決まるはず。
         // 複数あれば設定ミスなので警告に出す。
@@ -631,7 +637,7 @@ function collectBOMRows(){
       const raw=(g.partRef||'').trim();
       const key=normalizeRef(raw);
       if(!key)return;
-      if(!devices[key])devices[key]={spellings:new Map(),models:new Set(),modelCnt:new Map(),coilModel:'',types:new Set(),
+      if(!devices[key])devices[key]={spellings:new Map(),models:new Set(),modelCnt:new Map(),coilModel:'',specs:new Set(),types:new Set(),
                                      volts:new Set(),makers:new Set(),names:new Set(),notes:new Set(),zones:new Set(),els:[],parts:0};
       const dv=devices[key];
       dv.spellings.set(raw,(dv.spellings.get(raw)||0)+1);
@@ -687,10 +693,12 @@ function collectBOMRows(){
     // 流し込むと列が説明文で埋まって使えなくなる。
     const notes=[...dv.notes];
     const pnote=notes[0]||'';
+    const specs=[...dv.specs];
+    const spec=specs[0]||'';
     const zones=[...dv.zones];
     const zone=zones[0]||'';
     const k=devKey;   // 1デバイス=1行(上のコメント参照)
-    if(!byModel[k])byModel[k]={type:primary,model,volt,maker,pname,pnote,zone,label:model||'(型番未設定)',
+    if(!byModel[k])byModel[k]={type:primary,model,spec,volt,maker,pname,pnote,zone,label:model||'(型番未設定)',
                                refs:[],els:[],count:0,parts:0,noRef:false,warn:''};
     const row=byModel[k];
     row.refs.push(ref);
@@ -700,6 +708,7 @@ function collectBOMRows(){
     const ws=[];
     if(spells.length>1)ws.push(`${ref}に表記ゆれ(${spells.map(s=>s[0]).join(' / ')})`);
     if(models.length>1)ws.push(`${ref}に型番が複数(${models.join(' / ')})`);
+    if(specs.length>1)ws.push(`${ref}に仕様が複数(${specs.join(' / ')})`);   // 仕様はデバイスで1つのはず
     if(makers.length>1)ws.push(`${ref}にメーカーが複数(${makers.join(' / ')})`);
     if(volts.length>1)ws.push(`${ref}にコイル電圧が複数(${volts.join(' / ')})`);
     // 2026-08-23: 「手配区分が複数」→「対象外の設定が食い違う」に言い換え。
@@ -858,6 +867,7 @@ function showBOM(){
     +`<td style="font-weight:600">${r.noRef?'<span style="color:var(--red)">未設定</span>':(escH(r.refs.join(', '))||'-')}</td>`
     +nameCell(r,i)
     +modelCell(r,i)
+    +`<td style="color:var(--fg2)">${escH(r.spec||'')}</td>`   // 仕様(図面の仕様欄)。型番とは別の欄なので別の列
     +makerCell(r,i)
     +voltCell(r,i)
     +`<td style="font-weight:600">${r.count}</td><td style="color:var(--fg3)">${escH(r.parts)}</td>`
@@ -867,7 +877,7 @@ function showBOM(){
     const cnt = list.reduce((s,{r})=>s+r.count,0);
     return `<p style="font-size:11px;font-weight:600;margin:10px 0 3px">${title}`
       + `<span style="color:var(--fg3);font-weight:400">（${cnt}台）</span></p>`
-      + `<table class="tbl"><tr><th>デバイス</th><th>名称</th><th>型番/名称</th><th>メーカー</th><th>コイル電圧</th><th>数量(台)</th><th>構成数</th><th>備考</th></tr>`
+      + `<table class="tbl"><tr><th>デバイス</th><th>名称</th><th>型番/名称</th><th title="図面の「仕様」欄の内容(プロパティで直します)">仕様</th><th>メーカー</th><th>コイル電圧</th><th>数量(台)</th><th>構成数</th><th>備考</th></tr>`
       + list.map(rowHtml).join('') + `</table>`;
   };
   let html = rows.length
@@ -940,8 +950,8 @@ function exportBOMCSV(){
   // 【2026-09-21】末尾の「備考」列は元々**警告文**(型番が複数 等)だった。
   // 実物の部品表の備考(手配メモ)を足すにあたり、紛らわしいので「警告」に改名した。
   const q=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
-  dl(['デバイス,名称,型番/名称,メーカー,コイル電圧,対象外,数量(台),構成数,備考,警告',
-      ...rows.map(r=>[r.noRef?'未設定':r.refs.join('/'),r.pname||'',r.label,r.maker||'',
+  dl(['デバイス,名称,型番/名称,仕様,メーカー,コイル電圧,対象外,数量(台),構成数,備考,警告',
+      ...rows.map(r=>[r.noRef?'未設定':r.refs.join('/'),r.pname||'',r.label,r.spec||'',r.maker||'',
                       r.volt||'',r.zone==='外'?'対象外':'',
                       r.count,r.parts,r.pnote||'',r.warn||''].map(q).join(','))
      ].join('\n'),_csvName('部品表'),'text/csv');

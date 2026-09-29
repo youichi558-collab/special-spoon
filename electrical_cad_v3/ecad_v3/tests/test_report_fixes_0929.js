@@ -153,5 +153,30 @@ console.log('\n【部品表: 部品DBに無い型番でも、コイルのある�
   ok(/value="AC24V"/.test(rowOf('CR7')), '表を作り直しても、打った電圧が入っている');
 }
 
+console.log('\n【部品表: 仕様(図面の仕様欄)を、型番とは別の列に出す】');
+{
+  sb.symRole = el => (el.type === 'coil' ? 'coil' : '');
+  sb.partVoltOptions = () => [];
+  const mk = (id, type, ref, label, o) => Object.assign({ id, type, partRef: ref, partModel: 'CP30-BA', label }, o);
+  const els = [mk('1', 'brk', 'CP1', '2P 5A\n動作特性D'), mk('2', 'brk', 'CP1', ''), mk('3', 'brk', 'CP2', 'AC200V 3.7kW'),
+    mk('4', 'brk', 'CP3', 'A'), mk('5', 'brk', 'CP3', 'B'),
+    { id: '6', type: 'junction', style: 'circle', partRef: 'TB1', label: '5' }];
+  setState([page(els)]);
+  const rows = vm.runInContext('collectBOMRows()', sb);
+  const row = ref => rows.find(r => r.refs[0] === ref);
+  ok(row('CP1').spec === '2P 5A 動作特性D', `仕様を出す(改行は空白に)。デバイス内の空の記号は無視(実際 ${row('CP1').spec})`);
+  ok(row('CP1').label === 'CP30-BA', '型番欄は型番のまま(仕様を混ぜない)');
+  ok(row('CP2').spec === 'AC200V 3.7kW', '別のデバイスは別の仕様');
+  ok(row('TB1').spec === '', '端子台の端子のlabel(端子番号)は仕様として出さない');
+  ok(/CP3に仕様が複数\(A \/ B\)/.test(row('CP3').warn), '同じデバイスで仕様が食い違っていたら警告(仕様はデバイスで1つのはず)');
+  vm.runInContext('showBOM()', sb);
+  ok(/<th[^>]*>仕様<\/th>/.test(sb.htmlOut) && /<td style="color:var\(--fg2\)">2P 5A 動作特性D<\/td>/.test(sb.htmlOut), '画面に「仕様」列が出る');
+  let csv = ''; sb.dl = (c) => { csv = c; }; sb._csvName = n => n + '.csv';
+  vm.runInContext('exportBOMCSV()', sb);
+  const lines = csv.split('\n');
+  ok(lines[0].startsWith('デバイス,名称,型番/名称,仕様,メーカー'), 'CSVの見出しにも「仕様」');
+  ok(lines.some(l => l.startsWith('"CP1","","CP30-BA","2P 5A 動作特性D"')), 'CSVの行にも仕様が入る');
+}
+
 console.log(ng ? `\n失敗 ${ng} 件` : '\nすべて通過');
 process.exit(ng ? 1 : 0);
