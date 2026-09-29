@@ -108,7 +108,7 @@ def _main(argv):
     if csv_dir in ('-', 'default'):
         csv_dir = catalog_db.CatalogDB().csv_dir
         if not csv_dir:
-            print('カタログCSVフォルダが未設定です', file=sys.stderr)
+            print('カタログCSVフォルダ(catalog_pending)が見つかりません', file=sys.stderr)
             return 1
     maker_key = argv[2]
 

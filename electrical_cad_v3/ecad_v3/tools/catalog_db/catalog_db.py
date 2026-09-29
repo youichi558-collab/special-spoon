@@ -10,14 +10,21 @@ catalog_db.py — カタログDBの本体ライブラリ。
 
 ■ 設計の前提(2026-08-19 盛田さんとの合意事項)
 - カタログ登録は恒久的に続く作業で、最終規模は数万件。
-- カタログDBはCADのリポジトリに置かない。独立させ、CADは検索して結果をもらうだけ。
-- Gitとは組み合わせない(SQLiteはバイナリで差分が取れず履歴が肥大化するため)。
+- SQLiteはGitに入れない(バイナリで差分が取れず履歴が肥大化するため)。
 - 部品DB(盛田さんが手で育てるparts_db.json)には**一切書き込まない**。
 
+■ 【2026-09-29 変更】CSVの原本はリポジトリの catalog_pending/ だけ
+  以前はGoogle Driveの「カタログDB」フォルダを原本とし、ブラウザでフォルダを選んで
+  取り込んでいた。ところが同じCSVがリポジトリの catalog_pending/ にもあり(5ファイルで
+  バイト数一致、改行だけCRLF/LF)、片方だけ直すと食い違う状態になっていた。
+  盛田さん「複数人が同じファイルを見に行くのは論外、個人個人でやる」「俺だけ使うなら
+  (catalog_pendingに一本化で)いい」。各自が自分のCADとCSVを持つ前提なので、CSVはCADと
+  一緒にあればよい。**読み先は常に catalog_pending/(default_csv_dir)。設定では変えない。**
+  ドライブの「カタログDB」フォルダは読まない(消すかどうかは盛田さんが決める)。
+  他の人に渡すときは中身を全部消してサンプル用を入れる(未設計、HANDOFF参照)。
+
 ■ どこに何が置かれるか
-- CSV(原本)   : Google Driveの「カタログDB」フォルダ。1メーカー1ファイル。
-                Drive for Desktopでローカル同期されるので、ただのファイルとして読む。
-                (Drive APIは使わない。ドライブレターが環境で変わる点は設定で吸収する)
+- CSV(原本)   : ecad_v3/catalog_pending/ 。部品DB画面の「保留CSV」も同じフォルダを読む。
 - SQLite(生成物): ローカルのユーザーデータ領域。既定は下記 default_data_dir()。
                 CSVから毎回作り直せるので、消しても失われるものは無い。
                 ecad_v3のフォルダ内には置かない → CADを消してもDBは残り、
@@ -25,13 +32,13 @@ catalog_db.py — カタログDBの本体ライブラリ。
 
 ■ 他ツールからの使い方
     import catalog_db
-    db = catalog_db.CatalogDB()          # 設定済みのCSVフォルダを自動で読む
+    db = catalog_db.CatalogDB()          # catalog_pending/ を読む
     db.ensure_built()                    # CSVが更新されていれば作り直す(差分なしなら何もしない)
     rows = db.search('MR-J5', maker='三菱電機')
 
 ■ 消したくなったら
     このフォルダ(tools/catalog_db/)と data_dir() を削除すれば元の状態に戻る。
-    CSV原本はDriveに残るので、中身は失われない。
+    CSV原本は catalog_pending/ に残るので、中身は失われない。
 """
 import csv
 import json
@@ -136,6 +143,16 @@ def default_data_dir():
     return os.path.join(base, APP_NAME)
 
 
+def default_csv_dir():
+    """カタログCSVの原本フォルダ = ecad_v3/catalog_pending/(このファイルから見て ../../catalog_pending)。
+
+    2026-09-29 から設定ファイルの csv_dir は読まない(上の「変更」参照)。
+    ドライブ文字やPCが変わっても、CADのフォルダごと動くので設定が要らない。
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    return os.path.normpath(os.path.join(here, '..', '..', 'catalog_pending'))
+
+
 def config_path(data_dir=None):
     return os.path.join(data_dir or default_data_dir(), CONFIG_NAME)
 
@@ -214,24 +231,9 @@ def list_dirs(path):
 class CatalogDB:
     def __init__(self, csv_dir=None, data_dir=None):
         self.data_dir = data_dir or default_data_dir()
-        cfg = load_config(self.data_dir)
-        self.csv_dir = csv_dir or cfg.get('csv_dir') or ''
+        # 設定ファイルの csv_dir(以前のDrive/取り込みキャッシュ)は見ない。引数はテスト用
+        self.csv_dir = csv_dir or default_csv_dir()
         self.db_path = os.path.join(self.data_dir, DB_NAME)
-
-    # -- 設定 ---------------------------------------------------------------
-    def set_csv_dir(self, path):
-        """カタログCSVフォルダ(Drive同期先)を設定して保存する。
-
-        ドライブレターが環境で変わる(I: / G:)ため、CAD側から設定できるようにしてある。
-        """
-        path = os.path.expanduser(path.strip().strip('"'))
-        if not os.path.isdir(path):
-            raise ValueError(f'フォルダが見つかりません: {path}')
-        self.csv_dir = path
-        cfg = load_config(self.data_dir)
-        cfg['csv_dir'] = path
-        save_config(cfg, self.data_dir)
-        return path
 
     def csv_files(self):
         """カタログCSVフォルダ内のCSV一覧(ソート済み絶対パス)。"""
@@ -432,48 +434,9 @@ class CatalogDB:
         conn.close()
         return dict(r) if r else None
 
-    # -- 取り込み(ブラウザから) --------------------------------------------
-    def import_files(self, files):
-        """ブラウザが読んだCSVの中身を受け取ってローカルに取り込む。
-
-        File System Access API はセキュリティ上フォルダの絶対パスをJSに渡さない。
-        そこでパスではなく「中身」を受け取り、ローカルのキャッシュフォルダに
-        書き出してからDBを構築する。部品DB(parts_db.json)と同じ操作感になり、
-        Windowsのフォルダ選択ダイアログがそのまま使える。
-
-        files: [{'name': 'mitsubishi.csv', 'text': '...'}, ...]
-        """
-        cache = os.path.join(self.data_dir, 'csv_cache')
-        os.makedirs(cache, exist_ok=True)
-        # Drive側で削除されたCSVが残らないよう、取り込みのたびに作り直す
-        for name in os.listdir(cache):
-            if name.lower().endswith('.csv'):
-                os.remove(os.path.join(cache, name))
-        saved = []
-        for f in files:
-            name = os.path.basename(f.get('name', '')).strip()
-            if not name.lower().endswith('.csv'):
-                continue
-            with open(os.path.join(cache, name), 'w', encoding='utf-8', newline='') as fp:
-                fp.write(f.get('text', ''))
-            saved.append(name)
-        self.csv_dir = cache
-        cfg = load_config(self.data_dir)
-        cfg['csv_dir'] = cache
-        cfg['source_label'] = ''  # 表示用(呼び出し側で上書きする)
-        save_config(cfg, self.data_dir)
-        res = self.build()
-        res['files'] = saved
-        return res
-
-    def set_source_label(self, label):
-        """画面に出す「どこから取り込んだか」の表示名(フォルダ名)を保存する。"""
-        cfg = load_config(self.data_dir)
-        cfg['source_label'] = label or ''
-        save_config(cfg, self.data_dir)
-
     def source_label(self):
-        return load_config(self.data_dir).get('source_label', '')
+        """画面に出す読み先の名前(フォルダは固定なので名前も固定)。"""
+        return 'catalog_pending(CADのフォルダ内)'
 
     def stats(self):
         """件数・メーカー内訳など。CAD側の状態表示に使う。"""
@@ -505,7 +468,6 @@ class CatalogDB:
 # ----------------------------------------------------------------------------
 def _main(argv):
     usage = """使い方:
-  python catalog_db.py setdir <カタログCSVフォルダ>   カタログCSVの場所を設定
   python catalog_db.py build [--force]               SQLiteを構築(変更が無ければ何もしない)
   python catalog_db.py search <キーワード>            検索
   python catalog_db.py stats                         現在の状態を表示
@@ -517,14 +479,12 @@ def _main(argv):
     db = CatalogDB()
 
     if cmd == 'setdir':
-        if len(argv) < 3:
-            print(usage); return 1
-        p = db.set_csv_dir(argv[2])
-        print(f'カタログCSVフォルダを設定しました: {p}')
-        print(f'CSVファイル: {len(db.csv_files())}個')
+        # 2026-09-29 廃止。読み先は常に catalog_pending/(default_csv_dir)
+        print(f'setdir は廃止しました。カタログCSVは常に {db.csv_dir} を読みます', file=sys.stderr)
+        return 1
     elif cmd == 'build':
         if not db.is_configured():
-            print('カタログCSVフォルダが未設定です。先に setdir を実行してください', file=sys.stderr)
+            print(f'カタログCSVフォルダが見つかりません: {db.csv_dir}', file=sys.stderr)
             return 1
         if '--force' in argv:
             db.build(verbose=True)

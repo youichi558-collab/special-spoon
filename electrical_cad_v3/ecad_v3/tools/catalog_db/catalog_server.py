@@ -93,8 +93,7 @@ def main():
     if '--host' in sys.argv:
         host = sys.argv[sys.argv.index('--host') + 1]
     if not _db.is_configured():
-        print('警告: カタログCSVフォルダが未設定です。'
-              ' python catalog_db.py setdir <フォルダ> で設定してください', file=sys.stderr)
+        print(f'警告: カタログCSVフォルダが見つかりません: {_db.csv_dir}', file=sys.stderr)
     else:
         _db.ensure_built(verbose=True)
     print(f'カタログDBサーバー起動: http://localhost:{port}/search?q=...')

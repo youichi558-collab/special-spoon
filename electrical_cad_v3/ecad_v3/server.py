@@ -199,29 +199,18 @@ class Handler(SimpleHTTPRequestHandler):
         })
 
     def handle_catalog_import(self):
-        """ブラウザが読んだカタログCSVの中身を受け取って取り込む。
+        """【2026-09-29 廃止】ブラウザで選んだフォルダのCSVを取り込む経路。
 
-        File System Access API はフォルダの絶対パスをJSに渡さないため、
-        パスではなく中身を受け取る方式にしている(部品DBと同じ操作感)。
+        カタログCSVの原本はリポジトリの catalog_pending/ だけにした(catalog_db.py 冒頭)。
+        サーバーが直接そこを読むので、ブラウザから中身を送ってもらう必要が無くなった。
+        古い画面(キャッシュ)から呼ばれたときに黙って別の場所へ書かないよう、断るだけ残す。
         """
-        if catalog_db is None:
-            self._send_json({'ok': False, 'available': False,
-                             'error': 'カタログDB機能が導入されていません'})
-            return
-        try:
-            n = int(self.headers.get('Content-Length') or 0)
-            payload = json.loads(self.rfile.read(n).decode('utf-8')) if n else {}
-            files = payload.get('files') or []
-            if not files:
-                self._send_json({'ok': False, 'available': True,
-                                 'error': '選んだフォルダにCSVがありませんでした'})
-                return
-            db = catalog_db.CatalogDB()
-            res = db.import_files(files)
-            db.set_source_label(payload.get('label') or '')
-            self._send_json({'ok': True, 'available': True, **res, **db.stats()})
-        except Exception as e:
-            self._send_json({'ok': False, 'available': True, 'error': str(e)})
+        n = int(self.headers.get('Content-Length') or 0)
+        if n:
+            self.rfile.read(n)   # 本文を読み捨てないと接続が切れてブラウザ側が「通信失敗」になる
+        self._send_json({'ok': False, 'available': catalog_db is not None,
+                         'error': 'フォルダを選んで取り込む方式は廃止しました。'
+                                  'カタログCSVは catalog_pending を直接読みます(画面を再読み込みしてください)'})
 
     # ---- カタログDB(任意機能) --------------------------------------------
     def handle_catalog(self, action, q):
@@ -238,16 +227,11 @@ class Handler(SimpleHTTPRequestHandler):
             db = catalog_db.CatalogDB()
             if action == 'stats':
                 self._send_json({'ok': True, 'available': True, **db.stats()})
-            # setdir(カタログCSVフォルダの設定)はHTTPからは受け付けない。
-            # サーバー上の任意のフォルダをGET一発で指定できてしまい、
-            # 画面からは一度も呼んでいなかった(取り込みは /api/catalog/import が
-            # ブラウザで読んだCSVの中身を送る方式)。
-            # 設定を変えたいときはコマンドラインから:
-            #   py tools/catalog_db/catalog_db.py setdir <フォルダ>
+            # 読み先は常に catalog_pending/(2026-09-29、catalog_db.py 冒頭)。設定のAPIは無い
             elif action == 'rebuild':
                 if not db.is_configured():
                     self._send_json({'ok': False, 'available': True,
-                                     'error': 'カタログCSVフォルダが未設定です'})
+                                     'error': 'カタログCSVフォルダ(catalog_pending)が見つかりません'})
                     return
                 res = db.build(verbose=True)
                 self._send_json({'ok': True, 'available': True, **res, **db.stats()})
@@ -265,9 +249,8 @@ class Handler(SimpleHTTPRequestHandler):
                                  'count': len(rows), 'total': total,
                                  'truncated': total > len(rows)})
             elif action == 'search':
-                # Drive未接続(フォルダが見えない)でも、既に構築済みのDBがあれば検索できる。
-                # 出先のノートPC等でDriveが同期していない場面を想定。
-                # 最新CSVの取り込みだけができない旨を warning で伝える。
+                # CSVフォルダが見えなくても、既に構築済みのDBがあれば検索できる。
+                # (2026-09-29以降は catalog_pending を読むので、普通は起きない)
                 warning = ''
                 if db.is_configured():
                     db.ensure_built(verbose=True)
@@ -276,7 +259,7 @@ class Handler(SimpleHTTPRequestHandler):
                                '(前回構築したDBで検索しています。最新のCSVは反映されていません)')
                 else:
                     self._send_json({'ok': False, 'available': True,
-                                     'error': 'カタログCSVフォルダが未設定です'})
+                                     'error': 'カタログCSVフォルダ(catalog_pending)が見つかりません'})
                     return
                 rows = db.search(q.get('q', ''), q.get('maker', ''),
                                  q.get('type', ''), int(q.get('limit', 100)))

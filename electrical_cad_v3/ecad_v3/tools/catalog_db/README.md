@@ -3,17 +3,23 @@
 各メーカーのカタログから起こした部品データ（将来数万件）を検索するための仕組み。
 **CADの部品DB（盛田さんが手で育てる `parts_db.json`、数千件）とは別物。**
 
+> **【2026-09-29 変更】CSVの原本はリポジトリの `ecad_v3/catalog_pending/` だけ。**
+> 以前はGoogle Driveの「カタログDB」フォルダを原本にし、ブラウザでフォルダを選んで取り込んでいたが、
+> 同じCSVが `catalog_pending/` にもあって食い違っていた。盛田さんの決定「複数人が同じファイルを
+> 見に行くのは論外、個人個人でやる」により、CSVはCADと一緒に持つ形にした。
+> 読み先は固定(`catalog_db.default_csv_dir()`)で、設定・フォルダ選択・`setdir` は廃止。
+> 下の「初回セットアップ」「他のPCで使う」以降のDriveの記述は、変更前の記録として残してある。
+
 ```
-Google Drive「カタログDB」フォルダ         ローカルPC
-  mitsubishi.csv  ─┐                    ┌─ catalog.sqlite3（生成物・消してよい）
-  fuji.csv        ─┼─ catalog_db.py ───┤
-  omron.csv       ─┘   （構築＋検索）    └─ CADの検索欄／他ツール
-  ...
+ecad_v3/catalog_pending/                ローカルPC
+  mitsubishi_breaker_batch1.csv ─┐       ┌─ catalog.sqlite3（生成物・消してよい）
+  omron_my_relay_batch1.csv     ─┼─ catalog_db.py ─┤
+  ...                           ─┘  （構築＋検索）   └─ 部品DB画面の検索欄／他ツール
 ```
 
-- **CSVが原本。** Drive上にメーカーごと1ファイル。Drive for Desktopで同期されるので、ただのファイルとして読む（Drive APIは使わない）。
-- **SQLiteは生成物。** ローカルに作られる。CSVから毎回作り直せるので、消しても失われるものは無い。**Driveには置かない**（バイナリの同期が現実的でないため）。
-- **Gitとは組み合わせない。** カタログデータはリポジトリに入れない。
+- **CSVが原本。** `catalog_pending/` に置く(部品DB画面の「保留CSV」と同じフォルダ)。
+- **SQLiteは生成物。** ローカルに作られる。CSVから毎回作り直せる。検索のたびにCSVの変更を見て自動で作り直す。
+- **SQLiteはGitに入れない。** CSVはリポジトリに入る(履歴が残る)。
 
 ## ファイル構成
 

@@ -1362,8 +1362,8 @@ function lineWidthOptions(cur) {
   }).join('');
 }
 
-// 【2026-09-19・移設】カタログDB(検索用データベース)をGoogle Driveから取り込む
-// 機能一式(catalogPickFolder / catalogReimport / catalogRefreshStatus 等)を
+// 【2026-09-19・移設】カタログDB(検索用データベース)の機能一式
+// (catalogRefreshStatus 等。2026-09-29以降はDriveではなく catalog_pending を読む)を
 // 部品DB単独画面(js/parts_page.js)へ移した。カタログDBを「使う」のは
 // 単独画面(検索・全件作り直し)なのに「取り込む」側だけがCADにあり、
 // 使う画面が自分でデータを更新できない状態だったため。

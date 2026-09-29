@@ -63,6 +63,8 @@
 - `INDEX.md`を再生成(37ファイル・636型番)
 - **部品DBへの取り込みが要る**: 部品DB画面の「保留CSV」から上の2ファイルを選んで取り込む。
   同じ型番は「更新」で上書きされる(`parts_page.js`)。取り込むまで図面には反映されない
+- **【9-29 同日・解決】読み先を`catalog_pending/`一か所にした**(HANDOFF「9-29 設計の決定」)。
+  以下の段落は変更前の状況の記録:
 - **Googleドライブ側は更新していない**: 盛田さんのドライブに同名のCSV置き場がある(親フォルダID
   `1v1W3Gqrr_TetUR9YSKovBhsj6wbhFlJM`、`omron_my_relay_batch1.csv`等が9-22更新)。今回の2ファイルは
   リポジトリの`catalog_pending/`だけに置いた(部品DB画面の「保留CSV」はサーバーが`catalog_pending/`を読む)。
