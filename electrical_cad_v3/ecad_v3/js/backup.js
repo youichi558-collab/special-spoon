@@ -225,7 +225,7 @@ async function bkRefreshList() {
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(f.base)}</span>
         <span style="color:var(--fg3);flex-shrink:0">${when}</span>
         <span style="color:var(--fg3);flex-shrink:0;width:52px;text-align:right">${kb}KB</span>
-        <button class="fp-btn" style="flex-shrink:0" onclick="bkRestore('${escH(f.name)}')">開く</button>
+        <button class="fp-btn" style="flex-shrink:0" data-name="${escH(f.name)}" onclick="bkRestore(this.dataset.name)">開く</button>
       </div>`;
     }).join('');
   } catch (e) {

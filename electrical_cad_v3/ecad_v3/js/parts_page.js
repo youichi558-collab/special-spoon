@@ -362,8 +362,11 @@ async function bulkImportParts() {
   let added = 0, skipped = 0, updated = 0;
   const errors = [], legacyRows = [];
   lines.forEach((line, i) => {
-    if (/型番|メーカー|maker|ref/i.test(line)) return;
     const cols = parseCSVLine(line);
+    // 【2026-09-29】見出し行は「型番列が ref/型番 かつ メーカー列が maker/メーカー」のときだけ飛ばす
+    // (catalog_db.py と同じ判定)。以前は行全体に /型番|ref/ を当てていたため、備考に
+    // 「型番末尾の□で区別」と書いた行(UT-RR等11件)が黙って捨てられていた。
+    if (/^(ref|型番)$/i.test((cols[1] || '').trim()) && /^(maker|メーカー)$/i.test((cols[0] || '').trim())) return;
     // 【2026-09-20】10列目にカタログURLを追加。9列までのCSVは従来どおり読める
     // (仕様は「8列以上」。足りない列は空、余分な列は無視)。
     const [maker, ref, type, volt, amp, terminals, contacts, note, source, catalogUrl] = cols;

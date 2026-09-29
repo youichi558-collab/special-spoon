@@ -152,6 +152,7 @@ class BackupStore:
         st = stamp or time.strftime('%Y%m%d_%H%M%S')
         fname = f'{base}_{st}.json'
         path = os.path.join(self.dir, fname)
+        tmp = None
         try:
             os.makedirs(self.dir, exist_ok=True)
             # 書きかけを残さない: tmpに書き切ってから置き換える
@@ -163,7 +164,7 @@ class BackupStore:
             os.replace(tmp, path)
         except Exception as e:
             try:
-                if os.path.exists(tmp):
+                if tmp and os.path.exists(tmp):
                     os.remove(tmp)
             except OSError:
                 pass
