@@ -150,6 +150,25 @@ console.log('\n【対象外】');
   eq([off.blocks.length, off.contacts.size], [0, 0], '表示OFFなら何も出さない');
 }
 
+console.log('\n【個別の調整(プロパティのCRタブ): 位置補正・サイズ倍率・表示OFF】');
+{
+  const c0 = coil('CR1', 360, 375, { devFs: 10 }), k0 = cont('ca', 'CR1', 390, 191, '9,5', { devFs: 10 });
+  const base = setup([c0, k0, outerBox]);
+  const b0 = base.blocks[0], t0 = base.contacts.get(k0.id);
+  const c1 = coil('CR1', 360, 375, { devFs: 10, xrefOffX: 12, xrefOffY: -5, xrefMul: 2 }), k1 = cont('ca', 'CR1', 390, 191, '9,5', { devFs: 10, xrefOffX: 3, xrefOffY: 4, xrefMul: 2 });
+  const adj = setup([c1, k1, outerBox]);
+  const b1 = adj.blocks[0], t1 = adj.contacts.get(k1.id);
+  eq([Math.round(b1.nameFs * 1e6) / 1e6, Math.round(b1.fs * 1e6) / 1e6], [Math.round(b0.nameFs * 2 * 1e6) / 1e6, Math.round(b0.fs * 2 * 1e6) / 1e6], 'コイル側: 文字サイズが倍率だけ変わる');
+  eq(b1.y, b0.y - 5, 'コイル側: 上下の補正が自動の位置に足される');
+  eq(Math.round((b1.left - (b1.x - b1.w / 2)) * 1e6) / 1e6, 12, 'コイル側: 左右の補正が足される');
+  eq([t1.x - t0.x, t1.y - t0.y], [3, 4], '接点側: 位置の補正が足される');
+  eq(Math.round(t1.fs / t0.fs * 1e6) / 1e6, 2, '接点側: 倍率が効く');
+  const off = setup([coil('CR1', 360, 375, { xrefHide: true }), cont('ca', 'CR1', 390, 191, '9,5', { xrefHide: true }), outerBox]);
+  eq([off.blocks.length, off.contacts.size], [0, 0], '表示OFF(xrefHide)なら出さない');
+  const bad = setup([coil('CR1', 360, 375, { xrefMul: 'x', xrefOffX: 'y' }), outerBox]);
+  eq([bad.blocks.length, bad.blocks[0].offX], [1, 0], '数字でない値は無視して自動にする');
+}
+
 console.log('\n【文字の大きさ(既定は0.7倍=盛田さんの選択)】');
 {
   const els = [coil('CR1', 360, 375, { devFs: 10 }), cont('ca', 'CR1', 390, 191, '9,5', { devFs: 10 })];

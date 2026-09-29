@@ -31,7 +31,8 @@ function state(els, sel) { sb.state = { elements: els, sel: { els: new Set(sel) 
 
 console.log('【タブの構成】');
 {
-  eq(G('RP_TABS').map(t => t.label), ['基本', '端子', '形', 'メモ'], '基本/端子/形/メモの4タブ');
+  eq(G('RP_TABS').map(t => t.label), ['基本', '端子', '形', 'メモ', 'CR'], '基本/端子/形/メモ/CRのタブ');
+  ok(!sb.rpTabsHeader(false).includes('CR') && sb.rpTabsHeader(true).includes('CR'), 'CRタブはコイル・接点を選んだときだけ出る');
   const all = [].concat(...Object.values(G('TAB_PROP_KEYS')));
   eq(all.length, new Set(all).size, '同じ項目が2つのタブに入っていない');
   ok(!all.includes('wireNo'), '線番はコピーしない(同じ番号が重複するため)');
@@ -80,6 +81,15 @@ console.log('\n【termOffは複製して渡す(貼り付け先どうしで配列
   eq([b.terminals, b.termFs], ['13,14', 5], '端子タブの項目が貼り付く');
 }
 
+console.log('\n【CRタブのコピー(位置補正・サイズ・表示を運ぶ)】');
+{
+  const a = { id: 'a', type: 'sym', xrefOffX: 5, xrefOffY: -8, xrefMul: 1.5, xrefHide: true, scale: 2 }, b = { id: 'b', type: 'sym', scale: 1 };
+  state([a, b], ['b']);
+  sb._rp = { _el: a }; sb.copyTabProps('cr');
+  sb._rp = { _el: b }; sb.pasteTabProps('cr');
+  eq([b.xrefOffX, b.xrefOffY, b.xrefMul, b.xrefHide, b.scale], [5, -8, 1.5, true, 1], 'CRの4項目だけが貼り付く');
+}
+
 console.log('\n【コピー前の貼り付け・選択なし】');
 {
   vm.runInContext('tabClipboard = {}', sb); alerts = [];
@@ -90,8 +100,9 @@ console.log('\n【コピー前の貼り付け・選択なし】');
 console.log('\n【組み込み】');
 {
   const s = ui;
-  eq((s.match(/rpPaneOpen\('/g) || []).length >= 4, true, 'シンボルの枠に4つのペインがある');
-  eq((s.match(/html \+= rpPaneClose\(\)/g) || []).length, 4, '4つとも閉じている(閉じ忘れると以降が崩れる)');
+  eq((s.match(/rpPaneOpen\('/g) || []).length >= 5, true, 'シンボルの枠に5つのペインがある');
+  eq((s.match(/html \+= rpPaneClose\(\)/g) || []).length, 5, '5つとも閉じている(閉じ忘れると以降が崩れる)');
+  ok(/pp-xshow[\s\S]*pp-xox[\s\S]*pp-xoy[\s\S]*pp-xmul/.test(s) && /el\.xrefHide = /.test(s) && /el\.xrefMul = /.test(s), 'CRタブの欄と、保存(applyRightPanel)がある');
   ok(/rpApplyTab\(\);/.test(s), '描画のあとに選択中のタブを反映する');
   ok(/\.rp-pane\{display:none\}/.test(fs.readFileSync(__dirname + '/../css/style.css', 'utf8')), 'CSSで非選択のタブを隠す(DOMには残す)');
 }

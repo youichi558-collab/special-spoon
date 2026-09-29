@@ -2555,7 +2555,8 @@ function updateRightPanel() {
       <button onclick="copyDeviceProps()" title="このシンボルのデバイス名・型番・仕様・文字設定を丸ごとコピーします" style="flex:1;font-size:11px;padding:3px 6px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">一括コピー</button>
       <button onclick="pasteDeviceProps()" title="コピーした内容を、選択中のシンボル(複数可・形が違ってもOK)へまとめて貼り付けます" style="flex:1;font-size:11px;padding:3px 6px;background:${deviceClipboard?'var(--accent,#1d6fb5)':'var(--bg3)'};border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:${deviceClipboard?'#fff':'var(--fg)'}"${deviceClipboard?'':' disabled'}>一括貼り付け</button>
     </div>`;
-    html += rpTabsHeader() + rpPaneOpen('basic');
+    const _hasCR = ['coil', 'contact_a', 'contact_b'].includes(symRole(el));   // クロスリファレンスの対象(js/xref.js)
+    html += rpTabsHeader(_hasCR) + rpPaneOpen('basic');
     { const devC = el.devColor||(state.darkMode?'#4da3ff':'#1d6fb5');
     html += `<div class="pp-group" style="border-left:4px solid ${devC}"><div class="pp-group-cap" style="color:${devC}">◆ デバイス</div>`;
     // デバイス欄は入力欄＋候補リスト(datalist)。候補は図面上で実際に使われている
@@ -2635,7 +2636,18 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="color" id="pp-ncolor" value="${escH(el.noteColor||'#555555')}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('pp-ncolor','pp-ncolorcode')"><input type="text" id="pp-ncolorcode" value="${escH(el.noteColor||'#555555')}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-ncolorcode','pp-ncolor')">${colorCodeBtns('pp-ncolorcode','pp-ncolor')}</div></div>`;
     html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-nox" value="${escH(el.noteOffX!==undefined?el.noteOffX:'')}" placeholder="自動" step="5"></div>`;
     html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-noy" value="${escH(el.noteOffY!==undefined?el.noteOffY:'')}" placeholder="自動" step="5"></div>`;
-    html += `</details>`;    html += rpPaneClose();
+    html += `</details>`;
+    html += rpPaneClose();
+    // クロスリファレンスの個別設定(コイル・接点だけ)。空欄=自動。位置は自動の位置からのずれ、サイズは全体の倍率に掛ける倍率
+    if (_hasCR) {
+      html += rpPaneOpen('cr');
+      html += `<div class="pp-row"><label>図面に表示</label><input type="checkbox" id="pp-xshow"${el.xrefHide?'':' checked'} title="OFFにするとこの要素のクロスリファレンスを出しません"></div>`;
+      html += `<div class="pp-row"><label>位置X補正</label><input type="number" id="pp-xox" value="${escH(el.xrefOffX!==undefined?el.xrefOffX:'')}" placeholder="自動" step="1"></div>`;
+      html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-xoy" value="${escH(el.xrefOffY!==undefined?el.xrefOffY:'')}" placeholder="自動" step="1"></div>`;
+      html += `<div class="pp-row"><label>文字サイズ(倍率)</label><input type="number" id="pp-xmul" value="${escH(el.xrefMul!==undefined?el.xrefMul:'')}" placeholder="全体と同じ" step="0.1" min="0.3" max="3" title="表示タブの全体の倍率に、さらに掛ける倍率です。空欄なら全体と同じ"></div>`;
+      html += `<div class="pp-row"><button onclick="resetXrefAdjust()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">自動に戻す</button></div>`;
+      html += rpPaneClose();
+    }
   }
 
   // rp.innerHTML を設定する前に _el/_wire をクリアする。
@@ -3042,6 +3054,14 @@ function applyRightPanel() {
     el.noteColor = v('pp-ncolorcode') || v('pp-ncolor') || undefined;
     el.noteOffX  = v('pp-nox') !== '' ? parseInt(v('pp-nox')) : undefined;
     el.noteOffY  = v('pp-noy') !== '' ? parseInt(v('pp-noy')) : undefined;
+    // クロスリファレンスの個別設定(CRタブがあるときだけ。空欄=自動)
+    if (document.getElementById('pp-xshow')) {
+      el.xrefHide = document.getElementById('pp-xshow').checked ? undefined : true;
+      const num = id => { const t = v(id); const n = parseFloat(t); return (t !== '' && Number.isFinite(n)) ? n : undefined; };
+      el.xrefOffX = num('pp-xox');
+      el.xrefOffY = num('pp-xoy');
+      const m = num('pp-xmul'); el.xrefMul = (m > 0 && m <= 3) ? m : undefined;
+    }
     el.wireNo    = v('pp-wireno');
     // 回転系フィールド(pp-rot/pp-trot)は<input type=number>にmax指定が無いため、
     // スピナーの上矢印を連打すると際限なく増え続けてしまう不具合があった
@@ -3109,6 +3129,7 @@ const RP_TABS = [
   { key: 'term',  label: '端子' },
   { key: 'shape', label: '形' },
   { key: 'memo',  label: 'メモ' },
+  { key: 'cr',    label: 'CR' },      // クロスリファレンスの個別設定。コイル・接点を選んだときだけ出る(js/xref.js)
 ];
 // タブごとにコピーする項目(要素のプロパティ名)。線番(wireNo)は入れない(コピーすると同じ番号が重複するため)
 const TAB_PROP_KEYS = {
@@ -3120,12 +3141,13 @@ const TAB_PROP_KEYS = {
   term:  ['terminals', 'termOff', 'termFs'],
   shape: ['rot', 'textRot', 'scale', 'lineStyle', 'lineWidth', 'layer'],
   memo:  ['note', 'showNote', 'noteFs', 'noteColor', 'noteOffX', 'noteOffY'],
+  cr:    ['xrefHide', 'xrefOffX', 'xrefOffY', 'xrefMul'],
 };
 const TAB_PROP_KEEP = ['layer'];      // コピー元に無くても貼り付け先から消さない項目
 let tabClipboard = {};                // { タブ名: { 項目: 値 } }
 
-function rpTabsHeader() {
-  return `<div class="rp-tabs">` + RP_TABS.map(t =>
+function rpTabsHeader(showCR) {
+  return `<div class="rp-tabs">` + RP_TABS.filter(t => t.key !== 'cr' || showCR).map(t =>
     `<div class="rp-tab" data-tab="${t.key}" onclick="rpTab('${t.key}')">${t.label}</div>`).join('') + `</div>`;
 }
 function rpPaneOpen(tab) {
@@ -3138,13 +3160,21 @@ function rpPaneClose() { return `</div>`; }
 
 function rpApplyTab() {
   const rp = document.getElementById('rp-body'); if (!rp) return;
-  const cur = state.rpTab || 'basic';
+  let cur = state.rpTab || 'basic';
+  if (!rp.querySelector(`.rp-tab[data-tab="${cur}"]`)) cur = 'basic';   // CRタブが無い要素では「基本」に戻す
   rp.querySelectorAll('.rp-tab').forEach(e => e.classList.toggle('on', e.dataset.tab === cur));
   rp.querySelectorAll('.rp-pane').forEach(e => e.classList.toggle('on', e.dataset.tab === cur));
 }
 function rpTab(name) {
   state.rpTab = name;
   if (typeof rpApplyTab === 'function') rpApplyTab();
+}
+
+// CRタブの位置補正・サイズを空(自動)に戻す
+function resetXrefAdjust() {
+  ['pp-xox', 'pp-xoy', 'pp-xmul'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  applyRightPanel();
+  draw();
 }
 
 function copyTabProps(tab) {

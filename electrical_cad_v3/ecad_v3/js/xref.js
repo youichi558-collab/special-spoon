@@ -34,6 +34,10 @@ const XREF_MARGIN = 12;   // 一番下からこれだけ空けて書き始める
 // 個別の調整項目はプロパティ欄に足さない(盛田さん「プロパティが多すぎる」)
 function xrefScale() { const v = Number(state.xrefScale); return (v > 0 && v <= 3) ? v : 0.7; }
 
+// 要素ごとの調整(プロパティのCRタブ): xrefHide=出さない / xrefOffX・xrefOffY=自動の位置からのずれ / xrefMul=文字サイズの倍率(全体の倍率に掛ける)
+function xrefMul(el) { const m = Number(el.xrefMul); return (m > 0 && m <= 3) ? m : 1; }
+function xrefOff(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
+
 function xrefRole(el) { return (typeof symRole === 'function') ? symRole(el) : ''; }
 
 // '9,5' → [9,5]。2つの数字でなければ null
@@ -212,23 +216,24 @@ function xrefCompute() {
     const coilLocs = d.coils.map(c => c.loc).join(',');
     d.contacts.forEach(c => {
       const el = c.el;
-      if (el.devHide) return;                          // 接点のデバイス名を出していないなら、その下にも出さない
+      if (el.devHide || el.xrefHide) return;           // 接点のデバイス名を出していない/CRタブでOFFなら、出さない
       const dev = (typeof getDef === 'function' ? getDef(el.type) : null) || { h: 34 };
       const dfs = el.devFs || 11;
       const dy = el.devOffY !== undefined ? el.devOffY : -(dev.h * (el.scale || 1) / 2 + 6);
       contacts.set(el.id, {
-        x: el.x + (el.devOffX || 0), y: el.y + dy + dfs * 1.25,
-        fs: Math.max(2, dfs * 0.85 * xrefScale()), text: `(${coilLocs})`,
+        x: el.x + (el.devOffX || 0) + xrefOff(el.xrefOffX), y: el.y + dy + dfs * 1.25 + xrefOff(el.xrefOffY),
+        fs: Math.max(2, dfs * 0.85 * xrefScale() * xrefMul(el)), text: `(${coilLocs})`,
       });
     });
     d.coils.forEach(c => {
       const el = c.el, pg = state.pages[c.pi];
-      const nameFs = (el.devFs || 11) * xrefScale();
+      if (el.xrefHide) return;                         // CRタブでOFF
+      const nameFs = (el.devFs || 11) * xrefScale() * xrefMul(el);
       const fs = Math.max(2, nameFs * 0.75);
       const lines = xrefCoilLines(d, c);
       const w = Math.max(...lines.map((l, i) => xrefTextW(l.t, i === 0 ? nameFs : fs)));
       const bot = xrefBottom(pg, el.x - XREF_BAND, el.x + XREF_BAND);
-      blocks.push({ pi: c.pi, elId: el.id, x: el.x, w, fs, nameFs, lines,
+      blocks.push({ pi: c.pi, elId: el.id, x: el.x, w, fs, nameFs, lines, offX: xrefOff(el.xrefOffX), offY: xrefOff(el.xrefOffY),
         y: (Number.isFinite(bot) ? bot : el.y) + XREF_MARGIN });
     });
   });
@@ -245,7 +250,8 @@ function xrefCompute() {
     }
   });
   // 左寄せ(盛田さん指示): 文字の頭をそろえる。まとまり全体の中央はコイルの真下(ぶつからないよう右にずらした分を含む)
-  blocks.forEach(b => { b.left = b.x - b.w / 2; });
+  // 個別の位置補正(CRタブ)は、ぶつからないようにずらした後の位置に足す
+  blocks.forEach(b => { b.left = b.x - b.w / 2 + b.offX; b.y += b.offY; });
   const byEl = new Map();
   blocks.forEach(b => byEl.set(b.elId, b));
   return { blocks, contacts, byEl };
