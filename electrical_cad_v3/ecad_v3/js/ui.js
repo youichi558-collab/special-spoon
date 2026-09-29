@@ -3396,9 +3396,19 @@ document.addEventListener('click', e => { if (e.button === 0) hideCtx(); });
 // ----------------------------------------------------------------
 function openFP(id) {
   const el = document.getElementById(id); if (!el) return;
+  el.classList.add('open');
+  // 【2026-09-29】タイトルをドラッグして動かした後(makeFpDraggable が transform:none・left/top を px で固定する)は、
+  // 開き直しやタブ切替(帳票は切替のたびに openFP を呼ぶ)で top を中央寄せに戻さない。
+  // 以前は動かした後でも top だけ「画面の真ん中」に戻したため、transform が無い状態で上端が画面の中央に来て、
+  // 下半分が画面の外に出た(CSV出力・閉じるが押せない)。動かした後は今の位置を保ち、画面内に収まるよう寄せるだけにする。
+  if (el.style.transform === 'none') {
+    const r = el.getBoundingClientRect();
+    el.style.left = Math.max(0, Math.min(r.left, window.innerWidth  - r.width))  + 'px';
+    el.style.top  = Math.max(0, Math.min(r.top,  window.innerHeight - r.height)) + 'px';
+    return;
+  }
   const ribbonH = document.getElementById('ribbon')?.offsetHeight || 0;
   el.style.top = `calc(50% - ${ribbonH * 0.1}px)`;
-  el.classList.add('open');
 }
 function closeFP(id) { document.getElementById(id)?.classList.remove('open'); }
 
