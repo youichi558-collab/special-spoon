@@ -786,8 +786,8 @@ function exportDXF(){
           const lp = symTermLabelPos();
           const o  = (el.termOff||[])[tp.i] || [0,0];
           const bl = lp.baseline === 'top' ? tfs * 0.8 : 0;
-          eText(layer, tp.x + lp.dx + (Number(o[0])||0),
-                       tp.y + lp.dy + bl + (Number(o[1])||0),
+          eText(layer, tp.lx + lp.dx + (Number(o[0])||0),
+                       tp.ly + lp.dy + bl + (Number(o[1])||0),
                        tfs, tp.label, 0, lp.align);
         });
       }

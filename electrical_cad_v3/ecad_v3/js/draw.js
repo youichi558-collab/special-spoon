@@ -313,7 +313,7 @@ function drawSymPinMarkers() {
 // 端子点(ワールド座標)と、そこに書く端子番号を返す。
 //
 // 【座標式】snap.js のスナップ判定・conn_table.js の接続判定と同一の式。
-// つまりここに出る番号は「実際に配線がスナップする点」そのものに付く。
+// 端子の位置(x, y)は「実際に配線がスナップする点」そのもの。番号の文字の基準点(lx, ly)は、倍率を掛けない昔の位置のまま(下の説明)。
 // cS.terminals には el.scale を掛ける(2026-09-29)。以前は掛けていなかったが、絵は倍率で縮んで描かれるため、
 // 倍率の小さいシンボル(Sheet3の接点は0.3〜0.45)で端子が絵から離れた所に計算されていた。snap.js / conn_table.js /
 // conn_check.js も同時に掛けるようにした(4箇所を必ず揃えること)。
@@ -336,6 +336,12 @@ function symTermPoints(el, cS, def) {
       const tx = t.x * tsc, ty = t.y * tsc;
       raw.push({ rx: tx * cos - ty * sin,
                  ry: tx * sin + ty * cos,
+                 // 端子番号の文字を置く基準点(lx, ly)。**倍率を掛けない昔の位置のまま**にしてある(2026-09-29)。
+                 // 盛田さんはリレー周りの端子番号を、この昔の位置を基準に「端子ごとの位置補正(termOff)」で追い込んでいた。
+                 // 端子の位置(x, y)に倍率を掛ける修正をしたとき、番号の基準点まで動かしたため、追い込んだ番号が全部ズレた。
+                 // 端子の位置(スナップ・接続チェック・🔴マーカー)は絵に合わせて縮み、番号の文字の基準だけ従来どおり。
+                 lrx: t.x * cos - t.y * sin,
+                 lry: t.x * sin + t.y * cos,
                  label: list[i] || t.label || '' });
     });
   } else {
@@ -358,7 +364,9 @@ function symTermPoints(el, cS, def) {
     });
   }
   return raw.map((p, i) => ({ i, rx: p.rx, ry: p.ry, label: p.label,
-                              x: el.x + p.rx, y: el.y + p.ry }));
+                              x: el.x + p.rx, y: el.y + p.ry,
+                              lx: el.x + (p.lrx !== undefined ? p.lrx : p.rx),    // 番号の文字の基準点(上の説明)
+                              ly: el.y + (p.lry !== undefined ? p.lry : p.ry) }));
 }
 
 // 端子番号の文字を置く位置と揃えを決める。
@@ -458,7 +466,7 @@ function drawSymTermNos() {
       const { ox, oy } = symTermOff(el, p.i);
       ctx.textAlign    = lp.align;
       ctx.textBaseline = lp.baseline;
-      ctx.fillText(p.label, p.x + lp.dx + ox, p.y + lp.dy + oy);
+      ctx.fillText(p.label, p.lx + lp.dx + ox, p.ly + lp.dy + oy);
     });
   });
   ctx.restore();

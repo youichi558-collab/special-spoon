@@ -40,6 +40,30 @@ ok(!sb.findNearestTerminal(390, 191 - 25, sb.collectTerminalPoints([el]), 5), '�
 el.scale = 1;
 near(sb.collectTerminalPoints([el])[0].y, 191 - 25, '倍率1なら従来と同じ位置');
 
+console.log('【端子番号の文字の基準点(lx, ly)は、倍率を掛けない昔の位置のまま】');
+{
+  el.scale = 0.4466220154377728; el.terminals = '9,5';
+  const c2 = sb.symTermPoints(el, cS, { w: 14, h: 54 });
+  near(c2[0].y, 191 - 25 * el.scale, '端子の位置(y)は倍率を掛けた位置(スナップ・接続チェックと同じ)');
+  near(c2[0].ly, 191 - 25, '番号の基準点(ly)は倍率を掛けない昔の位置(リレー周りの端子ごとの位置補正 termOff を追い込んだ基準)');
+  near(c2[1].ly, 191 + 25, '2つ目も同じ');
+  near(c2[0].lx, 390, '横は中心のまま');
+  // 90度回転しても、昔の式(倍率なし)と同じ
+  el.rot = 90; const c3 = sb.symTermPoints(el, cS, { w: 14, h: 54 });
+  near(c3[0].lx, 390 + 25, '90度回転: 基準点は昔の位置を回したもの(x)'); near(c3[0].ly, 191, '90度回転: (y)');
+  el.rot = 0; el.scale = 1;
+  const c4 = sb.symTermPoints(el, cS, { w: 14, h: 54 });
+  near(c4[0].ly, c4[0].y, '倍率1なら基準点=端子の位置(従来どおり)');
+  // 端子が未定義のシンボル(左右端)は、もともと倍率が掛かっている。基準点=端子の位置
+  const c5 = sb.symTermPoints({ type: 'std', x: 100, y: 50, scale: 2, terminals: '1,2' }, null, { w: 40, h: 30 });
+  near(c5[0].lx, c5[0].x, '端子未定義のシンボル: 基準点=端子の位置');
+}
+{
+  const draw = R('js/draw.js'), dxf = R('js/dxf_export.js');
+  ok(/p\.lx \+ lp\.dx \+ ox, p\.ly \+ lp\.dy \+ oy/.test(draw), '画面の端子番号は基準点(lx, ly)から置く');
+  ok(/tp\.lx \+ lp\.dx/.test(dxf) && /tp\.ly \+ lp\.dy/.test(dxf), 'DXFの端子番号も同じ基準点(画面と同じ位置)');
+}
+
 console.log('【4箇所とも端子の定義位置に倍率を掛けている(数え上げ漏れ防止)】');
 ['js/snap.js', 'js/conn_table.js', 'js/conn_check.js', 'js/draw.js'].forEach(f => {
   const code = R(f).split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
