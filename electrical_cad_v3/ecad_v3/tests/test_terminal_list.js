@@ -53,6 +53,7 @@ vm.runInContext([
   // 集計に入れるかどうかは表示側(showTBTable)が el.tbExclude で分ける。
   // 本テストのデータは印を持たないため、期待値は従来どおりで変わらない。
   pick(/function collectTerminals\(\)[\s\S]*?\n\}/),
+  pick(/function normalizeRef\([\s\S]*?\n\}/), pick(/function _tbKey\([\s\S]*?\n\}/), pick(/function tbDeviceNames\([\s\S]*?\n\}/),
   pick(/function groupTerminalsByDevice\([\s\S]*?\n\}/),
 ].join('\n'), sandbox);
 

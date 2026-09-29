@@ -35,7 +35,7 @@ const sandbox = {
   openFP: () => {}, closeFP: () => {},
   draw: () => {}, pushH: () => {},
   dl: (content, name) => { lastCsv = { content, name }; },
-  getDef: () => ({ w: 20 }),
+  getDef: () => ({ w: 20 }), escH: require('./_esch.js').escH,
 };
 vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync(__dirname + '/../js/report.js', 'utf8'), sandbox);

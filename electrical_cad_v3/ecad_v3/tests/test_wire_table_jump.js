@@ -31,6 +31,8 @@ const sb = {
 vm.createContext(sb);
 // Windowsで取り出すと改行がCRLFになるのでLFにそろえる(他のテストと同じ)
 vm.runInContext(fs.readFileSync(__dirname + '/../js/report.js', 'utf8').replace(/\r\n/g, '\n'), sb);
+// _jsArg は conn_table.js にある(本物を使う)
+{ const c = fs.readFileSync(__dirname + '/../js/conn_table.js', 'utf8'); vm.runInContext(c.match(/function _jsArg\([^\n]*/)[0], sb); }
 
 sb.state = {
   currentPage: 0, zoom: 0.5, pan: { x: 0, y: 0 },

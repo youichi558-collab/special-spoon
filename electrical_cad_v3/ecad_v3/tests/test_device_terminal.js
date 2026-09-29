@@ -61,6 +61,7 @@ function makeSandbox(customParts, pages) {
   vm.runInContext(
     [grab(reportSrc, 'isTBExcluded'),
      grab(reportSrc, 'collectTerminals'),
+     grab(reportSrc, 'normalizeRef'), grab(reportSrc, '_tbKey'), grab(reportSrc, 'tbDeviceNames'),
      grab(reportSrc, 'groupTerminalsByDevice'),
      grab(uiSrc, 'parseTerminalGroups'),
      grab(uiSrc, 'junctionTermOptionsHtml')].join('\n'),

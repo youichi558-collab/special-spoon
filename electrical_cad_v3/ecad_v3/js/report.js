@@ -371,18 +371,16 @@ function wireNoTable(msg){
   html += `<br><button onclick="compactAllWireNumbers()" title="削除等で欠番になった線番を詰めます(例: W001,W003,W005 → W001,W002,W003)。編集中に自動では動きません、このボタンを押した時だけ実行されます" style="margin-top:4px;font-size:10px;padding:2px 8px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)">欠番を詰める</button>`;
   html += `</p>`;
   html += `<table class="tbl"><tr><th></th><th></th><th>線番</th><th>ページ</th><th>本数</th><th></th></tr>`;
-  // 線番文字列をonclick内のJS文字列リテラルに安全に埋め込むための簡易エスケープ
-  const esc = s => String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
   rows.forEach((r, ri) => {
     const badgeCls = r.conflict ? 'badge-o' : 'badge-b';
     const title = r.conflict ? 'title="⚠このネット内に異なる既存線番が混在しています。編集すると統一されます"' : '';
     const prev = rows[ri-1], next = rows[ri+1];
     const btnStyle = 'font-size:9px;line-height:1;padding:1px 3px;cursor:pointer;border:1px solid var(--bd2);border-radius:2px;background:var(--bg2);color:var(--fg)';
     const upBtn = prev
-      ? `<button title="ひとつ上の行と線番を入れ替え" onclick="swapNetWireNo(${r.pageIdx},[${r.idxs.join(',')}],'${esc(r.wireNo)}',${prev.pageIdx},[${prev.idxs.join(',')}],'${esc(prev.wireNo)}')" style="${btnStyle}">▲</button>`
+      ? `<button title="ひとつ上の行と線番を入れ替え" onclick="swapNetWireNo(${r.pageIdx},[${r.idxs.join(',')}],${_jsArg(r.wireNo)},${prev.pageIdx},[${prev.idxs.join(',')}],${_jsArg(prev.wireNo)})" style="${btnStyle}">▲</button>`
       : `<button disabled style="${btnStyle};opacity:.3">▲</button>`;
     const downBtn = next
-      ? `<button title="ひとつ下の行と線番を入れ替え" onclick="swapNetWireNo(${r.pageIdx},[${r.idxs.join(',')}],'${esc(r.wireNo)}',${next.pageIdx},[${next.idxs.join(',')}],'${esc(next.wireNo)}')" style="${btnStyle}">▼</button>`
+      ? `<button title="ひとつ下の行と線番を入れ替え" onclick="swapNetWireNo(${r.pageIdx},[${r.idxs.join(',')}],${_jsArg(r.wireNo)},${next.pageIdx},[${next.idxs.join(',')}],${_jsArg(next.wireNo)})" style="${btnStyle}">▼</button>`
       : `<button disabled style="${btnStyle};opacity:.3">▼</button>`;
     const delBtn = `<button title="このネットの配線ごと削除し、欠番を自動で詰めます" onclick="deleteNetFromList(${r.pageIdx},[${r.idxs.join(',')}])" style="${btnStyle};color:var(--red)">×</button>`;
     const chk = `<input type="checkbox" ${r.autoNum?'checked':''} title="チェックを外すと「線番割付」ボタンでの自動採番の対象外になります" onchange="toggleNetAutoNum(${r.pageIdx},[${r.idxs.join(',')}],this.checked)">`;
@@ -775,9 +773,15 @@ function showBOM(){
     if (r.noRef || !r.model) return '<td style="color:var(--fg3)">-</td>';
     const opts = (typeof partVoltOptions === 'function') ? partVoltOptions(r.model) : [];
     if (!opts.length) return '<td style="color:var(--fg3)">-</td>';
-    if (opts.length === 1) return `<td style="color:var(--fg2)">${escH(opts[0])}</td>`;
-    const cur = r.volt && opts.includes(r.volt) ? r.volt : opts[0];
-    return `<td><select onchange="setBOMVolt(${i}, this.value)" style="font-size:11px">`
+    // 【2026-09-29】図面に入っている電圧をそのまま見せる。以前は図面の電圧が空(または選択肢に無い値)のとき、
+    // 先頭の選択肢(AC12Vなど)を選択済みとして見せていた。データ・CSVは空のままなので、画面を信じると食い違う。
+    // 空のときは「未設定」を選択済みにし、選ぶまで図面には何も入れない。選択肢に無い値はそのまま見せて印を付ける。
+    if (opts.length === 1 && r.volt === opts[0]) return `<td style="color:var(--fg2)">${escH(opts[0])}</td>`;
+    const cur = r.volt || '';
+    const stale = cur && !opts.includes(cur);
+    return `<td><select onchange="setBOMVolt(${i}, this.value)" style="font-size:11px${cur ? '' : ';color:var(--red)'}">`
+      + (cur && !stale ? '' : `<option value=""${cur ? '' : ' selected'}>(未設定)</option>`)
+      + (stale ? `<option value="${escH(cur)}" selected>${escH(cur)} (選択肢に無い)</option>` : '')
       + opts.map(o => `<option value="${escH(o)}"${o === cur ? ' selected' : ''}>${escH(o)}</option>`).join('')
       + `</select></td>`;
   };
@@ -1197,8 +1201,7 @@ function setTBExcluded(dev, excluded) {
   (state.pages || [{ elements: state.elements }]).forEach(pg => {
     (pg.elements || []).forEach(el => {
       if (el.type !== 'junction') return;
-      const ref = (el.partRef || '').trim() || '(デバイス未設定)';
-      if (ref !== target) return;
+      if (_tbKey(el.partRef) !== _tbKey(target)) return;
       el.tbExclude = excluded ? true : undefined;
       n++;
     });
@@ -1235,11 +1238,34 @@ function collectTerminals() {
   return out;
 }
 
+// 端子のデバイス判定用のキー。部品表・接点Ref・クロスリファレンスと同じ normalizeRef で束ねる(2026-09-29)。
+// 以前は端子台表だけ綴りそのままで比べたため、`TB-2`と`TB2`が部品表では同じ台・端子台表では別の台になっていた。
+function _tbKey(ref) {
+  const r = String(ref || '').trim();
+  return r ? (normalizeRef(r) || r) : '(デバイス未設定)';
+}
+// キー → 表示名(そのデバイスで一番多く使われている綴り。同数なら先に出てきた方)。
+function tbDeviceNames(rows) {
+  const cnt = new Map();   // key -> Map(綴り -> 数)
+  rows.forEach(r => {
+    const raw = String((r.el || r).partRef || '').trim();
+    const key = _tbKey(raw);
+    if (!cnt.has(key)) cnt.set(key, new Map());
+    const m = cnt.get(key), sp = raw || '(デバイス未設定)';
+    m.set(sp, (m.get(sp) || 0) + 1);
+  });
+  const names = new Map();
+  cnt.forEach((m, key) => names.set(key, [...m.entries()].sort((a, b) => b[1] - a[1])[0][0]));
+  return names;
+}
+
 // デバイス(TB1等)ごとにまとめる。デバイス未設定のものは「(デバイス未設定)」へ。
+// 綴りが違っても同じデバイスなら1つにまとめ、表示名は一番多い綴り。
 function groupTerminalsByDevice(rows) {
+  const names = tbDeviceNames(rows);
   const g = new Map();
   rows.forEach(r => {
-    const key = (r.el.partRef || '').trim() || '(デバイス未設定)';
+    const key = names.get(_tbKey(r.el.partRef));
     if (!g.has(key)) g.set(key, []);
     g.get(key).push(r);
   });
@@ -1297,7 +1323,7 @@ function tbDrop(ev, targetId) {
   const targetEl = rows.find(r => String(r.el.id) === String(targetId))?.el;
   if (!dragEl || !targetEl) return;
   const refOf = e => (e.partRef || '').trim() || '(デバイス未設定)';
-  if (refOf(dragEl) !== refOf(targetEl)) {
+  if (_tbKey(dragEl.partRef) !== _tbKey(targetEl.partRef)) {
     alert(`別の端子台へは移動できません（${refOf(dragEl)} → ${refOf(targetEl)}）。\n`
         + `端子の所属を変えるときは、その端子のプロパティでデバイスを変更してください。`);
     return;

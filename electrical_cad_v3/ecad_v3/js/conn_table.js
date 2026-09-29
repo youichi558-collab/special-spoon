@@ -190,9 +190,9 @@ function showConnTable() {
     if (!r.wireNo) unnumbered++;
     if (f.name === '分岐点' || t.name === '分岐点') branch++;
     body += `<tr${issue ? ' style="background:rgba(200,60,60,.10)"' : ''}>`
-      + `<td>${r.wireNo ? `<span class="badge badge-b">${r.wireNo}</span>` : '<span style="color:var(--red)">未採番</span>'}</td>`
-      + `<td>${r.page}</td><td>${f.name}</td><td>${f.term}</td><td>${t.name}</td><td>${t.term}</td>`
-      + `<td>${issue ? `<span style="color:var(--red)">${issue}</span>` : ''}</td><td>${r.layer}</td></tr>`;
+      + `<td>${r.wireNo ? `<span class="badge badge-b">${escH(r.wireNo)}</span>` : '<span style="color:var(--red)">未採番</span>'}</td>`
+      + `<td>${escH(r.page)}</td><td>${escH(f.name)}</td><td>${escH(f.term)}</td><td>${escH(t.name)}</td><td>${escH(t.term)}</td>`
+      + `<td>${issue ? `<span style="color:var(--red)">${issue}</span>` : ''}</td><td>${escH(r.layer)}</td></tr>`;
   });
 
   const btn = (mode, label) =>
@@ -262,11 +262,13 @@ function _tbConnsOf(el, pg) {
 
 function buildTerminalBlockRows() {
   if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
-  return collectTerminals().map(r => ({
+  const all = collectTerminals();
+  const names = tbDeviceNames(all);   // 綴りが違っても同じデバイスなら1つの台にする(部品表・接点Refと同じ判定)
+  return all.map(r => ({
     el:      r.el,
     page:    state.pages[r.page]?.name || ('Sheet' + (r.page + 1)),
     loc:     r.loc,
-    tbRef:   r.el.partRef || '(デバイス未設定)',
+    tbRef:   names.get(_tbKey(r.el.partRef)),
     tbModel: r.el.partModel || '',
     termNo:  r.el.label || '-',
     conns:   _tbConnsOf(r.el, state.pages[r.page] || {}),
