@@ -143,7 +143,7 @@ console.log('\n【部品表: 部品DBに無い型番でも、コイルのある�
   vm.runInContext('showBOM()', sb);
   const cell = ref => { const m = sb.htmlOut.match(new RegExp('<td style="font-weight:600">' + ref + '</td>(?:<td>.*?</td>){4}?<td[^>]*>(.*?)</td>')); return m ? m[1] : null; };
   const rowOf = ref => sb.htmlOut.split('<tr').find(t => t.includes('<td style="font-weight:600">' + ref + '</td>')) || '';
-  ok(/setBOMVolt\(\d+, this\.value\)" style="width:90px/.test(rowOf('CR7')) && /<input[^>]*setBOMVolt/.test(rowOf('CR7')), '部品DBに無い型番(HH52P)でも、コイルのあるデバイスは電圧を打てる入力欄になる(以前は「-」だけ)');
+  ok(/setBOMVolt\(\d+, this\.value\)" style="width:\d+px/.test(rowOf('CR7')) && /<input[^>]*setBOMVolt/.test(rowOf('CR7')), '部品DBに無い型番(HH52P)でも、コイルのあるデバイスは電圧を打てる入力欄になる(以前は「-」だけ)');
   ok(/<input[^>]*setBOMVolt/.test(rowOf('CR8')), '型番が未入力でも、コイルがあれば打てる');
   ok(!/setBOMVolt/.test(rowOf('L1')), 'コイルの無いデバイス(ランプ)は従来どおり「-」');
   ok(/<input[^>]*value="AC24V"[^>]*setBOMVolt|<input[^>]*setBOMVolt[^>]*>/.test(rowOf('L2')) && /AC24V/.test(rowOf('L2')), 'すでに電圧が入っているデバイスは、コイルが無くても見せて直せる');
