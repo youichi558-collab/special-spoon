@@ -27,6 +27,7 @@ vm.runInContext(R('js/xref.js'), sb);
 
 const FRAME = { sc: 2, wMM: 420, hMM: 297, mg: 10, thMM: 30, cols: 12, rows: 4 };
 const MY4N = { ref: 'MY4N', type: 'coil', terminals: 'コイル:13,14 / 接点1:1,5,9 / 接点2:2,6,10 / 接点3:3,7,11 / 接点4:4,8,12' };
+const H3CR = { ref: 'H3CR-A', type: 'timer', terminals: 'コイル:2,7 / 接点1:1,3,4 / 接点2:11,8,9' };
 const SDT21 = { ref: 'SD-T21', type: 'contactor', terminals: 'コイル:A1,A2 / 主接点:1,3,5,2,4,6 / 補助:13,14,21,22,43,44,31,32' };
 let id = 0;
 const E = (type, x, y, o) => Object.assign({ id: 'e' + (++id), type, x, y, layer: '回路' }, o);
@@ -34,7 +35,7 @@ const coil = (ref, x, y, o) => E('coil', x, y, Object.assign({ partRef: ref, par
 const cont = (t, ref, x, y, terms, o) => E(t, x, y, Object.assign({ partRef: ref, partModel: 'MY4N', terminals: terms, devFs: 6, devOffX: 10, devOffY: 0 }, o));
 function setup(els, wires, parts) {
   sb.state = { pages: [{ name: 'P', elements: els, wires: wires || [], frameObj: FRAME }], currentPage: 0, customSymbols: [],
-    customParts: parts || [MY4N, SDT21], showXref: true, showPartRef: true };
+    customParts: parts || [MY4N, SDT21, H3CR], showXref: true, showPartRef: true };
   return sb.xrefCompute();
 }
 const outerBox = E('fline', 0, 0, { x1: 40, y1: 420, x2: 800, y2: 420 });   // 外枠の下辺(Sheet3と同じ)
@@ -91,6 +92,13 @@ console.log('\n【型式が無い・部品DBに無い: 使用中の接点だけ�
     cont('cb', 'R9', 240, 50, '')];
   const L = setup(els);
   eq(L.blocks[0].lines.map(l => l.t), ['R9', 'a 13-14 (1/3A)', 'b (1/4A)'], '型式・電圧の行は詰め、使用中だけ(端子番号が無い接点は a/b と位置)');
+}
+
+console.log('\n【並びを確認していない型式(H3CR)では、c接点の3端子から枠を作らない】');
+{
+  const els = [coil('T1', 100, 100, { partModel: 'H3CR-A' }), cont('ca', 'T1', 200, 50, '4,3', { partModel: 'H3CR-A' })];
+  const L = setup(els);
+  eq(L.blocks[0].lines.map(l => l.t), ['T1', 'H3CR-A', 'AC100V', 'a 4-3 (1/3A)'], '間違った端子番号の枠は出さず、使用中の接点だけを端子番号つきで出す');
 }
 
 console.log('\n【補助接点の端子の組(JISの番号: 下1桁3・4=a, 1・2=b)】');

@@ -22,7 +22,7 @@
 //  ・使っている接点: 図面のシンボルに入っている端子番号(el.terminals)をそのまま出す
 //  ・使っていない接点: 部品DBの端子欄から作る
 //      「接点N:x,y,z」(c接点の3端子): 昇順で NC・NO・共通。a=共通-NO、b=共通-NC。
-//         (オムロンMYで確認。Sheet3の接点14個すべてこの規則に合った。**他の型式は未確認**)
+//         (オムロンMYで確認。Sheet3の接点14個すべてこの規則に合った。**確認済みの型式(XREF_C_ORDER_OKの MY 系)でだけ枠を作る。他は作らない**)
 //      「補助:13,14,21,22…」: 2つずつの組。JISの番号の決まりで、下1桁が3・4ならa、1・2ならb
 //  ・端子の組が作れない型式(または型式が無い)は、使用中の接点だけを出す
 // ================================================================
@@ -55,6 +55,10 @@ function xrefSamePair(a, b) {
   return !!a && !!b && ((a[0] === b[0] && a[1] === b[1]) || (a[0] === b[1] && a[1] === b[0]));
 }
 
+// c接点の3端子を「昇順でNC・NO・共通」と読んでよい型式(実図面で確認済み): オムロン MY 系(MY2N・MY4N・MY4ZN…)。
+// H3Y は MY と同じ並び(1,5,9 / 4,8,12)だが図面で未確認なので入れていない。**型式を増やすときは実物の端子で確かめてから**。
+const XREF_C_ORDER_OK = /^MY\d/i;
+
 // 型番 → 接点の枠の一覧 [{kind:'a'|'b', t:[p,q]}]。作れなければ []
 function xrefSlots(model) {
   const p = (state.customParts || []).find(x => x.ref === model);
@@ -64,6 +68,9 @@ function xrefSlots(model) {
     const nums = g.list.map(s => parseInt(s, 10));
     if (nums.some(n => !Number.isFinite(n))) return;
     if (/^接点\d*$/.test(g.name) && nums.length === 3) {
+      // 「昇順で NC・NO・共通」は**確認できた型式でだけ**使う(XREF_C_ORDER_OK)。他の型式(例: H3CRの`1,3,4`)は
+      // この並びとは限らず、間違った端子番号を図面に出すのは出さないより悪いので、枠を作らない(使用中の接点は端子番号つきで出る)
+      if (!XREF_C_ORDER_OK.test(model)) return;
       const [nc, no, com] = [...nums].sort((a, b) => a - b);
       out.push({ kind: 'a', t: [com, no] }, { kind: 'b', t: [com, nc] });
     } else if (/補助/.test(g.name)) {
