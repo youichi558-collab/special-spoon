@@ -3343,6 +3343,16 @@ function toggleTermNoDisp() {
   draw();
   updateRightPanel();   // 位置補正欄は表示ONのときだけ出す
 }
+// コイルと接点の相互参照(js/xref.js)を図面に出す/隠す。前回値を覚える。
+function toggleXrefDisp() {
+  state.showXref = !(state.showXref !== false);
+  if (typeof stSetPref === 'function') stSetPref('showXref', state.showXref);
+  syncXrefBtn();
+  draw();
+}
+function syncXrefBtn() {
+  document.getElementById('rb-xref')?.classList.toggle('on', state.showXref !== false);
+}
 function syncTermNoBtn() {
   document.getElementById('rb-termno')?.classList.toggle('on', !!state.showTermNo);
 }

@@ -160,6 +160,7 @@ function _safeInit(label, fn, critical) {
   _safeInit('接続点スタイルボタン同期', () => { if (typeof syncJunctionStyleBtns === 'function') syncJunctionStyleBtns(); });
   // 端子番号の表示は自動保存から復元されるので、ボタンの点灯を実状態に合わせる
   _safeInit('端子番号ボタン同期', () => { if (typeof syncTermNoBtn === 'function') syncTermNoBtn(); });
+  _safeInit('クロスリファレンスボタン同期', () => { if (typeof syncXrefBtn === 'function') syncXrefBtn(); });
   // 【2026-09-21】JSが読み込めていないことを起動時に知らせる。
   //
   // _asMissingScripts() は2026-09-19から在るのに、**自動保存が走ったときしか

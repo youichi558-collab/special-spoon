@@ -38,6 +38,9 @@ function draw() {
   // 要素
   drawElements();
 
+  // コイルと接点の相互参照(js/xref.js)。PDF出力にも反映する
+  drawXref();
+
   // シンボルの端子番号。PDF出力にも反映する(図面を読むための情報のため)
   if (state.showTermNo) drawSymTermNos();
 
@@ -389,6 +392,40 @@ function symTermOff(el, i) {
   const o = (el.termOff || [])[i];
   if (!o) return { ox: 0, oy: 0 };
   return { ox: Number(o[0]) || 0, oy: Number(o[1]) || 0 };
+}
+
+// コイルと接点の相互参照を描く(内容の計算は js/xref.js)。state.showXref がOFFなら何もしない。
+// 文字なしPDF(state.pdfSkipText)のときは他の文字と同様に出さない。
+// 色はデバイス名と同じ(el.devColor か既定の青)。DXFは dxf_export.js が同じ内容・同じ位置で出す。
+function drawXref() {
+  if (state.showXref === false || state.pdfSkipText || typeof xrefGet !== 'function') return;
+  const L = xrefGet();
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  const layerVisible = el => { const lay = LAYERS.find(l => l.name === el.layer); return !(lay && !lay.visible); };
+  state.elements.forEach(el => {
+    if (!layerVisible(el)) return;
+    const col = el.devColor || (state.darkMode ? '#4da3ff' : '#1d6fb5');
+    const b = L.byEl.get(el.id);
+    if (b && b.pi === state.currentPage) {
+      ctx.fillStyle = col;
+      let y = b.y;
+      b.lines.forEach((ln, i) => {
+        const fs = i === 0 ? b.nameFs : b.fs;
+        y += i === 0 ? b.nameFs : b.fs * 1.25;
+        ctx.font = `${i === 0 ? 'bold ' : ''}${fs}px sans-serif`;
+        ctx.fillText(ln.t, b.x, y);
+      });
+    }
+    const c = L.contacts.get(el.id);
+    if (c) {
+      ctx.fillStyle = col;
+      ctx.font = `${c.fs}px sans-serif`;
+      ctx.fillText(c.text, c.x, c.y);
+    }
+  });
+  ctx.restore();
 }
 
 // 図面へ端子番号を描く。state.showTermNo がONのときだけ呼ばれる。

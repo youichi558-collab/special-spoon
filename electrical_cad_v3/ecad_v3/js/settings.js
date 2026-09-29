@@ -229,6 +229,7 @@ function stApplyPrefs() {
   if (p.drawLw != null && setSel('draw-lw', p.drawLw)) state.drawLineWidth = p.drawLw === '' ? null : parseFloat(p.drawLw);
   if (p.pdfDpi != null) setSel('pdf-dpi', p.pdfDpi);
   if (p.pdfFmt != null) setSel('pdf-fmt', p.pdfFmt);
+  if (typeof p.showXref === 'boolean') state.showXref = p.showXref;   // クロスリファレンスの表示(js/xref.js)
 }
 
 if (typeof window !== 'undefined') (window.__ecadLoaded = window.__ecadLoaded || {})['settings.js'] = 1;

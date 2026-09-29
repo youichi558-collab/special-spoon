@@ -539,9 +539,10 @@ function exportDXF(){
     // 画面(frame.js)はMGpx+innerH(内枠の下端=表題欄の"下端")を起点にしており、
     // 表題欄の外(下余白のみ)にしか引かれない。同じ基準点(iH)に合わせる。
     if(cols>0){const cw=iW/cols;for(let c=1;c<cols;c++){L(MGpx+c*cw,0,MGpx+c*cw,MGpx);L(MGpx+c*cw,MGpx+iH,MGpx+c*cw,H);}
-      for(let c=0;c<cols;c++)T(MGpx+c*(iW/cols)+(iW/cols)/2,MGpx*0.6,6,String.fromCharCode(65+c));}
+      for(let c=0;c<cols;c++)T(MGpx+c*(iW/cols)+(iW/cols)/2,MGpx*0.6,6,(typeof zoneColLabel==='function'?zoneColLabel(c):String.fromCharCode(65+c)));}
     if(rows>0){const rh=dH/rows;for(let r=1;r<rows;r++){L(0,MGpx+r*rh,MGpx,MGpx+r*rh);L(MGpx+iW,MGpx+r*rh,W,MGpx+r*rh);}
-      for(let r=0;r<rows;r++){T(MGpx/2,MGpx+r*(dH/rows)+(dH/rows)/2,6,String(r+1));T(MGpx+iW+MGpx/2,MGpx+r*(dH/rows)+(dH/rows)/2,6,String(r+1));}}
+      const rl=r=>typeof zoneRowLabel==='function'?zoneRowLabel(r):String(r+1);
+      for(let r=0;r<rows;r++){T(MGpx/2,MGpx+r*(dH/rows)+(dH/rows)/2,6,rl(r));T(MGpx+iW+MGpx/2,MGpx+r*(dH/rows)+(dH/rows)/2,6,rl(r));}}
   }
 
   // 配線
@@ -752,6 +753,21 @@ function exportDXF(){
         const dy = el.devOffY!==undefined ? el.devOffY : -(d.h*sc/2 + 6);
         const dTextRot = el.textRot ? (360 - el.textRot) % 360 : 0;
         eText(layer, el.x+dx, el.y+dy, dfs, el.partRef, dTextRot);
+      }
+      // 【2026-09-29】コイルと接点の相互参照(js/xref.js)。画面(draw.jsのdrawXref)と同じ内容・同じ位置。
+      // 位置・文字は xrefGet() の結果をそのまま使う(式を写さない)。
+      if(state.showXref!==false && typeof xrefGet==='function'){
+        const xl=xrefGet();
+        const xb=xl.byEl.get(el.id);
+        if(xb && xb.pi===state.currentPage){
+          let yy=xb.y;
+          xb.lines.forEach((ln,i)=>{
+            yy+= i===0 ? xb.nameFs : xb.fs*1.25;
+            eText(layer, xb.x, yy, i===0?xb.nameFs:xb.fs, ln.t, 0, 'center');
+          });
+        }
+        const xc=xl.contacts.get(el.id);
+        if(xc) eText(layer, xc.x, xc.y, xc.fs, xc.text, 0, 'center');
       }
       // 【新規 2026-09-19】端子番号。画面(draw.jsのdrawSymTermNos)と同条件・同位置で出す。
       //
