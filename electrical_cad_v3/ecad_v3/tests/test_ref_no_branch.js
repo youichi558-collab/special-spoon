@@ -22,7 +22,7 @@ const src = fs.readFileSync(__dirname + '/../js/report.js', 'utf8').replace(/\r\
 function run(elements) {
   let html = null;
   const sb = {
-    console,
+    console, window: {},
     state: { pages: [{ name: 'Sheet1', elements, wires: [] }] },
     getDef: t => ({ sym_coil: { role: 'coil' }, sym_a: { role: 'contact_a' } }[t] || null),
     document: { getElementById: () => null },

@@ -182,6 +182,41 @@ console.log('\n【文字の大きさ(既定は0.7倍=盛田さんの選択)】')
   eq(sb.xrefCompute().blocks[0].nameFs, 7, '数字でなければ既定0.7に戻す');
 }
 
+console.log('\n【接点Refの確認列: 番号が出ない理由(xrefDiagnose)と、型式の書き戻し】');
+{
+  const dia = () => sb.xrefDiagnose(sb.xrefCollect().get('CR1')).map(x => x.msg);
+  setup([coil('CR1', 100, 100), cont('ca', 'CR1', 100, 200, '9,5'), cont('cb', 'CR1', 150, 200, '9,1')]);
+  eq(dia(), [], '型式MY4Nで端子も枠と合っていれば理由は出ない');
+  setup([coil('CR1', 100, 100, { partModel: '' }), cont('ca', 'CR1', 100, 200, '9,5')]);
+  eq(dia(), ['コイルに型式が無いため、空き接点の枠が出ません'], '型式が無い');
+  setup([coil('CR1', 100, 100, { partModel: 'XYZ-1' }), cont('ca', 'CR1', 100, 200, '9,5')]);
+  ok(/型式「XYZ-1」は空き接点の枠を出せません/.test(dia()[0]), '型式に端子の情報が無い(部品DBにも表にも無い)');
+  setup([coil('CR1', 100, 100), cont('ca', 'CR1', 100, 200, '')]);
+  const d1 = sb.xrefDiagnose(sb.xrefCollect().get('CR1'));
+  ok(d1.length === 1 && /端子番号が未入力/.test(d1[0].msg) && d1[0].id && d1[0].pi === 0, '端子番号が未入力: 該当の接点へ飛べる(ページと要素ID)');
+  setup([coil('CR1', 100, 100), cont('ca', 'CR1', 100, 200, '99,98')]);
+  ok(/端子 99-98 はこの型式の枠に無い/.test(dia()[0]), '枠に無い端子番号');
+  setup([coil('CR1', 100, 100), cont('ca', 'CR1', 100, 200, '9,5', { devHide: true })]);
+  ok(/デバイス名を出していない/.test(dia()[0]), '接点のデバイス名を出していないと、接点側の(位置)が出ない');
+  setup([cont('ca', 'CR1', 100, 200, '')]);
+  eq(sb.xrefDiagnose(sb.xrefCollect().get('CR1')), [], 'コイルが無いデバイスは見ない(接点Refが別に「コイル未配置」を出す)');
+
+  // 型式の書き戻し: そのデバイスの全要素(コイルも接点も)に入る。他のデバイス・電圧は触らない
+  const els = [coil('CR1', 100, 100), cont('ca', 'CR1', 100, 200, '9,5'), coil('CR2', 300, 100), cont('ca', 'CR2', 300, 200, '9,5')];
+  setup(els);
+  let pushed = 0, drawn = 0;
+  sb.pushH = () => { pushed++; }; sb.draw = () => { drawn++; }; sb.showRefPanel = () => {};
+  sb.window._refKeys = ['CR1'];
+  sb.setRefModel(0, ' MY2N ');
+  eq([els[0].partModel, els[1].partModel, els[2].partModel, els[3].partModel], ['MY2N', 'MY2N', 'MY4N', 'MY4N'], 'CR1のコイルと接点に型式が入り、CR2は変わらない');
+  eq(els[0].partVolt, 'AC100V', '電圧は触らない');
+  ok(pushed === 1 && drawn === 1, '元に戻せる(pushH)ようにして、描き直す');
+  sb.setRefModel(0, '');
+  eq(els[0].partModel, undefined, '空にすれば型式を消す');
+  const rep = R('js/report.js');
+  ok(/クロスリファレンス確認/.test(rep) && /setRefModel\(\$\{ki\}/.test(rep) && /jumpToRefEl\(/.test(rep), '接点Refの表に確認列と、型式欄・飛ぶ操作がある');
+}
+
 console.log('\n【組み込み(片方だけ消えて黙って出なくなるのを防ぐ)】');
 {
   ok(/<script src="js\/xref\.js"><\/script>/.test(R('index.html')), 'index.htmlが xref.js を読む');

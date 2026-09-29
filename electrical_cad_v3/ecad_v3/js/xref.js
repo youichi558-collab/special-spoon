@@ -159,6 +159,26 @@ function xrefCoilLines(d, coilRec) {
   return lines;
 }
 
+// 【接点Refの「確認」列用】図面に番号が出ない・出せない理由を出す。[{msg, pi, id}]。pi・idがあれば、その要素へ飛べる。
+// 図面に出す処理(xrefCoilLines・xrefCompute)と同じ条件で見る。コイルが無いデバイスは図面に何も出さないので、ここでは見ない(接点Refが別に警告する)。
+function xrefDiagnose(d) {
+  const out = [];
+  if (!d || !d.coils.length) return out;
+  const model = String(d.coils[0].el.partModel || '').trim();
+  const slots = xrefSlots(model);
+  if (!model) out.push({ msg: 'コイルに型式が無いため、空き接点の枠が出ません' });
+  else if (!slots.length) out.push({ msg: `型式「${model}」は空き接点の枠を出せません(型式表・部品DBに端子の情報が無い)` });
+  d.contacts.forEach(c => {
+    const nm = `${c.kind}接点 ${c.loc}`, at = { pi: c.pi, id: c.el.id };
+    if (!c.terms) out.push(Object.assign({ msg: `${nm}: 端子番号が未入力(または2つの数字でない)` }, at));
+    else if (slots.length && !slots.some(x => x.kind === c.kind && xrefSamePair(c.terms, x.t))) {
+      out.push(Object.assign({ msg: `${nm}: 端子 ${c.terms[0]}-${c.terms[1]} はこの型式の枠に無い` }, at));
+    }
+    if (c.el.devHide) out.push(Object.assign({ msg: `${nm}: デバイス名を出していないので、接点側の(位置)が出ません` }, at));
+  });
+  return out;
+}
+
 // 文字の幅の見積り(画面とDXFで同じ位置にするため、実測ではなく式で出す)
 function xrefTextW(s, fs) {
   let w = 0;

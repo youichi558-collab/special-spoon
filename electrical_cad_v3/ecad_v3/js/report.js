@@ -1011,7 +1011,10 @@ function showRefPanel(){
     return;
   }
 
-  const rows=keys.sort().map(k=>{
+  const sortedKeys=keys.sort();
+  window._refKeys=sortedKeys;
+  let _xrefDevs=null;
+  const rows=sortedKeys.map((k,ki)=>{
     const dv=devs[k];
     const spells=[...dv.spellings.entries()].sort((a,b)=>b[1]-a[1]);
     const name=spells.length?spells[0][0]:'(デバイス未設定)';
@@ -1040,11 +1043,26 @@ function showRefPanel(){
     const coilTxt=dv.coils.length
       ? dv.coils.map(c=>`<span class="badge badge-p">${escH(c.loc)}</span>`).join(' ')
       : '<span class="badge" style="background:var(--rbg);color:var(--red)">未配置</span>';
+    // 「確認」列: 図面のクロスリファレンスに番号が出ない理由と、直し方(型式の入力・該当の接点へ飛ぶ)
+    let chk='';
+    if(dv.coils.length&&!dv.noRef&&typeof xrefDiagnose==='function'){
+      const xd=(_xrefDevs||(_xrefDevs=xrefCollect())).get(k);
+      const model=String(dv.coils[0].el.partModel||'').trim();
+      const probs=xd?xrefDiagnose(xd):[];
+      chk=`<input type="text" value="${escH(model)}" placeholder="型式" style="width:110px;font-size:11px"`
+        +` title="このデバイスの全要素に同じ型式を入れます" onchange="setRefModel(${ki},this.value)">`
+        +(probs.length
+          ?probs.map(pb=>pb.id
+            ?`<div style="font-size:10px;color:var(--red);cursor:pointer;text-decoration:underline dotted" title="クリックで図面のその接点へ飛ぶ" onclick="jumpToRefEl(${pb.pi},'${_escAttr(pb.id)}')">⚠ ${escH(pb.msg)}</div>`
+            :`<div style="font-size:10px;color:var(--red)">⚠ ${escH(pb.msg)}</div>`).join('')
+          :'<div style="font-size:10px;color:var(--fg3)">✓ 問題なし</div>');
+    }
     return `<tr><td><b>${escH(name)}</b>${warns.length
         ?`<br><span style="color:var(--red);font-size:10px">⚠ ${escH(warns.join(' / '))}</span>`:''}</td>`
       +`<td>${coilTxt}</td>`
       +`<td>${dv.contacts.map(badge).join(' ')||'なし'}</td>`
-      +`<td>${nContacts}</td></tr>`;
+      +`<td>${nContacts}</td>`
+      +`<td>${chk}</td></tr>`;
   }).join('');
 
   const noFrame=state.pages.some(pg=>!pg.frameObj||!pg.frameObj.cols);
@@ -1052,8 +1070,51 @@ function showRefPanel(){
     +`全${state.pages.length}ページ集計。位置は「ページ/区画」で表示します(例: 2/B3)。`
     +(noFrame?`<br><span style="color:var(--red)">図面枠が未設定のページは区画が出せないため、ページ番号のみ表示しています。</span>`:'')
     +`</p>`
-    +`<table class="tbl"><tr><th>デバイス</th><th>コイル</th><th>接点</th><th>接点数</th></tr>${rows}</table>`;
+    +`<table class="tbl"><tr><th>デバイス</th><th>コイル</th><th>接点</th><th>接点数</th><th title="図面のクロスリファレンスに番号が出ない理由。型式はここで入力できます">クロスリファレンス確認</th></tr>${rows}</table>`;
   _reportOpen('ref', '接点・コイル リファレンス', html, () => exportRefCSV(devs));
+}
+
+// 接点Refの「確認」列の型式欄から、そのデバイスの全要素に型式を書き戻す(部品表のセルと同じ作法: pushHで取り消せる)。
+// 電圧などほかの項目は触らない。
+function setRefModel(ki,v){
+  const key=(window._refKeys||[])[ki];
+  if(key==null)return;
+  const val=(v||'').trim();
+  if(typeof pushH==='function')pushH();
+  state.pages.forEach(pg=>{
+    (pg.elements||[]).forEach(el=>{
+      const raw=(el.partRef||'').trim();
+      if(raw&&normalizeRef(raw)===key)el.partModel=val||undefined;
+    });
+  });
+  if(typeof draw==='function')draw();
+  if(typeof updateRightPanel==='function')updateRightPanel();
+  showRefPanel();
+}
+// 確認列の⚠を押したとき: 帳票を閉じて、その要素のあるページへ移り、選択して画面中央に出して2秒点滅させる
+// (線番表の jumpToNet・検索の jumpToHit と同じ動き)。
+function jumpToRefEl(pageIdx,id){
+  const pg=state.pages[pageIdx];
+  const el=pg&&(pg.elements||[]).find(e=>e.id===id);
+  if(!el)return;
+  if(typeof closeFP==='function')closeFP('report-p');
+  if(pageIdx!==state.currentPage&&typeof switchPage==='function')switchPage(pageIdx);
+  const a=elAnchor(el);
+  if(state.zoom<1)state.zoom=1;
+  state.pan.x=cv.width/2-a.x*state.zoom;
+  state.pan.y=cv.height/2-a.y*state.zoom;
+  state.sel.els.clear();state.sel.wires.clear();
+  state.sel.els.add(el.id);
+  if(typeof updateResizeHandles==='function')updateResizeHandles();
+  if(typeof updateRightPanel==='function')updateRightPanel();
+  state.searchHit={x:a.x,y:a.y,t0:Date.now()};
+  const anim=()=>{
+    if(!state.searchHit)return;
+    if(Date.now()-state.searchHit.t0>2000){state.searchHit=null;draw();return;}
+    draw();
+    requestAnimationFrame(anim);
+  };
+  anim();
 }
 
 // 接点・コイルリファレンスをCSVで書き出す
