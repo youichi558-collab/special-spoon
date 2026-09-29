@@ -783,9 +783,17 @@ function showBOM(){
   // 変更するとその行(=そのデバイス)の要素すべてに反映される。
   window._bomRows = rows;
   const voltCell = (r, i) => {
-    if (r.noRef || !r.model) return '<td style="color:var(--fg3)">-</td>';
-    const opts = (typeof partVoltOptions === 'function') ? partVoltOptions(r.model) : [];
-    if (!opts.length) return '<td style="color:var(--fg3)">-</td>';
+    if (r.noRef) return '<td style="color:var(--fg3)">-</td>';
+    const opts = (r.model && typeof partVoltOptions === 'function') ? partVoltOptions(r.model) : [];
+    if (!opts.length) {
+      // 【2026-09-29】部品DBに無い型番(・型番が未入力)でも、コイルのあるデバイスには電圧を打てるようにする(盛田さん「電圧の修正が効かない」)。
+      // 以前は選択肢が作れないと「-」だけで、電圧を入れる場所が部品表にも(プロパティにも)無かった。型番は手打ちで部品DBと
+      // 一致するとは限らないので、実際にはこの場合が多い。コイルの無いデバイス(ランプ・ブレーカ等)は従来どおり「-」。
+      // すでに電圧が入っているデバイスは、コイルの有無に関わらず値を見せて直せるようにする。
+      const hasCoil = (r.els || []).some(el => typeof symRole === 'function' && symRole(el) === 'coil');
+      if (!hasCoil && !r.volt) return '<td style="color:var(--fg3)">-</td>';
+      return typedCell(r, i, r.volt, 'setBOMVolt', 90);
+    }
     // 【2026-09-29】図面に入っている電圧をそのまま見せる。以前は図面の電圧が空(または選択肢に無い値)のとき、
     // 先頭の選択肢(AC12Vなど)を選択済みとして見せていた。データ・CSVは空のままなので、画面を信じると食い違う。
     // 空のときは「未設定」を選択済みにし、選ぶまで図面には何も入れない。選択肢に無い値はそのまま見せて印を付ける。
@@ -874,6 +882,7 @@ function showBOM(){
 function setBOMVolt(idx, volt){
   const r=(window._bomRows||[])[idx];
   if(!r)return;
+  volt=(volt||'').trim();   // 手打ち(部品DBに無い型番のセル)の前後の空白を落とす
   if(typeof pushH==='function')pushH();   // 変更前の状態を履歴に積む
   if(typeof stSetPref==='function')stSetPref('partVolt',volt);   // 前回値(settings.js)
   (r.els||[]).forEach(el=>{ el.partVolt=volt||undefined; });

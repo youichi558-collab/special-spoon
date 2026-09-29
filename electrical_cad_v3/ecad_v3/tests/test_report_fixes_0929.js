@@ -132,5 +132,26 @@ console.log('\n【部品表: 型番を表のセルから直せる】');
   ok(sb.state.pages[0].elements[0].partModel === undefined, 'デバイス未設定の行には書き戻さない');
 }
 
+console.log('\n【部品表: 部品DBに無い型番でも、コイルのあるデバイスは電圧を打てる】');
+{
+  sb.symRole = el => (el.type === 'coil' ? 'coil' : '');
+  sb.partVoltOptions = m => (m === 'MY4N' ? ['AC100V', 'AC200V'] : []);
+  const els = [{ id: '1', type: 'coil', partRef: 'CR7', partModel: 'HH52P' }, { id: '2', type: 'ca', partRef: 'CR7', partModel: 'HH52P' },
+    { id: '3', type: 'lamp', partRef: 'L1', partModel: 'PL-1' }, { id: '4', type: 'coil', partRef: 'CR8' }, { id: '5', type: 'lamp', partRef: 'L2', partModel: 'PL-2', partVolt: 'AC24V' }];
+  setState([page(els)]);
+  vm.runInContext('showBOM()', sb);
+  const cell = ref => { const m = sb.htmlOut.match(new RegExp('<td style="font-weight:600">' + ref + '</td>(?:<td>.*?</td>){4}?<td[^>]*>(.*?)</td>')); return m ? m[1] : null; };
+  const rowOf = ref => sb.htmlOut.split('<tr').find(t => t.includes('<td style="font-weight:600">' + ref + '</td>')) || '';
+  ok(/setBOMVolt\(\d+, this\.value\)" style="width:90px/.test(rowOf('CR7')) && /<input[^>]*setBOMVolt/.test(rowOf('CR7')), '部品DBに無い型番(HH52P)でも、コイルのあるデバイスは電圧を打てる入力欄になる(以前は「-」だけ)');
+  ok(/<input[^>]*setBOMVolt/.test(rowOf('CR8')), '型番が未入力でも、コイルがあれば打てる');
+  ok(!/setBOMVolt/.test(rowOf('L1')), 'コイルの無いデバイス(ランプ)は従来どおり「-」');
+  ok(/<input[^>]*value="AC24V"[^>]*setBOMVolt|<input[^>]*setBOMVolt[^>]*>/.test(rowOf('L2')) && /AC24V/.test(rowOf('L2')), 'すでに電圧が入っているデバイスは、コイルが無くても見せて直せる');
+  const idx = vm.runInContext('window._bomRows', sb).findIndex(r => r.refs[0] === 'CR7');
+  vm.runInContext(`setBOMVolt(${idx}, ' AC24V ')`, sb);
+  ok(els[0].partVolt === 'AC24V' && els[1].partVolt === 'AC24V', '打った電圧が、そのデバイスの全要素に入る(前後の空白は落とす)');
+  ok(els[2].partVolt === undefined, '別のデバイスは変わらない');
+  ok(/value="AC24V"/.test(rowOf('CR7')), '表を作り直しても、打った電圧が入っている');
+}
+
 console.log(ng ? `\n失敗 ${ng} 件` : '\nすべて通過');
 process.exit(ng ? 1 : 0);
