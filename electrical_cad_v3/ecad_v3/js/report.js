@@ -405,7 +405,7 @@ function wireNoTable(msg){
 // 線番表の行を押したとき: そのネットのページへ切り替え、配線を選択して画面中央に出し、
 // 2秒点滅させる(検索 search.js の jumpToHit と同じ動き・同じ点滅マーカー)。
 // 点滅はネットの最初の配線の中点。未採番の行はたいてい1本なのでその線そのものを指す。
-// 帳票パネル(幅1040px)が画面中央を覆って飛んだ先が見えないため、パネルは閉じる。
+// 帳票パネル(幅1240px)が画面中央を覆って飛んだ先が見えないため、パネルは閉じる。
 // 配線は選ばれたままなので、右のプロパティの「線番」欄にそのまま打てる。
 function jumpToNet(pageIdx, idxs) {
   const pg = state.pages[pageIdx];
@@ -827,13 +827,13 @@ function showBOM(){
       + ` style="width:${w}px;font-size:11px;background:var(--bg3);color:var(--fg);`
       + `border:1px solid var(--bd2);border-radius:3px;padding:1px 3px"></td>`;
   };
-  const makerCell = (r, i) => typedCell(r, i, r.maker, 'setBOMMaker', 80);
-  const nameCell  = (r, i) => typedCell(r, i, r.pname, 'setBOMName', 100);
-  const noteCell  = (r, i) => typedCell(r, i, r.pnote, 'setBOMNote', 120);
+  const makerCell = (r, i) => typedCell(r, i, r.maker, 'setBOMMaker', 90);
+  const nameCell  = (r, i) => typedCell(r, i, r.pname, 'setBOMName', 110);
+  const noteCell  = (r, i) => typedCell(r, i, r.pnote, 'setBOMNote', 150);
   // 仕様(図面の仕様欄=el.label)。型番とは別の欄なので別の列。**帳票で直接打てる**(型番・メーカー・名称・備考・電圧と同じ)。
   // 書き戻す先がない行(端子台だけ・デバイス未設定)は「-」。
   const specCell  = (r, i) => (r.noRef || !(r.els || []).some(el => el.type !== 'junction'))
-    ? '<td style="color:var(--fg3)">-</td>' : typedCell(r, i, r.spec, 'setBOMSpec', 140);
+    ? '<td style="color:var(--fg3)">-</td>' : typedCell(r, i, r.spec, 'setBOMSpec', 220);
   // 【2026-09-21】「種別」列は表示から外した。標準シンボルがあった頃は
   // coil/breaker と読めたが、登録シンボルばかりの今は custom_xxx という
   // **内部名**が出るだけで意味を成さない(実物の部品表にも無い列)。
@@ -864,7 +864,7 @@ function showBOM(){
     if (r.noRef) return `<td>${escH(r.label)}${warn}</td>`;
     return `<td><input type="text" value="${escH(r.model||'')}" placeholder="(型番未設定)"`
       + ` onchange="setBOMModel(${i}, this.value)" title="このデバイスの全要素(コイル・接点・端子)に同じ型番を入れます"`
-      + ` style="width:140px;font-size:11px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:3px;padding:1px 3px">${warn}</td>`;
+      + ` style="width:170px;font-size:11px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:3px;padding:1px 3px">${warn}</td>`;
   };
   const rowHtml = ({r,i}) =>
     `<tr${r.noRef?' style="background:var(--rbg)"':''}>`
