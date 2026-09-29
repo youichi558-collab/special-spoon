@@ -15,14 +15,24 @@ function panel(rect) {
   return { style: {}, classList: { add: c => cls.add(c), remove: c => cls.delete(c), contains: c => cls.has(c) },
     getBoundingClientRect: () => ({ left: parseFloat(rect.left), top: parseFloat(rect.top), width: rect.w, height: rect.h }) };
 }
-function run(el) {
-  const sb = { window: { innerWidth: 1500, innerHeight: 900 }, document: { getElementById: id => (id === 'p' ? el : id === 'ribbon' ? { offsetHeight: 80 } : null) } };
-  vm.createContext(sb); vm.runInContext(src, sb); sb.openFP('p');
+function run(el, o) {
+  const sb = { window: { innerWidth: 1500, innerHeight: 900 }, document: { getElementById: id => (id === 'p' ? el
+    : id === 'quickbar' ? { getBoundingClientRect: () => ({ bottom: sb._qb || 108 }) }
+    : id === 'page-bar' ? { getBoundingClientRect: () => ({ top: sb._pb || 860 }) } : null) } };
+  if (o) Object.assign(sb, o);
+  vm.createContext(sb); vm.runInContext(src, sb); sb.openFP('p'); return sb;
 }
 
 console.log('【動かしていないパネル: 従来どおり中央寄せ】');
 { const el = panel({ left: 230, top: 105, w: 1040, h: 675 }); run(el);
-  ok(el.style.top === 'calc(50% - 8px)' && el.classList.contains('open'), 'top を中央寄せにして開く'); }
+  // 領域は 108(#quickbar下端)〜860(#page-bar上端)。高さ675 → 中心=484、上端=146.5 ≥ 108+12
+  ok(el.style.top === '484px' && el.classList.contains('open'), `キャンバス領域の中央に開く(実際 ${el.style.top})`); }
+{ // 1366x768相当: 領域 108〜728、高さ576(75vh)。中心418 → 上端130 ≥ 120(リボン・上の行に被らない)
+  const el = panel({ left: 0, top: 0, w: 1040, h: 576 }); run(el, { _pb: 728 });
+  const c = parseFloat(el.style.top); ok(c - 288 >= 108 + 12 - 1e-9 && c + 288 <= 728 - 8 + 1e-9, `小さい画面でも上端が上の行に被らず、下のバーにも被らない(中心 ${c})`); }
+{ // 高さが領域より大きいときは上を優先(上の行に被らない)
+  const el = panel({ left: 0, top: 0, w: 1040, h: 700 }); run(el, { _pb: 728 });
+  ok(parseFloat(el.style.top) - 350 >= 108 + 12 - 1e-9, '高さが足りなくても、上端は上の行に被らない'); }
 
 console.log('【動かした後: 位置を保つ(タブ切替・開き直し)】');
 { const el = panel({ left: 330, top: 137, w: 1040, h: 675 }); el.style.transform = 'none'; el.style.left = '330px'; el.style.top = '137px'; run(el);

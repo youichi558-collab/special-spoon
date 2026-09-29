@@ -3407,8 +3407,17 @@ function openFP(id) {
     el.style.top  = Math.max(0, Math.min(r.top,  window.innerHeight - r.height)) + 'px';
     return;
   }
-  const ribbonH = document.getElementById('ribbon')?.offsetHeight || 0;
-  el.style.top = `calc(50% - ${ribbonH * 0.1}px)`;
+  // 【2026-09-29】動かしていない最初の位置: リボンと、その下の「選択・配線」の行(#quickbar)に被らないよう、
+  // その下(キャンバスの領域)の中央に置く。以前は画面の中央(50%)基準だったため、画面が小さいと上端がリボンの直下・
+  // 「選択・配線」の行に食い込み、リボンの続きのように見えた(盛田さん指摘。1366x768で上端y=88、リボンの下端は80)。
+  // 上端はキャンバス領域の上端から12px空ける。下は下のバー(#page-bar)から8px空ける。高さが足りなければ上を優先する。
+  const areaTop = document.getElementById('quickbar')?.getBoundingClientRect().bottom || 0;
+  const barTop  = document.getElementById('page-bar')?.getBoundingClientRect().top || window.innerHeight;
+  const h = el.getBoundingClientRect().height;
+  let center = (areaTop + barTop) / 2;
+  center = Math.min(center, barTop - 8 - h / 2);
+  center = Math.max(center, areaTop + 12 + h / 2);
+  el.style.top = center + 'px';   // transform: translate(-50%,-50%) で中心を合わせる(css .fp)
 }
 function closeFP(id) { document.getElementById(id)?.classList.remove('open'); }
 
