@@ -228,10 +228,9 @@ def normalize(data):
 def is_suspicious_drop(prev, now):
     """件数が大きく減った上書きを疑う。
 
-    js/parts_db.js の isSuspiciousDrop と**同じ規則**。片方だけ直すと、
-    保存経路(サーバー/ブラウザ)によって守られたり守られなかったりする
-    —— それが一番たちが悪いので、変えるときは必ず両方を直すこと。
-    tests/test_parts_db_server_mode.js が両者の一致を見ている。
+    【2026-09-29】以前はブラウザ側(js/parts_db.js)にも同じ規則があったが、2026-09-03に
+    CADが部品DBを書かなくなり(読み取り専用化)、書き込み経路はここだけになった。
+    tests/test_parts_db_save.py が動きを見ている。
 
     1件ずつの削除は普通の操作なので通し、「全部消えた」「半分以下になった」だけ止める。
     """
@@ -527,6 +526,8 @@ class PartsDB:
             tmp = _tmp_name(path)
             with open(tmp, 'w', encoding='utf-8') as f:
                 f.write(text)
+                f.flush()
+                os.fsync(f.fileno())   # 電源断で空のファイルが本体にならないよう、置換の前に書き切る
             os.replace(tmp, path)
         except Exception as e:
             return {'ok': False, 'reason': 'error', 'count': 0, 'path': path,

@@ -376,7 +376,23 @@ class CatalogDB:
             p = self.db_path + ext
             if os.path.exists(p):
                 os.remove(p)
-        os.replace(tmp, self.db_path)
+        # Windowsでは、別スレッドの検索がDBを開いている間 os.replace が PermissionError で
+        # 断られる(SQLiteは開いている間の差し替えを許さない)。検索は一瞬で終わるので、
+        # 短く待って数回やり直す。それでも駄目なら一時ファイルを消して本当の原因を伝える。
+        import time
+        for attempt in range(20):
+            try:
+                os.replace(tmp, self.db_path)
+                break
+            except PermissionError:
+                if attempt == 19:
+                    for q in (tmp, tmp + '-wal', tmp + '-shm'):
+                        try:
+                            os.remove(q)
+                        except OSError:
+                            pass
+                    raise
+                time.sleep(0.1)
 
         if verbose:
             print(f'カタログDB構築: {n}件 ({total}行処理 / {skipped}行スキップ) -> {self.db_path}')

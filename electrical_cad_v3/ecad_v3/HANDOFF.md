@@ -33,8 +33,15 @@ CSV作成作業の状況は、同じ問題(静的な引き継ぎ文書が実際�
   以前は行全体に`/型番|ref/`を当てており、備考に「型番」を含む11件(UT-RR・UN-RR・UT-SA33・GOT2000の8型番)が黙って捨てられていた
 - **バックアップの「開く」**(`js/backup.js`): 図面名に`'`があると押しても動かなかった。名前をdata属性で渡す形に
 - **バックアップ保存**(`tools/backup/backup_store.py`): backup/を作れないとき`UnboundLocalError`に化けて原因が隠れていた
-- **未対応(指示待ち)**: 4=Windowsでカタログ作り直しが検索と衝突しうる(Linuxで再現不可) / 5=POSTのOrigin未検査 /
-  6=端子台表のデバイス名未エスケープ / 7=軽微 / 古いコメント・READMEの食い違い(test_parts_db_server_mode.js等が実在しない)
+- 盛田さん「直せるものは直しで」→ 残りも修正(テスト76本通過、**実機未確認**):
+  - 4: `catalog_db.py` の置換(`os.replace`)がWindowsで検索と衝突して`PermissionError`になるとき、0.1秒おき20回までやり直す
+  - 5: `server.py` に`request_allowed`。POSTはOriginがlocalhost以外なら403、待ち受け127.0.0.1のときHostがlocalhost系以外なら403
+    (DNS rebinding対策)。**Originの無いcurl等は通る**。ECAD_HOSTでLANに広げたときはHostを見ない。`tests/test_server_guard.py`
+  - 6: `conn_table.js`の端子台表で、デバイス名・型式・端子番号・位置・線番を`escH`、onclickへは`_jsArg`(JSON化して属性エスケープ)
+  - 7: 自動保存の失敗を容量超過と決めつけない(原因を表示)。`parts_db.py`のsaveにfsync
+  - 古い記述: 存在しない`test_parts_db_server_mode.js`/`writeToServer`/`isSuspiciousDrop`への言及、シングルスレッド前提のコメント、
+    カタログDB READMEのDriveフォルダ手順、HANDOFFのテスト流し方を実態に合わせた
+  - **触っていない**: `dxf_import.js`のjunctionの`color`(読込時に消える死にフィールド。害が無いので放置)
 
 ## 【最新状況・必読】2026-09-29 CP(サーキットプロテクタ)・補助リレー・カタログCSVの置き場所・前回値（ここだけ先に読む）
 
@@ -5788,7 +5795,7 @@ main側と別SHAになり、次のPRが二重コミット・コンフリクト�
 
 ## テストの方針（2026-08-21 追加）
 `tests/` 配下に node で動くテストがある。`node tests/xxx.js` で個別に、
-まとめて動かすなら `for t in tests/*.js; do node $t; done`。
+まとめて動かすなら `node tests/run_all.js`（.py も拾う。`for t in tests/*.js` では .py が流れない）。
 
 **必ず js の実コードを読み込んで eval し、それを動かすこと。**
 挙動を書き写した再実装をテストしても意味がない。実際、今セッションで

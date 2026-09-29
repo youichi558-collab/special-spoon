@@ -178,7 +178,11 @@ function doAutosave() {
     // QuotaExceededError等 → 以後の自動保存を停止し一度だけ通知
     _asDisabled = true;
     const h = document.getElementById('s-hint');
-    if (h) h.textContent = '⚠ 自動保存が容量超過で停止しました（JSONファイル保存を使用してください）';
+    const quota = e && (e.name === 'QuotaExceededError' || e.code === 22 || e.code === 1014);
+    if (h) h.textContent = quota
+      ? '⚠ 自動保存が容量超過で停止しました（JSONファイル保存を使用してください）'
+      : `⚠ 自動保存が失敗したため停止しました（${e && e.message || e}）。JSONファイル保存を使用してください`;
+    console.error('[autosave] 保存に失敗:', e);
   }
 }
 

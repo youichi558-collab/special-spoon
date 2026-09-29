@@ -2,11 +2,9 @@
 //   node tests/test_parts_page_save.js
 //
 // 【背景・2026-09-03】
-// js/parts_page.js の saveAll() は js/parts_db.js の writeToServer() と
-// 同じ /api/parts/save を叩く別実装（単独画面は parts_db.js を使わない設計。
-// 理由はHANDOFF.md参照）。書き手が2箇所に分かれた以上、Stage 1で
-// writeToServer() に足した不変条件(tests/test_parts_db_server_mode.js)が
-// こちらにも同じ形で効いているかを別途見ておく必要がある。
+// js/parts_page.js の saveAll() は /api/parts/save を叩く。当時は js/parts_db.js にも
+// writeToServer() という別実装があったが、2026-09-03にCAD側が読み取り専用になり、
+// 書き込み経路はこの画面だけになった(下の不変条件はその頃の確認項目のまま有効)。
 //
 // このテストは js/parts_page.js を実際に実行して saveAll() を呼び、
 //   1. 通常保存できる

@@ -84,9 +84,9 @@ async function loadAll() {
 }
 
 // ---- 保存 --------------------------------------------------------
-// Stage 1のサーバー側 save() と同じ契機(件数激減で確認・force送信)を踏む。
-// js/parts_db.js の writeToServer() と対になる実装 —— 保存先は同じAPIなので
-// 挙動を揃えておくこと(揃っているかは tests/test_parts_page.js が見る)。
+// サーバー側 save()（tools/parts_db/parts_db.py）の契機(件数激減で確認・force送信)を踏む。
+// CAD側(js/parts_db.js)は2026-09-03から読み取り専用で、書き込みはこの画面だけ。
+// 挙動は tests/test_parts_page_save.js が見る。
 async function saveAll(force) {
   if (saveLocked) return false;
   let j;

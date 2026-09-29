@@ -38,6 +38,7 @@ const sandbox = {
   alert: msg => { lastAlert = msg; },
   openFP: () => {}, closeFP: () => {},
   draw: () => {},
+  escH: require('./_esch.js').escH,
   pushH: () => { sandbox._pushed = (sandbox._pushed || 0) + 1; },
   dl: () => {},
   CONN_TABLE_TOL: 5,

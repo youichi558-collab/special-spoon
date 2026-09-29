@@ -145,8 +145,54 @@ except Exception as _e:
     print(f'(部品DBの外部公開機能は無効: {_e})')
 
 
+def _host_only(v):
+    """'localhost:8080' / '[::1]:8080' / 'http://127.0.0.1:8080' からホスト部分だけ取り出す。"""
+    v = (v or '').strip().lower()
+    if '://' in v:
+        v = v.split('://', 1)[1]
+    v = v.split('/', 1)[0]
+    if v.startswith('['):
+        return v[1:].split(']', 1)[0]
+    return v.split(':', 1)[0]
+
+
+LOOPBACK_NAMES = ('localhost', '127.0.0.1', '::1')
+
+
+def request_allowed(host_header, origin_header, method, bind_host=None):
+    """このリクエストを受けてよいか(2026-09-29)。
+
+    ・POST(部品DB・バックアップの書き込み)は、Originが付いていれば自分自身(localhost)
+      のものだけ通す。開いている別サイトのページが fetch でここへ書き込めないようにする。
+      ブラウザは別サイトからのPOSTに必ずOriginを付けるので、付いていなければ
+      ブラウザ以外(curl・他ツール)として通す。
+    ・待ち受けが127.0.0.1のときは、Hostもlocalhost系だけ通す(DNS rebinding対策。
+      攻撃者のドメインが127.0.0.1を指すようにして読み書きする手口)。
+      LANに広げたとき(ECAD_HOST)はHostが何でも来るので検査しない。
+    """
+    bind = HOST if bind_host is None else bind_host
+    if bind in LOOPBACK_NAMES and _host_only(host_header) not in LOOPBACK_NAMES:
+        return False
+    if method == 'POST' and origin_header and _host_only(origin_header) not in LOOPBACK_NAMES:
+        return False
+    return True
+
+
 class Handler(SimpleHTTPRequestHandler):
+    def _guard(self, method):
+        if request_allowed(self.headers.get('Host'), self.headers.get('Origin'), method):
+            return True
+        body = 'このリクエストは受け付けられません(localhost以外のHost/Origin)'.encode('utf-8')
+        self.send_response(403)
+        self.send_header('Content-Type', 'text/plain; charset=utf-8')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+        return False
+
     def do_GET(self):
+        if not self._guard('GET'):
+            return
         parsed = urllib.parse.urlparse(self.path)
         if parsed.path == '/api/pending_csv':
             self.handle_pending_csv_list()
@@ -169,6 +215,8 @@ class Handler(SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_POST(self):
+        if not self._guard('POST'):
+            return
         parsed = urllib.parse.urlparse(self.path)
         if parsed.path == '/api/catalog/import':
             self.handle_catalog_import()

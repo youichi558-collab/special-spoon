@@ -398,11 +398,11 @@ function showTBTable() {
     // 警告を出して気付けるようにする(古い図面や手作業で崩れたとき用)。
     const models = [...new Set(list.map(r => r.tbModel).filter(Boolean))];
     const modelTxt = models.length === 1
-      ? `<span style="color:var(--fg3);font-weight:400"> ${models[0]}</span>`
+      ? `<span style="color:var(--fg3);font-weight:400"> ${escH(models[0])}</span>`
       : models.length > 1
-        ? `<span style="color:var(--red);font-weight:400"> 型式が揃っていません（${models.join(' / ')}）</span>`
+        ? `<span style="color:var(--red);font-weight:400"> 型式が揃っていません（${escH(models.join(' / '))}）</span>`
         : `<span style="color:var(--fg4);font-weight:400"> 型式未設定</span>`;
-    html += `<p style="font-size:11px;font-weight:600;margin:8px 0 3px">${dev}`
+    html += `<p style="font-size:11px;font-weight:600;margin:8px 0 3px">${escH(dev)}`
       + `<span style="color:var(--fg3);font-weight:400">（${list.length}点）</span>`
       + modelTxt
       + tbDevToggle(dev, !isExDev(list))
@@ -410,21 +410,21 @@ function showTBTable() {
       // 対象外の台で図を挿入すると、PLCの配置図が端子台として描けてしまう。
       + (isExDev(list) ? '' :
           `<button class="fp-btn" style="margin-left:4px;font-size:10px;padding:1px 8px"`
-        + ` onclick="renumberTerminals('${String(dev).replace(/'/g, "\\'")}')">この順で番号を振り直す</button>`
+        + ` onclick="renumberTerminals(${_jsArg(dev)})">この順で番号を振り直す</button>`
         + `<button class="fp-btn" style="margin-left:4px;font-size:10px;padding:1px 8px"`
-        + ` onclick="insertTerminalBlockDiagram('${String(dev).replace(/'/g, "\\'")}')"`
+        + ` onclick="insertTerminalBlockDiagram(${_jsArg(dev)})"`
         + ` title="番号・線番を並べた簡易図を画面中央に挿入します(手書きで仕上げてください)">この配置で図を挿入</button>`)
       + `</p>`
       + `<table class="tbl"><tr><th style="width:22px"></th><th>No</th><th>端子番号</th>`
       + `<th>位置</th><th>接続線番</th></tr>`
       + list.map((r, i) =>
-          `<tr draggable="true" data-elid="${r.el.id}"`
-          + ` ondragstart="tbDragStart(event,'${r.el.id}')" ondragover="tbDragOver(event)"`
-          + ` ondrop="tbDrop(event,'${r.el.id}')" ondragend="tbDragEnd(event)" style="cursor:grab">`
+          `<tr draggable="true" data-elid="${escH(r.el.id)}"`
+          + ` ondragstart="tbDragStart(event,${_jsArg(r.el.id)})" ondragover="tbDragOver(event)"`
+          + ` ondrop="tbDrop(event,${_jsArg(r.el.id)})" ondragend="tbDragEnd(event)" style="cursor:grab">`
           + `<td style="color:var(--fg4);text-align:center">⋮⋮</td>`
-          + `<td>${i + 1}</td><td>${r.termNo}</td><td>${r.loc}</td>`
+          + `<td>${i + 1}</td><td>${escH(r.termNo)}</td><td>${escH(r.loc)}</td>`
           + `<td>${r.conns.length
-              ? r.conns.map(n => `<span class="badge badge-b">${n}</span>`).join(' ')
+              ? r.conns.map(n => `<span class="badge badge-b">${escH(n)}</span>`).join(' ')
               : '<span style="color:var(--red)">未接続</span>'}</td></tr>`).join('')
       + `</table>`;
   };
@@ -440,15 +440,18 @@ function showTBTable() {
   _reportOpen('tbtbl', '端子台表', html, exportTBCSV);
 }
 
+// onclick等の属性に文字列を安全に渡す(JSの文字列リテラル化してからHTML属性用にエスケープ)。
+// 以前は ' だけを直しており、\ や " や < を含むデバイス名で壊れた(2026-09-29)。
+function _jsArg(v) { return escH(JSON.stringify(String(v == null ? '' : v))); }
+
 // デバイス見出しの「端子台として集計」切り替え。
 // 押すとその台の端子すべてに印が付き(setTBExcluded)、表が描き直される。
 // 帳票を閉じて図面に戻る必要は無い。
 function tbDevToggle(dev, included) {
-  const d = String(dev).replace(/'/g, "\\'");
   return `<label style="margin-left:8px;font-size:10px;font-weight:400;cursor:pointer;color:var(--fg3)" `
     + `title="この台を端子台として集計するかどうか。同じデバイスの端子すべてに効き、図面に保存されます">`
     + `<input type="checkbox"${included ? ' checked' : ''} `
-    + `onchange="setTBExcluded('${d}', !this.checked)" style="vertical-align:-1px;margin-right:3px">`
+    + `onchange="setTBExcluded(${_jsArg(dev)}, !this.checked)" style="vertical-align:-1px;margin-right:3px">`
     + `端子台として集計</label>`;
 }
 
