@@ -26,6 +26,7 @@ console.log('【部品表: コイル電圧は図面に入っている値をそ�
   ok(/<option value="" selected>\(未設定\)<\/option>/.test(h) && !/value="AC12V" selected/.test(h), '電圧が空なら「(未設定)」を選択済みにする(以前は先頭のAC12Vが選択済みに見えた)');
   h = bom('AC100V');
   ok(/value="AC100V" selected/.test(h) && !/<option value="" selected>/.test(h), '入っている電圧はそのまま選択済み');
+  ok(/<td style="white-space:nowrap"><select[^>]*min-width:96px/.test(h), '電圧のプルダウンは幅を確保する(列が縮んで「AC100V」が途中で切れた)');
   h = bom('DC5V');
   ok(/DC5V \(選択肢に無い\)/.test(h), '選択肢に無い値は、そのまま見せて印を付ける');
   sb.partVoltOptions = () => ['AC100V'];

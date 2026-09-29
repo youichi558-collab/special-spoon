@@ -801,7 +801,7 @@ function showBOM(){
       // すでに電圧が入っているデバイスは、コイルの有無に関わらず値を見せて直せるようにする。
       const hasCoil = (r.els || []).some(el => typeof symRole === 'function' && symRole(el) === 'coil');
       if (!hasCoil && !r.volt) return '<td style="color:var(--fg3)">-</td>';
-      return typedCell(r, i, r.volt, 'setBOMVolt', 90);
+      return typedCell(r, i, r.volt, 'setBOMVolt', 96);
     }
     // 【2026-09-29】図面に入っている電圧をそのまま見せる。以前は図面の電圧が空(または選択肢に無い値)のとき、
     // 先頭の選択肢(AC12Vなど)を選択済みとして見せていた。データ・CSVは空のままなので、画面を信じると食い違う。
@@ -809,7 +809,7 @@ function showBOM(){
     if (opts.length === 1 && r.volt === opts[0]) return `<td style="color:var(--fg2)">${escH(opts[0])}</td>`;
     const cur = r.volt || '';
     const stale = cur && !opts.includes(cur);
-    return `<td><select onchange="setBOMVolt(${i}, this.value)" style="font-size:11px${cur ? '' : ';color:var(--red)'}">`
+    return `<td style="white-space:nowrap"><select onchange="setBOMVolt(${i}, this.value)" style="font-size:11px;min-width:96px${cur ? '' : ';color:var(--red)'}">`
       + (cur && !stale ? '' : `<option value=""${cur ? '' : ' selected'}>(未設定)</option>`)
       + (stale ? `<option value="${escH(cur)}" selected>${escH(cur)} (選択肢に無い)</option>` : '')
       + opts.map(o => `<option value="${escH(o)}"${o === cur ? ' selected' : ''}>${escH(o)}</option>`).join('')
@@ -827,13 +827,13 @@ function showBOM(){
       + ` style="width:${w}px;font-size:11px;background:var(--bg3);color:var(--fg);`
       + `border:1px solid var(--bd2);border-radius:3px;padding:1px 3px"></td>`;
   };
-  const makerCell = (r, i) => typedCell(r, i, r.maker, 'setBOMMaker', 90);
-  const nameCell  = (r, i) => typedCell(r, i, r.pname, 'setBOMName', 110);
-  const noteCell  = (r, i) => typedCell(r, i, r.pnote, 'setBOMNote', 150);
+  const makerCell = (r, i) => typedCell(r, i, r.maker, 'setBOMMaker', 80);
+  const nameCell  = (r, i) => typedCell(r, i, r.pname, 'setBOMName', 100);
+  const noteCell  = (r, i) => typedCell(r, i, r.pnote, 'setBOMNote', 120);
   // 仕様(図面の仕様欄=el.label)。型番とは別の欄なので別の列。**帳票で直接打てる**(型番・メーカー・名称・備考・電圧と同じ)。
   // 書き戻す先がない行(端子台だけ・デバイス未設定)は「-」。
   const specCell  = (r, i) => (r.noRef || !(r.els || []).some(el => el.type !== 'junction'))
-    ? '<td style="color:var(--fg3)">-</td>' : typedCell(r, i, r.spec, 'setBOMSpec', 170);
+    ? '<td style="color:var(--fg3)">-</td>' : typedCell(r, i, r.spec, 'setBOMSpec', 140);
   // 【2026-09-21】「種別」列は表示から外した。標準シンボルがあった頃は
   // coil/breaker と読めたが、登録シンボルばかりの今は custom_xxx という
   // **内部名**が出るだけで意味を成さない(実物の部品表にも無い列)。
@@ -864,7 +864,7 @@ function showBOM(){
     if (r.noRef) return `<td>${escH(r.label)}${warn}</td>`;
     return `<td><input type="text" value="${escH(r.model||'')}" placeholder="(型番未設定)"`
       + ` onchange="setBOMModel(${i}, this.value)" title="このデバイスの全要素(コイル・接点・端子)に同じ型番を入れます"`
-      + ` style="width:170px;font-size:11px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:3px;padding:1px 3px">${warn}</td>`;
+      + ` style="width:140px;font-size:11px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:3px;padding:1px 3px">${warn}</td>`;
   };
   const rowHtml = ({r,i}) =>
     `<tr${r.noRef?' style="background:var(--rbg)"':''}>`
