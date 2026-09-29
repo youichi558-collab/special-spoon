@@ -90,31 +90,56 @@ ok(eval_('typeof showTerminalTable') === 'undefined', '旧showTerminalTableは�
 ok(eval_('typeof exportTerminalCSV') === 'undefined', '旧exportTerminalCSVは削除されている');
 
 // ------------------------------------------------------------------
-console.log('【全ページ集計（端子表の「現在ページのみ」が解消されている）】');
-eq(sandbox.buildConnectionRows().length, 4, '2ページ分を走査して配線4本を拾う');
+console.log('【全ページ集計・ネット単位(2026-09-29 作り直し)】');
+const nets0 = sandbox.analyzeConnections();
+eq(nets0.length, 3, '2ページ分を走査して、配線4本が3つのネット(w1+w2は●でつながる)');
+eq(nets0.map(n => n.idxs.length).sort(), [1, 1, 2], 'ネットの配線本数は 2・1・1');
 
 // ------------------------------------------------------------------
-console.log('【問題のある行を先頭に集める】');
+console.log('【問題のあるネットを先頭に集める】');
 sandbox.setConnSort('wire');
-const rows = sandbox._connSortRows(sandbox.buildConnectionRows());
-const issues = rows.map(r => sandbox._connRowIssue(r));
-// 先頭2行が問題行（端子未特定 or 未採番）、後ろは正常
-ok(issues[0] !== '' && issues[1] !== '', `問題行が先頭に来る（${issues.join(' / ')}）`);
-ok(issues[issues.length - 1] === '', '正常な行は後ろに回る');
+const nets = sandbox._connSortNets(sandbox.analyzeConnections());
+const sev = nets.map(n => sandbox._connSeverity(n));
+ok(sev[0] === 2 && sev[1] === 2, `問題のあるネットが先頭に来る（${sev.join(' / ')}）`);
+ok(sev[sev.length - 1] === 0, '正常なネットは後ろに回る');
 
 // ------------------------------------------------------------------
 console.log('【状態の判定】');
-const byWire = {};
-rows.forEach(r => { byWire[r.wireNo || '(未採番)'] = sandbox._connRowIssue(r); });
-eq(byWire['W102'], '端子未特定', '端点が端子から離れた配線は「端子未特定」');
-eq(byWire['(未採番)'], '未採番', '線番が無い配線は「未採番」');
+const byNo = {};
+nets.forEach(n => { byNo[n.wireNo || '(未採番)'] = n; });
+eq(byNo['W102'].dangling.length, 2, '端子にも他の配線にも触れていない端は「浮いている端」(w3は両端)');
+ok(byNo['W102'].dangling[0].near && byNo['W102'].dangling[0].near.name === 'TB1', '浮いている端には、最寄りの端子と距離を添える');
+eq(byNo['(未採番)'].wireNo, '', '線番が無いネットは未採番');
+eq(sandbox._connSeverity(byNo['(未採番)']), 2, '未採番は問題');
+eq(byNo['W101'].terms.map(t => t.name + ':' + t.term), ['MC1:13', 'TB1:1'], '●でつながった配線の先の端子も、同じネットの端子に並ぶ');
+eq(byNo['W101'].dangling.length, 0, '●に触れている端は「浮いている」ではない');
+eq(byNo['(未採番)'].terms.map(t => t.name + ':' + t.term), ['MC2:13', 'TB1:2'], '端子は両端から集める');
 
 // ------------------------------------------------------------------
-console.log('【分岐点は特定不可として扱う（不具合ではない）】');
+console.log('【●の無いT字は警告(つながっていない扱い)・他の配線の端に触れている端は問題ではない】');
+{
+  const saved = sandbox.state.pages;
+  sandbox.state.pages = [{ name: 'T', frameObj: null, elements: [{ id: 91, type: 'junction', style: 'circle', partRef: 'TB9', label: '1', x: 0, y: 0 }, { id: 92, type: 'junction', style: 'circle', partRef: 'TB9', label: '2', x: 50, y: 40 }],
+    wires: [
+      { id: 't1', wireNo: 'T01', layer: 'L1', x1: 0,   y1: 0,  x2: 100, y2: 0 },     // 幹線(TB9-1から)
+      { id: 't2', wireNo: 'T02', layer: 'L1', x1: 50,  y1: 40, x2: 50,  y2: 0 },     // 幹線の途中(50,0)に端が乗る。●が無い
+      { id: 't3', wireNo: 'T03', layer: 'L1', x1: 100, y1: 0,  x2: 100, y2: 60 },    // 幹線の端(100,0)に端が触れる(繋がる=同じネット)
+    ] }];
+  const ns = sandbox.analyzeConnections();
+  const tee = ns.find(n => n.tees.length);
+  ok(tee && tee.tees[0].x === 50 && tee.tees[0].y === 0, '幹線の途中に●なしで端が乗る配線は「●の無いT字」');
+  eq(sandbox._connSeverity(tee), 1, '警告(問題より軽い)');
+  const main = ns.find(n => n.idxs.length === 2);
+  ok(main && main.dangling.every(d => !(d.x === 100 && d.y === 0)), '他の配線の端に触れている端(100,0)は浮いていない');
+  sandbox.state.pages = saved;
+}
+
+// ------------------------------------------------------------------
+console.log('【分岐点(●)でつながる先の説明】');
 sandbox.showConnTable();
 const body = domEls['report-body'].innerHTML;
-ok(body.includes('分岐点'), '分岐点と表示される');
-ok(body.includes('同電位'), '分岐点の先が特定できない理由を説明している');
+ok(body.includes('分岐点(●)でつながった先の端子も、同じ行に並びます'), '分岐点でつながる先も同じ行に出ることを説明している');
+ok(body.includes('浮いている端'), '「浮いている端」と表示される');
 eq(domEls['report-title'].textContent, '接続チェック', 'タイトルが「接続チェック」');
 
 // ------------------------------------------------------------------
@@ -137,7 +162,8 @@ console.log('【CSV出力: 状態列がある / カンマがクォートされ�
 domEls['report-csv-btn'].onclick();
 ok(lastCsv && lastCsv.name === '図面_接続チェック.csv', 'ファイル名が 図面名_接続チェック.csv(図面名未設定なら「図面」)');
 ok(lastCsv.content.split('\n')[0].includes('状態'), 'ヘッダーに状態列がある');
-ok(lastCsv.content.includes('端子未特定'), '本文に状態が出力される');
+ok(lastCsv.content.includes('浮いている端') && lastCsv.content.includes('未採番'), '本文に状態が出力される(画面と同じ内容)');
+ok(lastCsv.content.split('\n')[0].includes('接続している端子') && lastCsv.content.includes('MC1:13 / TB1:1'), 'ネットごとの端子の一覧が出る');
 ok(lastCsv.content.split('\n')[1].startsWith('"'), '各値がクォートされている（生カンマ対策）');
 
 console.log(ng ? `\n${ng}件失敗` : '\n全て成功');

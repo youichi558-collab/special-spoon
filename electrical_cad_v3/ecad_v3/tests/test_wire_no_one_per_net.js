@@ -81,8 +81,8 @@ console.log('\n【読む側はネットの番号を出す】');
 {
   const w = setup();
   eq(sb.netWireNoOf(sb.state.pages[0]), ['W010', 'W010', '', ''], 'netWireNoOf: 枝も幹線の番号');
-  const rows = sb.buildConnectionRows();
-  eq(rows.map(r => r.wireNo), ['W010', 'W010', '', ''], '接続チェックの線番もネットの番号');
+  const rows = sb.analyzeConnections();
+  eq(rows.map(r => r.wireNo), ['W010', ''], '接続チェックの線番もネットの番号(ネット単位。幹線と枝は1行)');
   sb.applyNetWireNo(0, [2, 3], 'W030');
   eq(sb._tbConnsOf(sb.state.pages[0].elements[1], sb.state.pages[0]), ['W030'],
      '端子台表: 端子の上下とも同じ線番(片側が未採番と出ない)');

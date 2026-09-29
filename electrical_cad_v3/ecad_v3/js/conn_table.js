@@ -86,65 +86,109 @@ function findNearestTerminal(x, y, termPts, tol) {
   return best;
 }
 
-// 全ページを走査し、配線ごとの接続情報を集計する
-// 戻り値: [{ page, wireNo, layer, from, to }]  from/to は端子点情報 or null(未特定)
-function buildConnectionRows() {
+// ----------------------------------------------------------------
+// 接続チェック(ネット単位)
+//
+// 【2026-09-29 作り直し】以前は「配線1本=1行」で、始点・終点がどの端子に乗っているかを出していた。
+// 曲がり角・T字・分岐点でつながる途中の線は端が端子に乗らないので、**正常なのに「端子未特定」で赤くなり**
+// (Sheet3は配線70本中20本)、本当に浮いている端と区別できなかった。作り直して、
+//   ・1行=**ネット**(つながっている配線のまとまり。report.js の groupWiresByNet =線番表と同じ)
+//   ・そのネットに乗っている**端子の一覧**(分岐点▲でつながった先の端子もここに出る)
+//   ・**問題は端(たん)単位**で出す: 端が「端子にも、他の配線の端にも、●にも、他の配線の途中にも」触れていない=**浮いている端**
+//     (許容誤差 CONN_TABLE_TOL)。最寄りの端子と距離を添える(ズレて繋がっていないだけ、を見分けるため)
+//   ・●の無いT字(他の配線の途中に端が乗っているが●が無い)は「つながっていない扱い」なので警告(線番表のネット判定と同じ)
+//   ・未採番のネット
+//   ・行(と問題の各行)を押すと、図面のその場所へ飛ぶ
+// 「1本ごとの始点・終点」は出さない(盤の配線リストは裏面接続図の範囲で、展開接続図からは出せない)。
+// ----------------------------------------------------------------
+const CONN_NEAR_HINT = 60;   // 浮いている端に「最寄りの端子」を添える探索距離
+
+// 全ページのネットごとの接続の分析。
+// 戻り値: [{ pageIdx, page, idxs, wireNo, terms:[{name,term}], branch, dangling:[{x,y,wireIdx,near}], tees:[{x,y,wireIdx}] }]
+function analyzeConnections() {
   if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
-  const rows = [];
+  const out = [];
+  const tol = CONN_TABLE_TOL, bk = v => Math.round(v / tol);
   state.pages.forEach((pg, pi) => {
-    const pname = pg.name || ('Sheet'+(pi+1));
-    const termPts = collectTerminalPoints(pg.elements || []);
-    // 【2026-09-25】線番は1ネット1か所なので、配線自身ではなくネットの番号を出す(report.js netWireNoOf)
+    const wires = pg.wires || [];
+    if (!wires.length) return;
+    const pname = pg.name || ('Sheet' + (pi + 1));
+    const all = collectTerminalPoints(pg.elements || []);
+    const terms = all.filter(p => !p.isBranch);        // 端子(シンボルの端子・端子台の○◎)
+    const branches = all.filter(p => p.isBranch);      // 分岐点(●)
     const netNo = netWireNoOf(pg);
-    (pg.wires || []).forEach((w, wi) => {
-      const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
-      const p0 = pts[0], p1 = pts[pts.length-1];
-      const from = findNearestTerminal(p0.x, p0.y, termPts, CONN_TABLE_TOL);
-      const to   = findNearestTerminal(p1.x, p1.y, termPts, CONN_TABLE_TOL);
-      // 図面へ飛ぶための情報(pageIdx・wireIdx)と、端子に乗っていない端(あれば最初のもの)。行を押すとその端へ飛ぶ
-      const bad = !from ? { x: p0.x, y: p0.y } : !to ? { x: p1.x, y: p1.y } : null;
-      rows.push({ page: pname, pageIdx: pi, wireIdx: wi, bad, wireNo: netNo[wi] || '', layer: w.layer || '', from, to });
+    const ptsOf = w => w.pts || [{ x: w.x1, y: w.y1 }, { x: w.x2, y: w.y2 }];
+    // 配線の端の索引(他の配線の端に触れているかを速く調べる)
+    const idx = new Map();
+    wires.forEach((w, i) => {
+      const pts = ptsOf(w);
+      [pts[0], pts[pts.length - 1]].forEach(p => {
+        const k = `${bk(p.x)},${bk(p.y)}`;
+        if (!idx.has(k)) idx.set(k, []);
+        idx.get(k).push({ i, p });
+      });
+    });
+    const touchesOtherEnd = (i, p) => {
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+        const b = idx.get(`${bk(p.x) + dx},${bk(p.y) + dy}`);
+        if (b && b.some(o => o.i !== i && Math.hypot(o.p.x - p.x, o.p.y - p.y) <= tol)) return true;
+      }
+      return false;
+    };
+    const segDist = (p, a, b) => {
+      const dx = b.x - a.x, dy = b.y - a.y, L = dx * dx + dy * dy;
+      const t = L ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / L)) : 0;
+      return Math.hypot(a.x + t * dx - p.x, a.y + t * dy - p.y);
+    };
+    const onOtherWire = (i, p) => wires.some((w, j) => {
+      if (j === i) return false;
+      const q = ptsOf(w);
+      for (let k = 0; k + 1 < q.length; k++) if (segDist(p, q[k], q[k + 1]) <= tol) return true;
+      return false;
+    });
+
+    groupWiresByNet(wires, null, pg.elements).forEach(idxs => {
+      const net = { pageIdx: pi, page: pname, idxs, wireNo: netNo[idxs[0]] || '', terms: [], branch: 0, dangling: [], tees: [] };
+      const seen = new Set();
+      idxs.forEach(i => {
+        const pts = ptsOf(wires[i]);
+        [pts[0], pts[pts.length - 1]].forEach(p => {
+          const t = findNearestTerminal(p.x, p.y, terms, tol);
+          if (t) {
+            const key = t.elId + ':' + t.termIdx;
+            if (!seen.has(key)) { seen.add(key); net.terms.push({ name: t.dispName || '-', term: t.dispTerm || '-' }); }
+            return;
+          }
+          if (branches.some(b => Math.hypot(b.x - p.x, b.y - p.y) <= tol)) { net.branch++; return; }
+          if (touchesOtherEnd(i, p)) return;
+          if (onOtherWire(i, p)) { net.tees.push({ x: p.x, y: p.y, wireIdx: i }); return; }
+          const n = findNearestTerminal(p.x, p.y, terms, CONN_NEAR_HINT);
+          net.dangling.push({ x: p.x, y: p.y, wireIdx: i,
+            near: n ? { name: n.dispName || '-', term: n.dispTerm || '-', d: Math.round(Math.hypot(n.x - p.x, n.y - p.y) * 10) / 10 } : null });
+        });
+      });
+      net.terms.sort((a, b) => (a.name + ' ' + a.term).localeCompare(b.name + ' ' + b.term, 'ja', { numeric: true }));
+      out.push(net);
     });
   });
-  return rows;
+  return out;
 }
 
-function _connFmtEnd(t) {
-  if (!t) return { name:'-', term:'-' };
-  if (t.kind === 'junction' && t.isBranch) return { name:'分岐点', term:'-' };
-  return { name: t.dispName || '-', term: t.dispTerm || '-' };
+// 重さ: 2=問題(浮いている端・未採番) / 1=警告(●の無いT字) / 0=なし
+function _connSeverity(n) {
+  if (!n.wireNo || n.dangling.length) return 2;
+  if (n.tees.length) return 1;
+  return 0;
+}
+function _connTermTxt(t) { return `${t.name}:${t.term}`; }
+// 端子の一覧(画面・CSV共通)。同じ名前の端子が複数あれば「×2」とまとめる(例: 1つのデバイスが2つの記号に分かれていて、どちらも T1)
+function _connTermList(n) {
+  const cnt = new Map();
+  n.terms.forEach(t => cnt.set(_connTermTxt(t), (cnt.get(_connTermTxt(t)) || 0) + 1));
+  return [...cnt.entries()].map(([txt, c]) => c > 1 ? `${txt}×${c}` : txt);
 }
 
-function _connSortRows(rows) {
-  rows.sort((a,b) => String(a.wireNo||'\uffff').localeCompare(String(b.wireNo||'\uffff'),'ja',{numeric:true}));
-  return rows;
-}
-
-// ----------------------------------------------------------------
-// 接続チェック（配線ごと: 線番・始点・始点端子・終点・終点端子）
-//
-// 【2026-08-22 統合】もともと「端子表」(report.js の showTerminalTable)と
-// この表がどちらも配線と端子の対応を出しており、主語が部品か配線かの違い
-// しかなかった。端子表は ①現在ページのみ ②端子台の端子(junction)が端子台表と
-// 重複 ③接続判定が fromElId 紐づけで他表と別方式 ④「種別」に内部名(coil等)が
-// 生で出る、という状態だったため、こちらへ統合した(盛田さんの提案)。
-// 部品ごとに見たい用途は並べ替え(部品順)で吸収する。
-//
-// 【この表の位置づけ】
-// 分岐のない1本線の「TB1-1 → MC1-13」は図面を見れば判るので、一覧にする価値は
-// 薄い(盛田さん指摘)。価値があるのは図面を見ても気づきにくい方:
-//   ・端点が端子から微妙にズレている配線(目視では繋がって見える。DXFインポート後に多い)
-//   ・線番が振られていない配線
-// よって問題のある行を先頭に集める。
-//
-// 【原理的にできないこと】
-// 分岐点は電気的に1点で、そこに集まる線は全部同電位。「どっちに繋がる線か」
-// という問い自体が成立しないため、分岐点経由の接続先は特定できない(0%)。
-// ページを跨ぐ接続も座標では追えない。盤製作用の配線リスト(どこにどう渡すか)は
-// 裏面接続図の範囲であり、展開接続図から自動で出せるものではない。
-// ----------------------------------------------------------------
-
-// 並べ替えモード: 'wire'=線番順(既定) / 'part'=部品順
+// 並べ替えモード: 'wire'=線番順(既定) / 'part'=部品順(そのネットの最初の端子のデバイス名)
 let _connSortMode = 'wire';
 
 function setConnSort(mode) {
@@ -152,87 +196,88 @@ function setConnSort(mode) {
   showConnTable();
 }
 
-// 行に問題があるか。端子未特定(端点が端子から離れている)か線番未採番。
-function _connRowIssue(r) {
-  if (!r.from || !r.to) return '端子未特定';
-  if (!r.wireNo)        return '未採番';
-  return '';
-}
-
-function _connSortRows(rows) {
-  const nameOf = r => {
-    const f = _connFmtEnd(r.from);
-    return f.name === '-' ? '\uffff' : f.name;
-  };
-  rows.sort((a, b) => {
-    // 問題のある行を先頭へ(図面を見ても気づきにくいものから見せる)
-    const ai = _connRowIssue(a) ? 0 : 1, bi = _connRowIssue(b) ? 0 : 1;
-    if (ai !== bi) return ai - bi;
+function _connSortNets(nets) {
+  const nameOf = n => n.terms.length ? n.terms[0].name : '￿';
+  nets.sort((a, b) => {
+    // 問題のあるネットを先頭へ(図面を見ても気づきにくいものから見せる)
+    const d = _connSeverity(b) - _connSeverity(a);
+    if (d) return d;
     if (_connSortMode === 'part') {
       const c = nameOf(a).localeCompare(nameOf(b), 'ja', { numeric: true });
       if (c) return c;
     }
-    return String(a.wireNo || '\uffff').localeCompare(String(b.wireNo || '\uffff'), 'ja', { numeric: true });
+    return String(a.wireNo || '￿').localeCompare(String(b.wireNo || '￿'), 'ja', { numeric: true })
+      || a.pageIdx - b.pageIdx;
   });
-  return rows;
+  return nets;
+}
+
+// 状態の文字(画面のセルとCSVで同じ内容にする)
+function _connProblems(n) {
+  const out = [];
+  if (!n.wireNo) out.push({ txt: '未採番' });
+  n.dangling.forEach(d => out.push({ txt: `浮いている端 (${Math.round(d.x)}, ${Math.round(d.y)})`
+    + (d.near ? `：最寄りの端子 ${_connTermTxt(d.near)} まで ${d.near.d}` : '：近くに端子はありません'), at: d }));
+  n.tees.forEach(t => out.push({ txt: `T字に●がありません (${Math.round(t.x)}, ${Math.round(t.y)})(つながっていない扱い)`, at: t, warn: true }));
+  return out;
 }
 
 function showConnTable() {
-  const rows = _connSortRows(buildConnectionRows());
-  if (!rows.length) {
+  const nets = _connSortNets(analyzeConnections());
+  if (!nets.length) {
     _reportOpen('conntbl', '接続チェック', '<p style="font-size:11px;color:var(--fg3)">配線がありません</p>', null);
     return;
   }
-  let unmatched = 0, unnumbered = 0, branch = 0;
+  let nDang = 0, nTee = 0, nNoNo = 0, nBad = 0, nWires = 0;
   let body = '';
-  rows.forEach(r => {
-    const f = _connFmtEnd(r.from), t = _connFmtEnd(r.to);
-    const issue = _connRowIssue(r);
-    if (!r.from || !r.to) unmatched++;
-    if (!r.wireNo) unnumbered++;
-    if (f.name === '分岐点' || t.name === '分岐点') branch++;
-    // 【2026-09-29】行を押すと図面のその配線へ飛ぶ(線番表と同じ動き)。端子に乗っていない端があれば、その端へ(盛田さん「エラーをクリックで場所に飛べるように」)
-    const focus = r.bad ? `,{x:${r.bad.x},y:${r.bad.y}}` : '';
-    body += `<tr onclick="jumpToNet(${r.pageIdx},[${r.wireIdx}]${focus})" title="クリックで図面のこの配線へ飛ぶ" style="cursor:pointer${issue ? ';background:rgba(200,60,60,.10)' : ''}">`
-      + `<td>${r.wireNo ? `<span class="badge badge-b">${escH(r.wireNo)}</span>` : '<span style="color:var(--red)">未採番</span>'}</td>`
-      + `<td>${escH(r.page)}</td><td>${escH(f.name)}</td><td>${escH(f.term)}</td><td>${escH(t.name)}</td><td>${escH(t.term)}</td>`
-      + `<td>${issue ? `<span style="color:var(--red)">${issue}</span>` : ''}</td><td>${escH(r.layer)}</td></tr>`;
+  nets.forEach(n => {
+    const sev = _connSeverity(n);
+    nDang += n.dangling.length; nTee += n.tees.length; nWires += n.idxs.length;
+    if (!n.wireNo) nNoNo++;
+    if (sev === 2) nBad++;
+    const first = n.dangling[0] || n.tees[0];
+    const focus = first ? `,{x:${first.x},y:${first.y}}` : '';
+    const probs = _connProblems(n).map(p => p.at
+      ? `<div style="color:${p.warn ? 'var(--org,#c77b00)' : 'var(--red)'};font-size:11px;cursor:pointer;text-decoration:underline dotted" title="クリックで図面のその場所へ飛ぶ"`
+        + ` onclick="event.stopPropagation();jumpToNet(${n.pageIdx},[${p.at.wireIdx}],{x:${p.at.x},y:${p.at.y}})">⚠ ${escH(p.txt)}</div>`
+      : `<div style="color:var(--red);font-size:11px">⚠ ${escH(p.txt)}</div>`).join('');
+    const termHtml = n.terms.length
+      ? _connTermList(n).map(t => `<span class="badge badge-b" style="margin:0 2px 2px 0">${escH(t)}</span>`).join('')
+      : '<span style="color:var(--fg3)">(端子に乗っている端が無い)</span>';
+    body += `<tr onclick="jumpToNet(${n.pageIdx},[${n.idxs.join(',')}]${focus})" title="クリックで図面のこの配線へ飛ぶ"`
+      + ` style="cursor:pointer${sev === 2 ? ';background:rgba(200,60,60,.10)' : sev === 1 ? ';background:rgba(200,140,0,.10)' : ''}">`
+      + `<td>${n.wireNo ? `<span class="badge badge-b">${escH(n.wireNo)}</span>` : '<span style="color:var(--red)">未採番</span>'}</td>`
+      + `<td>${escH(n.page)}</td><td>${n.idxs.length}</td><td>${termHtml}</td>`
+      + `<td>${probs || '<span style="color:var(--fg3)">問題なし</span>'}</td></tr>`;
   });
 
   const btn = (mode, label) =>
     `<button class="fp-btn" style="font-size:10px;padding:1px 8px;${_connSortMode === mode ? 'font-weight:700' : ''}"`
     + ` onclick="setConnSort('${mode}')">${label}</button>`;
-
   let msg = `<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">`
-    + `全${state.pages.length}ページ集計。配線 ${rows.length}本`;
-  if (unmatched)  msg += ` / <span style="color:var(--red);font-weight:600">端子未特定 ${unmatched}本</span>`;
-  if (unnumbered) msg += ` / <span style="color:var(--red);font-weight:600">未採番 ${unnumbered}本</span>`;
+    + `全${state.pages.length}ページ集計。ネット ${nets.length}件(配線 ${nWires}本)`;
+  if (nDang)  msg += ` / <span style="color:var(--red);font-weight:600">浮いている端 ${nDang}か所</span>`;
+  if (nNoNo)  msg += ` / <span style="color:var(--red);font-weight:600">未採番 ${nNoNo}件</span>`;
+  if (nTee)   msg += ` / <span style="font-weight:600">●の無いT字 ${nTee}か所</span>`;
+  if (!nBad && !nTee) msg += ` / 問題なし`;
   msg += `<br>並べ替え: ${btn('wire', '線番順')} ${btn('part', '部品順')}`;
-  msg += `<br>行を押すと、この一覧を閉じて図面のその配線へ移動します(「端子未特定」は、端子に乗っていない端の所へ)。`;
-  if (unmatched) {
-    msg += `<br>「端子未特定」は端点の${CONN_TABLE_TOL}以内に端子が無いもの。`
-      + `目視では繋がって見えても座標がズレている可能性があります（DXFインポート後に起きやすい）。`;
-  }
-  if (branch) {
-    msg += `<br><span style="color:var(--fg4)">分岐点を経由する配線が${branch}本あります。`
-      + `分岐点は電気的に1点で、そこに集まる線は全部同電位のため、その先どの端子に繋がるかは`
-      + `この表では特定できません（不具合ではありません）。</span>`;
-  }
+  msg += `<br>1行=つながっている配線のまとまり(ネット)。分岐点(●)でつながった先の端子も、同じ行に並びます。`
+    + `問題は端ごとに出します: <b>浮いている端</b>=端が端子にも他の配線にも●にも触れていないもの(許容誤差${CONN_TABLE_TOL})。`
+    + `目視では繋がって見えても座標がズレている場合があります(DXFインポート後に起きやすい)。最寄りの端子と距離を添えています。`;
+  msg += `<br>行(と赤い⚠)を押すと、この一覧を閉じて図面のその場所へ移動します。`;
   msg += `</p>`;
 
-  const html = msg + `<table class="tbl"><tr><th>線番</th><th>ページ</th><th>始点</th><th>始点端子</th>`
-    + `<th>終点</th><th>終点端子</th><th>状態</th><th>レイヤー</th></tr>${body}</table>`;
+  const html = msg + `<table class="tbl"><tr><th>線番</th><th>ページ</th><th>配線</th><th>接続している端子</th><th>状態</th></tr>${body}</table>`;
   _reportOpen('conntbl', '接続チェック', html, exportConnCSV);
 }
 
 function exportConnCSV() {
-  const rows = _connSortRows(buildConnectionRows());
+  const nets = _connSortNets(analyzeConnections());
   const esc = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
-  const csvRows = ['線番,ページ,始点,始点端子,終点,終点端子,状態,レイヤー'];
-  rows.forEach(r => {
-    const f = _connFmtEnd(r.from), t = _connFmtEnd(r.to);
-    csvRows.push([r.wireNo || '', r.page, f.name, f.term, t.name, t.term,
-                  _connRowIssue(r), r.layer].map(esc).join(','));
+  const csvRows = ['線番,ページ,配線本数,接続している端子,状態'];
+  nets.forEach(n => {
+    csvRows.push([n.wireNo || '', n.page, n.idxs.length, _connTermList(n).join(' / '),
+                  _connProblems(n).map(p => p.txt).join(' / ')].map(esc).join(','));
   });
   dl(csvRows.join('\n'), _csvName('接続チェック'), 'text/csv');
 }
