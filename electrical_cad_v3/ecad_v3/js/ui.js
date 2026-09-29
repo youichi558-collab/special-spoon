@@ -2556,7 +2556,7 @@ function updateRightPanel() {
       <button onclick="pasteDeviceProps()" title="コピーした内容を、選択中のシンボル(複数可・形が違ってもOK)へまとめて貼り付けます" style="flex:1;font-size:11px;padding:3px 6px;background:${deviceClipboard?'var(--accent,#1d6fb5)':'var(--bg3)'};border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:${deviceClipboard?'#fff':'var(--fg)'}"${deviceClipboard?'':' disabled'}>一括貼り付け</button>
     </div>`;
     const _hasCR = ['coil', 'contact_a', 'contact_b'].includes(symRole(el));   // クロスリファレンスの対象(js/xref.js)
-    html += `<div class="pp-row" style="gap:6px"><label>シンボル</label><span id="pp-symname" style="padding:2px 0;color:var(--fg2);font-size:11px" title="この要素の元になっている登録シンボルの名前と、接点Ref用の種別です">${escH(rpSymbolLabel(el))}</span></div>`;
+    html += `<div class="pp-row" style="gap:6px"><label>シンボル</label><span id="pp-symname" onclick="rpJumpToSymbol('${_escAttr(el.type)}')" style="padding:2px 0;color:var(--acc);font-size:11px;cursor:pointer;text-decoration:underline dotted" title="この要素の元になっている登録シンボルの名前と、接点Ref用の種別です。クリックで左のシンボル一覧のそのシンボルへ飛びます">${escH(rpSymbolLabel(el))}</span></div>`;
     html += rpTabsHeader(_hasCR) + rpPaneOpen('basic');
     { const devC = el.devColor||(state.darkMode?'#4da3ff':'#1d6fb5');
     html += `<div class="pp-group" style="border-left:4px solid ${devC}"><div class="pp-group-cap" style="color:${devC}">◆ デバイス</div>`;
@@ -3157,6 +3157,25 @@ function rpSymbolLabel(el) {
   const role = symRole(el);
   const r = roleName[role] || (role ? role : '種別なし');
   return `${name || '(名前なし)'}／${r}`;
+}
+
+// 逆引きの文字クリック → シンボル一覧を開き、そのシンボルまでスクロールして点滅させる。
+// 配置モードは変えない(選択状態の .on は付けない。誤って配置モードに入らないため)。
+function rpJumpToSymbol(type) {
+  const fp = document.getElementById('sym-float');
+  if (!fp) return false;
+  if (fp.style.display === 'none' || fp.style.display === '') {
+    const tab = Array.from(document.querySelectorAll('.lt')).find(e => /switchLTab\('sym'/.test(e.getAttribute('onclick') || ''));
+    if (tab) switchLTab('sym', tab);
+    else { fp.style.display = 'flex'; renderSymFloat(); }
+  }
+  const idx = (state.customSymbols || []).findIndex(s => s.type === type);
+  const item = idx >= 0 ? document.querySelector(`.sym-item[data-symidx="${idx}"]`) : null;
+  if (!item) { alert('このシンボルは登録一覧にありません(削除された可能性があります)'); return false; }
+  if (item.scrollIntoView) item.scrollIntoView({ block: 'center' });
+  item.classList.remove('sym-jump'); void item.offsetWidth; item.classList.add('sym-jump');
+  setTimeout(() => item.classList.remove('sym-jump'), 1600);
+  return true;
 }
 
 function rpTabsHeader(showCR) {

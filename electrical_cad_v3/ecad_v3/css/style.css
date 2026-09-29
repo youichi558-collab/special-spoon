@@ -78,6 +78,8 @@ body{font-family:'Segoe UI',sans-serif;font-size:12px;background:var(--bg);color
 .sym-item{display:flex;align-items:center;gap:4px;padding:3px 4px;cursor:pointer;border-radius:3px;border:1px solid transparent;margin-bottom:1px;}
 .sym-item:hover{background:var(--bg3);border-color:var(--bd);}
 .sym-item.on{background:var(--abg);border-color:var(--acc);}
+.sym-item.sym-jump{animation:symjump 1.6s ease-out;}
+@keyframes symjump{0%,60%{background:var(--abg);border-color:var(--acc);box-shadow:0 0 0 2px var(--acc);}100%{box-shadow:0 0 0 0 transparent;}}
 .sym-item span{font-size:11px;color:var(--fg);}
 .lr{display:flex;align-items:center;gap:3px;padding:3px;border-radius:3px;margin-bottom:1px;cursor:pointer;}
 .lr:hover{background:var(--bg3);}

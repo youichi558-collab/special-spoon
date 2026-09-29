@@ -51,6 +51,28 @@ console.log('\n【シンボルの逆引き: 選んだ要素の登録シンボル
   eq(sb.rpSymbolLabel({ type: 'z' }), 'ランプ／種別なし', 'nameが無ければlabel、役割が無ければ「種別なし」');
   eq(sb.rpSymbolLabel({ type: 'nope' }), '(名前なし)／種別なし', '登録が無い要素でも落ちない');
   ok(/pp-symname/.test(ui), 'プロパティの上に1行出している');
+  ok(/id="pp-symname" onclick="rpJumpToSymbol\(/.test(ui), '文字クリックでシンボル一覧へ飛ぶ');
+}
+
+console.log('\n【逆引きの文字クリック: シンボル一覧へ飛ぶ】');
+{
+  vm.runInContext(pick(/function rpJumpToSymbol\([\s\S]*?\n\}/), sb);
+  const docSave = sb.document, stSave = sb.state;
+  const cls = new Set(); let scrolled = 0, opened = 0, rendered = 0;
+  const item = { classList: { add: c => cls.add(c), remove: c => cls.delete(c) }, offsetWidth: 1, scrollIntoView: () => { scrolled++; } };
+  const fp = { style: { display: 'none' } };
+  const tab = { getAttribute: () => "switchLTab('sym',this)" };
+  sb.document = { getElementById: id => (id === 'sym-float' ? fp : null), querySelectorAll: () => [tab],
+    querySelector: q => (q === '.sym-item[data-symidx="1"]' ? item : null) };
+  sb.switchLTab = () => { opened++; fp.style.display = 'flex'; };
+  sb.renderSymFloat = () => { rendered++; }; sb.setTimeout = () => 0;
+  sb.state = { customSymbols: [{ type: 'a1' }, { type: 'c1' }] };
+  ok(sb.rpJumpToSymbol('c1') === true, '登録シンボルには飛べる');
+  ok(opened === 1 && scrolled === 1 && cls.has('sym-jump'), '閉じていれば開き、そこまでスクロールして点滅させる');
+  ok(!cls.has('on'), '配置モード用の選択(.on)は付けない');
+  opened = 0; ok(sb.rpJumpToSymbol('c1') === true && opened === 0, '既に開いていれば閉じない(トグルしない)');
+  alerts = []; ok(sb.rpJumpToSymbol('nope') === false && alerts.length === 1, '登録が無ければ落ちずに知らせる');
+  sb.document = docSave; sb.state = stSave;
 }
 
 console.log('\n【タブコピーは、そのタブの項目だけを運ぶ】');
