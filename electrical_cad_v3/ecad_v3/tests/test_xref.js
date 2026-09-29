@@ -47,7 +47,7 @@ console.log('【コイル側: 実図面Sheet3のCR1と同じ並び】');
   const L = setup(els);
   eq(L.blocks.length, 1, 'コイル1個に1つ');
   eq(L.blocks[0].lines.map(l => l.t), ['CR1', 'MY4N', 'AC100V',
-    'a 9-5 1/6B', 'b 9-1', 'a 10-6 1/7B', 'b 10-2 1/8B', 'a 11-7', 'b 11-3 1/7C', 'a 12-8', 'b 12-4'],
+    'a 9-5 (1/6B)', 'b 9-1', 'a 10-6 (1/7B)', 'b 10-2 (1/8B)', 'a 11-7', 'b 11-3 (1/7C)', 'a 12-8', 'b 12-4'],
     'デバイス名・型式・電圧・接点(使っていない接点は位置が空欄)');
   eq(L.blocks[0].lines[0].bold, true, 'デバイス名は太字');
   eq(L.blocks[0].lines.some(l => /空き|未使用/.test(l.t)), false, '「空き」「未使用」の文字は書かない');
@@ -79,14 +79,14 @@ console.log('\n【型式が無い・部品DBに無い: 使用中の接点だけ�
   const els = [coil('R9', 100, 100, { partModel: '', partVolt: '' }), cont('ca', 'R9', 200, 50, '13,14', { partModel: '' }),
     cont('cb', 'R9', 240, 50, '')];
   const L = setup(els);
-  eq(L.blocks[0].lines.map(l => l.t), ['R9', 'a 13-14 1/3A', 'b 1/4A'], '型式・電圧の行は詰め、使用中だけ(端子番号が無い接点は a/b と位置)');
+  eq(L.blocks[0].lines.map(l => l.t), ['R9', 'a 13-14 (1/3A)', 'b (1/4A)'], '型式・電圧の行は詰め、使用中だけ(端子番号が無い接点は a/b と位置)');
 }
 
 console.log('\n【補助接点の端子の組(JISの番号: 下1桁3・4=a, 1・2=b)】');
 {
   const els = [coil('MC1', 100, 100, { partModel: 'SD-T21', partVolt: 'AC200V' }), cont('ca', 'MC1', 200, 50, '13,14', { partModel: 'SD-T21' })];
   const L = setup(els);
-  eq(L.blocks[0].lines.map(l => l.t), ['MC1', 'SD-T21', 'AC200V', 'a 13-14 1/3A', 'b 21-22', 'a 43-44', 'b 31-32'], '補助の4組をa/bに分ける');
+  eq(L.blocks[0].lines.map(l => l.t), ['MC1', 'SD-T21', 'AC200V', 'a 13-14 (1/3A)', 'b 21-22', 'a 43-44', 'b 31-32'], '補助の4組をa/bに分ける');
 }
 
 console.log('\n【対象外】');
