@@ -101,7 +101,9 @@ function buildConnectionRows() {
       const p0 = pts[0], p1 = pts[pts.length-1];
       const from = findNearestTerminal(p0.x, p0.y, termPts, CONN_TABLE_TOL);
       const to   = findNearestTerminal(p1.x, p1.y, termPts, CONN_TABLE_TOL);
-      rows.push({ page: pname, wireNo: netNo[wi] || '', layer: w.layer || '', from, to });
+      // 図面へ飛ぶための情報(pageIdx・wireIdx)と、端子に乗っていない端(あれば最初のもの)。行を押すとその端へ飛ぶ
+      const bad = !from ? { x: p0.x, y: p0.y } : !to ? { x: p1.x, y: p1.y } : null;
+      rows.push({ page: pname, pageIdx: pi, wireIdx: wi, bad, wireNo: netNo[wi] || '', layer: w.layer || '', from, to });
     });
   });
   return rows;
@@ -189,7 +191,9 @@ function showConnTable() {
     if (!r.from || !r.to) unmatched++;
     if (!r.wireNo) unnumbered++;
     if (f.name === '分岐点' || t.name === '分岐点') branch++;
-    body += `<tr${issue ? ' style="background:rgba(200,60,60,.10)"' : ''}>`
+    // 【2026-09-29】行を押すと図面のその配線へ飛ぶ(線番表と同じ動き)。端子に乗っていない端があれば、その端へ(盛田さん「エラーをクリックで場所に飛べるように」)
+    const focus = r.bad ? `,{x:${r.bad.x},y:${r.bad.y}}` : '';
+    body += `<tr onclick="jumpToNet(${r.pageIdx},[${r.wireIdx}]${focus})" title="クリックで図面のこの配線へ飛ぶ" style="cursor:pointer${issue ? ';background:rgba(200,60,60,.10)' : ''}">`
       + `<td>${r.wireNo ? `<span class="badge badge-b">${escH(r.wireNo)}</span>` : '<span style="color:var(--red)">未採番</span>'}</td>`
       + `<td>${escH(r.page)}</td><td>${escH(f.name)}</td><td>${escH(f.term)}</td><td>${escH(t.name)}</td><td>${escH(t.term)}</td>`
       + `<td>${issue ? `<span style="color:var(--red)">${issue}</span>` : ''}</td><td>${escH(r.layer)}</td></tr>`;
@@ -204,6 +208,7 @@ function showConnTable() {
   if (unmatched)  msg += ` / <span style="color:var(--red);font-weight:600">端子未特定 ${unmatched}本</span>`;
   if (unnumbered) msg += ` / <span style="color:var(--red);font-weight:600">未採番 ${unnumbered}本</span>`;
   msg += `<br>並べ替え: ${btn('wire', '線番順')} ${btn('part', '部品順')}`;
+  msg += `<br>行を押すと、この一覧を閉じて図面のその配線へ移動します(「端子未特定」は、端子に乗っていない端の所へ)。`;
   if (unmatched) {
     msg += `<br>「端子未特定」は端点の${CONN_TABLE_TOL}以内に端子が無いもの。`
       + `目視では繋がって見えても座標がズレている可能性があります（DXFインポート後に起きやすい）。`;
@@ -267,6 +272,7 @@ function buildTerminalBlockRows() {
   return all.map(r => ({
     el:      r.el,
     page:    state.pages[r.page]?.name || ('Sheet' + (r.page + 1)),
+    pageIdx: r.page,
     loc:     r.loc,
     tbRef:   names.get(_tbKey(r.el.partRef)),
     tbModel: r.el.partModel || '',
@@ -394,7 +400,7 @@ function showTBTable() {
   if (unconn) html += ` / <span style="color:var(--red);font-weight:600">未接続 ${unconn}点</span>`;
   // 外した分は必ず数字で見せる。黙って減っていると出力を誤解するため(部品表と同じ)。
   if (exRows.length) html += ` / <span style="color:var(--fg3)">集計対象外 ${exGroups.size}台・${exRows.length}点（CSVにも出ません）</span>`;
-  html += `<br>行をドラッグすると並べ替えできます。並べ替えた順で「番号を振り直す」と端子番号が1から振り直されます。`
+  html += `<br>行を押すと、この一覧を閉じて図面のその端子へ移動します。行をドラッグすると並べ替えできます。並べ替えた順で「番号を振り直す」と端子番号が1から振り直されます。`
     + `<br>PLC・インバータ等の「端子台ではない」台は、見出しの「端子台として集計」を外してください（台ごとに1回で、図面に残ります）。</p>`;
 
   const devSection = (list, dev) => {
@@ -425,7 +431,9 @@ function showTBTable() {
       + list.map((r, i) =>
           `<tr draggable="true" data-elid="${escH(r.el.id)}"`
           + ` ondragstart="tbDragStart(event,${_jsArg(r.el.id)})" ondragover="tbDragOver(event)"`
-          + ` ondrop="tbDrop(event,${_jsArg(r.el.id)})" ondragend="tbDragEnd(event)" style="cursor:grab">`
+          + ` ondrop="tbDrop(event,${_jsArg(r.el.id)})" ondragend="tbDragEnd(event)"`
+          // 【2026-09-29】行を押すと、図面のその端子へ飛ぶ(ドラッグの並べ替えは従来どおり。ドラッグしたときは押した扱いにならない)
+          + ` onclick="jumpToRefEl(${r.pageIdx},${_jsArg(r.el.id)})" title="クリックで図面のこの端子へ飛ぶ。ドラッグで並べ替え" style="cursor:grab">`
           + `<td style="color:var(--fg4);text-align:center">⋮⋮</td>`
           + `<td>${i + 1}</td><td>${escH(r.termNo)}</td><td>${escH(r.loc)}</td>`
           + `<td>${r.conns.length

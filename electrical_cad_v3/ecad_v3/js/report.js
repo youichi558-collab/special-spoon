@@ -407,7 +407,8 @@ function wireNoTable(msg){
 // 点滅はネットの最初の配線の中点。未採番の行はたいてい1本なのでその線そのものを指す。
 // 帳票パネル(幅1240px)が画面中央を覆って飛んだ先が見えないため、パネルは閉じる。
 // 配線は選ばれたままなので、右のプロパティの「線番」欄にそのまま打てる。
-function jumpToNet(pageIdx, idxs) {
+// 第3引数 focus({x,y})を渡すと、画面中央・点滅をその点にする(接続チェックの「端子未特定」で、端子に乗っていない端を指すため)。
+function jumpToNet(pageIdx, idxs, focus) {
   const pg = state.pages[pageIdx];
   if (!pg || !pg.wires) return;
   const ws = idxs.map(i => pg.wires[i]).filter(Boolean);
@@ -419,15 +420,16 @@ function jumpToNet(pageIdx, idxs) {
     x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y);
   }));
   if (state.zoom < 1) state.zoom = 1;
-  state.pan.x = cv.width  / 2 - (x0 + x1) / 2 * state.zoom;
-  state.pan.y = cv.height / 2 - (y0 + y1) / 2 * state.zoom;
+  const cx = focus ? focus.x : (x0 + x1) / 2, cy = focus ? focus.y : (y0 + y1) / 2;
+  state.pan.x = cv.width  / 2 - cx * state.zoom;
+  state.pan.y = cv.height / 2 - cy * state.zoom;
   state.sel.els.clear(); state.sel.wires.clear();
   ws.forEach(w => { if (w.id) state.sel.wires.add(w.id); });
   if (typeof updateResizeHandles === 'function') updateResizeHandles();
   if (typeof updateRightPanel === 'function') updateRightPanel();
   const f = ws[0].pts || [{x:ws[0].x1,y:ws[0].y1},{x:ws[0].x2,y:ws[0].y2}];
   const a = f[0], b = f[f.length - 1];
-  state.searchHit = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, t0: Date.now() };
+  state.searchHit = focus ? { x: focus.x, y: focus.y, t0: Date.now() } : { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, t0: Date.now() };
   const anim = () => {
     if (!state.searchHit) return;
     if (Date.now() - state.searchHit.t0 > 2000) { state.searchHit = null; draw(); return; }
