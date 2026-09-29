@@ -34,6 +34,9 @@ const partsDb = (() => {
     state.customParts = data.customParts.concat(extra);
     state.hiddenBuiltinRefs = data.hiddenBuiltinRefs;
     if (typeof renderPartsAll === 'function') renderPartsAll();
+    // 部品DBは起動の後から読み込まれる。クロスリファレンスの空き接点の枠(js/xref.js)は部品DBの端子欄から作るので、
+    // 読み込めた時点で描き直す。しないと、何か操作して再描画されるまで空きの枠が出ない(2026-09-29)。
+    if (typeof draw === 'function') { try { draw(); } catch (e) { console.error('[parts_db] 再描画でエラー:', e); } }
     if (extra.length) {
       setBanner(`部品DBのファイルに入っていなかった ${extra.length} 件があります`
         + '（古い図面ファイルに残っていた分の可能性があります）。'

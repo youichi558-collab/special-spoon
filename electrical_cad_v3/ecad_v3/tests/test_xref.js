@@ -123,6 +123,7 @@ console.log('\n【組み込み(片方だけ消えて黙って出なくなるの�
   ok(/xrefGet\(\)/.test(R('js/dxf_export.js')), 'DXF出力が xrefGet を使う(画面と同じ内容・位置)');
   ok(/zoneColLabel\(c\)/.test(R('js/dxf_export.js')) && /zoneRowLabel\(r\)/.test(R('js/dxf_export.js')),
     'DXFの枠の区画ラベルは画面と同じ(列=数字・行=英字)。以前はDXFだけ 列=英字・行=数字 だった');
+  ok(/renderPartsAll\(\);[\s\S]{0,400}draw\(\)/.test(R('js/parts_db.js')), '部品DBを読み込んだ後に描き直す(空き接点の枠は部品DBの端子欄から作るため)');
   ok(/showXref/.test(R('js/settings.js')) && /rb-xref/.test(R('index.html')), '表示の入切と前回値がある');
 }
 
