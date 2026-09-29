@@ -199,5 +199,28 @@ console.log('\n【部品表: 仕様(図面の仕様欄)を、型番とは別の�
   ok(e2.every(e => e.label === undefined), '空にすると、全記号の仕様が消える');
 }
 
+console.log('\n【部品表・接点Refのデバイス単位の⚠を押すと、図面のそのデバイスへ飛ぶ】');
+{
+  sb.symRole = el => (el.role || (el.type === 'coil' ? 'coil' : (el.type === 'ca' ? 'contact_a' : '')));
+  sb.partVoltOptions = () => [];
+  // 部品表: CR1は2ページにまたがり、型番が食い違う。飛び先はコイル(1ページ目の2番目の要素)
+  const p1 = page([{ id: 'x1', type: 'ca', partRef: 'CR1', partModel: 'A' }, { id: 'x2', type: 'coil', partRef: 'CR1', partModel: 'B' }]);
+  const p2 = page([{ id: 'y1', type: 'ca', partRef: 'CR5', partModel: 'C' }, { id: 'y2', type: 'ca', partRef: 'CR5', partModel: 'D' }]);
+  setState([p1, p2]);
+  vm.runInContext('showBOM()', sb);
+  let h = sb.htmlOut;
+  ok(/onclick="jumpToRefEl\(0,&quot;x2&quot;\)"[^>]*>⚠CR1に型番が複数/.test(h), '部品表: 型番が複数の⚠は、コイル(x2)へ飛ぶ');
+  ok(/onclick="jumpToRefEl\(1,&quot;y1&quot;\)"[^>]*>⚠CR5に型番が複数/.test(h), '部品表: コイルが無いデバイスは最初の要素(2ページ目のy1)へ、そのページ番号(1)で飛ぶ');
+  ok(!/jumpToRefEl\(0,&quot;y1&quot;\)/.test(h), '部品表: ページ番号を取り違えない');
+  ok(/title="クリックで図面のこのデバイスへ飛ぶ"/.test(h), '押せると分かる表示');
+  // 接点Ref
+  setState([page([{ id: 'c1', type: 'ca', partRef: 'K1' }]), page([{ id: 'd1', type: 'coil', partRef: 'K2' }, { id: 'd2', type: 'coil', partRef: 'K2' }, { id: 'd3', type: 'ca', partRef: 'K2' }])]);
+  sb.elLocation = () => '1/A1';
+  vm.runInContext('showRefPanel()', sb);
+  h = sb.htmlOut;
+  ok(/jumpToRefEl\(0,&quot;c1&quot;\)"[^>]*>⚠ コイル未配置/.test(h), '接点Ref: コイル未配置の⚠は、そのデバイスの最初の記号へ飛ぶ');
+  ok(/jumpToRefEl\(1,&quot;d1&quot;\)"[^>]*>⚠ コイルが2個/.test(h), '接点Ref: コイルが複数の⚠は、最初のコイル(2ページ目)へ飛ぶ');
+}
+
 console.log(ng ? `\n失敗 ${ng} 件` : '\nすべて通過');
 process.exit(ng ? 1 : 0);

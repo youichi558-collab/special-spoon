@@ -453,9 +453,7 @@ function showTBTable() {
   _reportOpen('tbtbl', '端子台表', html, exportTBCSV);
 }
 
-// onclick等の属性に文字列を安全に渡す(JSの文字列リテラル化してからHTML属性用にエスケープ)。
-// 以前は ' だけを直しており、\ や " や < を含むデバイス名で壊れた(2026-09-29)。
-function _jsArg(v) { return escH(JSON.stringify(String(v == null ? '' : v))); }
+// _jsArg(onclick等の属性に文字列を安全に渡す)は report.js にある(部品表・線番表・接点Refでも使うため、そちらに置いた)。
 
 // デバイス見出しの「端子台として集計」切り替え。
 // 押すとその台の端子すべてに印が付き(setTBExcluded)、表が描き直される。

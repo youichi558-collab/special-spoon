@@ -12,6 +12,11 @@ const REPORT_TABS = [
 
 let _lastReportTab = 'bom'; // 帳票系タブが最後に表示していた種類を記憶(現状は参照専用、保存対象外)
 
+// onclick等の属性に文字列を安全に渡す(JSの文字列リテラル化してからHTML属性用にエスケープ)。
+// 以前は ' だけを直しており、\ や " や < を含むデバイス名で壊れた(2026-09-29)。
+// 帳票の複数のファイル(report.js・conn_table.js)が使うので、先に読み込まれる report.js に置く。
+function _jsArg(v) { return escH(JSON.stringify(String(v == null ? '' : v))); }
+
 function _reportOpen(tabKey, title, bodyHtml, csvFn) {
   _lastReportTab = tabKey;
   const tabsEl = document.getElementById('report-tabs');
@@ -575,7 +580,7 @@ function collectBOMRows(){
   const skip=['text','rect','circle','fline','dim','leader','angle_dim','wire'];
   const devices={};   // 正規化キー -> { spellings:Map(表記->出現数), models:Set, types:Set, parts:0 }
   const noRef={};
-  state.pages.forEach(pg=>{
+  state.pages.forEach((pg,pi)=>{
     (pg.elements||[]).forEach(el=>{
       if(skip.includes(el.type))return;
       // 【2026-09-25】配線の分岐点(●)は部品ではない(盛田さん)。以前は「デバイス未設定」に
@@ -591,6 +596,8 @@ function collectBOMRows(){
         dv.parts++;
         dv.types.add(el.type);
         dv.els.push(el);
+        // 帳票の⚠を押したときの飛び先: そのデバイスのコイル(無ければ最初の要素)
+        if(!dv.jump||(!dv.jump.coil&&symRole(el)==='coil'))dv.jump={pi,id:el.id,coil:symRole(el)==='coil'};
         const m=(el.partModel||'').trim();
         if(m){
           dv.models.add(m);
@@ -700,7 +707,7 @@ function collectBOMRows(){
     const zones=[...dv.zones];
     const zone=zones[0]||'';
     const k=devKey;   // 1デバイス=1行(上のコメント参照)
-    if(!byModel[k])byModel[k]={type:primary,model,spec,volt,maker,pname,pnote,zone,label:model||'(型番未設定)',
+    if(!byModel[k])byModel[k]={type:primary,model,spec,volt,maker,pname,pnote,zone,label:model||'(型番未設定)',jump:dv.jump||null,
                                refs:[],els:[],count:0,parts:0,noRef:false,warn:''};
     const row=byModel[k];
     row.refs.push(ref);
@@ -862,7 +869,10 @@ function showBOM(){
   // そのデバイスの全要素へ書き戻す(setBOMModel)。型番が複数あって食い違っているときも、ここで1つに揃えられる。
   // デバイス未設定の行は、書き戻す先のデバイスが無いので打てない(従来の表示のまま)。
   const modelCell = (r, i) => {
-    const warn = r.warn ? `<div style="color:var(--red);font-size:10px">⚠${escH(r.warn)}</div>` : '';
+    // ⚠を押すと、図面のそのデバイス(コイル、無ければ最初の記号)へ飛ぶ(盛田さん「デバイス単位の⚠も飛べるように」)
+    const warn = r.warn ? (r.jump
+      ? `<div style="color:var(--red);font-size:10px;cursor:pointer;text-decoration:underline dotted" title="クリックで図面のこのデバイスへ飛ぶ" onclick="jumpToRefEl(${r.jump.pi},${_jsArg(r.jump.id)})">⚠${escH(r.warn)}</div>`
+      : `<div style="color:var(--red);font-size:10px">⚠${escH(r.warn)}</div>`) : '';
     if (r.noRef) return `<td>${escH(r.label)}${warn}</td>`;
     return `<td><input type="text" value="${escH(r.model||'')}" placeholder="(型番未設定)"`
       + ` onchange="setBOMModel(${i}, this.value)" title="このデバイスの全要素(コイル・接点・端子)に同じ型番を入れます"`
@@ -1146,8 +1156,12 @@ function showRefPanel(){
             :`<div style="font-size:10px;color:var(--red)">⚠ ${escH(pb.msg)}</div>`).join('')
           :'<div style="font-size:10px;color:var(--fg3)">✓ 問題なし</div>');
     }
-    return `<tr><td><b>${escH(name)}</b>${warns.length
-        ?`<br><span style="color:var(--red);font-size:10px">⚠ ${escH(warns.join(' / '))}</span>`:''}</td>`
+    // ⚠を押すと、図面のそのデバイス(コイル、無ければ最初の記号)へ飛ぶ
+    const tgt=dv.coils[0]||dv.contacts[0];
+    const warnHtml=!warns.length?'':tgt
+      ?`<br><span style="color:var(--red);font-size:10px;cursor:pointer;text-decoration:underline dotted" title="クリックで図面のこのデバイスへ飛ぶ" onclick="jumpToRefEl(${tgt.page-1},${_jsArg(tgt.el.id)})">⚠ ${escH(warns.join(' / '))}</span>`
+      :`<br><span style="color:var(--red);font-size:10px">⚠ ${escH(warns.join(' / '))}</span>`;
+    return `<tr><td><b>${escH(name)}</b>${warnHtml}</td>`
       +`<td>${coilTxt}</td>`
       +`<td>${dv.contacts.map(badge).join(' ')||'なし'}</td>`
       +`<td>${nContacts}</td>`
