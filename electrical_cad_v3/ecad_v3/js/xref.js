@@ -58,17 +58,40 @@ function xrefSamePair(a, b) {
 // c接点の3端子を「昇順でNC・NO・共通」と読んでよい型式: オムロン MY 系(MY2N・MY4N・MY4ZN…=実図面Sheet3で確認済み)と、
 // 富士 HH5 系(HH52P・HH54P…=**盛田さんの判断**「ソケットを共用できるので端子の役割はオムロンと同じ」。実物での確認は未)。
 // H3Y は MY と同じ並び(1,5,9 / 4,8,12)だが図面で未確認なので入れていない。**型式を増やすときは実物の端子で確かめてから**。
-const XREF_C_ORDER_OK = /^(MY|HH5)\d/i;
+const XREF_C_ORDER_OK = /^((MY|HH5)\d|H3YN?-)/i;
+
+// 【型式ごとの端子の役割の表】カタログで確かめた、c接点ごとの (共通・NO・NC)。部品DBの端子欄の並びに頼らない
+// (タイマは接点ごとに並びが逆: 例 H3CR-Aの `1,3,4`=共通,NO,NC と `11,8,9`=共通,NC,NO)ので、役割を明示して持つ。
+// 出典(オムロン、Google Driveのカタログ PDF。2026-09-29に本文を読んで確認):
+//   H3CR-A(11ピン): 限時接点 NC=⑪-⑧(①-④)、NO=⑪-⑨(①-③)      H3CR-A p.13 動作チャート・p.6 端子配置
+//   H3CR-F/-FN(11ピン): NO ①-③・⑪-⑨、NC ①-④・⑪-⑧             H3CR-F/-G/-H p.7 動作チャート
+//   H3CR-A8/-A8E(8ピン): 限時 NC=⑧-⑤・NO=⑧-⑥、(A8Eの)瞬時 NC=①-④・NO=①-③   H3CR-A p.15-16
+//   H3CR-F8/-F8N(8ピン): NO ①-③・⑥-⑧、NC ①-④・⑤-⑧            H3CR-F/-G/-H p.7
+// **確認していない型式(H3CR-G/-H、トランジスタ出力のAS・A8S等)は入れない**。追加するときは実物・カタログで確かめてから。
+const XREF_C_TABLE = [
+  { re: /^H3CR-(A|AP|F|FN)$/i,          contacts: [{ com: 1, no: 3, nc: 4 }, { com: 11, no: 9, nc: 8 }] },
+  { re: /^H3CR-(A8|A8E|F8|F8N)$/i,      contacts: [{ com: 1, no: 3, nc: 4 }, { com: 8,  no: 6, nc: 5 }] },
+];
+function xrefModelToken(model) { return String(model || '').trim().split(/\s+/)[0]; }
 
 // 型番 → 接点の枠の一覧 [{kind:'a'|'b', t:[p,q]}]。作れなければ []
 function xrefSlots(model) {
+  // ① 型式ごとの表(カタログで役割を確認済み)。部品DBに登録が無くても使える
+  const tok = xrefModelToken(model);
+  const hit = XREF_C_TABLE.find(t => t.re.test(tok));
+  if (hit) {
+    const out = [];
+    hit.contacts.forEach(c => out.push({ kind: 'a', t: [c.com, c.no] }, { kind: 'b', t: [c.com, c.nc] }));
+    return out;
+  }
+  // ② 部品DBの端子欄(補助接点の組、確認済みの型式のc接点の3端子)
   const p = (state.customParts || []).find(x => x.ref === model);
   if (!p || !p.terminals || typeof parseTerminalGroups !== 'function') return [];
   const out = [];
   parseTerminalGroups(p.terminals).forEach(g => {
     const nums = g.list.map(s => parseInt(s, 10));
     if (nums.some(n => !Number.isFinite(n))) return;
-    if (/^接点\d*$/.test(g.name) && nums.length === 3) {
+    if (/^(限時)?接点\d*$/.test(g.name) && nums.length === 3) {
       // 「昇順で NC・NO・共通」は**確認できた型式でだけ**使う(XREF_C_ORDER_OK)。他の型式(例: H3CRの`1,3,4`)は
       // この並びとは限らず、間違った端子番号を図面に出すのは出さないより悪いので、枠を作らない(使用中の接点は端子番号つきで出る)
       if (!XREF_C_ORDER_OK.test(model)) return;

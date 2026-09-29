@@ -95,11 +95,31 @@ console.log('\n【型式が無い・部品DBに無い: 使用中の接点だけ�
   eq(L.blocks[0].lines.map(l => l.t), ['R9', 'a 13-14 (1/3A)', 'b (1/4A)'], '型式・電圧の行は詰め、使用中だけ(端子番号が無い接点は a/b と位置)');
 }
 
-console.log('\n【並びを確認していない型式(H3CR)では、c接点の3端子から枠を作らない】');
+console.log('\n【タイマ(オムロンH3CR-A): カタログで確認した端子の役割の表を使う(部品DBの登録に依存しない)】');
 {
-  const els = [coil('T1', 100, 100, { partModel: 'H3CR-A' }), cont('ca', 'T1', 200, 50, '4,3', { partModel: 'H3CR-A' })];
-  const L = setup(els);
-  eq(L.blocks[0].lines.map(l => l.t), ['T1', 'H3CR-A', 'AC100V', 'a 4-3 (1/3A)'], '間違った端子番号の枠は出さず、使用中の接点だけを端子番号つきで出す');
+  // 実カタログ: 限時接点 NC=⑪-⑧(①-④)、NO=⑪-⑨(①-③)。DBの並びは接点ごとに逆(1,3,4 / 11,8,9)なので、並びから機械的には決まらない
+  const els = [coil('T1', 100, 100, { partModel: 'H3CR-A', partVolt: 'AC200V' }), cont('ca', 'T1', 200, 50, '11,9', { partModel: 'H3CR-A' }), cont('cb', 'T1', 240, 50, '11,8', { partModel: 'H3CR-A' })];
+  const L = setup(els, [], []);          // 部品DBは空(手打ち運用)でも出る
+  eq(L.blocks[0].lines.map(l => l.t), ['T1', 'H3CR-A', 'AC200V', 'a 1-3', 'b 1-4', 'a 11-9 (1/3A)', 'b 11-8 (1/4A)'],
+    'H3CR-A: 接点1(共通1・NO3・NC4)は空き、接点2(共通11・NO9・NC8)は使用中');
+  const s8 = setup([coil('T2', 100, 100, { partModel: 'H3CR-A8' })], [], []);
+  eq(s8.blocks[0].lines.slice(3).map(l => l.t), ['a 1-3', 'b 1-4', 'a 8-6', 'b 8-5'], 'H3CR-A8(8ピン): 接点2は共通8・NO6・NC5');
+  const fn = setup([coil('T3', 100, 100, { partModel: 'H3CR-FN' })], [], []);
+  eq(fn.blocks[0].lines.slice(3).map(l => l.t), ['a 1-3', 'b 1-4', 'a 11-9', 'b 11-8'], 'H3CR-FN(11ピン)もH3CR-Aと同じ');
+}
+
+console.log('\n【確認していないタイマ(H3CR-H)は枠を作らない】');
+{
+  const els = [coil('T9', 100, 100, { partModel: 'H3CR-H8L' }), cont('ca', 'T9', 200, 50, '4,3', { partModel: 'H3CR-H8L' })];
+  const L = setup(els, [], [{ ref: 'H3CR-H8L', type: 'timer', terminals: 'コイル:2,7 / 限時接点1:1,3,4 / 限時接点2:8,5,6' }]);
+  eq(L.blocks[0].lines.map(l => l.t), ['T9', 'H3CR-H8L', 'AC100V', 'a 4-3 (1/3A)'], '並びを確認していない型式は、使用中の接点だけを出す');
+}
+
+console.log('\n【H3Y(MYとピンコンパチ)はMY系と同じ並びとして枠を作る】');
+{
+  const els = [coil('T4', 100, 100, { partModel: 'H3Y-2' })];
+  const L = setup(els, [], [{ ref: 'H3Y-2', type: 'timer', terminals: 'コイル:13,14 / 限時接点1:1,5,9 / 限時接点2:4,8,12' }]);
+  eq(L.blocks[0].lines.slice(3).map(l => l.t), ['a 9-5', 'b 9-1', 'a 12-8', 'b 12-4'], 'H3Y-2: 昇順でNC・NO・共通');
 }
 
 console.log('\n【富士 HH5 系はMY系と同じ並びとして枠を作る(盛田さんの判断: ソケット共用)】');
