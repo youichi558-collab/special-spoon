@@ -55,9 +55,10 @@ function xrefSamePair(a, b) {
   return !!a && !!b && ((a[0] === b[0] && a[1] === b[1]) || (a[0] === b[1] && a[1] === b[0]));
 }
 
-// c接点の3端子を「昇順でNC・NO・共通」と読んでよい型式(実図面で確認済み): オムロン MY 系(MY2N・MY4N・MY4ZN…)。
+// c接点の3端子を「昇順でNC・NO・共通」と読んでよい型式: オムロン MY 系(MY2N・MY4N・MY4ZN…=実図面Sheet3で確認済み)と、
+// 富士 HH5 系(HH52P・HH54P…=**盛田さんの判断**「ソケットを共用できるので端子の役割はオムロンと同じ」。実物での確認は未)。
 // H3Y は MY と同じ並び(1,5,9 / 4,8,12)だが図面で未確認なので入れていない。**型式を増やすときは実物の端子で確かめてから**。
-const XREF_C_ORDER_OK = /^MY\d/i;
+const XREF_C_ORDER_OK = /^(MY|HH5)\d/i;
 
 // 型番 → 接点の枠の一覧 [{kind:'a'|'b', t:[p,q]}]。作れなければ []
 function xrefSlots(model) {
