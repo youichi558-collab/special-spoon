@@ -277,6 +277,18 @@ function saveAllProject() {
   renderPageTabs();
 }
 
+// v1以前(旧形式)のファイルのページを、今の形に直す(groupsをpages内に移動・idを付与)。
+// 置き換え読込(applyProjectData)と、消さない読込(appendProjectData)の両方で使う。
+function _legacyProjectPages(d) {
+  const pages = d.pages || [{ name:'Sheet1', elements: d.elements||[], wires: d.wires||[], frameObj: d.frameObj||null }];
+  return pages.map(pg => ({
+    ...pg,
+    groups: [],
+    elements: (pg.elements||[]).map(el => el.id ? el : { ...el, id: genId('el') }),
+    wires:    (pg.wires||[]).map(w  => w.id  ? w  : { ...w,  id: genId('w'), wireNoAuto: true }),
+  }));
+}
+
 // 読み込んだプロジェクトデータ(保存ファイルと同じ形)を、実際に画面へ反映する。
 //
 // 【2026-09-20】ファイルからの読込(loadProject)とバックアップからの復元
@@ -301,14 +313,7 @@ function applyProjectData(d) {
         if (d.layers && d.layers.length) { LAYERS.length = 0; d.layers.forEach(l => LAYERS.push(l)); }
       } else {
         // v1以前（旧形式）からのマイグレーション
-        const pages = d.pages || [{ name:'Sheet1', elements: d.elements||[], wires: d.wires||[], frameObj: d.frameObj||null }];
-        // groupsをpages内に移動・idを付与
-        state.pages = pages.map(pg => ({
-          ...pg,
-          groups: [],
-          elements: (pg.elements||[]).map(el => el.id ? el : { ...el, id: genId('el') }),
-          wires:    (pg.wires||[]).map(w  => w.id  ? w  : { ...w,  id: genId('w'), wireNoAuto: true }),
-        }));
+        state.pages = _legacyProjectPages(d);
         state.customSymbols = d.customSymbols || [];
         _mergeOrSetCustomParts(d.customParts);
         _mergeOrSetHiddenBuiltinRefs(d.hiddenBuiltinRefs);
@@ -332,24 +337,131 @@ function applyProjectData(d) {
       return { fixedIds, zeroWires };
 }
 
+// 【2026-09-29】「消さない読込」。今の図面をそのままにして、読み込んだファイルのページを**最後に足す**
+// (盛田さん「保存データ読込で今のデータを全部消して読み込んでるのを、消す場合と消さない場合に選べるか」)。
+// 置き換え(applyProjectData)との違い:
+//   ・今のページ・要素・配線・現在のページ・保存ファイル名・線番の規則は変えない
+//   ・レイヤー: 今のレイヤーはそのまま(色・表示も)。ファイルにあって今に無い名前だけ足す
+//     (足さないと、追加したページの要素が「レイヤー不明」で最初のレイヤーに戻される)
+//   ・カスタムシンボル: type が今に無いものだけ足す。同じ type が既にあれば**今のものを使う**
+//   ・部品DB(customParts)・非表示の内蔵部品: 今に無い ref だけ足す(外部の部品DBの有無に関わらず足すだけ)
+//   ・ページ名が今のページと同じなら、末尾に (2) (3)… を付ける(出力のファイル名がぶつからないように)
+//   ・図形・配線のIDが今のものと重複したら、追加した側のIDを付け替える(dedupeIds は先に出てきた方=今のものを残す)
+//   ・追加したページは未保存マーク(●)にする。取り消し(Ctrl+Z)で元に戻せる(呼び出し側の pushH)
+// 戻り値: { added, names, fixedIds, zeroWires, symAdded, symKept, partsAdded, layersAdded }
+function appendProjectData(d) {
+  _syncCurrentPage();
+  const newPages = (d.version === 2 ? (d.pages || []) : _legacyProjectPages(d));
+  if (!newPages.length) throw new Error('ファイルにページがありません');
+  // 旧フォーマット互換: v2のトップレベルの guides は先頭ページへ(applyProjectData と同じ)
+  if (d.version === 2 && d.guides && d.guides.length) newPages[0].guides = d.guides;
+
+  // レイヤー: 無い名前だけ足す(今のものは変えない)
+  let layersAdded = 0;
+  (d.layers || []).forEach(l => {
+    if (l && l.name && !LAYERS.some(x => x.name === l.name)) { LAYERS.push(l); layersAdded++; }
+  });
+  // カスタムシンボル: type が無いものだけ足す
+  let symAdded = 0, symKept = 0;
+  (d.customSymbols || []).forEach(sym => {
+    if (state.customSymbols.some(x => x.type === sym.type)) { symKept++; return; }
+    state.customSymbols.push(sym); DEFS[sym.type] = sym; symAdded++;
+  });
+  // 部品DB・非表示の内蔵部品: 無い ref だけ足す
+  let partsAdded = 0;
+  state.customParts = state.customParts || [];
+  (d.customParts || []).forEach(pt => {
+    if (!state.customParts.some(x => x.ref === pt.ref)) { state.customParts.push(pt); partsAdded++; }
+  });
+  state.hiddenBuiltinRefs = state.hiddenBuiltinRefs || [];
+  (d.hiddenBuiltinRefs || []).forEach(ref => { if (!state.hiddenBuiltinRefs.includes(ref)) state.hiddenBuiltinRefs.push(ref); });
+
+  // ページ名: 今と同じなら (2)(3)… を付ける
+  const used = new Set(state.pages.map(pg => pg.name));
+  const names = [];
+  newPages.forEach((pg, i) => {
+    let n = pg.name || ('Sheet' + (state.pages.length + i + 1));
+    if (used.has(n)) { let k = 2; while (used.has(`${n}(${k})`)) k++; n = `${n}(${k})`; }
+    pg.name = n; used.add(n); names.push(n);
+    if (!pg.guides) pg.guides = [];
+  });
+
+  state.pages.push(...newPages);
+  stripLegacyColors(newPages);
+  const fixedLayers = repairLayers(newPages);
+  if (fixedLayers) console.log(`レイヤーが失われた要素を${fixedLayers}件修復しました`);
+  const fixedIds = dedupeIds(state.pages);      // 先に出てくる今のページのIDを残し、追加側を付け替える
+  const zeroWires = removeZeroLengthWires(newPages);
+  newPages.forEach(pg => pruneGroups(pg));
+  newPages.forEach(pg => { pg.dirty = true; });
+  renderSymFloat(); renderPartsAll(); renderPageTabs(); draw(); updateRightPanel();
+  return { added: newPages.length, names, fixedIds, zeroWires, symAdded, symKept, partsAdded, layersAdded };
+}
+
+// 読込の方法を聞く小さなダイアログ(置き換え / 消さずに追加 / キャンセル)。
+// Escape・背景クリックはキャンセル。選ばれたら cb('replace'|'append') を呼ぶ。
+function _askLoadMode(info, cb) {
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+  const ov = document.createElement('div');
+  ov.id = 'load-mode-dlg';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;display:flex;align-items:center;justify-content:center';
+  const btn = 'padding:6px 12px;font-size:12px;cursor:pointer;border:1px solid var(--bd2);border-radius:4px;background:var(--bg2);color:var(--fg);text-align:left';
+  ov.innerHTML = `<div role="dialog" style="background:var(--bg2);color:var(--fg);border:1px solid var(--bd);border-radius:6px;padding:16px 18px;max-width:480px;box-shadow:0 4px 24px var(--sh);font-size:12px;line-height:1.6">
+    <div style="font-size:13px;font-weight:600;margin-bottom:6px">読込の方法を選んでください</div>
+    <div style="color:var(--fg3);margin-bottom:10px">${esc(info.name)}（${info.filePages}ページ）／ 今の図面：${info.curPages}ページ</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <button id="lm-replace" style="${btn}"><b>置き換える</b><br><span style="color:var(--fg3)">今の図面は全部消えて、このファイルになります（取り消しで戻せます）</span></button>
+      <button id="lm-append" style="${btn}"><b>今の図面の後ろにページとして追加する</b><br><span style="color:var(--fg3)">今の図面は変わりません。ファイルの${info.filePages}ページを最後に足します</span></button>
+      <button id="lm-cancel" style="${btn}">キャンセル</button>
+    </div></div>`;
+  const close = () => { document.removeEventListener('keydown', onKey, true); ov.remove(); };
+  const onKey = e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+  document.addEventListener('keydown', onKey, true);
+  ov.addEventListener('mousedown', e => { if (e.target === ov) close(); });
+  document.body.appendChild(ov);
+  ov.querySelector('#lm-replace').onclick = () => { close(); cb('replace'); };
+  ov.querySelector('#lm-append').onclick  = () => { close(); cb('append'); };
+  ov.querySelector('#lm-cancel').onclick  = close;
+  ov.querySelector('#lm-replace').focus();
+}
+
 function loadProject(input) {
   const f = input.files[0]; if (!f) return;
   const rd = new FileReader();
   rd.onload = e => {
-    try {
-      const d = JSON.parse(e.target.result);
-      pushH();
-      const { fixedIds, zeroWires } = applyProjectData(d);
-      alert(fixedIds > 0 || zeroWires > 0
-        ? `読込完了\n`
-          + (fixedIds > 0 ? `\n重複していた図形IDを ${fixedIds} 件修復しました。\n`
-            + `(このファイルは、図形が勝手に一緒に動く・消える不具合が起きうる状態でした)\n` : '')
-          + (zeroWires > 0 ? `\n長さ0の配線(見えない配線)を ${zeroWires} 本削除しました。\n` : '')
-          + `上書き保存すると修復後の状態になります。`
-        : '読込完了');
-    } catch(err) {
-      alert('読込失敗: ' + err.message);
-    }
+    let d;
+    try { d = JSON.parse(e.target.result); }
+    catch(err) { alert('読込失敗: ' + err.message); return; }
+    const filePages = d.version === 2 ? (d.pages || []).length : (d.pages ? d.pages.length : 1);
+    _askLoadMode({ name: f.name, filePages, curPages: state.pages.length }, mode => {
+      try {
+        if (mode === 'append') {
+          // pushH は今のページに未保存マーク(●)を付けるが、追加読込は今のページを変えないので、付けない
+          const cur = state.page, wasDirty = cur.dirty;
+          pushH();
+          cur.dirty = wasDirty;
+          const r = appendProjectData(d);
+          alert(`追加しました（${r.added}ページ）\n${r.names.join('、')}\n\n今の図面は変わっていません。`
+            + (r.fixedIds > 0 ? `\n重複していた図形IDを ${r.fixedIds} 件付け替えました。` : '')
+            + (r.zeroWires > 0 ? `\n長さ0の配線(見えない配線)を ${r.zeroWires} 本削除しました。` : '')
+            + (r.symAdded || r.symKept ? `\nシンボル：追加 ${r.symAdded} 件` + (r.symKept ? `、同じ種類が既にあったので今のものを使用 ${r.symKept} 件` : '') : '')
+            + (r.layersAdded ? `\nレイヤー：追加 ${r.layersAdded} 件` : '')
+            + `\n取り消し(Ctrl+Z)で元に戻せます。`);
+          return;
+        }
+        pushH();
+        const { fixedIds, zeroWires } = applyProjectData(d);
+        alert(fixedIds > 0 || zeroWires > 0
+          ? `読込完了\n`
+            + (fixedIds > 0 ? `\n重複していた図形IDを ${fixedIds} 件修復しました。\n`
+              + `(このファイルは、図形が勝手に一緒に動く・消える不具合が起きうる状態でした)\n` : '')
+            + (zeroWires > 0 ? `\n長さ0の配線(見えない配線)を ${zeroWires} 本削除しました。\n` : '')
+            + `上書き保存すると修復後の状態になります。`
+          : '読込完了');
+      } catch(err) {
+        alert('読込失敗: ' + err.message);
+      }
+    });
   };
   rd.readAsText(f);
   input.value = '';
