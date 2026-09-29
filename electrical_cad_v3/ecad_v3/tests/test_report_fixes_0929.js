@@ -102,5 +102,35 @@ console.log('\n【部品表: デバイス未設定の行に内部名(custom_xxx)
   ok(lab('custom_reg') === '押しボタン', '登録シンボルの名前を出す');
 }
 
+console.log('\n【部品表: 型番を表のセルから直せる】');
+{
+  sb.symRole = el => (el.type === 'coil' ? 'coil' : '');
+  const mk = (id, type, model, ref) => ({ id, type, partRef: ref || 'CR2', partModel: model, partVolt: 'AC100V' });
+  const els = [mk('1', 'ca', 'MY2N AC100V'), mk('2', 'coil', 'MY4N'), mk('3', 'cb', 'MY4N'), mk('4', 'ca', 'X1', 'CR9')];
+  const pg = page(els); pg.groups = [{ id: 'g', partRef: 'CR-2', partModel: 'OLD' }, { id: 'h', partRef: 'CR9', partModel: 'KEEP' }];
+  setState([pg]);
+  vm.runInContext('showBOM()', sb);
+  const h = sb.htmlOut;
+  ok(/<input type="text" value="MY4N" placeholder="\(型番未設定\)" onchange="setBOMModel\(\d+, this\.value\)"/.test(h), '型番欄が入力欄になっていて、今の型番(多数派)が入っている');
+  ok(/型番が複数\(/.test(h), '型番が複数あるという警告は入力欄の下に出る');
+  const idx = vm.runInContext('window._bomRows', sb).findIndex(r => r.refs[0] === 'CR2');
+  let pushed = 0; sb.pushH = () => { pushed++; };
+  vm.runInContext(`setBOMModel(${idx}, ' MY4N ')`, sb);
+  ok(els.slice(0, 3).every(e => e.partModel === 'MY4N'), 'そのデバイスの全要素に型番が入る(食い違いが揃う)');
+  ok(els[3].partModel === 'X1', '別のデバイスは変わらない');
+  ok(pg.groups[0].partModel === 'MY4N' && pg.groups[1].partModel === 'KEEP', '綴りが違っても同じデバイスのグループにも入り、別のデバイスのグループは変わらない');
+  ok(els[0].partVolt === 'AC100V', '電圧は触らない');
+  ok(pushed === 1, '取り消せる(pushH)ようにする');
+  ok(!/CR2に型番が複数/.test(sb.htmlOut), '揃えたら「型番が複数」の警告が消える(表が作り直されている)');
+  vm.runInContext(`setBOMModel(${idx}, '')`, sb);
+  ok(els[0].partModel === undefined, '空にすれば型番を消す');
+  // デバイス未設定の行は打てない
+  setState([page([{ id: 'n', type: 'lamp' }])]);
+  vm.runInContext('showBOM()', sb);
+  const ni = vm.runInContext('window._bomRows', sb).findIndex(r => r.noRef);
+  vm.runInContext(`setBOMModel(${ni}, 'ZZ')`, sb);
+  ok(sb.state.pages[0].elements[0].partModel === undefined, 'デバイス未設定の行には書き戻さない');
+}
+
 console.log(ng ? `\n失敗 ${ng} 件` : '\nすべて通過');
 process.exit(ng ? 1 : 0);

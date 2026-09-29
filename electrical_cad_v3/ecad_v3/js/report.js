@@ -835,11 +835,21 @@ function showBOM(){
   // 部品表はExcelに出して人が転記する運用で、転記先(実物)も
   // 機器名[SYMBOL]が先頭。読む順が揃っていないと転記しにくい。
   // 中身(デバイス単位の集計)は元から正しいので、並べ替えだけ。
+  // 【2026-09-29】型番も帳票で直接打てる(盛田さん「部品表で型番修正できないが？」)。メーカー・名称・備考と同じ作法で、
+  // そのデバイスの全要素へ書き戻す(setBOMModel)。型番が複数あって食い違っているときも、ここで1つに揃えられる。
+  // デバイス未設定の行は、書き戻す先のデバイスが無いので打てない(従来の表示のまま)。
+  const modelCell = (r, i) => {
+    const warn = r.warn ? `<div style="color:var(--red);font-size:10px">⚠${escH(r.warn)}</div>` : '';
+    if (r.noRef) return `<td>${escH(r.label)}${warn}</td>`;
+    return `<td><input type="text" value="${escH(r.model||'')}" placeholder="(型番未設定)"`
+      + ` onchange="setBOMModel(${i}, this.value)" title="このデバイスの全要素(コイル・接点・端子)に同じ型番を入れます"`
+      + ` style="width:170px;font-size:11px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:3px;padding:1px 3px">${warn}</td>`;
+  };
   const rowHtml = ({r,i}) =>
     `<tr${r.noRef?' style="background:var(--rbg)"':''}>`
     +`<td style="font-weight:600">${r.noRef?'<span style="color:var(--red)">未設定</span>':(escH(r.refs.join(', '))||'-')}</td>`
     +nameCell(r,i)
-    +`<td>${escH(r.label)}${r.warn?` <span style="color:var(--red);font-size:10px">⚠${escH(r.warn)}</span>`:''}</td>`
+    +modelCell(r,i)
     +makerCell(r,i)
     +voltCell(r,i)
     +`<td style="font-weight:600">${r.count}</td><td style="color:var(--fg3)">${escH(r.parts)}</td>`
@@ -879,6 +889,22 @@ function setBOMMaker(idx, maker){
   if(typeof pushH==='function')pushH();   // 変更前の状態を履歴に積む
   const v=(maker||'').trim();
   (r.els||[]).forEach(el=>{ el.partMaker=v||undefined; });
+  if(typeof draw==='function')draw();
+  if(typeof updateRightPanel==='function')updateRightPanel();
+  showBOM();
+}
+// 型番を部品表のセルから直接打つ。そのデバイスの全要素と、同じデバイスのグループ(外形図)に書き戻す。
+// 電圧など、ほかの項目は触らない(型番を変えたあと電圧が選択肢に無ければ、電圧欄に「選択肢に無い」と出る)。
+function setBOMModel(idx, v){
+  const r=(window._bomRows||[])[idx];
+  if(!r||r.noRef)return;
+  if(typeof pushH==='function')pushH();   // 変更前の状態を履歴に積む
+  const val=(v||'').trim();
+  (r.els||[]).forEach(el=>{ el.partModel=val||undefined; });
+  const key=normalizeRef((r.refs&&r.refs[0])||'');
+  if(key)state.pages.forEach(pg=>(pg.groups||[]).forEach(g=>{
+    if(normalizeRef(g.partRef)===key)g.partModel=val||undefined;
+  }));
   if(typeof draw==='function')draw();
   if(typeof updateRightPanel==='function')updateRightPanel();
   showBOM();
