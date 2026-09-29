@@ -399,6 +399,13 @@ function appendProjectData(d) {
   return { added: newPages.length, names, fixedIds, zeroWires, symAdded, symKept, partsAdded, layersAdded };
 }
 
+// 読込後のデバイスの点検(js/devices.js devAfterLoad)の結果を、読込完了の知らせに足す文
+function _devLoadMsg(dm) {
+  if (!dm) return '';
+  return (dm.filled ? `\n\nデバイスの値をそろえました：同じデバイスの記号の空欄 ${dm.filled} か所に、そのデバイスの値を入れました（図面の見た目は変わりません）。` : '')
+    + (dm.conflicts && dm.conflicts.length ? `\n\n同じデバイスで値が食い違っている所が ${dm.conflicts.length} 件あります。このあと出る画面で正しい方を選んでください。` : '');
+}
+
 // 読込の方法を聞く小さなダイアログ(置き換え / 消さずに追加 / キャンセル)。
 // Escape・背景クリックはキャンセル。選ばれたら cb('replace'|'append') を呼ぶ。
 function _askLoadMode(info, cb) {
@@ -442,7 +449,9 @@ function loadProject(input) {
           pushH();
           cur.dirty = wasDirty;
           const r = appendProjectData(d);
+          const dm = (typeof devAfterLoad === 'function') ? devAfterLoad({ defer: true }) : { filled: 0, conflicts: [] };
           alert(`追加しました（${r.added}ページ）\n${r.names.join('、')}\n\n今の図面は変わっていません。`
+            + _devLoadMsg(dm)
             + (r.fixedIds > 0 ? `\n重複していた図形IDを ${r.fixedIds} 件付け替えました。` : '')
             + (r.zeroWires > 0 ? `\n長さ0の配線(見えない配線)を ${r.zeroWires} 本削除しました。` : '')
             + (r.symAdded || r.symKept ? `\nシンボル：追加 ${r.symAdded} 件` + (r.symKept ? `、同じ種類が既にあったので今のものを使用 ${r.symKept} 件` : '') : '')
@@ -452,13 +461,14 @@ function loadProject(input) {
         }
         pushH();
         const { fixedIds, zeroWires } = applyProjectData(d);
-        alert(fixedIds > 0 || zeroWires > 0
+        const dm = (typeof devAfterLoad === 'function') ? devAfterLoad({ defer: true }) : { filled: 0, conflicts: [] };
+        alert((fixedIds > 0 || zeroWires > 0
           ? `読込完了\n`
             + (fixedIds > 0 ? `\n重複していた図形IDを ${fixedIds} 件修復しました。\n`
               + `(このファイルは、図形が勝手に一緒に動く・消える不具合が起きうる状態でした)\n` : '')
             + (zeroWires > 0 ? `\n長さ0の配線(見えない配線)を ${zeroWires} 本削除しました。\n` : '')
             + `上書き保存すると修復後の状態になります。`
-          : '読込完了');
+          : '読込完了') + _devLoadMsg(dm));
       } catch(err) {
         alert('読込失敗: ' + err.message);
       }

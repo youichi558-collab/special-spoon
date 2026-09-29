@@ -260,10 +260,12 @@ async function bkRestore(name) {
     if (!j.ok) throw new Error(j.error || '読めませんでした');
     pushH();
     const { fixedIds, zeroWires } = applyProjectData(j.data);
+    const dm = (typeof devAfterLoad === 'function') ? devAfterLoad({ defer: true }) : null;   // デバイスの点検(js/devices.js)
     closeFP('backup-p');
     alert(`「${name}」を開きました。`
       + (fixedIds > 0 ? `\n\n重複していた図形IDを ${fixedIds} 件修復しました。` : '')
-      + (zeroWires > 0 ? `\n\n長さ0の配線(見えない配線)を ${zeroWires} 本削除しました。` : ''));
+      + (zeroWires > 0 ? `\n\n長さ0の配線(見えない配線)を ${zeroWires} 本削除しました。` : '')
+      + (typeof _devLoadMsg === 'function' ? _devLoadMsg(dm) : ''));
   } catch (e) {
     alert('開けませんでした: ' + e.message);
   }

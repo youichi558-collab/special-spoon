@@ -289,6 +289,10 @@ function restoreAutosave() {
     _asRestoreFailed = false;
     _asBlockedCount  = 0;
 
+    // デバイスの点検(js/devices.js): 同じデバイスの記号の空欄をそろえ、食い違いがあれば選ぶ画面を出す(起動の後で)
+    let devFilled = 0;
+    try { if (typeof devAfterLoad === 'function') devFilled = devAfterLoad({ defer: true }).filled; } catch (e) { console.warn('[デバイスの点検]', e); }
+
     const t = d.savedAt ? new Date(d.savedAt) : null;
     const ts = t ? ` (${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}保存)` : '';
     setTimeout(() => {
@@ -299,6 +303,7 @@ function restoreAutosave() {
           + `内容を確認してJSONファイルに保存してください`
         : `前回の作業を自動復元しました${ts}`;
       if (zeroWires) h.textContent += `／長さ0の配線(見えない配線)を ${zeroWires} 本削除しました`;
+      if (devFilled) h.textContent += `／同じデバイスの記号の空欄 ${devFilled} か所に、そのデバイスの値を入れました`;
     }, 0);
   } catch (e) {
     // JSONとしては正しく読めたのに、その後の復元処理で落ちたケース。

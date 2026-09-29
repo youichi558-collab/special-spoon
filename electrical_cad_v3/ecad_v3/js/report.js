@@ -797,7 +797,11 @@ function showBOM(){
     +`<p style="margin-bottom:6px;padding:5px 6px;background:var(--bg2);border-radius:3px">`
     +cb('excluded','対象外の部品も含める')+cb('noRef','デバイス未設定を含める')
     +(hidden?`<span style="font-size:11px;color:var(--red)">（${hidden}台を非表示中・CSVにも出ません）</span>`:'')
-    +`</p>`;
+    +`</p>`
+    // 同じデバイスで値が食い違っている所があれば、選ぶ画面を開くボタン(js/devices.js)
+    +((typeof devConflicts==='function'&&devConflicts().length)
+      ?`<p style="margin-bottom:6px"><button class="fp-btn" style="color:var(--red);border-color:var(--red)" onclick="devResolveDialog(null,{undo:true,onDone:()=>showBOM()})">`
+        +`⚠ 同じデバイスで値が食い違っています（${devConflicts().length}件）— 食い違いを直す</button></p>`:'');
   // 部品表でもコイル電圧を変えられるようにする(プロパティとどちらでも変更できる)。
   // 変更するとその行(=そのデバイス)の要素すべてに反映される。
   window._bomRows = rows;
