@@ -95,36 +95,49 @@ async function _stExists(dir, fname) {
   try { await dir.getFileHandle(fname); return true; } catch (e) { return false; }
 }
 
-// ファイルを書き出す。保存先フォルダに書ければそこへ、だめならダウンロード。
+// ファイルを書き出す。**保存・出力のたびに保存先フォルダを選ばせる**(2026-09-29)。
 // dl()(edit.js)とPDF出力から呼ぶ。
+//
+// 盛田さん「設定画面だけは使いづらい、保存先選択は全部出す必要があるな」→ 出し方は「出力のたびに
+// フォルダ選択の窓を開く」(案1)。以前(9-24)は設定タブで選んだ1つのフォルダへ窓なしで書いていた。
+//   ・窓は前回選んだフォルダから開く(startIn)。選んだフォルダは次回の開始位置として覚える
+//   ・窓を閉じた(キャンセル)ら、その出力は取りやめる(ダウンロードにも落とさない)
+//   ・窓が開けない/選べないとき(このブラウザが非対応・時間が経って操作の直後でなくなった・
+//     システムフォルダを選んだ等)は、今までどおりダウンロードに落とす。保存そのものは失わない
+//   ・同じ名前のファイルがあれば確認してから上書き(無言で上書きしない)
 async function stWriteOut(fname, blob, fallback) {
-  const { handle, state } = await stOutDirStatus();
-  if (!handle) { fallback(); return; }                     // 未設定 → 今までどおり
-  let st = state;
-  if (st !== 'granted') {
-    // 保存ボタンを押した直後ならここで許可を聞ける。聞けなければダウンロードへ。
-    try { st = await handle.requestPermission({ mode: 'readwrite' }); } catch (e) {}
-  }
-  if (st !== 'granted') {
+  if (!(window.showDirectoryPicker)) { fallback(); return; }   // 非対応ブラウザ → 従来どおり
+  const { handle: prev } = await stOutDirStatus();
+  let dir;
+  try {
+    const opt = { id: 'ecad-out', mode: 'readwrite' };
+    if (prev) opt.startIn = prev;
+    dir = await window.showDirectoryPicker(opt);
+  } catch (e) {
+    if (e && e.name === 'AbortError') {                        // 窓を閉じた = 取りやめ
+      stToast(`保存を取りやめました: ${fname}`, 'warn');
+      return;
+    }
     fallback();
-    stToast(`保存先フォルダ「${handle.name}」への許可が外れています。\n今回はダウンロードフォルダに保存しました（設定タブで許可し直せます）`, 'warn');
+    stToast(`保存先を選べませんでした（${e && e.message || e}）。\n今回はダウンロードフォルダに保存しました`, 'warn');
     return;
   }
+  try { await _stPut(ST_OUT_KEY, dir); } catch (e) {}          // 次回の開始位置として覚える
   // 無言で上書きしない(盛田さん「上書きは今はng、理由は無言で上書きになってる」)
-  if (await _stExists(handle, fname)
-      && !confirm(`「${fname}」は保存先「${handle.name}」に既にあります。\n上書きしますか？`)) {
+  if (await _stExists(dir, fname)
+      && !confirm(`「${fname}」は保存先「${dir.name}」に既にあります。\n上書きしますか？`)) {
     stToast(`保存を取りやめました: ${fname}`, 'warn');
     return;
   }
   try {
-    const fh = await handle.getFileHandle(fname, { create: true });
+    const fh = await dir.getFileHandle(fname, { create: true });
     const w  = await fh.createWritable();
     await w.write(blob);
     await w.close();
-    stToast(`保存しました: ${handle.name}\\${fname}`, 'ok');
+    stToast(`保存しました: ${dir.name}\\${fname}`, 'ok');
   } catch (e) {
     fallback();
-    stToast(`「${handle.name}」に書けませんでした（${e.message}）。\n今回はダウンロードフォルダに保存しました`, 'ng');
+    stToast(`「${dir.name}」に書けませんでした（${e.message}）。\n今回はダウンロードフォルダに保存しました`, 'ng');
   }
 }
 
@@ -137,22 +150,18 @@ async function stRenderRibbon() {
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
   let status;
   if (!handle) {
-    status = `<span style="color:var(--fg3)">未設定（ダウンロードフォルダに保存）</span>`;
-  } else if (state === 'granted') {
-    status = `<span style="font-family:monospace;font-weight:600">${esc(handle.name)}</span>`;
+    status = `<span style="color:var(--fg3)">まだ選んでいません</span>`;
   } else {
-    status = `<span style="font-family:monospace;font-weight:600">${esc(handle.name)}</span>`
-           + ` <span style="color:var(--red)">許可が外れています（今はダウンロードフォルダに保存）</span>`;
+    status = `<span style="font-family:monospace;font-weight:600">${esc(handle.name)}</span>`;
   }
   const supported = !!window.showDirectoryPicker;
   const btn = (fn, label, title) => `<div class="rb rb-sm" onclick="${fn}" title="${title}">${label}</div>`;
   box.innerHTML =
-      `<div style="font-size:11px;padding:0 6px;white-space:nowrap"><span style="color:var(--fg3)">今の保存先:</span> ${status}</div>`
+      `<div style="font-size:11px;padding:0 6px;white-space:nowrap"><span style="color:var(--fg3)">前回の保存先:</span> ${status}</div>`
     + (supported
-        ? btn('stPickOutDir()', 'フォルダを選ぶ', '図面の保存と出力(DXF・PDF・SVG・CSV)をすべてこのフォルダへ書きます。選んだフォルダは次回も覚えています')
+        ? btn('stPickOutDir()', 'フォルダを選ぶ', '保存・出力のたびにフォルダを選ぶ窓が開きます。ここで選ぶと、その窓がこのフォルダから開きます（先に選んでおく必要はありません）')
         : `<span style="font-size:11px;color:var(--red)">このブラウザはフォルダの選択に対応していません（Chrome か Edge で開いてください）</span>`)
-    + (handle && state !== 'granted' ? btn('stRegrant()', '許可し直す', 'ブラウザを再起動すると書き込みの許可が外れることがあります') : '')
-    + (handle ? btn('stClearOutDir()', '解除', '保存先を解除し、ダウンロードフォルダへ戻します') : '');
+    + (handle ? btn('stClearOutDir()', '解除', '前回の保存先を忘れます（次の保存のときの窓は既定の場所から開きます）') : '');
   if (typeof syncRibbonHeight === 'function') syncRibbonHeight();
 }
 
@@ -164,11 +173,6 @@ async function stPickOutDir() {
     if (e && e.name === 'AbortError') return;             // キャンセル
     alert('フォルダを選べませんでした: ' + e.message);
   }
-  stRenderRibbon();
-}
-async function stRegrant() {
-  const h = await _stGet(ST_OUT_KEY);
-  if (h) { try { await h.requestPermission({ mode: 'readwrite' }); } catch (e) {} }
   stRenderRibbon();
 }
 async function stClearOutDir() {
