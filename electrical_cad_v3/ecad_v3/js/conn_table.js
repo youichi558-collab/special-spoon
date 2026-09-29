@@ -39,9 +39,12 @@ function collectTerminalPoints(pageElements) {
     const dispName = el.partRef || el.label || el.type;
 
     if (cS && cS.terminals && cS.terminals.length) {
+      // 端子の定義位置に置いたシンボルの倍率を掛ける(絵は倍率で縮むため。snap.js・draw.js symTermPoints と同じ)
+      const tsc = el.scale || 1;
       cS.terminals.forEach((t, i) => {
-        const rx = t.x * Math.cos(rot) - t.y * Math.sin(rot);
-        const ry = t.x * Math.sin(rot) + t.y * Math.cos(rot);
+        const tx = t.x * tsc, ty = t.y * tsc;
+        const rx = tx * Math.cos(rot) - ty * Math.sin(rot);
+        const ry = tx * Math.sin(rot) + ty * Math.cos(rot);
         // 端子番号の優先順位: ①部品割当時の個体差(el.terminals、型番ごとに異なる
         // 実際の端子番号。例:主接点13-14/補助接点23-24) ②シンボル定義側の既定ラベル
         // (cS.terminals[i].label。ピンエディタで入力、部品未割当でも参照名として出す)

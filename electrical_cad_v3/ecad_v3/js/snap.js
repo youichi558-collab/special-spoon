@@ -78,9 +78,12 @@ function getAllSnapPoints(wx, wy) {
       const cS = state.customSymbols.find(s => s.type === el.type);
       const rot = (el.rot || 0) * Math.PI / 180;
       if (cS && cS.terminals?.length) {
+        // 端子の定義位置(シンボル登録時の大きさ)に、置いたシンボルの倍率を掛ける(絵は倍率で縮むため)
+        const tsc = el.scale || 1;
         cS.terminals.forEach((t, ti) => {
-          const rx = t.x * Math.cos(rot) - t.y * Math.sin(rot);
-          const ry = t.x * Math.sin(rot) + t.y * Math.cos(rot);
+          const tx = t.x * tsc, ty = t.y * tsc;
+          const rx = tx * Math.cos(rot) - ty * Math.sin(rot);
+          const ry = tx * Math.sin(rot) + ty * Math.cos(rot);
           const dist = Math.hypot(wx - (el.x+rx), wy - (el.y+ry));
           if (dist < bestD) { bestD = dist; best = { x: el.x+rx, y: el.y+ry, snapType:'terminal', elId: el.id, termIdx: ti }; }
         });

@@ -314,9 +314,9 @@ function drawSymPinMarkers() {
 //
 // 【座標式】snap.js のスナップ判定・conn_table.js の接続判定と同一の式。
 // つまりここに出る番号は「実際に配線がスナップする点」そのものに付く。
-// cS.terminals に el.scale を掛けていないのは既存3箇所(snap.js /
-// conn_table.js / drawSymPinMarkers)に合わせるため。ここだけ掛けると
-// 番号の位置とスナップ位置がズレる。
+// cS.terminals には el.scale を掛ける(2026-09-29)。以前は掛けていなかったが、絵は倍率で縮んで描かれるため、
+// 倍率の小さいシンボル(Sheet3の接点は0.3〜0.45)で端子が絵から離れた所に計算されていた。snap.js / conn_table.js /
+// conn_check.js も同時に掛けるようにした(4箇所を必ず揃えること)。
 //
 // 【番号の優先順位】conn_table.js の collectTerminalPoints と同じく
 //   ①el.terminals(部品割当・手入力の個体差。型番ごとに違う実際の番号)
@@ -330,9 +330,12 @@ function symTermPoints(el, cS, def) {
   const list = String(el.terminals || '').split(',').map(s => s.trim());
   const raw  = [];
   if (cS && cS.terminals && cS.terminals.length) {
+    // 端子の定義位置に置いたシンボルの倍率を掛ける(絵は倍率で縮むため。snap.js・conn_table.js・conn_check.js と同じ)
+    const tsc = el.scale || 1;
     cS.terminals.forEach((t, i) => {
-      raw.push({ rx: t.x * cos - t.y * sin,
-                 ry: t.x * sin + t.y * cos,
+      const tx = t.x * tsc, ty = t.y * tsc;
+      raw.push({ rx: tx * cos - ty * sin,
+                 ry: tx * sin + ty * cos,
                  label: list[i] || t.label || '' });
     });
   } else {

@@ -13,8 +13,7 @@
 //     端子点の座標式は snap.js(スナップ) と conn_table.js(接続判定) にも同じものが
 //     あり、今回 draw.js 側を symTermPoints に一本化した。ここがズレると
 //     「番号の横に線が来ない」図面ができ、しかも帳票とも食い違う。
-//     el.scale を cS.terminals に掛けないのも既存3箇所に合わせた仕様で、
-//     ここだけ掛けると表示とスナップがズレる。
+//     el.scale は cS.terminals に掛ける(2026-09-29に変更。4箇所とも同時に。test_term_scale.js が見る)。
 //
 // (2) 番号の決まり方が conn_table.js と同じ優先順位であること。ただし図面では
 //     通し番号(T1,T2…)のフォールバックを出さない。帳票は行を特定するために
@@ -72,13 +71,16 @@ console.log('[1] 端子点の座標がスナップ位置と一致する');
   });
 }
 
-console.log('[2] cS.terminals には el.scale を掛けない(既存のスナップ仕様に合わせる)');
+console.log('[2] cS.terminals には el.scale を掛ける(絵は倍率で縮むので、端子も同じ倍率で縮む。2026-09-29に変更)');
 {
   const cS = { type:'mc', terminals: [ {x:-20,y:0}, {x:20,y:0} ] };
   const a = symTermPoints({ type:'mc', x:0, y:0, scale:1, terminals:'1,2' }, cS, { w:40,h:30 });
   const b = symTermPoints({ type:'mc', x:0, y:0, scale:3, terminals:'1,2' }, cS, { w:40,h:30 });
-  near(b[0].x, a[0].x, 'scale=3でも端子Xは変わらない');
-  near(b[1].x, a[1].x, 'scale=3でも端子Xは変わらない(2点目)');
+  near(b[0].x, a[0].x * 3, 'scale=3なら端子Xも3倍');
+  near(b[1].x, a[1].x * 3, 'scale=3なら端子Xも3倍(2点目)');
+  const h = symTermPoints({ type:'mc', x:100, y:50, scale:0.5, rot:90, terminals:'1,2' }, cS, { w:40,h:30 });
+  near(h[0].x, 100, 'scale=0.5・90度: Xは中心のまま');
+  near(h[0].y, 40, 'scale=0.5・90度: 端子1(-20,0)が(0,-10)に来て、Yは50-10');
 }
 
 console.log('[3] 端子未定義のシンボルは左右端にフォールバックし、そちらは scale が効く');
