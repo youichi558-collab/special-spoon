@@ -45,7 +45,8 @@ const nodes = {};
 const domRp = { _el: null };
 const sb = {
   console, alert: () => {},
-  state: { customParts: [CP, NF, MY], elements: [], sel: { els: new Set() }, pages: [] },
+  state: { customParts: [CP, NF, MY], customSymbols: [], elements: [], sel: { els: new Set() }, pages: [] },
+  getDef: () => ({}),
   document: { getElementById: id => id === 'rp-body' ? domRp : (nodes[id] || null) },
   draw: () => {}, updateRightPanel: () => {}, applyRightPanel: () => {},
   pushH: () => {}, deviceClipboard: null, _pushed: 0,
@@ -67,6 +68,16 @@ vm.runInContext([
   pick(/function partChoiceRowsHtml\([\s\S]*?\n\}/),
   pick(/function applyPartChoicesFromPanel\([\s\S]*?\n\}/),
   pick(/function doPlacePart\([\s\S]*?\n\}/),
+  // 端子番号(グループ形式の自動選択)。placePart が使う
+  pick(/function parseTerminalGroups\([\s\S]*?\n\}/),
+  pick(/function symTerminalCount\([\s\S]*?\n\}/),
+  pick(/function pickTerminalGroup\([\s\S]*?\n\}/),
+  pick(/function symTermRole\([\s\S]*?\n\}/),
+  pick(/const TERM_GROUP_PATTERNS = \{[\s\S]*?\n\};/),
+  pick(/const TERM_GROUP_EXCLUDE = \{[\s\S]*?\n\};/),
+  pick(/function matchGroupsByRole\([\s\S]*?\n\}/),
+  'function askTerminalGroup() { globalThis._asked = true; }',
+  pick(/function placePart\([\s\S]*?\n\}/),
   pick(/function collectDeviceInfo\([\s\S]*?\n\}/),
   pick(/const DEVICE_PROP_KEYS = \[[\s\S]*?\n\];/),
   pick(/function copyDeviceProps\([\s\S]*?\n\}/),
@@ -93,6 +104,30 @@ console.log('\n【補助リレー(MY)の仕様欄に電流が入らない】');
   const el = { id: 1, type: 'coil' }; sb.state.elements = [el]; sb.state.sel.els = new Set([1]);
   sb.doPlacePart('coil', 'MY2N', '', '');
   eq(el.label, '2c', '仕様欄は接点構成だけ(コイル電圧は別に選ぶ)');
+}
+
+console.log('\n【CPの端子番号: ブレーカと同じ決まり(電源側=奇数/負荷側=偶数)】');
+{
+  eq(CP.terminals, '1P:1,2 / 2P:1,3,2,4', 'CSVの端子欄(1P・2Pの2グループ)');
+  const groups = sb.parseTerminalGroups(CP.terminals);
+  eq(groups.map(g => g.name), ['1P', '2P'], '2つのグループ');
+  eq(sb.pickTerminalGroup(groups, 4).list, ['1', '3', '2', '4'], '端子点4つ → 2P');
+  eq(sb.pickTerminalGroup(groups, 2).list, ['1', '2'], '端子点2つ → 1P');
+  eq(sb.parseTerminalGroups(NF.terminals)[0].list, ['1', '3', '5', '2', '4', '6'], '(比較)NF32-SVは電源側の奇数が先');
+
+  // Sheet3のCPシンボルと同じ形: 端子点4つ・種別はcontact_a(補助接点a)
+  sb.state.customSymbols = [
+    { type: 'sym_cp2', role: 'contact_a', terminals: [{}, {}, {}, {}] },
+    { type: 'sym_cp1', role: 'contact_a', terminals: [{}, {}] },
+  ];
+  const e2 = { id: 30, type: 'sym_cp2' }, e1 = { id: 31, type: 'sym_cp1' };
+  sb.state.elements = [e2, e1];
+  sb._asked = false;
+  sb.state.sel.els = new Set([30]); sb.placePart('breaker', 'CP30-BA', CP.terminals);
+  eq(e2.terminals, '1,3,2,4', '端子点4つのシンボルには 1,3,2,4 が自動で入る(選択パネルは出ない)');
+  sb.state.sel.els = new Set([31]); sb.placePart('breaker', 'CP30-BA', CP.terminals);
+  eq(e1.terminals, '1,2', '端子点2つのシンボルには 1,2 が自動で入る');
+  ok(!sb._asked, '種別が補助接点(contact_a)でも、選択パネルで止まらない');
 }
 
 console.log('\n【配置: 仕様欄は選んだ値だけ】');
