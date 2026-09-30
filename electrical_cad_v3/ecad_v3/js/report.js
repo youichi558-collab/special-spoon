@@ -1048,7 +1048,10 @@ function elLocation(el, pageIdx) {
   const pg = state.pages[pageIdx];
   const p = elAnchor(el);
   const z = (p && pg) ? zoneOf(p.x, p.y, pg.frameObj) : '';
-  return z ? `${pageIdx + 1}/${z}` : String(pageIdx + 1);
+  // 別ファイルの図面(js/xref_project.js が計算のあいだだけ足す仮のページ)は「ファイル名/ページ/区画」
+  const no = (pg && pg._pno) || (pageIdx + 1);
+  const pre = (pg && pg._file) ? pg._file + '/' : '';
+  return z ? `${pre}${no}/${z}` : `${pre}${no}`;
 }
 
 // シンボルの種別。'coil' | 'contact_main' | 'contact_a' | 'contact_b'

@@ -3572,14 +3572,15 @@ function toggleTermNoDisp() {
 // コイルと接点の相互参照(js/xref.js)を図面に出す/隠す。前回値を覚える。
 // **押したときだけ計算する**(js/xref.js の説明)。表示中に押すと隠して結果を捨てる。前回値は覚えない(起動時は必ずOFF)。
 function toggleXrefDisp() {
-  if (state.showXref === true) { xrefReset(); }
-  else { state.showXref = true; xrefRefresh(); }
+  if (state.showXref !== true) { refreshXrefDisp(); return; }   // 表示ONにするときは「更新」と同じ(プロジェクトの図面も読み直す)
+  xrefReset();
   syncXrefBtn();
   draw();
   updateRightPanel();   // CRタブの位置補正欄は表示ONのときだけ出す
 }
 // 「更新」: 図面を直したあとに、今の図面で計算し直して表示する(OFFなら表示ONにして計算)
-function refreshXrefDisp() {
+async function refreshXrefDisp() {
+  if (typeof xprojReload === 'function') { try { await xprojReload(); } catch (e) { console.warn('プロジェクトの読み直しに失敗', e); } }
   state.showXref = true;
   xrefRefresh();
   syncXrefBtn();

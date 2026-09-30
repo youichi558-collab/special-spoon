@@ -238,6 +238,11 @@ function xrefBottom(pg, x0, x1) {
 
 // 図面に出す文字の全部。 {blocks:[{pi,elId,x,y,fs,nameFs,lines,color}], contacts: Map(elId → {x,y,fs,text})}
 function xrefCompute() {
+  // 分割ファイル(プロジェクト)の別の図面も、計算のあいだだけ今の図面の後ろに足す(js/xref_project.js)
+  if (typeof xprojWith === 'function') return xprojWith(xrefComputeCore);
+  return xrefComputeCore();
+}
+function xrefComputeCore() {
   const blocks = [], contacts = new Map();
   xrefCollect().forEach(d => {
     if (!d.coils.length) return;                       // コイルが無いデバイスは何も出さない

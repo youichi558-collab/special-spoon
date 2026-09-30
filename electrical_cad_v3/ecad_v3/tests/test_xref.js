@@ -277,8 +277,8 @@ console.log('\n【常時は計算しない(2026-09-29): 押したときだけ計
 console.log('\n【結果を捨てる操作・計算し直す操作が入っている(片方だけ抜けるのを防ぐ)】');
 {
   const ui = R('js/ui.js'), edit = R('js/edit.js');
-  ok(/function toggleXrefDisp\(\) \{\s*if \(state\.showXref === true\) \{ xrefReset\(\); \}\s*else \{ state\.showXref = true; xrefRefresh\(\); \}/.test(ui), 'ボタン: 表示中に押すと隠して捨て、OFFなら計算して表示');
-  ok(/function refreshXrefDisp\(\) \{\s*state\.showXref = true;\s*xrefRefresh\(\);/.test(ui), '「更新」: 計算して表示');
+  ok(/function toggleXrefDisp\(\) \{\s*if \(state\.showXref !== true\) \{ refreshXrefDisp\(\); return; \}[^\n]*\n\s*xrefReset\(\);/.test(ui), 'ボタン: 表示中に押すと隠して捨て、OFFなら「更新」と同じ(計算して表示)');
+  ok(/function refreshXrefDisp\(\) \{[\s\S]{0,300}?state\.showXref = true;\s*xrefRefresh\(\);/.test(ui), '「更新」: (プロジェクトの図面を読み直してから)計算して表示');
   ok(/if \(state\.showXref === true\) xrefRefresh\(\);\s*\/\/ 表示中なら、倍率/.test(ui), '倍率を変えたら、表示中なら計算し直す');
   ok(/xPrev !== \[el\.xrefHide/.test(ui) && /if \(tab === 'cr' && state\.showXref === true\) xrefRefresh\(\)/.test(ui), 'CRタブの変更・貼り付けのときだけ計算し直す');
   ok(/function movePage[\s\S]*?xrefReset\(\)/.test(ui) && /function deletePage[\s\S]*?xrefReset\(\)/.test(ui), 'ページの並べ替え・削除で捨てる');

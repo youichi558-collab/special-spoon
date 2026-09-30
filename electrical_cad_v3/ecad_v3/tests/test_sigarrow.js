@@ -25,6 +25,7 @@ const frame = R('js/frame.js');
 vm.runInContext([pick(frame, /function frameGeom\([\s\S]*?\n\}/), pick(frame, /function zoneColLabel[^\n]*/), pick(frame, /function zoneRowLabel[^\n]*/),
   pick(R('js/ui.js'), /function parseTerminalGroups\([\s\S]*?\n\}/)].join('\n'), sb);
 vm.runInContext(R('js/xref.js'), sb);
+vm.runInContext(R('js/xref_project.js') + '\nthis.xprojState = xprojState;', sb);
 
 const FRAME = { sc: 2, wMM: 420, hMM: 297, mg: 10, thMM: 30, cols: 12, rows: 4 };
 let id = 0;
@@ -58,6 +59,30 @@ console.log('【相手なし・多すぎ・名前なし】');
   eq(L.arrows.get(c.id).text, '(相手なし)', 'どれにも相手を出さない');
   L = setup([[E('sin', 0, 0, { label: '  ' })]]);
   eq(L.arrowIssues[0].reason, '名前(ラベル)が空です', '名前が空は問題');
+}
+console.log('【分割ファイル(プロジェクト)】');
+{
+  // 開いている図面=1ページ目(コイルCR1)。別ファイルB=2ページ目(接点)、別ファイルC=送り矢印
+  const coilEl = E('coil', 360, 375, { partRef: 'CR1', partModel: 'MY4N', terminals: '13,14', devFs: 7 });
+  const o = E('sout', 100, 100, { label: '9' });
+  sb.state = { pages: [{ name: 'P1', elements: [coilEl, o], wires: [], frameObj: FRAME }], currentPage: 0, customSymbols: [],
+    customParts: [{ ref: 'MY4N', type: 'coil', terminals: 'コイル:13,14 / 接点1:1,5,9' }], showXref: true };
+  const cont = E('ca', 390, 191, { partRef: 'CR1', partModel: 'MY4N', terminals: '9,5', devFs: 6 });
+  const inn = E('sin', 300, 200, { label: '9' });
+  sb.xprojState.files = [
+    { name: 'B.json', pages: [{ name: 'PB', elements: [cont, inn], wires: [], frameObj: FRAME }], symbols: [] },
+    { name: 'same.json', pages: [{ name: 'P1', elements: [E('ca', 0, 0, { partRef: 'CR1' })], wires: [], frameObj: FRAME }], symbols: [] },
+  ];
+  const pagesBefore = sb.state.pages;
+  const L = sb.xrefCompute();
+  eq(sb.state.pages === pagesBefore && sb.state.pages.length === 1, true, '計算のあとは今の図面のページに戻る(別ファイルは足したまま残さない)');
+  ok(/^\(B\/1\//.test(L.byEl.get(coilEl.id) ? '(B/1/' : ''), 'コイルのブロックが出る');
+  eq(L.blocks[0].lines.some(l => /^a 9-5 \(B\/1\//.test(l.t)), true, '別ファイルの接点が「ファイル名/ページ/区画」つきでコイルに出る');
+  eq(L.arrows.get(o.id).text.startsWith('→ B/1'), true, '送り矢印に別ファイルの受けの位置が出る');
+  eq(L.arrowIssues.length, 0, '別ファイルの矢印と一対一');
+  eq(JSON.stringify(L.blocks).includes('same'), false, '開いている図面と同じページ名のファイルは使わない');
+  sb.xprojState.files = [];
+  eq(sb.xrefCompute().arrows.get(o.id).text, '(相手なし)', 'プロジェクトが空なら今の図面だけで計算');
 }
 console.log('【矢印以外は影響しない】');
 {
