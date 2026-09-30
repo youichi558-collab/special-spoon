@@ -30,6 +30,7 @@ function run(elements) {
   };
   vm.createContext(sb);
   vm.runInContext(escHSrc + '\n' + src, sb);
+  vm.runInContext(require('fs').readFileSync(__dirname + '/../js/devices.js', 'utf8'), sb);   // デバイスのまとめ方は台帳(2026-09-30)
   sb._reportOpen = (key, title, body) => { html = body; };
   vm.runInContext('showRefPanel()', sb);
   return html || '';

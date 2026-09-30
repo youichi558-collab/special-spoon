@@ -91,7 +91,7 @@ console.log('\n【端子番号がシンボル定義の既定ラベルだけに�
 console.log('\n【型式が無い・部品DBに無い: 使用中の接点だけ出す】');
 {
   const els = [coil('R9', 100, 100, { partModel: '', partVolt: '' }), cont('ca', 'R9', 200, 50, '13,14', { partModel: '' }),
-    cont('cb', 'R9', 240, 50, '')];
+    cont('cb', 'R9', 240, 50, '', { partModel: '' })];   // 型式はデバイスに1つ(台帳)。全記号とも空
   const L = setup(els);
   eq(L.blocks[0].lines.map(l => l.t), ['R9', 'a 13-14 (1/3A)', 'b (1/4A)'], '型式・電圧の行は詰め、使用中だけ(端子番号が無い接点は a/b と位置)');
 }
@@ -188,9 +188,9 @@ console.log('\n【接点Refの確認列: 番号が出ない理由(xrefDiagnose)�
   const dia = () => sb.xrefDiagnose(sb.xrefCollect().get('CR1')).map(x => x.msg);
   setup([coil('CR1', 100, 100), cont('ca', 'CR1', 100, 200, '9,5'), cont('cb', 'CR1', 150, 200, '9,1')]);
   eq(dia(), [], '型式MY4Nで端子も枠と合っていれば理由は出ない');
-  setup([coil('CR1', 100, 100, { partModel: '' }), cont('ca', 'CR1', 100, 200, '9,5')]);
+  setup([coil('CR1', 100, 100, { partModel: '' }), cont('ca', 'CR1', 100, 200, '9,5', { partModel: '' })]);
   eq(dia(), ['コイルに型式が無いため、空き接点の枠が出ません'], '型式が無い');
-  setup([coil('CR1', 100, 100, { partModel: 'XYZ-1' }), cont('ca', 'CR1', 100, 200, '9,5')]);
+  setup([coil('CR1', 100, 100, { partModel: 'XYZ-1' }), cont('ca', 'CR1', 100, 200, '9,5', { partModel: 'XYZ-1' })]);
   ok(/型式「XYZ-1」は空き接点の枠を出せません/.test(dia()[0]), '型式に端子の情報が無い(部品DBにも表にも無い)');
   setup([coil('CR1', 100, 100), cont('ca', 'CR1', 100, 200, '')]);
   const d1 = sb.xrefDiagnose(sb.xrefCollect().get('CR1'));
@@ -216,6 +216,34 @@ console.log('\n【接点Refの確認列: 番号が出ない理由(xrefDiagnose)�
   eq(els[0].partModel, undefined, '空にすれば型式を消す');
   const rep = R('js/report.js');
   ok(/クロスリファレンス確認/.test(rep) && /setRefModel\(\$\{ki\}/.test(rep) && /jumpToRefEl\(/.test(rep), '接点Refの表に確認列と、型式欄・飛ぶ操作がある');
+}
+
+console.log('\n【デバイス台帳③: 型式・電圧はデバイスの値。食い違いは枠を出さずに知らせる】');
+{
+  // コイルは空・接点にだけ型式 → デバイスの型式(MY4N)で枠が出る(以前はコイルの記号の値しか見なかった)
+  let L = setup([coil('CR1', 100, 100, { partModel: '', partVolt: '' }), cont('ca', 'CR1', 100, 200, '9,5', { partVolt: 'AC200V' })]);
+  ok(L.blocks[0].lines.some(l => l.t === 'MY4N') && L.blocks[0].lines.some(l => l.t === 'AC200V') && L.blocks[0].lines.some(l => /^b 9-1/.test(l.t)), 'コイルに無くても、デバイスの型式・電圧で出す(空き接点の枠も)');
+  // 型式が食い違い
+  L = setup([coil('CR1', 100, 100, { partModel: 'MY4N' }), cont('ca', 'CR1', 100, 200, '9,5', { partModel: 'MY2N' })]);
+  ok(!L.blocks[0].lines.some(l => l.t === 'MY4N' || l.t === 'MY2N'), '食い違っているときは、どちらの型式も書かない(勝手に決めない)');
+  ok(/型式がデバイスの中で食い違っています/.test(sb.xrefDiagnose(sb.xrefCollect().get('CR1'))[0].msg) && sb.xrefDiagnose(sb.xrefCollect().get('CR1'))[0].resolve, '確認列で食い違いを知らせる(押すと選ぶ画面)');
+  // 綴りが違っても同じデバイス
+  L = setup([coil('CR-1', 100, 100), cont('ca', 'CR1', 100, 200, '9,5')]);
+  ok(L.blocks.length === 1 && L.contacts.size === 1, '綴りが違っても(CR-1/CR1)同じデバイス(部品表と同じまとめ方)');
+  // 接点Ref: 型式欄はデバイスの値・食い違いは警告
+  let html = '';
+  const saveOpen = sb._reportOpen; sb._reportOpen = (k, t, h) => { html = h; };
+  vm.runInContext(pick(R('js/report.js'), /function showRefPanel\(\)\{[\s\S]*?\n\}/), sb);   // 前の節で空の関数に差し替えているので本物に戻す
+  setup([coil('CR1', 100, 100, { partModel: '' }), cont('ca', 'CR1', 100, 200, '9,5')]);
+  vm.runInContext('showRefPanel()', sb);
+  ok(/<input type="text" value="MY4N" placeholder="型式"/.test(html), '接点Refの型式欄は、コイルが空でもデバイスの型式(MY4N)');
+  setup([coil('CR1', 100, 100, { partModel: 'MY4N' }), cont('ca', 'CR1', 100, 200, '9,5', { partModel: 'MY2N' })]);
+  vm.runInContext('showRefPanel()', sb);
+  ok(/値が食い違い\(型番\)/.test(html) && /placeholder="\(食い違い\)"/.test(html) && /onclick="devResolveDialog\(null,\{undo:true,onDone:\(\)=>showRefPanel\(\)\}\)"/.test(html), '接点Ref: 食い違いはデバイス名の下に警告・型式欄は空で「(食い違い)」・確認列から選ぶ画面を開ける');
+  setup([coil('CR-1', 100, 100), cont('ca', 'CR1', 100, 200, '9,5')]);
+  vm.runInContext('showRefPanel()', sb);
+  ok((html.match(/<tr><td><b>/g) || []).length === 1, '接点Ref: 綴り違いは1行(表記ゆれの警告つき)') ;
+  sb._reportOpen = saveOpen;
 }
 
 console.log('\n【常時は計算しない(2026-09-29): 押したときだけ計算し、結果を保持する】');

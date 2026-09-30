@@ -113,18 +113,23 @@ function xrefSlots(model) {
 }
 
 // 全ページから、デバイス(partRef)ごとにコイルと接点を集める
+// 【2026-09-30 デバイス台帳③】まとめ方・型式・電圧は台帳(js/devices.js deviceLedger)から読む。
+// 以前はコイルの記号の型式・電圧を読んでいたので、記号ごとに値が違うと結果が記号しだいで変わった。
+// 型式がデバイス内で食い違っていれば model は空・modelConflict=true(空き接点の枠は出さず、確認列で知らせる)。
 function xrefCollect() {
   const devs = new Map();
-  (state.pages || []).forEach((pg, pi) => {
-    (pg.elements || []).forEach(el => {
-      const raw = String(el.partRef || '').trim();
-      if (!raw) return;
-      const role = xrefRole(el);
+  deviceLedger().forEach(D => {
+    D.items.forEach(it => {
+      if (it.group) return;
+      const el = it.el, role = xrefRole(el);
       if (role !== 'coil' && role !== 'contact_a' && role !== 'contact_b') return;
-      const key = normalizeRef(raw);
-      let d = devs.get(key);
-      if (!d) { d = { name: raw, coils: [], contacts: [] }; devs.set(key, d); }
-      const rec = { el, pi, loc: elLocation(el, pi) };
+      let d = devs.get(D.key);
+      if (!d) {
+        d = { name: D.ref, model: D.vals.partModel || '', volt: D.vals.partVolt || '',
+              modelConflict: D.conflicts.some(c => c.field === 'partModel'), coils: [], contacts: [] };
+        devs.set(D.key, d);
+      }
+      const rec = { el, pi: it.pi, loc: elLocation(el, it.pi) };
       if (role === 'coil') d.coils.push(rec);
       else d.contacts.push(Object.assign(rec, { kind: role === 'contact_a' ? 'a' : 'b', terms: xrefElTerms(el) }));
     });
@@ -136,9 +141,11 @@ function xrefCollect() {
 function xrefCoilLines(d, coilRec) {
   const coil = coilRec.el;
   const lines = [{ t: String(coil.partRef).trim(), bold: true }];
-  const model = String(coil.partModel || '').trim();
+  // 型式・電圧はデバイスの値(台帳)。無い呼び出し方(古いテスト等)ではコイルの値
+  const model = String((d.model != null ? d.model : coil.partModel) || '').trim();
+  const volt  = String((d.volt  != null ? d.volt  : coil.partVolt)  || '').trim();
   if (model) lines.push({ t: model });
-  if (coil.partVolt) lines.push({ t: String(coil.partVolt) });
+  if (volt) lines.push({ t: volt });
 
   const usedIdx = new Set();
   const rows = [];
@@ -164,9 +171,10 @@ function xrefCoilLines(d, coilRec) {
 function xrefDiagnose(d) {
   const out = [];
   if (!d || !d.coils.length) return out;
-  const model = String(d.coils[0].el.partModel || '').trim();
+  const model = String((d.model != null ? d.model : d.coils[0].el.partModel) || '').trim();
   const slots = xrefSlots(model);
-  if (!model) out.push({ msg: 'コイルに型式が無いため、空き接点の枠が出ません' });
+  if (d.modelConflict) out.push({ msg: '型式がデバイスの中で食い違っています(押すと選ぶ画面が開きます)。空き接点の枠が出ません', resolve: true });
+  else if (!model) out.push({ msg: 'コイルに型式が無いため、空き接点の枠が出ません' });
   else if (!slots.length) out.push({ msg: `型式「${model}」は空き接点の枠を出せません(型式表・部品DBに端子の情報が無い)` });
   d.contacts.forEach(c => {
     const nm = `${c.kind}接点 ${c.loc}`, at = { pi: c.pi, id: c.el.id };

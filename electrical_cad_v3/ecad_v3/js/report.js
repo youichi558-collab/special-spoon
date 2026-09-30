@@ -1085,9 +1085,24 @@ function refRoleLabel(role){
 // デバイス名は normalizeRef() で表記ゆれを吸収する。
 function showRefPanel(){
   const skip=['text','rect','circle','fline','dim','leader','angle_dim','wire'];
-  const devs={};   // 正規化キー -> { spellings:Map, coils:[], contacts:[] }
+  const devs={};   // 正規化キー -> { spellings:Map, coils:[], contacts:[], led:台帳のデバイス }
+  // 【2026-09-30 デバイス台帳③】デバイスのまとめ方・型式は台帳(js/devices.js deviceLedger)から読む。
+  // 部品表・クロスリファレンス・端子台表と同じまとめ方になる(以前はこの帳票だけで独自にまとめていた)。
+  deviceLedger().forEach(D=>{
+    D.items.forEach(it=>{
+      if(it.group)return;                  // 外形図(グループ)は図面上の部品の位置ではない
+      const el=it.el;
+      if(skip.includes(el.type))return;
+      const role=symRole(el);
+      if(!devs[D.key])devs[D.key]={spellings:D.spell,coils:[],contacts:[],noRef:false,led:D};
+      const rec={el,page:it.pi+1,role,loc:elLocation(el,it.pi)};
+      if(role==='coil')devs[D.key].coils.push(rec); else devs[D.key].contacts.push(rec);
+    });
+  });
+  // デバイス名の無い要素(台帳に入らない)は、種類ごとに「(デバイス未設定)」の行へ
   state.pages.forEach((pg,pi)=>{
     (pg.elements||[]).forEach(el=>{
+      if((el.partRef||'').trim())return;
       if(skip.includes(el.type))return;
       // 【2026-09-25】配線の分岐点(●)は部品ではないので載せない。盛田さん「分岐点を外して」。
       // 以前は「(デバイス未設定)」の行に分岐点が「他」バッジで何十個も並んでいた。
@@ -1134,6 +1149,8 @@ function showRefPanel(){
     if(!dv.coils.length&&nContacts)warns.push('コイル未配置');
     if(dv.coils.length>1)warns.push(`コイルが${dv.coils.length}個`);
     if(dv.noRef)warns.push('デバイス未設定');
+    // 同じデバイスで値が食い違っている(部品表の「食い違いを直す」で選ぶ)
+    if(dv.led&&dv.led.conflicts.length)warns.push(`値が食い違い(${dv.led.conflicts.map(c=>(DEV_FIELDS.find(f=>f.key===c.field)||{name:c.field}).name).join('・')})`);
     // locは「2/B3」(ページ/区画)形式。図面枠が無いページはページ番号だけになる
     // バッジは 主 / a / b / 他 の4種。以前は contact_a か否かの2択だったため、
     // 主接点もその他も「b」と表示されてしまっていた。
@@ -1154,12 +1171,15 @@ function showRefPanel(){
     let chk='';
     if(dv.coils.length&&!dv.noRef&&typeof xrefDiagnose==='function'){
       const xd=(_xrefDevs||(_xrefDevs=xrefCollect())).get(k);
-      const model=String(dv.coils[0].el.partModel||'').trim();
+      const conflict=!!(dv.led&&dv.led.conflicts.some(c=>c.field==='partModel'));
+      const model=conflict?'':String((dv.led&&dv.led.vals.partModel)||'').trim();   // 型式はデバイスの値(台帳)
       const probs=xd?xrefDiagnose(xd):[];
-      chk=`<input type="text" value="${escH(model)}" placeholder="型式" style="width:110px;font-size:11px"`
+      chk=`<input type="text" value="${escH(model)}" placeholder="${conflict?'(食い違い)':'型式'}" style="width:110px;font-size:11px"`
         +` title="このデバイスの全要素に同じ型式を入れます" onchange="setRefModel(${ki},this.value)">`
         +(probs.length
-          ?probs.map(pb=>pb.id
+          ?probs.map(pb=>pb.resolve
+            ?`<div style="font-size:10px;color:var(--red);cursor:pointer;text-decoration:underline dotted" title="クリックで、食い違いを選ぶ画面を開く" onclick="devResolveDialog(null,{undo:true,onDone:()=>showRefPanel()})">⚠ ${escH(pb.msg)}</div>`
+            :pb.id
             ?`<div style="font-size:10px;color:var(--red);cursor:pointer;text-decoration:underline dotted" title="クリックで図面のその接点へ飛ぶ" onclick="jumpToRefEl(${pb.pi},'${_escAttr(pb.id)}')">⚠ ${escH(pb.msg)}</div>`
             :`<div style="font-size:10px;color:var(--red)">⚠ ${escH(pb.msg)}</div>`).join('')
           :'<div style="font-size:10px;color:var(--fg3)">✓ 問題なし</div>');
