@@ -3537,6 +3537,17 @@ function syncJunctionStyleBtns() {
 }
 
 // 【検証用/仮】端子(ピン)マーカー表示トグル
+// 作図線の目印(橙の点線)の表示を切り替える。画面だけ・保存しない(draw.js drawFlineMarks)
+function toggleFlineMarkDisp() {
+  state.showFlineMark = !state.showFlineMark;
+  const b = document.getElementById('qb-flines');
+  if (b) {
+    b.style.background = state.showFlineMark ? 'var(--acc)' : 'var(--bg)';
+    b.style.color      = state.showFlineMark ? '#fff' : 'var(--fg)';
+    b.style.fontWeight = state.showFlineMark ? '600' : '400';
+  }
+  draw();
+}
 function toggleSymPinsDisp() {
   state.showSymPins = !state.showSymPins;
   syncSymPinsBtn(); draw();

@@ -381,6 +381,8 @@
     style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;border:1px solid var(--bd2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--fg);white-space:nowrap;">🔍検索</div>
   <div onclick="toggleSymPinsDisp()" id="qb-pins" title="【検証用/仮】シンボル端子(ピン)位置を赤丸で表示。設計中のフェーズ0データ確認用（PDF出力には出ません）"
     style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;border:1px solid var(--bd2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--fg);white-space:nowrap;">🔴端子(仮)</div>
+  <div onclick="toggleFlineMarkDisp()" id="qb-flines" title="作図線(配線ではない線)を橙の点線で目立たせます。作図線は接続チェック・線番の対象になりません(つながって見えても配線ではない所が分かります)。画面だけで、PDF・DXFには出ません"
+    style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;border:1px solid var(--bd2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--fg);white-space:nowrap;">✏作図線</div>
   <div onclick="runUnconnectedCheck()" title="未接続端子チェック：端子(terminals定義済みシンボル)に配線が繋がっていない箇所をオレンジの⚠で表示（クリックのたびに再チェック）"
     style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;border:1px solid var(--bd2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--fg);white-space:nowrap;">⚠未接続</div>
   <div onclick="toggleUnconnectedDisp()" id="qb-unconn" title="未接続端子マーカーの表示/非表示切り替え(再チェックはしません)"

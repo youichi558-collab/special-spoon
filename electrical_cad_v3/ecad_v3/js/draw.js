@@ -47,6 +47,9 @@ function draw() {
   // 【検証用/仮】シンボル端子(ピン)マーカー表示。PDF出力には反映しない
   if (!state.pdfMode && state.showSymPins) drawSymPinMarkers();
 
+  // 作図線(配線ではない線)の目印。画面だけ(PDF・DXFには出さない)
+  if (!state.pdfMode && state.showFlineMark) drawFlineMarks();
+
   // 未接続端子マーカー(runUnconnectedCheck()のキャッシュ結果を描画するだけ、
   // ここでは再計算しない)。PDF出力には反映しない
   if (!state.pdfMode && state.showUnconnected) drawUnconnectedMarkers();
@@ -724,6 +727,24 @@ function drawFlineEl(el, sel, lc, lay) {
   ctx.beginPath(); ctx.moveTo(el.x1, el.y1); ctx.lineTo(el.x2, el.y2); ctx.stroke(); ctx.setLineDash([]);
   if (el.arrowStart && el.arrowStart !== 'none') { const dx=el.x1-el.x2,dy=el.y1-el.y2,len=Math.hypot(dx,dy); if(len>0.1) drawLineEnd(ctx,el.x1,el.y1,dx/len,dy/len,el.arrowStart,10,c,state.zoom); }
   if (el.arrowEnd   && el.arrowEnd   !== 'none') { const dx=el.x2-el.x1,dy=el.y2-el.y1,len=Math.hypot(dx,dy); if(len>0.1) drawLineEnd(ctx,el.x2,el.y2,dx/len,dy/len,el.arrowEnd,  10,c,state.zoom); }
+  ctx.restore();
+}
+
+// 作図線(type 'fline')の上に橙の点線を重ねる(2026-09-30)。配線と作図線は同じレイヤー・同じ色で描かれるので、
+// 見た目では区別できない。作図線は接続チェック・線番の対象にならないため、つながって見えて実はつながっていない所ができる
+// (Sheet3のランプ下側)。ボタン「作図線」を押している間だけ、画面に目印を出す。図面のデータは変えない。
+function drawFlineMarks() {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,152,0,0.9)';
+  ctx.lineWidth = 3 / state.zoom;
+  ctx.lineCap = 'round';
+  ctx.setLineDash([6 / state.zoom, 4 / state.zoom]);
+  state.elements.forEach(el => {
+    if (el.type !== 'fline') return;
+    const lay = LAYERS.find(l => l.name === el.layer);
+    if (lay && !lay.visible) return;
+    ctx.beginPath(); ctx.moveTo(el.x1, el.y1); ctx.lineTo(el.x2, el.y2); ctx.stroke();
+  });
   ctx.restore();
 }
 
