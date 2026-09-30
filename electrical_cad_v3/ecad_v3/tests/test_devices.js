@@ -101,6 +101,48 @@ console.log('\n【食い違いを選ぶ画面】');
   ok(pushed === 1 && done === 1 && removed, '元に戻せるように pushH・閉じる・そろえた件数を返す');
 }
 
+console.log('\n【②: 1つの記号を直すとデバイス全体へ(devSnap / devCommitEl)】');
+{
+  const el = set([{ elements: [E('c', 'coil', 'CR1', { partModel: 'MY4N', label: '4C' }), E('a', 'ca', 'CR1', { partModel: 'MY4N', label: '4C', specHide: true }),
+    E('x', 'ca', 'CR2', { partModel: 'MY2N' })] }])[0].elements;
+  let b = sb.devSnap(el[1]); el[1].partModel = 'MY4N-D2';
+  sb.devCommitEl(el[1], b);
+  ok(el[0].partModel === 'MY4N-D2' && el[1].partModel === 'MY4N-D2' && el[2].partModel === 'MY2N', '接点で型番を直すと、コイルにも入る(別のデバイスは変わらない)');
+  b = sb.devSnap(el[1]); el[1].label = '';
+  sb.devCommitEl(el[1], b);
+  ok(el[0].label === undefined && el[1].label === undefined, '仕様を空にすると、デバイスの仕様が消える');
+  b = sb.devSnap(el[1]); el[1].panelZone = '外';
+  sb.devCommitEl(el[1], b);
+  ok(el[0].panelZone === '外', '部品表の対象外もデバイス全体');
+  b = sb.devSnap(el[0]); el[0].devFs = 20;
+  eq(sb.devCommitEl(el[0], b), 0, 'デバイスの項目以外(文字サイズ等)を直しても、他の記号は触らない');
+}
+
+console.log('\n【②: デバイス名を入れた・変えた記号は、そのデバイスの値にそろう(devSyncFromEl)】');
+{
+  const el = set([{ elements: [E('c', 'coil', 'CR2', { partModel: 'MY2N', label: '2C', partVolt: 'DC24V' }), E('n', 'ca', '', { partModel: 'OLD', partNote: 'メモ' })] }])[0].elements;
+  const b = sb.devSnap(el[1]); el[1].partRef = 'CR2';
+  sb.devCommitEl(el[1], b);
+  ok(el[1].partModel === 'MY2N' && el[1].partVolt === 'DC24V', 'デバイスにある値に合わせる(デバイスが正。記号が持っていた古い型番は消える)');
+  ok(el[1].label === '2C' && el[1].specHide === true, '仕様も入るが、図面には増やさない');
+  ok(el[0].partNote === 'メモ', 'デバイスにまだ無い値(備考)は、加わった記号の値がデバイスの値になる');
+}
+
+console.log('\n【②: 入力口がデバイス台帳を通る(片方だけ抜けるのを防ぐ)】');
+{
+  const ui = R('js/ui.js'), rep = R('js/report.js');
+  ok(/const devBefore = \(el && typeof devSnap === 'function'\) \? devSnap\(el\) : null;/.test(ui) && /if \(devBefore && typeof devCommitEl === 'function'\) devCommitEl\(el, devBefore\);\n  draw\(\);\n\}/.test(ui), 'プロパティ欄(applyRightPanel): 直す前を控え、最後にデバイス全体へ');
+  ok(/function onJunctionModelChanged[\s\S]*?devSetField\(devKey\(ref\), 'partModel', model\)/.test(ui), '端子台の型式');
+  ok(/function onPartRefChanged[\s\S]*?devSyncFromEl\(el\)/.test(ui), 'デバイス名の選び直し');
+  ok(/function doPlacePart[\s\S]*?\['partModel', 'partVolt', 'partPoles', 'partAmp', 'partChar'\]\.forEach\(f => devSetField/.test(ui), '部品DBの割り当て');
+  ok(/function pasteDeviceProps[\s\S]*?devSyncFromEl/.test(ui) && /tab === 'basic' && typeof devSyncFromEl/.test(ui), '一括貼り付け・基本タブの貼り付け');
+  ok(/function applyGroupDevice[\s\S]*?devSetField/.test(ui), '外形図(グループ)の型番');
+  ['setBOMVolt', 'setBOMMaker', 'setBOMModel', 'setBOMSpec', '_setBOMField', 'setRefModel'].forEach(fn => {
+    const body = rep.slice(rep.indexOf('function ' + fn + '('), rep.indexOf('\n}', rep.indexOf('function ' + fn + '(')));
+    ok(/devSetField\(/.test(body) && !/el\.(partModel|partVolt|partMaker|label)=|el\[prop\]=/.test(body), `帳票の ${fn} はデバイス台帳だけで書く`);
+  });
+}
+
 console.log('\n【組み込み】');
 {
   const edit = R('js/edit.js'), html = R('index.html');

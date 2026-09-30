@@ -812,6 +812,9 @@ function doPlacePart(type, ref, terminals, groupName) {
   if (!targets.length) return;
   pushH();                         // 変更前の状態を履歴に積む
   let labelFilled = 0, labelSkipped = 0;
+  // デバイス台帳(js/devices.js): 割り当てる前のデバイスの仕様。デバイスに既に仕様があれば、自動の仕様は入れない(手書きの保護)
+  const specBefore = new Map();
+  if (typeof deviceLedger === 'function') deviceLedger().forEach(d => { if (d.vals.label) specBefore.set(d.key, d.vals.label); });
   targets.forEach(el => {
     el.partModel = ref;
     if (terminals) el.terminals = terminals;
@@ -823,7 +826,7 @@ function doPlacePart(type, ref, terminals, groupName) {
     // 備考・出典は長すぎて図面に出すものではないので入れない。
     // 【重要】既に仕様欄に何か入っている場合は一切上書きしない（手書き内容の保護）。
     if (p) {
-      if ((el.label || '').trim()) {
+      if ((el.label || '').trim() || (typeof devKey === 'function' && specBefore.has(devKey(el.partRef)))) {
         labelSkipped++;
       } else {
         // インバータ・サーボは型式自体で電圧が決まる(例: FR-D720系は200V固定)ので、
@@ -842,6 +845,19 @@ function doPlacePart(type, ref, terminals, groupName) {
       }
     }
   });
+  // デバイス台帳: 割り当てた型番・電圧・選択はデバイスの全部の記号へ(同じデバイスで値が違うことは無い)。
+  // 仕様は、デバイスに元から仕様があればそれ、無ければ今入れた自動の仕様を、デバイスの仕様にする
+  if (typeof devSetField === 'function') {
+    const done = new Set();
+    targets.forEach(el => {
+      const key = devKey(el.partRef);
+      if (!key || done.has(key)) return;
+      done.add(key);
+      ['partModel', 'partVolt', 'partPoles', 'partAmp', 'partChar'].forEach(f => devSetField(key, f, el[f] || ''));
+      const spec = specBefore.get(key) || String(el.label || '').trim();
+      if (spec) devSetField(key, 'label', spec);
+    });
+  }
   draw();
   updateRightPanel();
   const hint = document.getElementById('s-hint');
@@ -1174,15 +1190,9 @@ function onJunctionModelChanged() {
   el.partModel = model;
   if (!ref) return;                              // デバイス未設定なら自分だけ
   pushH();
-  let n = 0;
-  (state.pages || [{ elements: state.elements }]).forEach(pg => {
-    (pg.elements || []).forEach(e => {
-      if (e.type === 'junction' && (e.partRef || '').trim() === ref && e !== el) {
-        e.partModel = model; n++;
-      }
-    });
-  });
-  if (n) console.log(`[端子台] ${ref} の端子 ${n} 個に型式「${model}」を反映`);
+  // デバイスの全部の記号(端子・綴りの違う端子・同じデバイスのシンボルも)に入れる(js/devices.js)
+  const n = devSetField(devKey(ref), 'partModel', model);
+  if (n) console.log(`[端子台] ${ref} の ${n} か所に型式「${model}」を反映`);
   draw();
 }
 
@@ -1268,6 +1278,8 @@ function onPartRefChanged() {
   const pv = document.getElementById('pp-partvolt');
   if (pv && info.volt) pv.value = info.volt;
   // 選択欄は onPartModelChanged で要素の値から作り直されている
+  // デバイスの値とそろえる(この記号にしか無い値はデバイスの値にする。js/devices.js)
+  if (typeof devSyncFromEl === 'function') devSyncFromEl(el);
 
   draw();
 }
@@ -1323,8 +1335,16 @@ function applyGroupDevice() {
   const g = hit[0];
   pushH();                         // 変更前の状態を履歴に積む
   const val = id => document.getElementById(id)?.value.trim() || '';
+  const gBefore = { ref: g.partRef, model: g.partModel || '' };
   g.partRef   = val('gp-partref')   || undefined;
   g.partModel = val('gp-partmodel') || undefined;
+  // 型番はデバイスに1つ(js/devices.js): デバイスが同じまま型番を直したらデバイス全体へ。デバイスを変えたら、そのデバイスの型番にそろえる
+  if (typeof devKey === 'function' && devKey(g.partRef)) {
+    if (devKey(gBefore.ref) === devKey(g.partRef)) { if ((g.partModel || '') !== gBefore.model) devSetField(devKey(g.partRef), 'partModel', g.partModel || ''); }
+    else { const dv = deviceLedger().get(devKey(g.partRef)); const others = dv ? dv.items.filter(it => it.el !== g) : [];
+      const m = others.map(it => String(it.el.partModel || '').trim()).find(Boolean);
+      if (m) g.partModel = m; else if (g.partModel) devSetField(devKey(g.partRef), 'partModel', g.partModel); }
+  }
   const c = document.getElementById('gp-showdev');
   g.showDev = c ? c.checked : true;
   // 型番は値を保持したまま表示だけ切れるようにする(消すと部品表からも消えるため)
@@ -2903,6 +2923,8 @@ function applyRightPanel() {
   const el   = rp._el, wire = rp._wire;
   const item = el || wire;
   if (!item) return;
+  // 【デバイス台帳②】直す前のデバイスの値を控え、最後に変わった項目をデバイス全体へ入れる(js/devices.js)
+  const devBefore = (el && typeof devSnap === 'function') ? devSnap(el) : null;
   // 同じ要素の連続変更はundoスタックをまとめる
   if (_lastApplyItem !== item) { pushH(); _lastApplyItem = item; setTimeout(()=>{ _lastApplyItem = null; }, 1000); }
   const v = id => { const e = document.getElementById(id); return e ? e.value : ''; };
@@ -3092,6 +3114,8 @@ function applyRightPanel() {
     el.layer     = vLayer(el.layer);
     el.note      = v('pp-note');
   }
+  // 型番・仕様・電圧・対象外などは、この記号だけでなくデバイスの全部の記号に入る(同じデバイスで値が違うことは無い)
+  if (devBefore && typeof devCommitEl === 'function') devCommitEl(el, devBefore);
   draw();
 }
 
@@ -3247,6 +3271,7 @@ function pasteTabProps(tab) {
       el[k] = (k === 'termOff') ? clip[k].map(o => [...o]) : clip[k];
     });
   });
+  if (tab === 'basic' && typeof devSyncFromEl === 'function') targets.forEach(el => devSyncFromEl(el));   // デバイスの値とそろえる
   const h = document.getElementById('s-hint');
   if (h) h.textContent = `「${label}」タブの項目を ${targets.length}個に貼り付けました`;
   if (tab === 'cr' && state.showXref === true) xrefRefresh();
@@ -3306,6 +3331,8 @@ function pasteDeviceProps() {
       el[k] = (k === 'termOff') ? deviceClipboard[k].map(o => [...o]) : deviceClipboard[k];
     });
   });
+  // 貼り付け先はコピー元のデバイスに加わる。デバイスの値とそろえる(js/devices.js)
+  if (typeof devSyncFromEl === 'function') targets.forEach(el => devSyncFromEl(el));
   draw();
   updateRightPanel();
 }

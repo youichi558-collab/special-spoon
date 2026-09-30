@@ -117,6 +117,46 @@ function devSetField(key, fieldKey, value) {
   return n;
 }
 
+// 記号がデバイスに加わった(デバイス名を入れた・変えた)とき、その記号とデバイスの値をそろえる。
+// デバイスの他の記号に値があればそれに合わせる(デバイスが正)。デバイスにまだ値が無く、この記号にだけあれば、
+// その値をデバイスの値にする(新しく値を持ち込んだ)。他の記号の値が食い違っている項目は触らない(選ぶ画面で決める)。
+function devSyncFromEl(el) {
+  const key = devKey(el && el.partRef);
+  if (!key) return 0;
+  const d = deviceLedger().get(key);
+  if (!d) return 0;
+  let n = 0;
+  DEV_FIELDS.forEach(f => {
+    if (f.noJunction && el.type === 'junction') return;
+    const others = _devTargets(d, f).filter(it => it.el !== el);
+    if (!others.length) return;
+    const ov = new Set(others.map(it => _devVal(it.el, f)).filter(v => f.emptyIsValue || v !== ''));
+    if (ov.size === 1) { const v = [...ov][0]; if (_devVal(el, f) !== v) n += devSetField(key, f.key, v); }
+    else if (ov.size === 0 && _devVal(el, f) !== '') n += devSetField(key, f.key, _devVal(el, f));
+  });
+  return n;
+}
+
+// プロパティ欄で1つの記号を直す前後で使う。直す前の値を控え(devSnap)、直した後に
+// 変わった項目をデバイス全体へ入れる(devCommitEl)。デバイス名が変わったときは、新しいデバイスにそろえる。
+function devSnap(el) {
+  const s = { partRef: el.partRef };
+  DEV_FIELDS.forEach(f => { s[f.key] = _devVal(el, f); });
+  return s;
+}
+function devCommitEl(el, before) {
+  const key = devKey(el.partRef);
+  if (!key) return 0;
+  if (devKey(before.partRef) !== key) return devSyncFromEl(el);
+  let n = 0;
+  DEV_FIELDS.forEach(f => {
+    if (f.noJunction && el.type === 'junction') return;
+    const v = _devVal(el, f);
+    if (v !== before[f.key]) n += devSetField(key, f.key, v);
+  });
+  return n;
+}
+
 // 読込時の点検。食い違いの無い項目で、空欄の記号に値を入れる(デバイスに1つの値をそろえる)。
 // 食い違い(値が2つ以上)は勝手に決めない。戻り値: { filled: 埋めた数, conflicts: [{key, ref, field, options}] }
 function devNormalize() {

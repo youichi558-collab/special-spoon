@@ -34,6 +34,7 @@ const sb = {
 vm.createContext(sb);
 // Windowsで取り出すと改行がCRLFになるのでLFにそろえる(他のテストと同じ)
 vm.runInContext(fs.readFileSync(__dirname + '/../js/report.js', 'utf8').replace(/\r\n/g, '\n'), sb);
+vm.runInContext(fs.readFileSync(__dirname + '/../js/devices.js', 'utf8'), sb);   // 部品表の入力はデバイス台帳を通る
 
 const els = [
   { id: 1, type: 'c_coil', partRef: 'CR10', partModel: 'MY4N' },

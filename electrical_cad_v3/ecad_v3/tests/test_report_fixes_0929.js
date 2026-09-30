@@ -14,6 +14,7 @@ const sb = { console, escH, window: {}, alert: () => {}, confirm: () => true, dl
 Object.defineProperty(sb, 'htmlOut', { get: () => domEls['report-body'].innerHTML });
 vm.createContext(sb);
 vm.runInContext(R('js/report.js'), sb);
+vm.runInContext(R('js/devices.js'), sb);   // 部品表の入力はデバイス台帳を通る
 vm.runInContext(R('js/conn_table.js'), sb);
 const page = (els, wires) => ({ name: 'P', elements: els, wires: wires || [] });
 const setState = (pages) => { sb.state = { pages, currentPage: 0, customParts: [], customSymbols: [] }; };
@@ -184,7 +185,7 @@ console.log('\n【部品表: 仕様(図面の仕様欄)を、型番とは別の�
   let pushed = 0; sb.pushH = () => { pushed++; };
   vm.runInContext(`setBOMSpec(${idx('CP1')}, ' 2P 10A ')`, sb);
   ok(els[0].label === '2P 10A', 'もともと仕様が入っている記号に、打った仕様が入る(前後の空白は落とす)');
-  ok(els[1].label === '', '仕様が空だった記号には入れない(図面に仕様が増えない)');
+  ok(els[1].label === '2P 10A' && els[1].specHide === true, '仕様はデバイスに1つ: 空だった記号にも入るが「図面に表示」はOFF(図面に仕様が増えない)(2026-09-30 デバイス台帳②)');
   ok(pushed === 1, '取り消せる(pushH)');
   vm.runInContext(`setBOMSpec(${idx('CP3')}, 'C')`, sb);
   ok(els[3].label === 'C' && els[4].label === 'C', '食い違っていた仕様が、打った値に揃う');
@@ -194,7 +195,7 @@ console.log('\n【部品表: 仕様(図面の仕様欄)を、型番とは別の�
   const e2 = [{ id: 'a', type: 'brk', partRef: 'K1' }, { id: 'b', type: 'coil', partRef: 'K1' }, { id: 'c', type: 'brk', partRef: 'K1' }];
   setState([page(e2)]); vm.runInContext('showBOM()', sb);
   vm.runInContext(`setBOMSpec(${vm.runInContext('window._bomRows', sb).findIndex(r => r.refs[0] === 'K1')}, 'AC100V')`, sb);
-  ok(e2[1].label === 'AC100V' && !e2[0].label && !e2[2].label, '仕様が無いデバイスは、コイル1つだけに入る');
+  ok(e2.every(e => e.label === 'AC100V') && !e2[1].specHide && e2[0].specHide && e2[2].specHide, '仕様が無いデバイスは、全記号に入り、図面に出るのはコイル1つだけ');
   vm.runInContext(`setBOMSpec(${vm.runInContext('window._bomRows', sb).findIndex(r => r.refs[0] === 'K1')}, '')`, sb);
   ok(e2.every(e => e.label === undefined), '空にすると、全記号の仕様が消える');
 }

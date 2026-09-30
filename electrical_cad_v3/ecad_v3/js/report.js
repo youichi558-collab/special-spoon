@@ -921,7 +921,7 @@ function setBOMVolt(idx, volt){
   volt=(volt||'').trim();   // 手打ち(部品DBに無い型番のセル)の前後の空白を落とす
   if(typeof pushH==='function')pushH();   // 変更前の状態を履歴に積む
   if(typeof stSetPref==='function')stSetPref('partVolt',volt);   // 前回値(settings.js)
-  (r.els||[]).forEach(el=>{ el.partVolt=volt||undefined; });
+  devSetField(devKey(r.refs[0]),'partVolt',volt);   // デバイスの全部の記号へ(js/devices.js)
   if(typeof draw==='function')draw();
   if(typeof updateRightPanel==='function')updateRightPanel();
   showBOM();
@@ -932,8 +932,7 @@ function setBOMMaker(idx, maker){
   const r=(window._bomRows||[])[idx];
   if(!r)return;
   if(typeof pushH==='function')pushH();   // 変更前の状態を履歴に積む
-  const v=(maker||'').trim();
-  (r.els||[]).forEach(el=>{ el.partMaker=v||undefined; });
+  devSetField(devKey(r.refs[0]),'partMaker',maker);   // デバイスの全部の記号へ(js/devices.js)
   if(typeof draw==='function')draw();
   if(typeof updateRightPanel==='function')updateRightPanel();
   showBOM();
@@ -954,12 +953,7 @@ function setBOMModel(idx, v){
   const r=(window._bomRows||[])[idx];
   if(!r||r.noRef)return;
   if(typeof pushH==='function')pushH();   // 変更前の状態を履歴に積む
-  const val=(v||'').trim();
-  (r.els||[]).forEach(el=>{ el.partModel=val||undefined; });
-  const key=normalizeRef((r.refs&&r.refs[0])||'');
-  if(key)state.pages.forEach(pg=>(pg.groups||[]).forEach(g=>{
-    if(normalizeRef(g.partRef)===key)g.partModel=val||undefined;
-  }));
+  devSetField(devKey(r.refs[0]),'partModel',v);   // デバイスの全部の記号と外形図へ(js/devices.js)
   if(typeof draw==='function')draw();
   if(typeof updateRightPanel==='function')updateRightPanel();
   showBOM();
@@ -973,14 +967,9 @@ function setBOMSpec(idx, v){
   const targets=(r.els||[]).filter(el=>el.type!=='junction');
   if(!targets.length)return;
   if(typeof pushH==='function')pushH();   // 変更前の状態を履歴に積む
-  const val=(v||'').trim();
-  if(!val){
-    targets.forEach(el=>{ delete el.label; });
-  }else{
-    const has=targets.filter(el=>String(el.label||'').trim());
-    const dest=has.length?has:[targets.find(el=>symRole(el)==='coil')||targets[0]];
-    dest.forEach(el=>{ el.label=val; });
-  }
+  // デバイスの全部の記号へ(js/devices.js)。仕様が空だった記号は「仕様を図面に表示」をOFFにして入れるので、
+  // 図面の見た目は変わらない(仕様が無いデバイスに初めて入れるときはコイル、無ければ最初の記号にだけ出る)
+  devSetField(devKey(r.refs[0]),'label',v);
   if(typeof draw==='function')draw();
   if(typeof updateRightPanel==='function')updateRightPanel();
   showBOM();
@@ -992,8 +981,7 @@ function _setBOMField(idx, prop, v){
   const r=(window._bomRows||[])[idx];
   if(!r)return;
   if(typeof pushH==='function')pushH();   // 変更前の状態を履歴に積む
-  const val=(v||'').trim();
-  (r.els||[]).forEach(el=>{ el[prop]=val||undefined; });
+  devSetField(devKey(r.refs[0]),prop,v);   // デバイスの全部の記号へ(js/devices.js)
   if(typeof draw==='function')draw();
   if(typeof updateRightPanel==='function')updateRightPanel();
   showBOM();
@@ -1202,14 +1190,8 @@ function showRefPanel(){
 function setRefModel(ki,v){
   const key=(window._refKeys||[])[ki];
   if(key==null)return;
-  const val=(v||'').trim();
   if(typeof pushH==='function')pushH();
-  state.pages.forEach(pg=>{
-    (pg.elements||[]).forEach(el=>{
-      const raw=(el.partRef||'').trim();
-      if(raw&&normalizeRef(raw)===key)el.partModel=val||undefined;
-    });
-  });
+  devSetField(key,'partModel',v);   // デバイスの全部の記号と外形図へ(js/devices.js)
   if(typeof draw==='function')draw();
   if(typeof updateRightPanel==='function')updateRightPanel();
   showRefPanel();

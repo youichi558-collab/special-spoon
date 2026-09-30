@@ -50,6 +50,10 @@ vm.runInContext(
   [grab('collectDeviceInfo'), grab('onJunctionRefChanged'), grab('onJunctionModelChanged')].join('\n'),
   sandbox
 );
+// 型式の反映はデバイス台帳(js/devices.js)を通る(2026-09-30)。本物を読み込む
+{ const rep = fs.readFileSync(__dirname + '/../js/report.js', 'utf8'); const i = rep.indexOf('function normalizeRef(');
+  vm.runInContext(rep.slice(i, rep.indexOf('\n}', i) + 2), sandbox);
+  vm.runInContext(fs.readFileSync(__dirname + '/../js/devices.js', 'utf8'), sandbox); }
 
 // ------------------------------------------------------------------
 console.log('【collectDeviceInfo: 端子台の端子番号を「仕様」として拾わない】');

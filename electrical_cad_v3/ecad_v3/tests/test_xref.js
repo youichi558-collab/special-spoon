@@ -20,6 +20,7 @@ const sb = { console, window: {}, document: { getElementById: () => null }, escH
                   cm: { w: 40, h: 40, role: 'contact_main' }, lamp: { w: 40, h: 40, role: '' } }[t] || { w: 20, h: 20 }) };
 vm.createContext(sb);
 vm.runInContext(R('js/report.js'), sb);
+vm.runInContext(R('js/devices.js'), sb);   // 接点Refの型式欄はデバイス台帳を通る
 const frame = R('js/frame.js');
 vm.runInContext([pick(frame, /function frameGeom\([\s\S]*?\n\}/), pick(frame, /function zoneColLabel[^\n]*/), pick(frame, /function zoneRowLabel[^\n]*/),
   pick(R('js/ui.js'), /function parseTerminalGroups\([\s\S]*?\n\}/)].join('\n'), sb);
