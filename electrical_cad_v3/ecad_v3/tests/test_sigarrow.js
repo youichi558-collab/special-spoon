@@ -15,15 +15,18 @@ const ok = (c, m) => eq(!!c, true, m);
 const R = f => fs.readFileSync(__dirname + '/../' + f, 'utf8').replace(/\r\n/g, '\n');
 const pick = (src, re) => { const m = src.match(re); if (!m) throw new Error('見つかりません: ' + re); return m[0]; };
 
-const sb = { console, window: {}, document: { getElementById: () => null }, escH: require('./_esch.js').escH,
+let _html = '';
+const sb = { console, _reportOpen: (k, ti, h) => { _html = h; }, pushH() {}, draw() {}, dl() {}, confirm: () => true, alert() {}, updateRightPanel() {}, incRef: s => s.replace(/\d+$/, n => String(+n + 1).padStart(n.length, '0')), window: {}, document: { getElementById: () => null }, escH: require('./_esch.js').escH,
   getDef: t => ({ sout: { w: 30, h: 20, role: 'sig_out' }, sin: { w: 30, h: 20, role: 'sig_in' }, coil: { w: 96, h: 80, role: 'coil' }, ca: { w: 40, h: 40, role: 'contact_a' }, cb: { w: 40, h: 40, role: 'contact_b' },
                   cm: { w: 40, h: 40, role: 'contact_main' }, lamp: { w: 40, h: 40, role: '' } }[t] || { w: 20, h: 20 }) };
 vm.createContext(sb);
 vm.runInContext(R('js/report.js'), sb);
-vm.runInContext(R('js/devices.js'), sb);   // 接点Refの型式欄はデバイス台帳を通る
+vm.runInContext(R('js/devices.js'), sb);
+sb._reportOpen = (k, ti, h) => { _html = h; };   // report.js の定義を、HTMLを受け取るだけのものに差し替える   // 接点Refの型式欄はデバイス台帳を通る
 const frame = R('js/frame.js');
 vm.runInContext([pick(frame, /function frameGeom\([\s\S]*?\n\}/), pick(frame, /function zoneColLabel[^\n]*/), pick(frame, /function zoneRowLabel[^\n]*/),
   pick(R('js/ui.js'), /function parseTerminalGroups\([\s\S]*?\n\}/)].join('\n'), sb);
+vm.runInContext(R('js/conn_table.js'), sb);
 vm.runInContext(R('js/xref.js'), sb);
 vm.runInContext(R('js/xref_project.js') + '\nthis.xprojState = xprojState;', sb);
 
@@ -83,6 +86,49 @@ console.log('【分割ファイル(プロジェクト)】');
   eq(JSON.stringify(L.blocks).includes('same'), false, '開いている図面と同じページ名のファイルは使わない');
   sb.xprojState.files = [];
   eq(sb.xrefCompute().arrows.get(o.id).text, '(相手なし)', 'プロジェクトが空なら今の図面だけで計算');
+}
+console.log('【線番表: 矢印でつながるネットは1行・線番1つ】');
+{
+  const W = (id, x1, y1, x2, y2, no) => ({ id, x1, y1, x2, y2, wireNo: no || '', layer: '回路' });
+  const o = E('sout', 100, 100, { label: '9' }), i = E('sin', 300, 200, { label: '9' });
+  const mk = () => {
+    sb.state = { pages: [
+      { name: 'P1', elements: [o], wires: [W('w1', 115, 100, 200, 100), W('w2', 200, 100, 200, 150)], frameObj: FRAME },
+      { name: 'P2', elements: [i], wires: [W('w3', 285, 200, 250, 200)], frameObj: FRAME },
+      { name: 'P3', elements: [], wires: [W('w4', 0, 0, 50, 0)], frameObj: FRAME },
+    ], currentPage: 0, customSymbols: [], customParts: [], wireNoRule: 'W001' };
+  };
+  mk();
+  const links = sb.sigNetLinks();
+  eq(links.length, 1, '矢印の対が1つ');
+  eq([links[0].a.idxs, links[0].b.idxs], [[0, 1], [0]], '送り・受けそれぞれの端子に触れているネットの配線');
+  sb.wireNoTable();
+  const rows = (_html.match(/<tr [^>]*jumpToNet/g) || []).length;
+  eq(rows, 2, 'P1とP2のネットが1行にまとまり、P3の1行と合わせて2行');
+  ok(/P1 ⇄ P2/.test(_html), 'ページ欄に「P1 ⇄ P2」');
+  sb.applyNetWireNoParts([[0, [0, 1]], [1, [0]]], 'W005');
+  eq([sb.state.pages[0].wires.map(w => w.wireNo).filter(Boolean), sb.state.pages[1].wires[0].wireNo], [['W005'], 'W005'], '入力すると送り側・受け側の両方のネットに1か所ずつ入る');
+  // 一括割付は相手の番号を引き継ぐ
+  mk();
+  sb.state.pages[0].wires[0].wireNo = 'W007';
+  sb.prompt = () => 'W001';
+  sb.autoWireNumber();
+  eq(sb.state.pages[1].wires[0].wireNo, 'W007', '一括割付: 相手に番号があれば引き継ぐ(別の番号を振らない)');
+  eq(sb.state.pages[2].wires[0].wireNo, 'W001', '矢印と関係のないネットは普通に採番');
+  // 別ファイルの相手
+  mk();
+  sb.state.pages.length = 1;
+  sb.xprojState.files = [{ name: 'B.json', pages: [{ name: 'PB', elements: [i], wires: [W('x1', 285, 200, 250, 200, 'W009')], frameObj: FRAME }], symbols: [] }];
+  sb.wireNoTable();
+  ok(/別ファイルの相手/.test(_html) && /B\/1[^ <]* W009/.test(_html), '別ファイルの相手の線番が読み取り専用で添えられる');
+  sb.state.pages[0].wires[0].wireNo = 'W001'; sb.state.pages[0].wires[1].wireNo = 'W001';
+  sb.wireNoTable();
+  ok(/食い違っています/.test(_html), '番号が違えば橙で知らせる');
+  sb.state.pages[0].wires.forEach(w => { w.wireNo = ''; });
+  sb.prompt = () => 'W001';
+  sb.autoWireNumber();
+  eq(sb.state.pages[0].wires.map(w => w.wireNo).filter(Boolean), ['W009'], '一括割付: 別ファイルの相手の番号も引き継ぐ');
+  sb.xprojState.files = [];
 }
 console.log('【矢印以外は影響しない】');
 {

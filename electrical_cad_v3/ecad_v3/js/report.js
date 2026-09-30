@@ -306,6 +306,21 @@ function autoWireNumber(){
   const used = new Set();
   state.pages.forEach(pg => (pg.wires||[]).forEach(w => { if (w.wireNo) used.add(w.wireNo); }));
   let next = start.trim(), wireCnt = 0, netCnt = 0, conflictCnt = 0, excludedCnt = 0;
+  // ページ跨ぎの矢印の相手(送り・受け)は同じ線なので、相手に番号があればそれを引き継ぐ(別の番号を振らない)
+  const netKey = (pi, idxs) => pi + ':' + Math.min(...idxs);
+  const partners = new Map(), noByKey = new Map(), assigned = new Map();
+  if (typeof sigNetLinks === 'function') {
+    state.pages.forEach((pg, pi) => groupWiresByNet(pg.wires || [], null, pg.elements).forEach(idxs => {
+      noByKey.set(netKey(pi, idxs), idxs.map(i => pg.wires[i].wireNo).find(Boolean) || '');
+    }));
+    const addP = (k, v) => { if (!partners.has(k)) partners.set(k, []); partners.get(k).push(v); };
+    sigNetLinks().forEach(pr => {
+      const ka = (!pr.a.ext && pr.a.idxs) ? netKey(pr.a.pi, pr.a.idxs) : null, kb = (!pr.b.ext && pr.b.idxs) ? netKey(pr.b.pi, pr.b.idxs) : null;
+      if (ka && kb) { addP(ka, { key: kb }); addP(kb, { key: ka }); }
+      else if (ka && pr.b.ext) addP(ka, { no: pr.b.no });
+      else if (kb && pr.a.ext) addP(kb, { no: pr.a.no });
+    });
+  }
 
   state.pages.forEach(pg => {
     const wires = pg.wires || [];
@@ -319,8 +334,18 @@ function autoWireNumber(){
       // 【2026-09-25】番号のあるネットには触らない。以前はネット内の空の線すべてに
       // 同じ番号を写していたため、図面に同じ線番の文字が何か所も並んだ(_setNetWireNo参照)。
       if (existingNums.size) return;
+      const myKey = netKey(state.pages.indexOf(pg), idxs);
+      let inherit = '';
+      (partners.get(myKey) || []).forEach(pt => { if (!inherit) inherit = pt.no || (pt.key && (assigned.get(pt.key) || noByKey.get(pt.key))) || ''; });
+      if (inherit) {   // 矢印の相手の番号を引き継ぐ
+        assigned.set(myKey, inherit); netCnt++;
+        _setNetWireNo(wires, idxs, inherit);
+        wireCnt++;
+        return;
+      }
       while (used.has(next)) next = incRef(next);
       const num = next; used.add(next); next = incRef(next);
+      assigned.set(myKey, num);
       netCnt++;
       _setNetWireNo(wires, idxs, num);   // 一番長い線1本に入れる
       wireCnt++;
@@ -355,9 +380,38 @@ function wireNoTable(msg){
       const wireNo = existingNums[0] || '';
       if (!wireNo) unnumbered += idxs.length;
       const autoNum = !idxs.some(i => wires[i].noAutoNum); // 1つでも対象外フラグがあればチェック外
-      rows.push({ pageIdx: pi, pname, idxs, wireNo, conflict: existingNums.length > 1, autoNum });
+      rows.push({ pageIdx: pi, pname, idxs, wireNo, conflict: existingNums.length > 1, autoNum, parts: [{ pi, idxs }], ext: [] });
     });
   });
+  // 【2026-09-30】ページ跨ぎの矢印(送り・受け)でつながる2つのネットは、電気的に同じ線=線番1つ=**1行**にまとめる。
+  // 同じファイル内の相手は行に合わせる(入力すると両方に書く)。別ファイル(プロジェクト)の相手は読み取り専用で番号を添える。
+  {
+    const rowOfWire = new Map();
+    rows.forEach(r => r.idxs.forEach(i => rowOfWire.set(r.pageIdx + ':' + i, r)));
+    const dead = new Set();
+    const rowOf = sd => { let r = sd.idxs && rowOfWire.get(sd.pi + ':' + sd.idxs[0]); while (r && r.mergedInto) r = r.mergedInto; return r; };
+    (typeof sigNetLinks === 'function' ? sigNetLinks() : []).forEach(pr => {
+      const ra = pr.a.ext ? null : rowOf(pr.a), rb = pr.b.ext ? null : rowOf(pr.b);
+      if (ra && rb && ra !== rb) {
+        ra.parts.push(...rb.parts); ra.ext.push(...rb.ext); rb.mergedInto = ra; dead.add(rb);
+      } else if (ra && !rb && pr.b.ext) ra.ext.push({ loc: pr.b.loc, no: pr.b.no });
+      else if (rb && !ra && pr.a.ext) rb.ext.push({ loc: pr.a.loc, no: pr.a.no });
+    });
+    for (let k = rows.length - 1; k >= 0; k--) if (dead.has(rows[k])) rows.splice(k, 1);
+    rows.forEach(r => {
+      if (r.parts.length < 2 && !r.ext.length) return;
+      const nums = [], all = [];
+      let nAuto = true;
+      r.parts.forEach(pt => { const w = state.pages[pt.pi].wires; pt.idxs.forEach(i => { if (w[i].wireNo) nums.push(w[i].wireNo); if (w[i].noAutoNum) nAuto = false; }); });
+      const uniq = [...new Set(nums)];
+      r.wireNo = uniq[0] || ''; r.conflict = uniq.length > 1; r.autoNum = nAuto;
+      r.pname = r.parts.map(pt => state.pages[pt.pi].name || ('Sheet' + (pt.pi + 1))).join(' ⇄ ');
+      r.merged = r.parts.length > 1;
+      r.extMismatch = r.ext.some(e => e.no && r.wireNo && e.no !== r.wireNo);
+      r.count = r.parts.reduce((n, pt) => n + pt.idxs.length, 0);
+    });
+  }
+  const partsArg = r => '[' + r.parts.map(pt => `[${pt.pi},[${pt.idxs.join(',')}]]`).join(',') + ']';
   // 未採番のネットを先頭に、それ以降は線番の自然順ソート
   rows.sort((a,b) => {
     if (!a.wireNo && b.wireNo) return -1;
@@ -375,20 +429,24 @@ function wireNoTable(msg){
   html += `<br>行を押すと、この一覧を閉じて図面のその配線へ移動し、選択します(線番はプロパティ欄でも打てます)。`;
   html += `<br><button onclick="compactAllWireNumbers()" title="削除等で欠番になった線番を詰めます(例: W001,W003,W005 → W001,W002,W003)。編集中に自動では動きません、このボタンを押した時だけ実行されます" style="margin-top:4px;font-size:10px;padding:2px 8px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)">欠番を詰める</button>`;
   html += `</p>`;
-  html += `<table class="tbl"><tr><th></th><th></th><th>線番</th><th>ページ</th><th>本数</th><th></th></tr>`;
+  const hasExt = rows.some(r => r.ext && r.ext.length);
+  html += `<table class="tbl"><tr><th></th><th></th><th>線番</th><th>ページ</th><th>本数</th>${hasExt ? '<th>別ファイルの相手</th>' : ''}<th></th></tr>`;
   rows.forEach((r, ri) => {
     const badgeCls = r.conflict ? 'badge-o' : 'badge-b';
     const title = r.conflict ? 'title="⚠このネット内に異なる既存線番が混在しています。編集すると統一されます"' : '';
     const prev = rows[ri-1], next = rows[ri+1];
     const btnStyle = 'font-size:9px;line-height:1;padding:1px 3px;cursor:pointer;border:1px solid var(--bd2);border-radius:2px;background:var(--bg2);color:var(--fg)';
-    const upBtn = prev
+    const canSwap = (a, b) => a && b && !a.merged && !b.merged;
+    const upBtn = canSwap(r, prev)
       ? `<button title="ひとつ上の行と線番を入れ替え" onclick="swapNetWireNo(${r.pageIdx},[${r.idxs.join(',')}],${_jsArg(r.wireNo)},${prev.pageIdx},[${prev.idxs.join(',')}],${_jsArg(prev.wireNo)})" style="${btnStyle}">▲</button>`
       : `<button disabled style="${btnStyle};opacity:.3">▲</button>`;
-    const downBtn = next
+    const downBtn = canSwap(r, next)
       ? `<button title="ひとつ下の行と線番を入れ替え" onclick="swapNetWireNo(${r.pageIdx},[${r.idxs.join(',')}],${_jsArg(r.wireNo)},${next.pageIdx},[${next.idxs.join(',')}],${_jsArg(next.wireNo)})" style="${btnStyle}">▼</button>`
       : `<button disabled style="${btnStyle};opacity:.3">▼</button>`;
-    const delBtn = `<button title="このネットの配線ごと削除し、欠番を自動で詰めます" onclick="deleteNetFromList(${r.pageIdx},[${r.idxs.join(',')}])" style="${btnStyle};color:var(--red)">×</button>`;
-    const chk = `<input type="checkbox" ${r.autoNum?'checked':''} title="チェックを外すと「線番割付」ボタンでの自動採番の対象外になります" onchange="toggleNetAutoNum(${r.pageIdx},[${r.idxs.join(',')}],this.checked)">`;
+    const delBtn = r.merged
+      ? `<button disabled title="ページ跨ぎの矢印でつながった行は、ここから削除できません(各ページで消してください)" style="${btnStyle};opacity:.3">×</button>`
+      : `<button title="このネットの配線ごと削除し、欠番を自動で詰めます" onclick="deleteNetFromList(${r.pageIdx},[${r.idxs.join(',')}])" style="${btnStyle};color:var(--red)">×</button>`;
+    const chk = `<input type="checkbox" ${r.autoNum?'checked':''} title="チェックを外すと「線番割付」ボタンでの自動採番の対象外になります" onchange="toggleNetAutoNumParts(${partsArg(r)},this.checked)">`;
     // 【2026-09-25】行を押すと図面のそのネットへ飛ぶ(盛田さん「線番が無いことはわかるが
     // それがどれなのかは不明」)。欄・ボタン・チェックを押したときは飛ばない。
     const jump = `onclick="if(!/^(INPUT|BUTTON|SELECT)$/.test(event.target.tagName))jumpToNet(${r.pageIdx},[${r.idxs.join(',')}])"`;
@@ -396,10 +454,11 @@ function wireNoTable(msg){
       `<td>${chk}</td>` +
       `<td style="white-space:nowrap">${upBtn}${downBtn}</td>` +
       `<td><input type="text" value="${escH(r.wireNo)}" placeholder="未採番" ` +
-      `onchange="applyNetWireNo(${r.pageIdx},[${r.idxs.join(',')}],this.value)" ` +
+      `onchange="applyNetWireNoParts(${partsArg(r)},this.value)" ` +
       `style="width:80px;font-size:11px;padding:2px 4px;border:1px solid ${r.conflict?'#f59e0b':'var(--bd2)'};border-radius:3px;background:var(--bg2);color:var(--fg)"></td>` +
       `<td>${escH(r.pname)}</td>` +
-      `<td><span class="badge ${badgeCls}">${r.idxs.length}</span></td>` +
+      `<td><span class="badge ${badgeCls}">${r.count || r.idxs.length}</span></td>` +
+      (hasExt ? `<td style="${r.extMismatch ? 'color:#f59e0b;font-weight:600' : ''}" ${r.extMismatch ? 'title="別ファイルの相手の線番と食い違っています"' : ''}>${escH((r.ext || []).map(e => e.loc + ' ' + (e.no || '(未採番)')).join(' / '))}</td>` : '') +
       `<td>${delBtn}</td>` +
       `</tr>`;
   });
@@ -541,6 +600,29 @@ function applyNetWireNo(pageIdx, wireIdxs, value) {
   _setNetWireNo(pg.wires, wireIdxs, v);   // 1ネット1か所(_setNetWireNo参照)
   draw();
   wireNoTable();
+}
+
+// ページ跨ぎの矢印でつながった行(複数のネット)への入力。1ネットだけの行は従来の applyNetWireNo と同じ。
+// 同じファイルの中の相手にだけ書く(別ファイルは読み取り専用)。parts=[[ページ番号,[配線の番号…]],…]
+function applyNetWireNoParts(parts, value) {
+  if (parts.length === 1) return applyNetWireNo(parts[0][0], parts[0][1], value);
+  const v = (value || '').trim();
+  if (v) {
+    const mine = new Set();
+    parts.forEach(([pi, idxs]) => idxs.forEach(i => mine.add(pi + ':' + i)));
+    let usedElsewhere = false;
+    state.pages.forEach((pg, pi) => (pg.wires || []).forEach((w, i) => { if (w.wireNo === v && !mine.has(pi + ':' + i)) usedElsewhere = true; }));
+    if (usedElsewhere && !confirm(`線番「${v}」は既に別の配線で使われています。同じ番号のまま登録しますか？`)) { wireNoTable(); return; }
+  }
+  pushH();
+  parts.forEach(([pi, idxs]) => _setNetWireNo(state.pages[pi].wires, idxs, v));   // 各ページのネットに1か所ずつ(送りと受けの両方に同じ線番が出る)
+  draw();
+  wireNoTable();
+}
+function toggleNetAutoNumParts(parts, checked) {
+  pushH();
+  parts.forEach(([pi, idxs]) => idxs.forEach(i => { const w = state.pages[pi].wires[i]; if (w) w.noAutoNum = !checked; }));
+  draw();
 }
 
 // CSV: 全ページ分を出力

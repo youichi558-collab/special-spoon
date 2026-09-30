@@ -26,7 +26,7 @@ function xprojVirtualPage(file, pg, idx, fi) {
   const cp = o => Object.assign({}, o, { id: pre + o.id });
   return {
     name: `${xprojBase(file.name)}/${pg.name || ''}`, _file: xprojBase(file.name), _pno: idx + 1,
-    elements: (pg.elements || []).map(cp), wires: [], groups: (pg.groups || []).map(cp),
+    elements: (pg.elements || []).map(cp), wires: pg.wires || [], groups: (pg.groups || []).map(cp),
     frameObj: pg.frameObj || null,
   };
 }
@@ -47,7 +47,7 @@ function xprojPages() {
 function xprojWith(fn) {
   const ext = xprojPages();
   if (!ext.length) return fn();
-  const savedPages = state.pages;
+  const savedPages = state.pages, savedSyms = state.customSymbols;
   const addedDefs = [];
   try {
     if (typeof DEFS === 'object') {
@@ -55,10 +55,15 @@ function xprojWith(fn) {
         if (s && s.type && !DEFS[s.type]) { DEFS[s.type] = s; addedDefs.push(s.type); }
       }));
     }
+    // 端子の位置(collectTerminalPoints)は state.customSymbols を見るので、別ファイルの記号定義も足す(今の図面にあるtypeは今のもの)
+    const have = new Set((savedSyms || []).map(x => x.type));
+    const more = [];
+    xprojState.files.forEach(f => (f.symbols || []).forEach(x => { if (x && x.type && !have.has(x.type)) { have.add(x.type); more.push(x); } }));
+    if (more.length) state.customSymbols = (savedSyms || []).concat(more);
     state.pages = savedPages.concat(ext.map(e => xprojVirtualPage(e.f, e.pg, e.i, e.fi)));
     return fn();
   } finally {
-    state.pages = savedPages;
+    state.pages = savedPages; state.customSymbols = savedSyms;
     addedDefs.forEach(t => { delete DEFS[t]; });
   }
 }

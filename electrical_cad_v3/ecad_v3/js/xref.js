@@ -300,7 +300,7 @@ function xrefComputeCore() {
 // ================================================================
 function sigarrowKey(el) { return String(el.label || '').normalize('NFKC').trim().toUpperCase(); }
 function sigarrowCompute() {
-  const arrows = new Map(), issues = [];
+  const arrows = new Map(), issues = [], pairs = [];
   const groups = new Map();
   (state.pages || []).forEach((pg, pi) => {
     (pg.elements || []).forEach(el => {
@@ -322,13 +322,43 @@ function sigarrowCompute() {
     if (outs.length === 1 && ins.length === 1) {
       put(outs[0], '→ ' + ins[0].loc);
       put(ins[0], '← ' + outs[0].loc);
+      pairs.push({ out: outs[0], in: ins[0] });
       return;
     }
     const why = outs.length > 1 || ins.length > 1 ? '同じ名前の矢印が多すぎます(送り1・受け1の一対一)'
               : outs.length ? '受け矢印がありません' : '送り矢印がありません';
     list.forEach(r => { issues.push({ ...r, reason: why }); put(r, '(相手なし)'); });
   });
-  return { arrows, issues };
+  return { arrows, issues, pairs };
+}
+
+// 矢印の一対一の相手を「ネット(つながっている配線のまとまり)」で返す。線番表・一括割付が使う(2026-09-30)。
+// 送りと受けの線は電気的に同じ線なので、線番は1つ(線番表では1行)。
+//   戻り値: [{ a:{pi,ext,loc,idxs,no}, b:{...} }]  ext=別ファイル(プロジェクト)の図面(読み取り専用)。
+//   idxs=矢印の端子に触れているネットの配線の番号(ページの wires の添字)。触れていなければ null。no=そのネットの今の線番
+//   pi は今の図面のページ番号(ext のときは意味なし)
+function sigNetLinks() {
+  return (typeof xprojWith === 'function') ? xprojWith(sigNetLinksCore) : sigNetLinksCore();
+}
+function sigNetLinksCore() {
+  const nets = new Map();
+  const side = rec => {
+    const pg = state.pages[rec.pi];
+    if (!nets.has(rec.pi)) nets.set(rec.pi, groupWiresByNet(pg.wires || [], null, pg.elements));
+    const tol = (typeof CONN_TABLE_TOL === 'number') ? CONN_TABLE_TOL : 5;
+    const pts = collectTerminalPoints([rec.el]);
+    let idxs = null;
+    for (const g of nets.get(rec.pi)) {
+      const hit = g.some(i => {
+        const w = pg.wires[i], ps = w.pts || [{ x: w.x1, y: w.y1 }, { x: w.x2, y: w.y2 }];
+        return [ps[0], ps[ps.length - 1]].some(e => pts.some(t => Math.hypot(t.x - e.x, t.y - e.y) <= tol));
+      });
+      if (hit) { idxs = g; break; }
+    }
+    const no = idxs ? (idxs.map(i => pg.wires[i].wireNo).find(Boolean) || '') : '';
+    return { pi: rec.pi, ext: !!pg._file, loc: rec.loc, idxs, no };
+  };
+  return sigarrowCompute().pairs.map(pr => ({ a: side(pr.out), b: side(pr.in) }));
 }
 
 
