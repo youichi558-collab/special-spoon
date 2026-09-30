@@ -1319,6 +1319,14 @@ function isTBExcluded(el) {
 function setTBExcluded(dev, excluded) {
   if (typeof pushH === 'function') pushH();   // 取り消せるようにする
   const target = String(dev || '');
+  // デバイスのある台は台帳(js/devices.js)で書く(綴りの違う端子にも。部品表・接点Refと同じまとめ方)
+  if (typeof devSetField === 'function' && typeof devKey === 'function' && devKey(target) && target !== '(デバイス未設定)') {
+    const n = devSetField(devKey(target), 'tbExclude', excluded ? 'true' : '');
+    if (typeof draw === 'function') draw();
+    if (typeof updateRightPanel === 'function') updateRightPanel();
+    if (typeof showTBTable === 'function') showTBTable();
+    return n;
+  }
   let n = 0;
   (state.pages || [{ elements: state.elements }]).forEach(pg => {
     (pg.elements || []).forEach(el => {

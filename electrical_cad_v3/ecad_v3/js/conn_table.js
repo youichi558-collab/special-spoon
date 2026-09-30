@@ -369,13 +369,17 @@ function buildTerminalBlockRows() {
   if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
   const all = collectTerminals();
   const names = tbDeviceNames(all);   // 綴りが違っても同じデバイスなら1つの台にする(部品表・接点Refと同じ判定)
+  // 型式はデバイスの値(台帳 js/devices.js)。デバイスの無い端子は端子自身の値
+  const led = (typeof deviceLedger === 'function') ? deviceLedger() : null;
+  const devOf = el => (led && typeof devKey === 'function') ? led.get(devKey(el.partRef)) : null;
   return all.map(r => ({
     el:      r.el,
     page:    state.pages[r.page]?.name || ('Sheet' + (r.page + 1)),
     pageIdx: r.page,
     loc:     r.loc,
     tbRef:   names.get(_tbKey(r.el.partRef)),
-    tbModel: r.el.partModel || '',
+    tbModel: (() => { const D = devOf(r.el); return D ? (D.vals.partModel || '') : (r.el.partModel || ''); })(),
+    tbDev:   devOf(r.el),
     termNo:  r.el.label || '-',
     conns:   _tbConnsOf(r.el, state.pages[r.page] || {}),
   }));
@@ -507,12 +511,18 @@ function showTBTable() {
     // 型式は同じデバイスの端子すべてで揃う運用(プロパティ側で統一)なので、
     // 全行に同じ文字を並べず台の見出しに1回だけ出す。揃っていない場合だけ
     // 警告を出して気付けるようにする(古い図面や手作業で崩れたとき用)。
-    const models = [...new Set(list.map(r => r.tbModel).filter(Boolean))];
-    const modelTxt = models.length === 1
-      ? `<span style="color:var(--fg3);font-weight:400"> ${escH(models[0])}</span>`
-      : models.length > 1
-        ? `<span style="color:var(--red);font-weight:400"> 型式が揃っていません（${escH(models.join(' / '))}）</span>`
-        : `<span style="color:var(--fg4);font-weight:400"> 型式未設定</span>`;
+    // 【2026-09-30 デバイス台帳④】型式・食い違いは台帳から(デバイスの値)。食い違いは押すと選ぶ画面を開く
+    const D = list[0] && list[0].tbDev;
+    const conflicts = D ? D.conflicts.map(c => (DEV_FIELDS.find(f => f.key === c.field) || { name: c.field }).name) : [];
+    const models = D ? [D.vals.partModel].filter(Boolean) : [...new Set(list.map(r => r.tbModel).filter(Boolean))];
+    const modelTxt = (conflicts.length
+        ? `<span style="color:var(--red);font-weight:400;cursor:pointer;text-decoration:underline dotted" title="クリックで、食い違いを選ぶ画面を開く" onclick="devResolveDialog(null,{undo:true,onDone:()=>showTBTable()})"> ⚠ 値が食い違っています（${escH(conflicts.join('・'))}）</span>`
+        : '')
+      + (models.length === 1
+        ? `<span style="color:var(--fg3);font-weight:400"> ${escH(models[0])}</span>`
+        : models.length > 1
+          ? `<span style="color:var(--red);font-weight:400"> 型式が揃っていません（${escH(models.join(' / '))}）</span>`
+          : (conflicts.includes('型番') ? '' : `<span style="color:var(--fg4);font-weight:400"> 型式未設定</span>`));
     html += `<p style="font-size:11px;font-weight:600;margin:8px 0 3px">${escH(dev)}`
       + `<span style="color:var(--fg3);font-weight:400">（${list.length}点）</span>`
       + modelTxt

@@ -26,6 +26,8 @@ const DEV_FIELDS = [
   { key: 'partName',  name: '名称' },
   { key: 'partNote',  name: '備考' },
   { key: 'panelZone', name: '部品表の対象外', emptyIsValue: true },
+  // 端子台表の「端子台として集計」を外した印(true)。端子台の端子(○◎)だけが持つ。デバイス④(2026-09-30)
+  { key: 'tbExclude', name: '端子台として集計', emptyIsValue: true, junctionOnly: true, bool: true },
 ];
 
 function devKey(ref) {
@@ -39,11 +41,13 @@ function _devVal(o, f) {
 }
 function devShowVal(f, v) {
   if (f.key === 'panelZone') return v === '外' ? '対象外' : '対象(部品表に載せる)';
+  if (f.key === 'tbExclude') return v ? '集計しない' : '集計する';
   return v === '' ? '(空欄)' : String(v).replace(/\n/g, ' ');
 }
 // その項目を持つ物(記号・グループ)
 function _devTargets(dev, f) {
-  return dev.items.filter(it => it.group ? !!f.groups : !(f.noJunction && it.el.type === 'junction'));
+  return dev.items.filter(it => it.group ? !!f.groups
+    : !(f.noJunction && it.el.type === 'junction') && !(f.junctionOnly && it.el.type !== 'junction'));
 }
 
 // 台帳を組み立てる。戻り値: Map(キー → { key, ref, items:[{pi, el, group}], vals:{項目: 値}, conflicts:[{field, options:[{value, items}]}] })
@@ -112,7 +116,7 @@ function devSetField(key, fieldKey, value) {
   targets.forEach(it => {
     const o = it.el;
     if (v === '') { if (o[f.key] !== undefined) { delete o[f.key]; n++; } return; }
-    if (_devVal(o, f) !== v) { o[f.key] = v; n++; }
+    if (_devVal(o, f) !== v) { o[f.key] = f.bool ? true : v; n++; }   // 印の項目(tbExclude)は true で持つ
   });
   return n;
 }
@@ -127,7 +131,7 @@ function devSyncFromEl(el) {
   if (!d) return 0;
   let n = 0;
   DEV_FIELDS.forEach(f => {
-    if (f.noJunction && el.type === 'junction') return;
+    if ((f.noJunction && el.type === 'junction') || (f.junctionOnly && el.type !== 'junction')) return;
     const others = _devTargets(d, f).filter(it => it.el !== el);
     if (!others.length) return;
     const ov = new Set(others.map(it => _devVal(it.el, f)).filter(v => f.emptyIsValue || v !== ''));
@@ -150,7 +154,7 @@ function devCommitEl(el, before) {
   if (devKey(before.partRef) !== key) return devSyncFromEl(el);
   let n = 0;
   DEV_FIELDS.forEach(f => {
-    if (f.noJunction && el.type === 'junction') return;
+    if ((f.noJunction && el.type === 'junction') || (f.junctionOnly && el.type !== 'junction')) return;
     const v = _devVal(el, f);
     if (v !== before[f.key]) n += devSetField(key, f.key, v);
   });

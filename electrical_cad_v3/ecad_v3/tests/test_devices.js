@@ -143,6 +143,25 @@ console.log('\n【②: 入力口がデバイス台帳を通る(片方だけ抜�
   });
 }
 
+console.log('\n【④: 端子台の「端子台として集計」もデバイスに1つ(tbExclude)】');
+{
+  const el = set([{ elements: [E('t1', 'junction', 'TB1', { style: 'circle', label: '1', tbExclude: true }), E('t2', 'junction', 'TB-1', { style: 'circle', label: '2', tbExclude: true }),
+    E('t3', 'junction', 'TB1', { style: 'circle', label: '3' }), E('s', 'coil', 'TB1', {})] }])[0].elements;
+  const L = sb.deviceLedger().get('TB1');
+  ok(L.conflicts.some(c => c.field === 'tbExclude'), '後から足した端子だけ集計する側になっていれば食い違い');
+  ok(!('tbExclude' in L.vals) && !L.conflicts.some(c => c.field === 'tbExclude' && c.options.some(o => o.items.some(it => it.el.id === 's'))), '端子台の端子以外(シンボル)は対象外');
+  sb.devSetField('TB1', 'tbExclude', 'true');
+  ok(el.slice(0, 3).every(e => e.tbExclude === true) && el[3].tbExclude === undefined, 'そろえると端子すべてが true(文字でなく真偽)・シンボルには付かない');
+  sb.devSetField('TB1', 'tbExclude', '');
+  ok(el.slice(0, 3).every(e => e.tbExclude === undefined), '空にすると印を消す(集計する)');
+  // 新しい端子がデバイスに加わると、デバイスの値にそろう
+  sb.devSetField('TB1', 'tbExclude', 'true');
+  const n = E('t4', 'junction', '', { style: 'circle', label: '4' }); sb.state.pages[0].elements.push(n);
+  const b = sb.devSnap(n); n.partRef = 'TB1'; sb.devCommitEl(n, b);
+  ok(n.tbExclude === true, '端子台に端子を足すと、その台の「集計しない」にそろう');
+  eq(sb.devShowVal(sb.DEV_FIELDS ? sb.DEV_FIELDS.find(f => f.key === 'tbExclude') : { key: 'tbExclude' }, 'true'), '集計しない', '選ぶ画面では「集計しない/集計する」と出す');
+}
+
 console.log('\n【組み込み】');
 {
   const edit = R('js/edit.js'), html = R('index.html');

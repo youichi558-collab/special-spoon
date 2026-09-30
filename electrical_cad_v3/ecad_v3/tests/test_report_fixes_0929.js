@@ -247,5 +247,25 @@ console.log('\n【部品表: デバイス未設定の行を押すと、図面の
   ok(calls.length === 1, '存在しない行番号では何もしない');
 }
 
+console.log('\n【④ 端子台表: 型式・食い違い・集計の切替はデバイス台帳から】');
+{
+  // conn_table.js は冒頭で読み込み済み。前の節で差し替えた showTBTable を本物に戻す
+  vm.runInContext(R('js/conn_table.js').match(/function showTBTable\(\)[\s\S]*?\n\}/)[0], sb);
+  const t = (id, ref, label, o) => Object.assign({ id, type: 'junction', style: 'circle', x: 10 * +label, y: 0, partRef: ref, label: String(label) }, o);
+  const els = [t('a', 'TB1', 1, { partModel: 'BTH-15' }), t('b', 'TB-1', 2, { partModel: 'BTH-15' }), t('c', 'TB1', 3, {}),
+    t('d', 'TB2', 1, { partModel: 'X' }), t('e', 'TB2', 2, { partModel: 'Y' })];
+  setState([page(els)]);
+  sb.elLocation = () => '1/A1';
+  vm.runInContext('showTBTable()', sb);
+  const h = sb.htmlOut;
+  ok(/TB1<span[^>]*>（3点）<\/span><span[^>]*> BTH-15<\/span>/.test(h), 'TB1 は綴り違いも1台・型式は台帳の値(空の端子があっても BTH-15)');
+  ok(/⚠ 値が食い違っています（型番）/.test(h) && /devResolveDialog\(null,\{undo:true,onDone:\(\)=>showTBTable\(\)\}\)/.test(h), 'TB2 は型番の食い違いを出し、押すと選ぶ画面');
+  const rows = vm.runInContext('buildTerminalBlockRows()', sb);
+  ok(rows.filter(r => r.tbRef === 'TB1').every(r => r.tbModel === 'BTH-15'), 'CSV・図の挿入に使う行の型式も台帳の値');
+  sb.showTBTable = () => {};
+  vm.runInContext("setTBExcluded('TB1', true)", sb);
+  ok(els.slice(0, 3).every(e => e.tbExclude === true) && !els[3].tbExclude, '「端子台として集計」を外すと、綴り違いの端子にも true で入る(別の台は変わらない)');
+}
+
 console.log(ng ? `\n失敗 ${ng} 件` : '\nすべて通過');
 process.exit(ng ? 1 : 0);
