@@ -180,6 +180,28 @@ console.log('【読む側: 配線番号CSV・端子台表・接続チェック�
   eq(sb.netWireNoOf(sb.state.pages[0]), ['W9'], '別ファイルの相手の線番も使う(読むだけ)');
   sb.xprojState.files = [];
 }
+console.log('【分割ファイル: 型番の食い違いを選ぶ画面に出す】');
+{
+  const coil = E('coil', 360, 375, { partRef: 'CR1', partModel: 'MY4N', terminals: '13,14' });
+  sb.state = { pages: [{ name: 'P1', elements: [coil], wires: [], frameObj: FRAME }], currentPage: 0, customSymbols: [], customParts: [] };
+  sb.xprojState.files = [{ name: 'B.json', symbols: [], pages: [{ name: 'PB', wires: [], frameObj: FRAME,
+    elements: [E('ca', 390, 191, { partRef: 'CR1', partModel: 'MY2N', terminals: '9,5' })] }] }];
+  const pagesBefore = sb.state.pages;
+  const cs = sb.devConflicts();
+  eq(cs.length, 1, '別ファイルの同じデバイスと型番が違えば食い違い1件');
+  eq(cs[0].field, 'partModel', '項目は型番');
+  const ext = cs[0].options.flatMap(o => o.items).filter(it => it.ext);
+  eq(ext.length === 1 && /^B\/1/.test(ext[0].loc), true, '別ファイルの記号には「B/1/…」の位置が付く');
+  eq(cs[0].options.flatMap(o => o.items).filter(it => !it.ext).length, 1, '今の図面の記号はext=false');
+  eq(sb.state.pages === pagesBefore && sb.state.pages.length === 1, true, '調べたあとは今の図面のページに戻る');
+  ok(/別ファイル（B）/.test(sb.devConflictNote(cs)), '選ぶ画面に「別ファイルの値は書き換えない」の注意が出る');
+  // 選んだ値は今の図面だけに入る
+  sb.devSetField(cs[0].key, 'partModel', 'MY2N');
+  eq(coil.partModel, 'MY2N', '今の図面のデバイスに選んだ値が入る');
+  eq(sb.devConflicts().length, 0, 'そろえれば食い違いは消える');
+  sb.xprojState.files = [];
+  eq(sb.devConflicts().length, 0, 'プロジェクトが空なら今の図面だけ');
+}
 console.log('【矢印以外は影響しない】');
 {
   const L = setup([[E('lamp', 0, 0, { label: '101' })]]);

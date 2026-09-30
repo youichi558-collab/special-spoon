@@ -3586,6 +3586,7 @@ async function refreshXrefDisp() {
   syncXrefBtn();
   draw();
   updateRightPanel();
+  if (typeof xprojCheckConflicts === 'function') xprojCheckConflicts();   // 別ファイルとデバイスの値が食い違っていれば、選ぶ画面
 }
 // 全体の文字サイズの倍率(0.3〜2)。前回値を覚える。範囲外・数字でなければ既定0.7に戻す。
 function setXrefScale(v) {

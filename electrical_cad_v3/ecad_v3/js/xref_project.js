@@ -108,6 +108,21 @@ async function xprojReload() {
   return true;
 }
 
+// 「更新」のあと: 別ファイルの同じデバイスと型番などが食い違っていれば、選ぶ画面(js/devices.js)を出す。
+// 同じ食い違いの組を何度も出さない(「あとで」にしたのに更新のたびに出ると邪魔)。2回目からは知らせだけ
+function xprojCheckConflicts() {
+  if (!xprojState.files.length || typeof devConflicts !== 'function' || typeof devResolveDialog !== 'function') return;
+  const cf = devConflicts().filter(c => c.options.some(o => o.items.some(it => it.ext)));
+  if (!cf.length) { xprojState.shownSig = ''; return; }
+  const sig = cf.map(c => c.key + '|' + c.field + '|' + c.options.map(o => o.value).sort().join('/')).sort().join(';');
+  if (xprojState.shownSig === sig) {
+    if (typeof stToast === 'function') stToast(`別ファイルとデバイスの値が食い違っています(${cf.length}件)。部品表の「食い違いを直す」から選べます`, 'warn');
+    return;
+  }
+  xprojState.shownSig = sig;
+  devResolveDialog(cf, { onDone: n => { if (n) { if (state.showXref === true) xrefRefresh(); if (typeof draw === 'function') draw(); } } });
+}
+
 // ボタン「プロジェクト」: フォルダを選び、対象の図面を選ぶ
 async function xprojSetup() {
   if (!window.showDirectoryPicker) { alert('このブラウザはフォルダ選択に対応していません(Chrome/Edgeで開いてください)'); return; }

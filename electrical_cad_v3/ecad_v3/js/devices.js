@@ -176,11 +176,30 @@ function devNormalize() {
   return { filled, conflicts };
 }
 
-// 今の図面にある食い違いの一覧
+// 今の図面にある食い違いの一覧。
+// 【2026-09-30 分割ファイル】プロジェクト(js/xref_project.js)を設定していれば、**別ファイルの同じデバイスとの食い違い**も入れる
+// (各記号に loc=「ファイル名/ページ/区画」、ext=別ファイルの記号か、を添える)。別ファイルの値は書き換えない(選んだ値は今の図面だけに入る)。
 function devConflicts() {
-  const out = [];
-  deviceLedger().forEach(d => d.conflicts.forEach(c => out.push({ key: d.key, ref: d.ref, field: c.field, options: c.options })));
-  return out;
+  const run = () => {
+    const out = [];
+    deviceLedger().forEach(d => d.conflicts.forEach(c => out.push({
+      key: d.key, ref: d.ref, field: c.field,
+      options: c.options.map(o => ({ value: o.value, items: o.items.map(it => {
+        const pg = (state.pages || [])[it.pi] || {};
+        const loc = it.group ? `${pg._file ? pg._file + '/' : ''}${pg._pno || it.pi + 1}/外形図`
+          : (typeof elLocation === 'function' ? elLocation(it.el, it.pi) : String(it.pi + 1));
+        return Object.assign({}, it, { loc, ext: !!pg._file });
+      }) })),
+    })));
+    return out;
+  };
+  return (typeof xprojWith === 'function') ? xprojWith(run) : run();
+}
+// 選ぶ画面に添える注意(別ファイルの記号が入っているとき)。無ければ ''
+function devConflictNote(conflicts) {
+  const files = new Set();
+  (conflicts || []).forEach(c => c.options.forEach(o => o.items.forEach(it => { if (it.ext) files.add(String(it.loc).split('/')[0]); })));
+  return files.size ? `別ファイル（${[...files].join('、')}）の値は、ここでは書き換えません。選んだ値は今開いている図面だけに入ります。別ファイルは、そのファイルを開いて直してください。` : '';
 }
 
 // 食い違いを選ぶ画面。選んだ項目だけそろえる(選ばなかった項目はそのまま。あとで部品表から開き直せる)。
@@ -191,7 +210,7 @@ function devResolveDialog(conflicts, opts) {
   if (!conflicts.length) { if (opts.onDone) opts.onDone(0); return; }
   const old = document.getElementById('dev-resolve-dlg');
   if (old) old.remove();
-  const loc = it => (typeof elLocation === 'function' && !it.group) ? elLocation(it.el, it.pi) : (it.group ? `${it.pi + 1}/外形図` : String(it.pi + 1));
+  const loc = it => it.loc || ((typeof elLocation === 'function' && !it.group) ? elLocation(it.el, it.pi) : (it.group ? `${it.pi + 1}/外形図` : String(it.pi + 1)));
   const ov = document.createElement('div');
   ov.id = 'dev-resolve-dlg';
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;display:flex;align-items:center;justify-content:center';
@@ -213,6 +232,7 @@ function devResolveDialog(conflicts, opts) {
   ov.innerHTML = `<div role="dialog" style="background:var(--bg2);color:var(--fg);border:1px solid var(--bd);border-radius:6px;padding:14px 18px;width:560px;max-width:92vw;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 4px 24px var(--sh);font-size:12px;line-height:1.5">
     <div style="font-size:13px;font-weight:600;margin-bottom:4px">同じデバイスで値が食い違っています（${conflicts.length}件）</div>
     <div style="color:var(--fg3);margin-bottom:6px">同じデバイスは型番・仕様などが1つのはずです。正しい方を選んでください。選んだ値が、そのデバイスの全部の記号に入ります。<br>選ばなかった項目はそのまま残ります（部品表の「食い違いを直す」から、あとで選べます）。</div>
+    ${devConflictNote(conflicts) ? `<div style="color:var(--org,#c77b00);margin-bottom:6px">${escH(devConflictNote(conflicts))}</div>` : ''}
     <div style="overflow-y:auto;flex:1">${rows}</div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
       <button id="devr-later" style="${btn}">あとで</button>
