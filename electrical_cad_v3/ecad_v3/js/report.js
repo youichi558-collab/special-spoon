@@ -421,6 +421,7 @@ function wireNoTable(msg){
       r.count = r.parts.reduce((n, pt) => n + pt.idxs.length, 0);
     });
   }
+  unnumbered = rows.reduce((n, r) => n + (r.wireNo ? 0 : (r.count || r.idxs.length)), 0);   // 矢印でまとめたあとの行で数える
   const partsArg = r => '[' + r.parts.map(pt => `[${pt.pi},[${pt.idxs.join(',')}]]`).join(',') + ']';
   // 未採番のネットを先頭に、それ以降は線番の自然順ソート
   rows.sort((a,b) => {

@@ -106,6 +106,7 @@ console.log('【線番表: 矢印でつながるネットは1行・線番1つ】
   const rows = (_html.match(/<tr [^>]*jumpToNet/g) || []).length;
   eq(rows, 2, 'P1とP2のネットが1行にまとまり、P3の1行と合わせて2行');
   ok(/P1 ⇄ P2/.test(_html), 'ページ欄に「P1 ⇄ P2」');
+  ok(/未採番 4本/.test(_html), '未採番の本数はまとめたあとの行で数える(全4本が未採番)');
   sb.applyNetWireNoParts([[0, [0, 1]], [1, [0]]], 'W005');
   eq([sb.state.pages[0].wires.map(w => w.wireNo).filter(Boolean), sb.state.pages[1].wires[0].wireNo], [['W005'], 'W005'], '入力すると送り側・受け側の両方のネットに1か所ずつ入る');
   // 一括割付は相手の番号を引き継ぐ

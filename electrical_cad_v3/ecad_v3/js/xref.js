@@ -315,7 +315,7 @@ function sigarrowCompute() {
   const put = (r, text) => {
     const dev = (typeof getDef === 'function' ? getDef(r.el.type) : null) || { h: 34 };
     const fs = Math.max(2, 11 * 0.85 * xrefScale() * xrefMul(r.el));
-    arrows.set(r.el.id, { pi: r.pi, x: r.el.x + xrefOff(r.el.xrefOffX), y: r.el.y + dev.h * (r.el.scale || 1) / 2 + fs + 4 + xrefOff(r.el.xrefOffY), fs, text });
+    arrows.set(r.el.id, { pi: r.pi, x: r.el.x + xrefOff(r.el.xrefOffX), y: r.el.y - dev.h * (r.el.scale || 1) / 2 - 4 + xrefOff(r.el.xrefOffY), fs, text });
   };
   groups.forEach((list, k) => {
     const outs = list.filter(r => r.out), ins = list.filter(r => !r.out);
