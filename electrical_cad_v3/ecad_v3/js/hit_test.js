@@ -4,6 +4,18 @@
 
 function hitTest(wx, wy) {
   const R = 8 / state.zoom;
+  // 登録の無い記号の印(draw.js drawMissingSymMark)を先に見る。印は小さく、他の記号の枠の中に重なることが多い
+  // (Sheet3ではINVの枠の中)ので、先に見ないと下の記号が選ばれて、印を選べない。
+  {
+    const mh = (typeof MISSING_SYM_HALF !== 'undefined') ? MISSING_SYM_HALF : 10;
+    for (let i = state.elements.length - 1; i >= 0; i--) {
+      const el = state.elements[i];
+      if (el.x == null || getDef(el.type) || ['text','dim','leader','fline','rect','circle','arc','junction','bezier','angle_dim','triangle'].includes(el.type)) continue;
+      const lay = LAYERS.find(l => l.name === el.layer);
+      if (lay && lay.locked) continue;
+      if (Math.abs(wx - el.x) < mh + R && Math.abs(wy - el.y) < mh + R) return el;
+    }
+  }
   for (let i = state.elements.length-1; i >= 0; i--) {
     const el = state.elements[i];
     const lay = LAYERS.find(l => l.name === el.layer);
@@ -72,7 +84,10 @@ function hitTest(wx, wy) {
     }
     // シンボル系はgetDef()が必要
     const d = getDef(el.type);
-    if (!d) continue;
+    // 【2026-09-30】シンボル登録が無い(消えた)記号は、以前は描かれず・選べず、消す手段が無かった
+    // (部品表の「デバイス未設定・(登録なし)」の行が消えない。盛田さん「部品表の未設定が消えんな」)。
+    // 画面には印(draw.js drawMissingSymMark)を出し、その印の範囲でクリックして選べるようにする。
+    if (!d) { const mh = (typeof MISSING_SYM_HALF !== 'undefined') ? MISSING_SYM_HALF : 10; if (Math.abs(wx - el.x) < mh + R && Math.abs(wy - el.y) < mh + R) return el; continue; }
     const sc = el.scale || 1;
     if (Math.abs(wx-el.x)<(d.w*sc/2+R) && Math.abs(wy-el.y)<(d.h*sc/2+R)) return el;
     // 【追加】デバイス名・型式・仕様の文字表示もクリック判定の対象にする(2026-08-03)。

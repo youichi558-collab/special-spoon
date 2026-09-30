@@ -3161,6 +3161,7 @@ function rpSymbolLabel(el) {
   const roleName = { coil: 'コイル', contact_main: '主接点', contact_a: 'a接点', contact_b: 'b接点', tentative: '仮設定' };
   const role = symRole(el);
   const r = roleName[role] || (role ? role : '種別なし');
+  if (!cS) return `(シンボル登録なし)／${r}`;   // 登録が消えた記号(図面に「登録なし」の印が出る)
   return `${name || '(名前なし)'}／${r}`;
 }
 

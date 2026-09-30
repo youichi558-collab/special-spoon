@@ -49,7 +49,7 @@ console.log('\n【シンボルの逆引き: 選んだ要素の登録シンボル
   eq(sb.rpSymbolLabel({ type: 'a1' }), 'a接点／a接点', '名前と役割が出る');
   eq(sb.rpSymbolLabel({ type: 'c1' }), '補助継電器／コイル', 'コイル');
   eq(sb.rpSymbolLabel({ type: 'z' }), 'ランプ／種別なし', 'nameが無ければlabel、役割が無ければ「種別なし」');
-  eq(sb.rpSymbolLabel({ type: 'nope' }), '(名前なし)／種別なし', '登録が無い要素でも落ちない');
+  eq(sb.rpSymbolLabel({ type: 'nope' }), '(シンボル登録なし)／種別なし', '登録が無い要素でも落ちず、登録が無いと分かる');
   ok(/pp-symname/.test(ui), 'プロパティの上に1行出している');
   ok(/id="pp-symname" onclick="rpJumpToSymbol\(/.test(ui), '文字クリックでシンボル一覧へ飛ぶ');
 }

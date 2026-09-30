@@ -727,7 +727,32 @@ function drawFlineEl(el, sel, lc, lay) {
   ctx.restore();
 }
 
+// シンボル登録が無い(消えた)記号の印。画面だけに出す(PDF・DXFには出さない)。選んで消せるようにするため(hit_test.js)。
+const MISSING_SYM_HALF = 10;
+function drawMissingSymMark(el, sel) {
+  if (state.pdfMode) return;
+  const h = MISSING_SYM_HALF;
+  ctx.save();
+  ctx.strokeStyle = sel ? '#ff9800' : '#e53935';
+  ctx.fillStyle = 'rgba(229,57,53,0.12)';
+  ctx.lineWidth = 1.5 / state.zoom;
+  ctx.setLineDash([3 / state.zoom, 2 / state.zoom]);
+  ctx.fillRect(el.x - h, el.y - h, h * 2, h * 2);
+  ctx.strokeRect(el.x - h, el.y - h, h * 2, h * 2);
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#e53935';
+  ctx.font = `bold ${Math.max(6, 11 / state.zoom)}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('?', el.x, el.y);
+  ctx.font = `${Math.max(4, 9 / state.zoom)}px sans-serif`;
+  ctx.textBaseline = 'top';
+  ctx.fillText('登録なし', el.x, el.y + h + 2 / state.zoom);
+  ctx.restore();
+}
+
 function drawSymEl(el, sel, lc) {
+  if (!getDef(el.type)) drawMissingSymMark(el, sel);
   const sc = el.scale || 1;
   if (sc !== 1) {
     ctx.save();
