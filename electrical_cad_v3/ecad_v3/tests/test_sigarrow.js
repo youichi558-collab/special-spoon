@@ -130,6 +130,28 @@ console.log('【線番表: 矢印でつながるネットは1行・線番1つ】
   eq(sb.state.pages[0].wires.map(w => w.wireNo).filter(Boolean), ['W009'], '一括割付: 別ファイルの相手の番号も引き継ぐ');
   sb.xprojState.files = [];
 }
+console.log('【接続チェック: 矢印の問題】');
+{
+  const W = (id, x1, y1, x2, y2, no) => ({ id, x1, y1, x2, y2, wireNo: no || '', layer: '回路' });
+  const o = E('sout', 100, 100, { label: '9' }), i = E('sin', 300, 200, { label: '9' });
+  const mk = (w1, w2) => { sb.state = { pages: [
+      { name: 'P1', elements: [o], wires: [W('w1', 115, 100, 200, 100, w1)], frameObj: FRAME },
+      { name: 'P2', elements: [i], wires: w2 ? [W('w3', 285, 200, 250, 200, w2)] : [], frameObj: FRAME } ], currentPage: 0, customSymbols: [], customParts: [] }; };
+  mk('W1', 'W1');
+  eq(sb.analyzeArrowIssues().length, 0, '一対一で線番も同じなら問題なし');
+  mk('W1', 'W2');
+  eq(sb.analyzeArrowIssues().map(a => a.txt.includes('線番が違います')), [true], '送りと受けの線番が違えば問題');
+  mk('W1', '');
+  eq(sb.analyzeArrowIssues().map(a => a.txt.includes('触れていません')), [true], '受けの矢印に配線が触れていなければ問題');
+  sb.state.pages[1].elements = [];
+  eq(sb.analyzeArrowIssues().map(a => a.txt.includes('受け矢印がありません')), [true], '相手がいなければ問題');
+  mk('W1', 'W1');
+  sb.showConnTable();
+  ok(!/ページ跨ぎの矢印の問題/.test(_html), '問題が無ければ矢印の欄は出ない');
+  mk('W1', 'W2');
+  sb.showConnTable();
+  ok(/ページ跨ぎの矢印の問題/.test(_html) && /jumpToRefEl\(/.test(_html), '問題があれば欄が出て、行を押すと矢印へ飛ぶ');
+}
 console.log('【矢印以外は影響しない】');
 {
   const L = setup([[E('lamp', 0, 0, { label: '101' })]]);

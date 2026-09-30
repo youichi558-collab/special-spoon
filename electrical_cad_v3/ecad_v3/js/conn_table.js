@@ -297,13 +297,15 @@ function showConnTable() {
     `<button class="fp-btn" style="font-size:10px;padding:1px 8px;${_connSortMode === mode ? 'font-weight:700' : ''}"`
     + ` onclick="setConnSort('${mode}')">${label}</button>`;
   const unc = analyzeUnconnectedTerminals();
+  const arr = (typeof analyzeArrowIssues === 'function') ? analyzeArrowIssues() : [];
   let msg = `<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">`
     + `全${state.pages.length}ページ集計。ネット ${nets.length}件(配線 ${nWires}本)`;
   if (unc.length) msg += ` / <span style="color:var(--red);font-weight:600">未接続の端子 ${unc.length}か所</span>`;
+  if (arr.length) msg += ` / <span style="color:var(--red);font-weight:600">ページ跨ぎの矢印の問題 ${arr.length}件</span>`;
   if (nDang)  msg += ` / <span style="color:var(--red);font-weight:600">浮いている端 ${nDang}か所</span>`;
   if (nNoNo)  msg += ` / <span style="color:var(--red);font-weight:600">未採番 ${nNoNo}件</span>`;
   if (nTee)   msg += ` / <span style="font-weight:600">●の無いT字 ${nTee}か所</span>`;
-  if (!nBad && !nTee && !unc.length) msg += ` / 問題なし`;
+  if (!nBad && !nTee && !unc.length && !arr.length) msg += ` / 問題なし`;
   msg += `<br>並べ替え: ${btn('wire', '線番順')} ${btn('part', '部品順')}`;
   msg += `<br>1行=つながっている配線のまとまり(ネット)。分岐点(●)でつながった先の端子も、同じ行に並びます。`
     + `問題は端ごとに出します: <b>浮いている端</b>=端が端子にも他の配線にも●にも触れていないもの(許容誤差${CONN_TABLE_TOL})。`
@@ -318,7 +320,15 @@ function showConnTable() {
       + unc.map(u => `<tr onclick="jumpToRefEl(${u.pageIdx},${_jsArg(u.elId)},{x:${u.x},y:${u.y}})" title="クリックで図面のこの端子へ飛ぶ" style="cursor:pointer;background:rgba(200,60,60,.10)">`
         + `<td><span class="badge badge-b">${escH(_connTermTxt(u))}</span></td><td>${escH(u.page)}</td></tr>`).join('') + `</table>`
     : '';
-  const html = msg + `<table class="tbl"><tr><th>線番</th><th>ページ</th><th>配線</th><th>接続している端子</th><th>状態</th></tr>${body}</table>` + uncHtml;
+  // ページ跨ぎの矢印(送り・受け)の問題。行を押すとその矢印へ飛ぶ。別ファイルの相手は「プロジェクト」を設定して「更新」すると見つかる
+  const noProj = !(typeof xprojState !== 'undefined' && xprojState.files.length);
+  const arrHtml = arr.length
+    ? `<p style="font-size:11px;font-weight:600;margin:12px 0 3px">ページ跨ぎの矢印の問題<span style="color:var(--fg3);font-weight:400">（${arr.length}件。行を押すとその矢印へ飛びます。${noProj ? '相手が別ファイルにあるときは、表示タブの「プロジェクト」で図面を選び「更新」を押すと見つかります' : ''}）</span></p>`
+      + `<table class="tbl"><tr><th>問題</th><th>ページ</th></tr>`
+      + arr.map(a => `<tr onclick="jumpToRefEl(${a.pageIdx},${_jsArg(a.elId)},{x:${a.x},y:${a.y}})" title="クリックで図面のこの矢印へ飛ぶ" style="cursor:pointer;background:rgba(200,60,60,.10)">`
+        + `<td>⚠ ${escH(a.txt)}</td><td>${escH(a.page)}</td></tr>`).join('') + `</table>`
+    : '';
+  const html = msg + `<table class="tbl"><tr><th>線番</th><th>ページ</th><th>配線</th><th>接続している端子</th><th>状態</th></tr>${body}</table>` + uncHtml + arrHtml;
   _reportOpen('conntbl', '接続チェック', html, exportConnCSV);
 }
 
@@ -333,6 +343,9 @@ function exportConnCSV() {
   // 未接続の端子も、画面と同じく同じ表の末尾に足す(配線本数0・状態=未接続の端子)
   analyzeUnconnectedTerminals().forEach(u => {
     csvRows.push(['', u.page, 0, _connTermTxt(u), '未接続の端子(配線の端が来ていない)'].map(esc).join(','));
+  });
+  ((typeof analyzeArrowIssues === 'function') ? analyzeArrowIssues() : []).forEach(a => {
+    csvRows.push(['', a.page, 0, '', a.txt].map(esc).join(','));
   });
   dl(csvRows.join('\n'), _csvName('接続チェック'), 'text/csv');
 }

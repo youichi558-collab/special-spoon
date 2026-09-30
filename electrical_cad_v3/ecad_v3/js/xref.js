@@ -356,9 +356,32 @@ function sigNetLinksCore() {
       if (hit) { idxs = g; break; }
     }
     const no = idxs ? (idxs.map(i => pg.wires[i].wireNo).find(Boolean) || '') : '';
-    return { pi: rec.pi, ext: !!pg._file, loc: rec.loc, idxs, no };
+    return { pi: rec.pi, ext: !!pg._file, loc: rec.loc, idxs, no, el: rec.el, label: rec.el.label || '' };
   };
   return sigarrowCompute().pairs.map(pr => ({ a: side(pr.out), b: side(pr.in) }));
+}
+
+// 接続チェック用: ページ跨ぎの矢印の問題(今の図面の矢印だけ。別ファイルの矢印は直せないので出さない)
+//   ・相手がいない/同じ名前が多すぎる/名前が空 ・矢印が配線に触れていない ・送りと受けの線番が違う
+//   戻り値: [{ pageIdx, page, elId, x, y, txt }]
+function analyzeArrowIssues() {
+  const run = () => {
+    const out = [];
+    const mine = r => !state.pages[r.pi]._file;
+    const row = (r, txt) => ({ pageIdx: r.pi, page: state.pages[r.pi].name || ('Sheet' + (r.pi + 1)), elId: r.el.id, x: r.el.x, y: r.el.y, txt });
+    sigarrowCompute().issues.forEach(r => { if (mine(r)) out.push(row(r, `矢印「${r.el.label || ''}」: ${r.reason}`)); });
+    sigNetLinksCore().forEach(pr => {
+      [pr.a, pr.b].forEach(sd => {
+        if (!sd.ext && !sd.idxs) out.push(row(sd, `矢印「${sd.label}」が配線に触れていません(端子に線の端が来ていません)`));
+      });
+      if (pr.a.no && pr.b.no && pr.a.no !== pr.b.no) {
+        const sd = pr.a.ext ? pr.b : pr.a;
+        if (!sd.ext) out.push(row(sd, `矢印「${sd.label}」: 送りと受けの線番が違います(${pr.a.no} ⇄ ${pr.b.no}。相手 ${(sd === pr.a ? pr.b : pr.a).loc})`));
+      }
+    });
+    return out;
+  };
+  return (typeof xprojWith === 'function') ? xprojWith(run) : run();
 }
 
 
