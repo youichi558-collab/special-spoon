@@ -282,8 +282,50 @@ function xrefCompute() {
   blocks.forEach(b => { b.left = b.x - b.w / 2 + b.offX; b.y += b.offY; });
   const byEl = new Map();
   blocks.forEach(b => byEl.set(b.elId, b));
-  return { blocks, contacts, byEl };
+  const sa = sigarrowCompute();
+  return { blocks, contacts, byEl, arrows: sa.arrows, arrowIssues: sa.issues };
 }
+
+// ================================================================
+// 【2026-09-30】ページ跨ぎの矢印(送り・受け)。他のCAD(AutoCAD Electricalの信号矢印・EPLANの中断点)と同じ
+// 「同じ名前どうしを結ぶ」作り。名前は矢印のラベル(el.label)。種別(role)は sig_out / sig_in(シンボル登録・端子編集で指定)。
+//   ・送り1・受け1が同じ名前で揃ったら一対一。送りに「→ 受けの位置」、受けに「← 送りの位置」を出す。位置は ページ/区画(elLocation)
+//   ・相手がいない・3つ以上・名前が空 は相手を出さず、issues に理由を入れる(確認用)
+// クロスリファレンスと同じく「押したときだけ計算」(xrefCompute の一部)
+// ================================================================
+function sigarrowKey(el) { return String(el.label || '').normalize('NFKC').trim().toUpperCase(); }
+function sigarrowCompute() {
+  const arrows = new Map(), issues = [];
+  const groups = new Map();
+  (state.pages || []).forEach((pg, pi) => {
+    (pg.elements || []).forEach(el => {
+      const role = xrefRole(el);
+      if (role !== 'sig_out' && role !== 'sig_in') return;
+      const rec = { el, pi, out: role === 'sig_out', loc: elLocation(el, pi) };
+      const k = sigarrowKey(el);
+      if (!k) { issues.push({ ...rec, reason: '名前(ラベル)が空です' }); return; }
+      (groups.get(k) || groups.set(k, []).get(k)).push(rec);
+    });
+  });
+  const put = (r, text) => {
+    const dev = (typeof getDef === 'function' ? getDef(r.el.type) : null) || { h: 34 };
+    const fs = Math.max(2, 11 * 0.85 * xrefScale() * xrefMul(r.el));
+    arrows.set(r.el.id, { pi: r.pi, x: r.el.x + xrefOff(r.el.xrefOffX), y: r.el.y + dev.h * (r.el.scale || 1) / 2 + fs + 4 + xrefOff(r.el.xrefOffY), fs, text });
+  };
+  groups.forEach((list, k) => {
+    const outs = list.filter(r => r.out), ins = list.filter(r => !r.out);
+    if (outs.length === 1 && ins.length === 1) {
+      put(outs[0], '→ ' + ins[0].loc);
+      put(ins[0], '← ' + outs[0].loc);
+      return;
+    }
+    const why = outs.length > 1 || ins.length > 1 ? '同じ名前の矢印が多すぎます(送り1・受け1の一対一)'
+              : outs.length ? '受け矢印がありません' : '送り矢印がありません';
+    list.forEach(r => { issues.push({ ...r, reason: why }); put(r, '(相手なし)'); });
+  });
+  return { arrows, issues };
+}
+
 
 // 【2026-09-29】**常時は計算しない**(盛田さん「クロスリファレンスを常時走らせるのはやめよう」)。
 // 以前は描画のたびに計算し直していたため、図面を編集・読込するたびに勝手に出て、勝手に変わった
@@ -294,7 +336,7 @@ function xrefCompute() {
 //   ・新規作成・置き換え読込・ページの削除/並べ替えは、結果が図面と合わなくなるので隠して捨てる(xrefReset)
 //   ・倍率・CRタブの個別設定を直したときだけ、表示中なら計算し直す(操作した本人が結果を見たいので)
 let _xrefResult = null;
-const _xrefEmpty = () => ({ blocks: [], contacts: new Map(), byEl: new Map() });
+const _xrefEmpty = () => ({ blocks: [], contacts: new Map(), byEl: new Map(), arrows: new Map(), arrowIssues: [] });
 function xrefRefresh() { _xrefResult = xrefCompute(); return _xrefResult; }
 function xrefReset() {
   _xrefResult = null;

@@ -768,6 +768,8 @@ function exportDXF(){
         }
         const xc=xl.contacts.get(el.id);
         if(xc) eText(layer, xc.x, xc.y, xc.fs, xc.text, 0, 'center');
+        const xa=xl.arrows && xl.arrows.get(el.id);
+        if(xa && xa.pi===state.currentPage) eText(layer, xa.x, xa.y, xa.fs, xa.text, 0, 'center');
       }
       // 【新規 2026-09-19】端子番号。画面(draw.jsのdrawSymTermNos)と同条件・同位置で出す。
       //

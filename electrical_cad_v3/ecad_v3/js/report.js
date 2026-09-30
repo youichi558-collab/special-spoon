@@ -583,6 +583,7 @@ function collectBOMRows(){
   state.pages.forEach((pg,pi)=>{
     (pg.elements||[]).forEach(el=>{
       if(skip.includes(el.type))return;
+      if(isSigArrowRole(symRole(el)))return;   // ページ跨ぎの矢印は部品ではない
       // 【2026-09-25】配線の分岐点(●)は部品ではない(盛田さん)。以前は「デバイス未設定」に
       // junction ○台 として載っていた。style未設定も●扱い(draw.js と同じ)。端子台の○/◎は残す。
       if(el.type==='junction'&&(el.style||'dot')==='dot')return;
@@ -737,6 +738,7 @@ function collectBOMRowsLegacy(){
   state.pages.forEach(pg=>{
     (pg.elements||[]).forEach(el=>{
       if(skip.includes(el.type))return;
+      if(isSigArrowRole(symRole(el)))return;
       const model=el.partModel||'';
       const name=model||el.label||el.type;
       const k=`${el.type}|${name}`;
@@ -1061,6 +1063,8 @@ function elLocation(el, pageIdx) {
 // 【2026-09-21】標準シンボルの isCoil / isContact + contactType による判定を
 // 削除した。標準シンボル自体を削除したため、この経路は到達しない。
 // 種別はシンボル登録/端子(ピン)編集で指定した role だけを見る。
+// ページ跨ぎの矢印(送り・受け)。部品表・接点Refなど部品を数える帳票からは除く(2026-09-30)
+function isSigArrowRole(r){ return r==='sig_out'||r==='sig_in'; }
 function symRole(el){
   const d=getDef(el.type)||{};
   if(d.role)return d.role;

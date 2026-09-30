@@ -440,6 +440,12 @@ function drawXref() {
       ctx.font = `${c.fs}px sans-serif`;
       ctx.fillText(c.text, c.x, c.y);
     }
+    const a = L.arrows && L.arrows.get(el.id);            // ページ跨ぎの矢印(送り・受け)。相手が無いときは赤
+    if (a && a.pi === state.currentPage) {
+      ctx.fillStyle = a.text === '(相手なし)' ? '#e04040' : col;
+      ctx.font = `${a.fs}px sans-serif`;
+      ctx.fillText(a.text, a.x, a.y);
+    }
   });
   ctx.restore();
 }

@@ -3182,7 +3182,7 @@ function rpSymbolLabel(el) {
   if (!el) return '';
   const cS = (state.customSymbols || []).find(s => s.type === el.type);
   const name = (cS && (cS.name || cS.label)) || '';
-  const roleName = { coil: 'コイル', contact_main: '主接点', contact_a: 'a接点', contact_b: 'b接点', tentative: '仮設定' };
+  const roleName = { coil: 'コイル', contact_main: '主接点', contact_a: 'a接点', contact_b: 'b接点', tentative: '仮設定', sig_out: '送り矢印', sig_in: '受け矢印' };
   const role = symRole(el);
   const r = roleName[role] || (role ? role : '種別なし');
   if (!cS) return `(シンボル登録なし)／${r}`;   // 登録が消えた記号(図面に「登録なし」の印が出る)
