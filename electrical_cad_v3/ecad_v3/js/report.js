@@ -279,6 +279,16 @@ function netWireNoOf(pg) {
     const no = idxs.map(i => wires[i].wireNo).find(Boolean) || '';
     idxs.forEach(i => { out[i] = no; });
   });
+  // 【2026-09-30】ページ跨ぎの矢印でつながる相手のネットに線番があれば、番号の無いネットにもその番号を出す
+  // (送りと受けは同じ線=線番1つ。線番表・一括割付は両方に書くが、片方だけ手で入れた図面でも読む側(CSV・端子台表・接続チェック)は同じ番号になる)。
+  // 混在・番号ありのネットは変えない。別ファイルの相手の番号も使う(読み取りだけ)。矢印のあるページだけ調べる
+  if (out.includes('') && typeof sigNetLinksMemo === 'function' && pg && (pg.elements || []).some(e => { const r = symRole(e); return r === 'sig_out' || r === 'sig_in'; })) {
+    const pi = state.pages.indexOf(pg);
+    sigNetLinksMemo().forEach(pr => [[pr.a, pr.b], [pr.b, pr.a]].forEach(([me, other]) => {
+      if (me.ext || me.pi !== pi || !me.idxs || !other.no || out[me.idxs[0]]) return;
+      me.idxs.forEach(i => { out[i] = other.no; });
+    }));
+  }
   return out;
 }
 
@@ -626,7 +636,8 @@ function toggleNetAutoNumParts(parts, checked) {
 }
 
 // CSV: 全ページ分を出力
-function exportWireCSV(){
+function exportWireCSV(){ return (typeof sigMemoRun === 'function') ? sigMemoRun(_exportWireCSV) : _exportWireCSV(); }
+function _exportWireCSV(){
   if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
   const rows = ['線番,ページ,始点X,始点Y,終点X,終点Y,レイヤー'];
   state.pages.forEach((pg, pi) => {

@@ -152,6 +152,33 @@ console.log('【接続チェック: 矢印の問題】');
   sb.showConnTable();
   ok(/ページ跨ぎの矢印の問題/.test(_html) && /jumpToRefEl\(/.test(_html), '問題があれば欄が出て、行を押すと矢印へ飛ぶ');
 }
+console.log('【読む側: 配線番号CSV・端子台表・接続チェックは相手の線番を使う】');
+{
+  const W = (id, x1, y1, x2, y2, no) => ({ id, x1, y1, x2, y2, wireNo: no || '', layer: '回路' });
+  const o = E('sout', 100, 100, { label: '9' }), i = E('sin', 300, 200, { label: '9' });
+  const tb = E('junction', 250, 200, { style: 'circle', r: 3, partRef: 'TB1', label: '1' });
+  const mk = (w1, w2) => { sb.state = { pages: [
+      { name: 'P1', elements: [o], wires: [W('w1', 115, 100, 200, 100, w1)], frameObj: FRAME },
+      { name: 'P2', elements: [i, tb], wires: [W('w3', 285, 200, 250, 200, w2)], frameObj: FRAME } ], currentPage: 0, customSymbols: [], customParts: [] }; };
+  mk('W7', '');
+  eq(sb.netWireNoOf(sb.state.pages[1]), ['W7'], '未採番の側は、相手の線番が出る(書き込みはしない)');
+  eq(sb.state.pages[1].wires[0].wireNo, '', '図面のデータは変えない');
+  eq(sb.netWireNoOf(sb.state.pages[0]), ['W7'], '番号のある側はそのまま');
+  mk('W7', 'W8');
+  eq(sb.netWireNoOf(sb.state.pages[1]), ['W8'], '番号のあるネットは相手に合わせて変えない');
+  mk('W7', '');
+  eq(sb.buildTerminalBlockRows().map(r => r.conns), [['W7']], '端子台表の接続線番も相手の線番');
+  eq(sb.analyzeConnections().filter(n => !n.wireNo).length, 0, '接続チェックも未採番にしない');
+  mk('', '');
+  eq(sb.netWireNoOf(sb.state.pages[1]), [''], '両方未採番なら空のまま');
+  // 別ファイルの相手
+  mk('', '');
+  sb.state.pages.length = 1;
+  sb.state.pages[0].wires = [W('w1', 115, 100, 200, 100, '')];
+  sb.xprojState.files = [{ name: 'B.json', pages: [{ name: 'PB', elements: [i], wires: [W('x1', 285, 200, 250, 200, 'W9')], frameObj: FRAME }], symbols: [] }];
+  eq(sb.netWireNoOf(sb.state.pages[0]), ['W9'], '別ファイルの相手の線番も使う(読むだけ)');
+  sb.xprojState.files = [];
+}
 console.log('【矢印以外は影響しない】');
 {
   const L = setup([[E('lamp', 0, 0, { label: '101' })]]);

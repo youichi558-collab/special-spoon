@@ -106,7 +106,8 @@ const CONN_NEAR_HINT = 60;   // 浮いている端に「最寄りの端子」を
 
 // 全ページのネットごとの接続の分析。
 // 戻り値: [{ pageIdx, page, idxs, wireNo, terms:[{name,term}], branch, dangling:[{x,y,wireIdx,near}], tees:[{x,y,wireIdx}] }]
-function analyzeConnections() {
+function analyzeConnections() { return (typeof sigMemoRun === 'function') ? sigMemoRun(_analyzeConnections) : _analyzeConnections(); }
+function _analyzeConnections() {
   if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
   const out = [];
   const tol = CONN_TABLE_TOL, bk = v => Math.round(v / tol);
@@ -378,7 +379,8 @@ function _tbConnsOf(el, pg) {
   return [...conns];
 }
 
-function buildTerminalBlockRows() {
+function buildTerminalBlockRows() { return (typeof sigMemoRun === 'function') ? sigMemoRun(_buildTerminalBlockRows) : _buildTerminalBlockRows(); }
+function _buildTerminalBlockRows() {
   if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
   const all = collectTerminals();
   const names = tbDeviceNames(all);   // 綴りが違っても同じデバイスなら1つの台にする(部品表・接点Refと同じ判定)

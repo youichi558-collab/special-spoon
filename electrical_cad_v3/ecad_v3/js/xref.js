@@ -361,6 +361,16 @@ function sigNetLinksCore() {
   return sigarrowCompute().pairs.map(pr => ({ a: side(pr.out), b: side(pr.in) }));
 }
 
+// 線番を読む側(配線番号CSV・端子台表・接続チェック)が1回の出力のあいだ矢印の相手を何度も引くので、その間だけ結果を使い回す。
+// sigMemoRun(fn) の中でだけ有効(外では毎回計算する=編集した直後に古い結果を使わない)
+let _sigMemo = null;
+function sigNetLinksMemo() { return _sigMemo ? (_sigMemo.v || (_sigMemo.v = sigNetLinks())) : sigNetLinks(); }
+function sigMemoRun(fn) {
+  if (_sigMemo) return fn();
+  _sigMemo = { v: null };
+  try { return fn(); } finally { _sigMemo = null; }
+}
+
 // 接続チェック用: ページ跨ぎの矢印の問題(今の図面の矢印だけ。別ファイルの矢印は直せないので出さない)
 //   ・相手がいない/同じ名前が多すぎる/名前が空 ・矢印が配線に触れていない ・送りと受けの線番が違う
 //   戻り値: [{ pageIdx, page, elId, x, y, txt }]
