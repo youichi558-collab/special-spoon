@@ -229,52 +229,64 @@ function saveProject() {
   _syncCurrentPage();
   const pg = state.pages[state.currentPage];
   const defaultName = _pageFileName(pg, state.currentPage);
-  const name = prompt('保存ファイル名を入力してください', defaultName);
-  if (name === null) return; // キャンセル
-  const fname = (name.trim() || defaultName).replace(/[\\/:*?"<>|]/g, '_');
-  // saveFileNameを更新
-  state.saveFileName = fname.replace(/_[^_]+$/, ''); // ページ名部分を除いた部分を保存
-  const data = {
-    version: 2,
-    saveFileName: state.saveFileName,
-    customSymbols: state.customSymbols,
-    // 部品DBが外部ファイルで管理されている場合は図面ファイルに埋め込まない（シンボルライブラリと同様、分離管理）
-    customParts:   (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.customParts,
-    hiddenBuiltinRefs: (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.hiddenBuiltinRefs,
-    wireNoRule:    state.wireNoRule,
-    layers:        LAYERS,
-    pages: [pg],
-  };
-  // 書き出す「前」にdirtyを落とすこと。あとで落とすと data.pages が同じオブジェクトを
-  // 参照しているため、保存ファイルに dirty:true が焼き込まれてしまう。
-  // その状態で読み込むと、開いた直後なのにシートタブへ未保存マーク(●)が出る。
-  pg.dirty = false;
-  dl(JSON.stringify(data, null, 2), fname + '.json', 'application/json');
-  renderPageTabs();
+  // 【2026-10-01】「名前を付けて保存」の窓が使えるときは、ファイル名はその窓で決める(先に名前の入力窓を出すと、
+  // 入力中に「押した直後」が過ぎて窓が開けなかった=盛田さん「保存押しても、選択はでない」)。使えないときは従来どおり入力窓
+  let fname0 = defaultName;
+  if (!window.showSaveFilePicker) {
+    const name = prompt('保存ファイル名を入力してください', defaultName);
+    if (name === null) return; // キャンセル
+    fname0 = (name.trim() || defaultName).replace(/[\\/:*?"<>|]/g, '_');
+  }
+  dlMake(fileName => {
+    const fname = String(fileName).replace(/\.json$/i, '');
+    // saveFileNameを更新
+    state.saveFileName = fname.replace(/_[^_]+$/, ''); // ページ名部分を除いた部分を保存
+    const data = {
+      version: 2,
+      saveFileName: state.saveFileName,
+      customSymbols: state.customSymbols,
+      // 部品DBが外部ファイルで管理されている場合は図面ファイルに埋め込まない（シンボルライブラリと同様、分離管理）
+      customParts:   (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.customParts,
+      hiddenBuiltinRefs: (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.hiddenBuiltinRefs,
+      wireNoRule:    state.wireNoRule,
+      layers:        LAYERS,
+      pages: [pg],
+    };
+    // 書き出す「前」にdirtyを落とすこと。あとで落とすと data.pages が同じオブジェクトを
+    // 参照しているため、保存ファイルに dirty:true が焼き込まれてしまう。
+    // その状態で読み込むと、開いた直後なのにシートタブへ未保存マーク(●)が出る。
+    pg.dirty = false;
+    return JSON.stringify(data, null, 2);
+  }, fname0 + '.json', 'application/json', () => renderPageTabs());
 }
 
 function saveAllProject() {
   // 全ページまとめて保存
   _syncCurrentPage();
   const defaultBase = (state.saveFileName || '図面').replace(/[\\/:*?"<>|]/g, '_');
-  const name = prompt('保存ファイル名を入力してください', defaultBase);
-  if (name === null) return; // キャンセル
-  const base = (name.trim() || defaultBase).replace(/[\\/:*?"<>|]/g, '_');
-  state.saveFileName = base;
-  const data = {
-    version: 2,
-    saveFileName: state.saveFileName,
-    customSymbols: state.customSymbols,
-    customParts:   (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.customParts,
-    hiddenBuiltinRefs: (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.hiddenBuiltinRefs,
-    wireNoRule:    state.wireNoRule,
-    layers:        LAYERS,
-    pages: state.pages,
-  };
-  // 書き出す「前」にdirtyを落とす（理由はsaveProject()のコメント参照）
-  state.pages.forEach(p => p.dirty = false);
-  dl(JSON.stringify(data, null, 2), base + '_all.json', 'application/json');
-  renderPageTabs();
+  // 【2026-10-01】saveProject と同じく、名前は「名前を付けて保存」の窓で決める(使えないときだけ入力窓)
+  let base0 = defaultBase;
+  if (!window.showSaveFilePicker) {
+    const name = prompt('保存ファイル名を入力してください', defaultBase);
+    if (name === null) return; // キャンセル
+    base0 = (name.trim() || defaultBase).replace(/[\\/:*?"<>|]/g, '_');
+  }
+  dlMake(fileName => {
+    state.saveFileName = String(fileName).replace(/\.json$/i, '').replace(/_all$/, '');
+    const data = {
+      version: 2,
+      saveFileName: state.saveFileName,
+      customSymbols: state.customSymbols,
+      customParts:   (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.customParts,
+      hiddenBuiltinRefs: (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.hiddenBuiltinRefs,
+      wireNoRule:    state.wireNoRule,
+      layers:        LAYERS,
+      pages: state.pages,
+    };
+    // 書き出す「前」にdirtyを落とす（理由はsaveProject()のコメント参照）
+    state.pages.forEach(p => p.dirty = false);
+    return JSON.stringify(data, null, 2);
+  }, base0 + '_all.json', 'application/json', () => renderPageTabs());
 }
 
 // v1以前(旧形式)のファイルのページを、今の形に直す(groupsをpages内に移動・idを付与)。
@@ -478,21 +490,24 @@ function loadProject(input) {
   input.value = '';
 }
 
-function dl(text, fname, mime) {
-  const blob = new Blob([text], { type: mime });
-  const download = () => {
+function dl(text, fname, mime, onDone) { dlMake(() => text, fname, mime, onDone); }
+// 中身を「保存の窓で名前が決まってから」作る版。makeText(選んだファイル名) → 文字列かバイト列
+// (図面の保存は、選んだ名前を中身の saveFileName に入れるため。js/settings.js stWriteOut の説明)
+function dlMake(makeText, fname, mime, onDone) {
+  const download = (name) => {
+    const nm = name || fname;
+    const blob = new Blob([makeText(nm)], { type: mime });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = fname;
+    a.download = nm;
     a.click();
     // 保存先フォルダ経由(非同期)から落ちてきたときは、すぐ解放するとファイル名が
     // 失われて「download」になることがあった(Chromiumで確認)。少し待って解放する。
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
-  // 【2026-09-24】設定画面で保存先フォルダを選んでいればそこへ直接書く(settings.js)。
-  // 未設定・許可切れ・書けないときは今までどおりダウンロード。
-  if (typeof stWriteOut === 'function') stWriteOut(fname, blob, download);
-  else download();
+  // 保存・出力のたびに「名前を付けて保存」の窓を開く(settings.js)。使えない・書けないときはダウンロード。
+  if (typeof stWriteOut === 'function') stWriteOut(fname, name => new Blob([makeText(name)], { type: mime }), download, onDone);
+  else { download(fname); if (onDone) onDone(fname); }
 }
 
 // ----------------------------------------------------------------

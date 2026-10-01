@@ -193,21 +193,55 @@ function runExportAllPDF() {
   _exportPDFPages(state.pages.map((_,i)=>i), base + '_全ページ.pdf');
 }
 
-function runExportAllPDFSeparate() {
-  // 全ページ別ファイル（順番に連続ダウンロード）
+async function runExportAllPDFSeparate() {
+  // 全ページ別ファイル
   _syncCurrentPage();
+  if (!window.jspdf?.jsPDF) { alert('PDF出力ライブラリが読み込まれていません。\nネット接続を確認してページを再読み込みしてください。'); return; }
+  // 【2026-10-01】ページごとに保存の窓を出すと何回も選ぶうえ、2枚目以降は「押した直後」が過ぎて開けない。
+  // 最初に1回だけフォルダを選び、そこへ全部書く(同じ名前は確認してから上書き)。フォルダを選べないときは従来どおり連続ダウンロード
+  const dir = (typeof stPickFolderOnce === 'function') ? await stPickFolderOnce() : null;
+  if (dir === 'abort') { if (typeof stToast === 'function') stToast('保存を取りやめました', 'warn'); return; }
+  if (dir) {
+    let n = 0;
+    for (let idx = 0; idx < state.pages.length; idx++) {
+      const pdf = _buildPDF([idx]);
+      if (!pdf) continue;
+      try { if (await stWriteToFolder(dir, _pageFileBase(state.pages[idx], idx) + '.pdf', pdf.output('blob'))) n++; }
+      catch (e) { if (typeof stToast === 'function') stToast(`「${dir.name}」に書けませんでした（${e.message}）`, 'ng'); return; }
+    }
+    if (typeof stToast === 'function') stToast(`保存しました: ${dir.name} に ${n}ファイル`, 'ok');
+    return;
+  }
   state.pages.forEach((pg, idx) => {
     setTimeout(() => {
-      _exportPDFPages([idx], _pageFileBase(pg, idx) + '.pdf');
+      const pdf = _buildPDF([idx]);
+      if (pdf) pdf.save(_pageFileBase(pg, idx) + '.pdf');
     }, idx * 400);
   });
 }
 
+// 【2026-10-01】「名前を付けて保存」の窓を**先に**開き、選んでもらってから描く(_buildPDF)。
+// 以前は描き終わってから窓を開いていたので、描画に数秒かかると「ボタンを押した直後」が過ぎて窓が開けず、ダウンロードに落ちた
+// (盛田さん「保存押しても、選択はでない」→「直して」。js/settings.js stWriteOut の説明)
 function _exportPDFPages(indices, filename) {
   if (!window.jspdf?.jsPDF) {
     alert('PDF出力ライブラリが読み込まれていません。\nネット接続を確認してページを再読み込みしてください。');
     return;
   }
+  const make = () => {
+    const pdf = _buildPDF(indices);
+    if (!pdf) alert('出力できるページがありませんでした。');
+    return pdf;
+  };
+  if (typeof stWriteOut === 'function') {
+    stWriteOut(filename, () => { const p = make(); return p ? p.output('blob') : null; }, () => { const p = make(); if (p) p.save(filename); });
+  } else {
+    const p = make(); if (p) p.save(filename);
+  }
+}
+
+// PDFを作る(保存はしない)。出力できるページが無ければ null
+function _buildPDF(indices) {
   const { jsPDF } = window.jspdf;
 
   const origPage = state.currentPage;
@@ -367,13 +401,7 @@ function _exportPDFPages(indices, filename) {
 
           }  // end for loop
 
-    if (pdf) {
-      // 【2026-09-24】保存先フォルダ(settings.js)に対応。使えなければ従来の pdf.save。
-      if (typeof stWriteOut === 'function') stWriteOut(filename, pdf.output('blob'), () => pdf.save(filename));
-      else pdf.save(filename);
-    } else {
-      alert('出力できるページがありませんでした。');
-    }
+    return pdf;
   } finally {
     state.currentPage = origPage;
     state.darkMode    = origDark;

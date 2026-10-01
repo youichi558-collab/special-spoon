@@ -105,40 +105,77 @@ async function _stExists(dir, fname) {
 //   ・窓が開けない/選べないとき(このブラウザが非対応・時間が経って操作の直後でなくなった・
 //     システムフォルダを選んだ等)は、今までどおりダウンロードに落とす。保存そのものは失わない
 //   ・同じ名前のファイルがあれば確認してから上書き(無言で上書きしない)
-async function stWriteOut(fname, blob, fallback) {
-  if (!(window.showDirectoryPicker)) { fallback(); return; }   // 非対応ブラウザ → 従来どおり
-  const { handle: prev } = await stOutDirStatus();
-  let dir;
+//
+// 【2026-10-01】フォルダ選択の窓(showDirectoryPicker)をやめ、**「名前を付けて保存」の窓(showSaveFilePicker)**にした
+// (盛田さん「保存押しても、選択はでない」→「直して」)。
+//   ・原因: 「保存」はファイル名の入力窓(prompt)を先に出していた。ブラウザは保存の窓を**ボタンを押した直後(数秒)**しか
+//     開かせないので、名前を打っている間に過ぎて窓が開けず、ダウンロードに落ちていた。PDFも描画に時間がかかると同じ
+//   ・今: ボタンを押したら**最初に**この窓を開く(この関数は窓を開くまで await しない)。フォルダとファイル名を1つの窓で選び、
+//     上書きの確認も窓の中で出る。窓は前回保存した場所から開く(覚えた場所はメモリにも持つ=開く前に待たないため)
+//   ・中身は窓で名前が決まってから作る(make(選んだ名前) → Blob)。名前を中身に入れる保存(図面のsaveFileName)のため
+//   ・窓を閉じた(キャンセル)=取りやめ。窓が使えない/開けない/書けないときはダウンロードに落とす(保存そのものは失わない)
+// make: Blob か、(選んだ名前) => Blob の関数。fallback(名前): ダウンロード。onDone(名前): 書けたあと(ダウンロードに落ちたときも)
+let _stLastHandle = null;   // 前回保存した場所(ファイルかフォルダの鍵)。startIn に渡す
+if (typeof indexedDB !== 'undefined') _stGet(ST_OUT_KEY).then(h => { if (h && !_stLastHandle) _stLastHandle = h; });
+const ST_TYPES = { json: ['図面データ', 'application/json'], dxf: ['DXF', 'application/dxf'], pdf: ['PDF', 'application/pdf'],
+                   svg: ['SVG', 'image/svg+xml'], csv: ['CSV', 'text/csv'] };
+async function stWriteOut(fname, make, fallback, onDone) {
+  const build = name => (typeof make === 'function' ? make(name) : make);
+  const fb = name => { fallback(name); if (onDone) onDone(name); };
+  if (!(window.showSaveFilePicker)) { fb(fname); return; }    // 非対応ブラウザ → 従来どおり
+  const ext = (String(fname).match(/\.([a-z0-9]+)$/i) || [])[1] || '';
+  const t = ST_TYPES[ext.toLowerCase()];
+  const opt = { suggestedName: fname, id: 'ecad-out' };
+  if (t) opt.types = [{ description: t[0], accept: { [t[1]]: ['.' + ext.toLowerCase()] } }];
+  if (_stLastHandle) opt.startIn = _stLastHandle;
+  let fh;
   try {
-    const opt = { id: 'ecad-out', mode: 'readwrite' };
-    if (prev) opt.startIn = prev;
-    dir = await window.showDirectoryPicker(opt);
+    fh = await window.showSaveFilePicker(opt);                 // ← ここまで await しない(押した直後に開く)
   } catch (e) {
-    if (e && e.name === 'AbortError') {                        // 窓を閉じた = 取りやめ
-      stToast(`保存を取りやめました: ${fname}`, 'warn');
+    if (e && e.name === 'AbortError') { stToast(`保存を取りやめました: ${fname}`, 'warn'); return; }
+    if (opt.startIn) {                                         // 覚えた場所が消えた等で開けないときは、場所の指定なしでもう一度
+      delete opt.startIn;
+      try { fh = await window.showSaveFilePicker(opt); }
+      catch (e2) { if (e2 && e2.name === 'AbortError') { stToast(`保存を取りやめました: ${fname}`, 'warn'); return; } e = e2; }
+    }
+    if (!fh) {
+      fb(fname);
+      stToast(`保存の窓を開けませんでした（${e && e.message || e}）。\n今回はダウンロードフォルダに保存しました`, 'warn');
       return;
     }
-    fallback();
-    stToast(`保存先を選べませんでした（${e && e.message || e}）。\n今回はダウンロードフォルダに保存しました`, 'warn');
-    return;
   }
-  try { await _stPut(ST_OUT_KEY, dir); } catch (e) {}          // 次回の開始位置として覚える
-  // 無言で上書きしない(盛田さん「上書きは今はng、理由は無言で上書きになってる」)
-  if (await _stExists(dir, fname)
-      && !confirm(`「${fname}」は保存先「${dir.name}」に既にあります。\n上書きしますか？`)) {
-    stToast(`保存を取りやめました: ${fname}`, 'warn');
-    return;
-  }
+  _stLastHandle = fh;
+  try { await _stPut(ST_OUT_KEY, fh); } catch (e) {}           // 次回の開始位置として覚える
+  const blob = build(fh.name);
+  if (!blob) return;                                           // 中身が作れなかった(作る側で知らせ済み)
   try {
-    const fh = await dir.getFileHandle(fname, { create: true });
-    const w  = await fh.createWritable();
+    const w = await fh.createWritable();
     await w.write(blob);
     await w.close();
-    stToast(`保存しました: ${dir.name}\\${fname}`, 'ok');
+    stToast(`保存しました: ${fh.name}`, 'ok');
+    if (onDone) onDone(fh.name);
   } catch (e) {
-    fallback();
-    stToast(`「${dir.name}」に書けませんでした（${e.message}）。\n今回はダウンロードフォルダに保存しました`, 'ng');
+    fb(fh.name);
+    stToast(`「${fh.name}」に書けませんでした（${e.message}）。\n今回はダウンロードフォルダに保存しました`, 'ng');
   }
+}
+
+// 全ページを別々のファイルに書くとき(PDFの全ページ別ファイル)。ページごとに窓を出すと何回も選ぶことになるので、
+// 最初に1回だけ**フォルダ**を選ぶ。同じ名前があれば確認してから上書き。戻り値: フォルダの鍵(使えない/開けない=null、取りやめ='abort')
+async function stPickFolderOnce() {
+  if (!(window.showDirectoryPicker)) return null;
+  const opt = { id: 'ecad-out', mode: 'readwrite' };
+  if (_stLastHandle && _stLastHandle.kind === 'directory') opt.startIn = _stLastHandle;
+  try { return await window.showDirectoryPicker(opt); }
+  catch (e) { return (e && e.name === 'AbortError') ? 'abort' : null; }
+}
+async function stWriteToFolder(dir, fname, blob) {
+  if (await _stExists(dir, fname) && !confirm(`「${fname}」は「${dir.name}」に既にあります。\n上書きしますか？`)) return false;
+  const fh = await dir.getFileHandle(fname, { create: true });
+  const w = await fh.createWritable();
+  await w.write(blob);
+  await w.close();
+  return true;
 }
 
 // ---- 設定タブ(リボン) ------------------------------------------------
@@ -159,7 +196,7 @@ async function stRenderRibbon() {
   box.innerHTML =
       `<div style="font-size:11px;padding:0 6px;white-space:nowrap"><span style="color:var(--fg3)">前回の保存先:</span> ${status}</div>`
     + (supported
-        ? btn('stPickOutDir()', 'フォルダを選ぶ', '保存・出力のたびにフォルダを選ぶ窓が開きます。ここで選ぶと、その窓がこのフォルダから開きます（先に選んでおく必要はありません）')
+        ? btn('stPickOutDir()', 'フォルダを選ぶ', '保存・出力のたびに「名前を付けて保存」の窓が開きます。ここで選ぶと、その窓がこのフォルダから開きます（先に選んでおく必要はありません。前回保存した場所から開きます）')
         : `<span style="font-size:11px;color:var(--red)">このブラウザはフォルダの選択に対応していません（Chrome か Edge で開いてください）</span>`)
     + (handle ? btn('stClearOutDir()', '解除', '前回の保存先を忘れます（次の保存のときの窓は既定の場所から開きます）') : '');
   if (typeof syncRibbonHeight === 'function') syncRibbonHeight();
@@ -169,6 +206,7 @@ async function stPickOutDir() {
   try {
     const h = await window.showDirectoryPicker({ id: 'ecad-out', mode: 'readwrite' });
     await _stPut(ST_OUT_KEY, h);
+    _stLastHandle = h;
   } catch (e) {
     if (e && e.name === 'AbortError') return;             // キャンセル
     alert('フォルダを選べませんでした: ' + e.message);
@@ -177,6 +215,7 @@ async function stPickOutDir() {
 }
 async function stClearOutDir() {
   await _stPut(ST_OUT_KEY, null);
+  _stLastHandle = null;
   stRenderRibbon();
 }
 

@@ -1,97 +1,98 @@
-// 保存先フォルダ(js/settings.js の stWriteOut)のテスト(2026-09-24、2026-09-29に「出力のたびに選ぶ」へ変更)
+// 保存・出力の窓(js/settings.js の stWriteOut)のテスト
 //   node tests/test_settings_outdir.js
 //
-// 盛田さん「保存先を選べるようにしたい、選んだあと記憶できるか？」。
-// 2026-09-29: 盛田さん「保存先選択は全部出す必要がある」→ 出力のたびにフォルダ選択の窓を開く(案1)。
-// 最優先は「保存そのものが失われないこと」。選べない/書けないときは必ずダウンロードに落ちる。
+// 経緯: 2026-09-24 保存先フォルダを選べるように → 2026-09-29 出力のたびにフォルダ選択の窓(案1)
+//   → 2026-10-01 「名前を付けて保存」の窓(showSaveFilePicker)に変更(盛田さん「保存押しても、選択はでない」→「直して」)。
+//   「保存」はファイル名の入力窓を先に出していたため、ブラウザが窓を開かせる「押した直後」が過ぎて窓が開けなかった。
+// 最優先は「保存そのものが失われないこと」。開けない/書けないときは必ずダウンロードに落ちる。
 // 窓を閉じた(キャンセル)ときだけは、取りやめてダウンロードにも落とさない。
-// (フォルダ選択ダイアログ自体は自動化できないので、実機で確認してもらう)
+// 上書きの確認は窓(ブラウザ)の中で出るので、こちらでは聞かない。
+// (窓そのものは自動化できないので、実機で確認してもらう)
 const fs = require('fs');
 const vm = require('vm');
 
 let ng = 0;
 const eq = (a, b, m) => { if (JSON.stringify(a) !== JSON.stringify(b)) { ng++; console.log('  NG', m, '期待', JSON.stringify(b), '実際', JSON.stringify(a)); } else console.log('  OK', m); };
+const ok = (c, m) => eq(!!c, true, m);
 
 const hintEl = { textContent: '' };
-let confirmAns = true, confirmAsked = 0;
+let confirmAsked = 0;
 const sb = { console, window: {}, document: { getElementById: id => (id === 's-hint' ? hintEl : null) },
-  confirm: () => { confirmAsked++; return confirmAns; } };
+  confirm: () => { confirmAsked++; return true; } };
 vm.createContext(sb);
-vm.runInContext(fs.readFileSync(__dirname + '/../js/settings.js', 'utf8'), sb);
+const SRC = fs.readFileSync(__dirname + '/../js/settings.js', 'utf8');
+vm.runInContext(SRC + '\nthis.__setLast = h => { _stLastHandle = h; }; this.__getLast = () => _stLastHandle;', sb);
 
-// フォルダの鍵の偽物。written に書いた中身が溜まる
-function fakeDir({ failWrite = false, existing = {} } = {}) {
-  const written = Object.assign({}, existing);
-  return { written, name: '図面置き場',
-    getFileHandle: async (n, opt) => {
-      if (!(opt && opt.create) && !(n in written)) throw new Error('NotFound');
-      return { createWritable: async () => {
-      if (failWrite) throw new Error('使用中');
-      let buf = ''; return { write: async b => { buf = b; }, close: async () => { written[n] = buf; } };
-    } }; } };
+// ファイルの鍵の偽物
+function fakeFile(name, { failWrite = false } = {}) {
+  const f = { name, kind: 'file', data: undefined,
+    createWritable: async () => { if (failWrite) throw new Error('使用中'); let buf; return { write: async b => { buf = b; }, close: async () => { f.data = buf; } }; } };
+  return f;
 }
-// picker: 窓の偽物。dir を返す / 例外を投げる / 未対応(null)
-async function run(picker, prev) {
-  const opts = [];
-  const remembered = [];
-  sb.window = picker === null ? {} : { showDirectoryPicker: async o => { opts.push(o); return picker(); } };
-  sb.stOutDirStatus = async () => ({ handle: prev || null, state: prev ? 'granted' : 'none' });
+// picker: 窓の偽物。ファイルの鍵を返す / 例外 / 未対応(null)
+async function run(picker, { make = 'DATA', last = null } = {}) {
+  const opts = [], remembered = [], done = [];
+  sb.window = picker === null ? {} : { showSaveFilePicker: async o => { opts.push(Object.assign({}, o)); return picker(o); } };
   sb._stPut = async (k, v) => { remembered.push([k, v]); };
-  let fell = 0;
-  await sb.stWriteOut('盤A_部品表.csv', 'DATA', () => { fell++; });
-  return { fell, opts, remembered };
+  sb.__setLast(last);
+  let fell = [];
+  await sb.stWriteOut('盤A_部品表.csv', make, n => { fell.push(n); }, n => done.push(n));
+  return { fell, opts, remembered, done };
 }
 const abort = () => { const e = new Error('cancel'); e.name = 'AbortError'; throw e; };
 
 (async () => {
-  console.log('【窓でフォルダを選んだ】');
-  { const d = fakeDir(); const r = await run(() => d);
-    eq(r.fell, 0, 'ダウンロードしない');
-    eq(d.written['盤A_部品表.csv'], 'DATA', '選んだフォルダに書かれる');
-    eq(r.opts[0].mode, 'readwrite', '書き込みで開く');
-    eq(r.remembered.length, 1, '選んだフォルダを次回の開始位置に覚える'); }
+  console.log('【窓で保存先と名前を選んだ】');
+  { const f = fakeFile('盤A_部品表_v2.csv'); const r = await run(() => f);
+    eq(r.fell.length, 0, 'ダウンロードしない');
+    eq(f.data, 'DATA', '選んだファイルに書かれる');
+    eq(r.opts[0].suggestedName, '盤A_部品表.csv', '最初の名前を窓に出す');
+    eq(Object.keys(r.opts[0].types[0].accept)[0], 'text/csv', '種類(CSV)を窓に渡す');
+    eq(r.remembered.length, 1, '保存した場所を次回の開始位置に覚える');
+    eq(sb.__getLast() === f, true, '覚えた場所はメモリにも持つ(次は待たずに窓を開ける)');
+    eq(r.done, ['盤A_部品表_v2.csv'], '書けたら知らせる(選んだ名前で)');
+    eq(confirmAsked, 0, '上書きの確認はこちらでは聞かない(窓の中で出る)'); }
 
-  console.log('\n【前回のフォルダから窓を開く】');
-  { const prev = fakeDir(); const r = await run(() => fakeDir(), prev);
-    eq(r.opts[0].startIn === prev, true, '前回のフォルダを startIn に渡す'); }
+  console.log('\n【中身は名前が決まってから作る】');
+  { const f = fakeFile('別名.csv'); let got = null; await run(() => f, { make: n => { got = n; return 'X:' + n; } });
+    eq([got, f.data], ['別名.csv', 'X:別名.csv'], '選んだ名前で中身を作る(図面の保存名を中身に入れるため)'); }
+
+  console.log('\n【前回の場所から窓を開く】');
+  { const prev = fakeFile('前回.csv'); const r = await run(() => fakeFile('a.csv'), { last: prev });
+    eq(r.opts[0].startIn === prev, true, '前回の場所を startIn に渡す'); }
+
+  console.log('\n【前回の場所が消えて開けない → 場所の指定なしでもう一度】');
+  { const prev = fakeFile('消えた.csv'); const f = fakeFile('a.csv');
+    const r = await run(o => { if (o.startIn) throw new Error('NotFound'); return f; }, { last: prev });
+    eq([r.opts.length, r.fell.length, f.data], [2, 0, 'DATA'], '2回目で開けて書ける'); }
 
   console.log('\n【窓を閉じた(キャンセル)】');
   { const r = await run(abort);
-    eq(r.fell, 0, 'ダウンロードにも落とさない(取りやめ)');
-    eq(/取りやめ/.test(hintEl.textContent), true, '取りやめたことを知らせる');
+    eq(r.fell.length, 0, 'ダウンロードにも落とさない(取りやめ)');
+    ok(/取りやめ/.test(hintEl.textContent), '取りやめたことを知らせる');
     eq(r.remembered.length, 0, '何も覚えない'); }
 
-  console.log('\n【窓が開けない(操作の直後でない・システムフォルダ等)】');
-  { const r = await run(() => { throw new Error('システムフォルダは選べません'); });
-    eq(r.fell, 1, 'ダウンロードに落ちる(保存は失われない)');
-    eq(/選べませんでした/.test(hintEl.textContent), true, 'ヒント欄に理由が出る'); }
+  console.log('\n【窓が開けない(押した直後でない等)】');
+  { const r = await run(() => { throw new Error('Must be handling a user gesture'); });
+    eq(r.fell.length, 1, 'ダウンロードに落ちる(保存は失われない)');
+    ok(/開けませんでした/.test(hintEl.textContent), 'ヒント欄に理由が出る'); }
 
   console.log('\n【このブラウザは窓に非対応】');
-  { const r = await run(null); eq(r.fell, 1, '今までどおりダウンロード'); }
-
-  console.log('\n【同じ名前が既にある → 確認で「はい」】(無言で上書きしない)');
-  { const d = fakeDir({ existing: { '盤A_部品表.csv': 'OLD' } }); confirmAns = true; confirmAsked = 0;
-    const r = await run(() => d);
-    eq(r.fell, 0, 'ダウンロードしない');
-    eq(confirmAsked, 1, '上書きしてよいか聞く');
-    eq(d.written['盤A_部品表.csv'], 'DATA', '上書きされる'); }
-
-  console.log('\n【同じ名前が既にある → 確認で「いいえ」】');
-  { const d = fakeDir({ existing: { '盤A_部品表.csv': 'OLD' } }); confirmAns = false;
-    const r = await run(() => d);
-    eq(r.fell, 0, 'ダウンロードもしない(取りやめ)');
-    eq(d.written['盤A_部品表.csv'], 'OLD', '元のファイルはそのまま');
-    eq(/取りやめ/.test(hintEl.textContent), true, '取りやめたことを知らせる'); }
-
-  console.log('\n【新しい名前 → 聞かずに書く】');
-  { const d = fakeDir(); confirmAsked = 0; await run(() => d);
-    eq(confirmAsked, 0, '確認は出さない');
-    eq(/保存しました/.test(hintEl.textContent), true, '保存したことを知らせる'); }
+  { const r = await run(null); eq([r.fell, r.done], [['盤A_部品表.csv'], ['盤A_部品表.csv']], '今までどおりダウンロード'); }
 
   console.log('\n【書き込みに失敗(ExcelでCSVを開いたまま等)】');
-  { const d = fakeDir({ failWrite: true }); const r = await run(() => d);
-    eq(r.fell, 1, 'ダウンロードに落ちる');
-    eq(/書けませんでした/.test(hintEl.textContent), true, 'ヒント欄に理由が出る'); }
+  { const r = await run(() => fakeFile('盤A_部品表.csv', { failWrite: true }));
+    eq(r.fell.length, 1, 'ダウンロードに落ちる');
+    ok(/書けませんでした/.test(hintEl.textContent), 'ヒント欄に理由が出る'); }
+
+  console.log('\n【窓を開くまで待たない(押した直後に開く)】');
+  { const body = SRC.slice(SRC.indexOf('async function stWriteOut('), SRC.indexOf('fh = await window.showSaveFilePicker(opt)'));
+    eq((body.match(/await /g) || []).length, 0, 'stWriteOut は窓を開く前に await しない');
+    const edit = fs.readFileSync(__dirname + '/../js/edit.js', 'utf8');
+    const sp = edit.slice(edit.indexOf('function saveProject()'), edit.indexOf('function saveAllProject()'));
+    ok(/if \(!window\.showSaveFilePicker\) \{\s*const name = prompt\(/.test(sp), '保存: 窓が使えるときは名前の入力窓を先に出さない');
+    const pdf = fs.readFileSync(__dirname + '/../js/pdf_export.js', 'utf8');
+    ok(/stWriteOut\(filename, \(\) => \{ const p = make\(\)/.test(pdf), 'PDF: 窓を先に開き、選んでから描く'); }
 
   console.log(ng ? `\n失敗 ${ng}件` : '\n全て成功');
   process.exit(ng ? 1 : 0);
