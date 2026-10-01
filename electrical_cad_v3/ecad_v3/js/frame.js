@@ -41,7 +41,9 @@ function applyFrame(){
     scale2:document.getElementById('f-scale2').value,
     rev:document.getElementById('f-rev').value,
     chghist:document.getElementById('f-chghist')?.value||'',
-    page:document.getElementById('f-page')?.value || (state.frameObj?.page) || '',
+    // 【2026-10-01】空欄で配置したら空欄(=表題欄は自動の「n / 総数」)。以前は `欄の値 || 前の値` だったので、
+    // 一度入れた頁番号を空欄に戻せなかった(盛田さん了承で修正)。欄は枠のパネルを開いたとき今の値で埋まる(showFramePanel)
+    page:(()=>{ const pe=document.getElementById('f-page'); return pe ? pe.value.trim() : (state.frameObj?.page||''); })(),
   };
   closeFP('frame-p');resetView();draw();
 }
