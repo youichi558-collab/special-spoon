@@ -3580,12 +3580,20 @@ function toggleXrefDisp() {
 }
 // 「更新」: 図面を直したあとに、今の図面で計算し直して表示する(OFFなら表示ONにして計算)
 async function refreshXrefDisp() {
-  if (typeof xprojReload === 'function') { try { await xprojReload(); } catch (e) { console.warn('プロジェクトの読み直しに失敗', e); } }
+  // 【2026-10-01】押したらすぐ色を変えて、今の図面(前に読んだ参照図面を含む)で出す。参照図面の読み直しはそのあと。
+  // 以前は読み直しを待ってから色を変えていたので、押しても色がすぐ変わらず、待っている間にもう一度押すと
+  // まだOFF扱いで再びONの処理が走り、色の変わり方がおかしくなった(盛田さん「クロスリファレンスタブの色変わりがおかしい」)
   state.showXref = true;
   xrefRefresh();
   syncXrefBtn();
   draw();
   updateRightPanel();
+  if (typeof xprojReload === 'function') {
+    let reloaded = false;
+    try { reloaded = await xprojReload(); } catch (e) { console.warn('参照図面の読み直しに失敗', e); }
+    if (state.showXref !== true) return;          // 読み直しの間に隠した(もう一度押した)なら、出し直さない
+    if (reloaded) { xrefRefresh(); draw(); updateRightPanel(); }
+  }
   if (typeof xprojCheckConflicts === 'function') xprojCheckConflicts();   // 別ファイルとデバイスの値が食い違っていれば、選ぶ画面
 }
 // 全体の文字サイズの倍率(0.3〜2)。前回値を覚える。範囲外・数字でなければ既定0.7に戻す。
