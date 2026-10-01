@@ -288,6 +288,13 @@ function xrefComputeCore() {
   const byEl = new Map();
   blocks.forEach(b => byEl.set(b.elId, b));
   const sa = sigarrowCompute();
+  // 【2026-10-01】矢印の文字に**線番**を付ける(盛田さんの指示は「線番、ページ、区分を書く」。最初の実装は位置しか出していなかった)。
+  // 線番は送り・受けのネットの番号(同じ線なので1つ。片方にしか無ければその番号)。どちらも未採番なら位置だけ
+  sigNetLinksCore(sa.pairs).forEach(lk => {
+    const no = lk.a.no || lk.b.no;
+    if (!no) return;
+    [lk.a.el, lk.b.el].forEach(el => { const a = sa.arrows.get(el.id); if (a) a.text = `${no} ${a.text}`; });
+  });
   return { blocks, contacts, byEl, arrows: sa.arrows, arrowIssues: sa.issues };
 }
 
@@ -340,7 +347,7 @@ function sigarrowCompute() {
 function sigNetLinks() {
   return (typeof xprojWith === 'function') ? xprojWith(sigNetLinksCore) : sigNetLinksCore();
 }
-function sigNetLinksCore() {
+function sigNetLinksCore(pairs) {   // pairs: sigarrowCompute().pairs(渡されなければ計算する)
   const nets = new Map();
   const side = rec => {
     const pg = state.pages[rec.pi];
@@ -358,7 +365,7 @@ function sigNetLinksCore() {
     const no = idxs ? (idxs.map(i => pg.wires[i].wireNo).find(Boolean) || '') : '';
     return { pi: rec.pi, ext: !!pg._file, loc: rec.loc, idxs, no, el: rec.el, label: rec.el.label || '' };
   };
-  return sigarrowCompute().pairs.map(pr => ({ a: side(pr.out), b: side(pr.in) }));
+  return (pairs || sigarrowCompute().pairs).map(pr => ({ a: side(pr.out), b: side(pr.in) }));
 }
 
 // 線番を読む側(配線番号CSV・端子台表・接続チェック)が1回の出力のあいだ矢印の相手を何度も引くので、その間だけ結果を使い回す。

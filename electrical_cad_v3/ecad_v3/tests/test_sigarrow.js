@@ -202,6 +202,21 @@ console.log('【分割ファイル: 型番の食い違いを選ぶ画面に出�
   sb.xprojState.files = [];
   eq(sb.devConflicts().length, 0, 'プロジェクトが空なら今の図面だけ');
 }
+console.log('【矢印の文字は「線番 → ページ/区画」(盛田さん「線番、ページ、区分を書く」)】');
+{
+  const W = (id, x1, y1, x2, y2, no) => ({ id, x1, y1, x2, y2, wireNo: no || '', layer: '回路' });
+  const o = E('sout', 100, 100, { label: '9' }), i = E('sin', 300, 200, { label: '9' });
+  const mk = (w1, w2) => { sb.state = { pages: [
+      { name: 'P1', elements: [o], wires: [W('w1', 115, 100, 200, 100, w1)], frameObj: FRAME },
+      { name: 'P2', elements: [i], wires: [W('w3', 285, 200, 250, 200, w2)], frameObj: FRAME } ], currentPage: 0, customSymbols: [], customParts: [], showXref: true }; };
+  mk('W001', '');
+  let L = sb.xrefCompute();
+  eq(/^W001 → 2\//.test(L.arrows.get(o.id).text), true, '送り: 「W001 → 2/区画」');
+  eq(/^W001 ← 1\//.test(L.arrows.get(i.id).text), true, '受け: 片方にしか線番が無くても同じ線番「W001 ← 1/区画」');
+  mk('', '');
+  L = sb.xrefCompute();
+  eq(/^→ 2\//.test(L.arrows.get(o.id).text), true, 'どちらも未採番なら位置だけ');
+}
 console.log('【矢印以外は影響しない】');
 {
   const L = setup([[E('lamp', 0, 0, { label: '101' })]]);
