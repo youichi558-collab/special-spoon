@@ -24,7 +24,8 @@ function collectTerminalPoints(pageElements) {
     if (el.type === 'junction') {
       const isTerm = (el.style === 'circle' || el.style === 'dbl'); // 白丸/二重丸のみ端子台の端子
       pts.push({
-        x: el.x, y: el.y, elId: el.id, termIdx: 0, kind: 'junction',
+        // r: 端子台の端子(○◎)の円の半径。円周で止めた線を拾うため、判定は「半径+許容誤差」(findNearestTerminal。線番表 groupWiresByNet と同じ)。分岐点●は0
+        x: el.x, y: el.y, r: isTerm ? (el.r || 5) : 0, elId: el.id, termIdx: 0, kind: 'junction',
         dispName: isTerm ? (el.partRef || '端子台') : '分岐点',
         dispTerm: isTerm ? (el.label || '-') : '',
         isBranch: !isTerm,
@@ -78,10 +79,12 @@ function collectTerminalPoints(pageElements) {
 }
 
 // 許容誤差内で最も近い端子点を探す(ページ単位・端子点数は通常数百程度のため線形探索で十分)
+// 【2026-10-01】端子台の端子(○◎)は円の大きさ(r)の分を引いた距離で比べる(=「半径+許容誤差」以内)。
+// 以前は中心からの距離だけで、端子の円を5より大きくすると円周で止めた線を拾えなかった(線番表は「半径+5」でずれていた)
 function findNearestTerminal(x, y, termPts, tol) {
   let best = null, bestD = tol;
   termPts.forEach(p => {
-    const d = Math.hypot(p.x - x, p.y - y);
+    const d = Math.max(0, Math.hypot(p.x - x, p.y - y) - (p.r || 0));
     if (d <= bestD) { bestD = d; best = p; }
   });
   return best;
@@ -370,10 +373,18 @@ function _tbConnsOf(el, pg) {
   const conns = new Set();
   // 【2026-09-25】線番は1ネット1か所なので、ネットの番号を出す(report.js netWireNoOf)
   const netNo = netWireNoOf(pg);
+  // 【2026-10-01】線番表(groupWiresByNet)と同じ判定にした: 線の端が「半径+許容誤差」以内で、**一番近い端子**がこの端子のとき。
+  // 以前は「中心から5以内」で、端子の円を5より大きくすると円周で止めた線を拾えず、線番表とも食い違っていた
+  const terms = (pg.elements || []).filter(e => e.type === 'junction' && (e.style === 'circle' || e.style === 'dbl'));
   (pg.wires || []).forEach((w, wi) => {
     const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
     [pts[0], pts[pts.length-1]].forEach(p => {
-      if (Math.hypot(p.x-el.x, p.y-el.y) <= CONN_TABLE_TOL) conns.add(netNo[wi] || '未採番');
+      let best = null, bestD = Infinity;
+      terms.forEach(t => {
+        const d = Math.hypot(p.x - t.x, p.y - t.y);
+        if (d <= (t.r || 5) + CONN_TABLE_TOL && d < bestD) { bestD = d; best = t; }
+      });
+      if (best === el) conns.add(netNo[wi] || '未採番');
     });
   });
   return [...conns];
