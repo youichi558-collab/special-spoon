@@ -1136,15 +1136,19 @@ function elAnchor(el) {
 
 // 要素が何ページの何区画にあるかを「2/B3」形式で返す。
 // 作図領域の外(余白・表題欄の中・用紙の外)にある要素は「2/枠外」と返す。
-// 図面枠そのものが無いページはページ番号だけを返す。
+// 図面枠そのものが無いページはページ番号だけを返す。ページ番号は表題欄の頁番号(空欄ならシートの並び順)。
 // 「枠が無い」のか「枠の外にはみ出している」のかを区別できるようにしてある。
 function elLocation(el, pageIdx) {
   const pg = state.pages[pageIdx];
   const p = elAnchor(el);
   const z = (p && pg) ? zoneOf(p.x, p.y, pg.frameObj) : '';
-  // 別ファイルの図面(js/xref_project.js が計算のあいだだけ足す仮のページ)は「ファイル名/ページ/区画」
-  const no = (pg && pg._pno) || (pageIdx + 1);
-  const pre = (pg && pg._file) ? pg._file + '/' : '';
+  // 【2026-10-01】ページは**表題欄の頁番号**(図面枠パネルの「ページ」欄 = frameObj.page)。盛田さん「表題欄に書く頁番号」。
+  // 分割ファイル(1ページ1ファイル)では、シートの並び順はどのファイルでも「1」で意味が無いため。
+  // 「3 / 10」のように総数まで書いてあれば「/」の前だけ使う(位置の「3/6B」の区切りと混ざらないように)。
+  // 頁番号が空欄のページは従来どおりシートの並び順(別ファイルはファイル名を頭に付ける=どのファイルか分かるように)。
+  const fp = (pg && pg.frameObj && pg.frameObj.page != null) ? String(pg.frameObj.page).split('/')[0].trim() : '';
+  const no = fp || (pg && pg._pno) || (pageIdx + 1);
+  const pre = (!fp && pg && pg._file) ? pg._file + '/' : '';
   return z ? `${pre}${no}/${z}` : `${pre}${no}`;
 }
 

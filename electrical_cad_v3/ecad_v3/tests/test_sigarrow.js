@@ -217,6 +217,33 @@ console.log('【矢印の文字は「線番 → ページ/区画」(盛田さん
   L = sb.xrefCompute();
   eq(/^→ 2\//.test(L.arrows.get(o.id).text), true, 'どちらも未採番なら位置だけ');
 }
+console.log('【位置のページは表題欄の頁番号(盛田さん「表題欄に書く頁番号」)】');
+{
+  const W = (id, x1, y1, x2, y2, no) => ({ id, x1, y1, x2, y2, wireNo: no || '', layer: '回路' });
+  const o = E('sout', 100, 100, { label: '9' }), i = E('sin', 300, 200, { label: '9' });
+  const F = pg => Object.assign({}, FRAME, { page: pg });
+  sb.state = { pages: [
+    { name: 'P1', elements: [o], wires: [W('w1', 115, 100, 200, 100, 'W1')], frameObj: F('12') },
+    { name: 'P2', elements: [i], wires: [W('w3', 285, 200, 250, 200)], frameObj: F('15 / 40') } ], currentPage: 0, customSymbols: [], customParts: [], showXref: true };
+  let L = sb.xrefCompute();
+  eq(/^W1 → 15\//.test(L.arrows.get(o.id).text), true, '相手の表題欄の頁番号「15 / 40」の「15」が出る');
+  eq(/^W1 ← 12\//.test(L.arrows.get(i.id).text), true, '頁番号「12」');
+  sb.state.pages[1].frameObj = F('');
+  L = sb.xrefCompute();
+  eq(/^W1 → 2\//.test(L.arrows.get(o.id).text), true, '頁番号が空欄ならシートの並び順');
+  // 別ファイル: 頁番号があればファイル名を付けない、無ければ付ける
+  sb.state.pages.length = 1;
+  sb.xprojState.files = [{ name: 'B.json', symbols: [], pages: [{ name: 'PB', elements: [i], wires: [W('x1', 285, 200, 250, 200)], frameObj: F('7') }] }];
+  eq(/^W1 → 7\//.test(sb.xrefCompute().arrows.get(o.id).text), true, '別ファイルも表題欄の頁番号(ファイル名は付けない)');
+  sb.xprojState.files[0].pages[0].frameObj = F('');
+  eq(/^W1 → B\/1\//.test(sb.xrefCompute().arrows.get(o.id).text), true, '別ファイルで頁番号が空欄なら「ファイル名/1/区画」');
+  // 食い違いの画面の注意は、頁番号があってもファイル名で出る
+  const c1 = E('coil', 360, 375, { partRef: 'CR9', partModel: 'MY4N' });
+  sb.state.pages[0].elements.push(c1);
+  sb.xprojState.files = [{ name: 'B.json', symbols: [], pages: [{ name: 'PB', wires: [], frameObj: F('7'), elements: [E('ca', 390, 191, { partRef: 'CR9', partModel: 'MY2N' })] }] }];
+  ok(/別ファイル（B）/.test(sb.devConflictNote(sb.devConflicts())), '食い違いの注意は頁番号があってもファイル名「B」');
+  sb.xprojState.files = [];
+}
 console.log('【矢印以外は影響しない】');
 {
   const L = setup([[E('lamp', 0, 0, { label: '101' })]]);

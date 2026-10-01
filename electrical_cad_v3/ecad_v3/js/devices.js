@@ -188,7 +188,7 @@ function devConflicts() {
         const pg = (state.pages || [])[it.pi] || {};
         const loc = it.group ? `${pg._file ? pg._file + '/' : ''}${pg._pno || it.pi + 1}/外形図`
           : (typeof elLocation === 'function' ? elLocation(it.el, it.pi) : String(it.pi + 1));
-        return Object.assign({}, it, { loc, ext: !!pg._file });
+        return Object.assign({}, it, { loc, ext: !!pg._file, file: pg._file || '' });
       }) })),
     })));
     return out;
@@ -198,7 +198,7 @@ function devConflicts() {
 // 選ぶ画面に添える注意(別ファイルの記号が入っているとき)。無ければ ''
 function devConflictNote(conflicts) {
   const files = new Set();
-  (conflicts || []).forEach(c => c.options.forEach(o => o.items.forEach(it => { if (it.ext) files.add(String(it.loc).split('/')[0]); })));
+  (conflicts || []).forEach(c => c.options.forEach(o => o.items.forEach(it => { if (it.ext) files.add(it.file); })));
   return files.size ? `別ファイル（${[...files].join('、')}）の値は、ここでは書き換えません。選んだ値は今開いている図面だけに入ります。別ファイルは、そのファイルを開いて直してください。` : '';
 }
 
