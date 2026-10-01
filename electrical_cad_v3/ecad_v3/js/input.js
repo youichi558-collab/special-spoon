@@ -550,8 +550,16 @@ function setMode(m, sym) {
 // リボン側だけ消してクイックバー側を消し忘れ、**採番中なのにクイックバーの
 // 「選択」が点いたまま**になっていた。モードを変える経路は setMode() 以外にも
 // あるので(採番モード・Escape)、点灯はこの関数だけが行う形にする。
+//
+// 【2026-10-01】以前は `rb-` で始まる**リボンのボタン全部**の点灯を消してから、モードと一部のトグル(直交・スナップ・マスク・テキスト枠)だけ
+// 点け直していた。点け直しの一覧に無いON/OFFボタン(クロスリファレンス・端子番号)は、ONのままでもEsc・選択に戻るだけで色が消えた
+// (盛田さん「タブの色替え全体おかしくないか？ホールドされてないような」)。トグルを足すたびに一覧へ足す作りは、また漏れる。
+// → 消すのは**モードを切り替えるボタン**(押すと setMode する=作図ツール、と接続点の形=押すと接続点モードに入る)だけにした。
+//   ON/OFFボタンの点灯は、それぞれの切替関数だけが触る
 function syncModeButtons(m) {
-  document.querySelectorAll('.rb[id^=rb-]').forEach(b => b.classList.remove('on'));
+  document.querySelectorAll('.rb[id^=rb-]').forEach(b => {
+    if (/setMode\(|setJunctionStyle\(/.test(b.getAttribute('onclick') || '')) b.classList.remove('on');
+  });
   document.getElementById('rb-' + (m === 'sym' ? 'sym' : m))?.classList.add('on');
   // トグル系ボタンはモードと独立なので表示状態を復元
   document.getElementById('rb-ortho')?.classList.toggle('on', !!state.ortho);
