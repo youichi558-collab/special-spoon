@@ -320,6 +320,7 @@ function sigarrowCompute() {
     });
   });
   const put = (r, text) => {
+    if (r.el.xrefHide) return;   // CRタブで「図面に表示」をOFF(相手の判定はそのまま)
     const dev = (typeof getDef === 'function' ? getDef(r.el.type) : null) || { h: 34 };
     const fs = Math.max(2, 11 * 0.85 * xrefScale() * xrefMul(r.el));
     arrows.set(r.el.id, { pi: r.pi, x: r.el.x + xrefOff(r.el.xrefOffX), y: r.el.y - dev.h * (r.el.scale || 1) / 2 - 4 + xrefOff(r.el.xrefOffY), fs, text });

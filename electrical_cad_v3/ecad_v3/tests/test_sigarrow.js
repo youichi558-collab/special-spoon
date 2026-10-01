@@ -244,6 +244,17 @@ console.log('【位置のページは表題欄の頁番号(盛田さん「表題
   ok(/別ファイル（B）/.test(sb.devConflictNote(sb.devConflicts())), '食い違いの注意は頁番号があってもファイル名「B」');
   sb.xprojState.files = [];
 }
+console.log('【矢印のプロパティ: 名前欄・CRタブ(2026-10-01)】');
+{
+  const ui = R('js/ui.js');
+  ok(/const _isSig = \['sig_out', 'sig_in'\]\.includes\(symRole\(el\)\)/.test(ui) && /\|\| _isSig;/.test(ui), '矢印でもCRタブを出す');
+  ok(/if \(_isSig\) html \+= `<div style="display:none">`/.test(ui), '矢印ではデバイス・型式の欄を隠す(欄は残す)');
+  ok(/const _spN = _isSig \? '名前' : '仕様'/.test(ui), '矢印では「仕様」欄を「名前」と見せる');
+  const o = E('sout', 100, 100, { label: '9', xrefHide: true }), i = E('sin', 300, 200, { label: '9' });
+  sb.state = { pages: [{ name: 'P1', elements: [o], wires: [], frameObj: FRAME }, { name: 'P2', elements: [i], wires: [], frameObj: FRAME }], currentPage: 0, customSymbols: [], customParts: [], showXref: true };
+  const L = sb.xrefCompute();
+  eq([L.arrows.has(o.id), L.arrows.has(i.id)], [false, true], 'CRタブで表示OFFの矢印は相手表示を出さない(相手の判定はそのまま)');
+}
 console.log('【矢印以外は影響しない】');
 {
   const L = setup([[E('lamp', 0, 0, { label: '101' })]]);

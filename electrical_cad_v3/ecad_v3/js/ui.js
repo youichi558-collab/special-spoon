@@ -2577,9 +2577,14 @@ function updateRightPanel() {
       <button onclick="copyDeviceProps()" title="このシンボルのデバイス名・型番・仕様・文字設定を丸ごとコピーします" style="flex:1;font-size:11px;padding:3px 6px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">一括コピー</button>
       <button onclick="pasteDeviceProps()" title="コピーした内容を、選択中のシンボル(複数可・形が違ってもOK)へまとめて貼り付けます" style="flex:1;font-size:11px;padding:3px 6px;background:${deviceClipboard?'var(--accent,#1d6fb5)':'var(--bg3)'};border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:${deviceClipboard?'#fff':'var(--fg)'}"${deviceClipboard?'':' disabled'}>一括貼り付け</button>
     </div>`;
-    const _hasCR = ['coil', 'contact_a', 'contact_b'].includes(symRole(el));   // クロスリファレンスの対象(js/xref.js)
+    // 【2026-10-01】ページ跨ぎの矢印(送り・受け)は部品ではない。デバイス・型式の欄は隠し(欄は残す=適用処理が id で読むため)、
+    // 「仕様」欄(el.label)を「名前」(相手を探す名前)として見せる。相手表示の位置・サイズ・表示はCRタブで直せるようにする
+    // (盛田さん「ページ跨ぎのシンボルプロパティはおかしくないか」)
+    const _isSig = ['sig_out', 'sig_in'].includes(symRole(el));
+    const _hasCR = ['coil', 'contact_a', 'contact_b'].includes(symRole(el)) || _isSig;   // クロスリファレンスの対象(js/xref.js)
     html += `<div class="pp-row" style="gap:6px"><label>シンボル</label><span id="pp-symname" onclick="rpJumpToSymbol('${_escAttr(el.type)}')" style="padding:2px 0;color:var(--acc);font-size:11px;cursor:pointer;text-decoration:underline dotted" title="この要素の元になっている登録シンボルの名前と、接点Ref用の種別です。クリックで左のシンボル一覧のそのシンボルへ飛びます">${escH(rpSymbolLabel(el))}</span></div>`;
     html += rpTabsHeader(_hasCR) + rpPaneOpen('basic');
+    if (_isSig) html += `<div style="display:none">`;   // 矢印: デバイス・型式は隠す(下の「名前」の前で閉じる)
     { const devC = el.devColor||(state.darkMode?'#4da3ff':'#1d6fb5');
     html += `<div class="pp-group" style="border-left:4px solid ${devC}"><div class="pp-group-cap" style="color:${devC}">◆ デバイス</div>`;
     // デバイス欄は入力欄＋候補リスト(datalist)。候補は図面上で実際に使われている
@@ -2613,11 +2618,13 @@ function updateRightPanel() {
     html += `<div class="pp-row"><button onclick="resetModelOff()" style="font-size:11px;padding:2px 8px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)">位置リセット</button></div>`;
     html += `</details>`;
     html += `</div>`; }
+    if (_isSig) html += `</div>`;
     { const lblC = el.labelColor||'#555555';
-    html += `<div class="pp-group" style="border-left:4px solid ${lblC}"><div class="pp-group-cap" style="color:${lblC}">◆ 仕様</div>`;
-    html += `<div class="pp-row"><label>仕様</label><textarea rows="2" id="pp-label" style="text-align:${el.labelAlign||'center'}" placeholder="例: AC200V 3.7kW&#10;冷却ファン用（改行可）">${el.label||''}</textarea></div>`;
-    html += `<div class="pp-row"><label>仕様を図面に表示</label><input type="checkbox" id="pp-showspec"${el.specHide?'':' checked'} title="チェックしたシンボルにだけ仕様が描画されます。同じデバイスを複数のシンボルに分けて配置する場合、代表の1つだけONにしてください"></div>`;
-    html += `<details class="pp-details" style="border-left:4px solid ${lblC}"><summary>仕様表示の詳細（揃え・色・サイズ・位置）</summary>`;
+    const _spN = _isSig ? '名前' : '仕様';
+    html += `<div class="pp-group" style="border-left:4px solid ${lblC}"><div class="pp-group-cap" style="color:${lblC}">◆ ${_spN}</div>`;
+    html += `<div class="pp-row"><label>${_spN}</label><textarea rows="2" id="pp-label" style="text-align:${el.labelAlign||'center'}" placeholder="${_isSig ? '例: A1（同じ名前の送りと受けが相手になります）' : '例: AC200V 3.7kW&#10;冷却ファン用（改行可）'}">${el.label||''}</textarea></div>`;
+    html += `<div class="pp-row"><label>${_spN}を図面に表示</label><input type="checkbox" id="pp-showspec"${el.specHide?'':' checked'} title="チェックしたシンボルにだけ仕様が描画されます。同じデバイスを複数のシンボルに分けて配置する場合、代表の1つだけONにしてください"></div>`;
+    html += `<details class="pp-details" style="border-left:4px solid ${lblC}"><summary>${_spN}表示の詳細（揃え・色・サイズ・位置）</summary>`;
     html += `<div class="pp-row"><label>文字揃え</label><select id="pp-lalign" onchange="previewLabelStyle()">
       <option value="left"  ${el.labelAlign==='left'  ?'selected':''}>左揃え</option>
       <option value="center"${!el.labelAlign||el.labelAlign==='center'?'selected':''}>中央揃え</option>
@@ -2661,7 +2668,7 @@ function updateRightPanel() {
     html += `<div class="pp-row"><label>位置Y補正</label><input type="number" id="pp-noy" value="${escH(el.noteOffY!==undefined?el.noteOffY:'')}" placeholder="自動" step="5"></div>`;
     html += `</details>`;
     html += rpPaneClose();
-    // クロスリファレンスの個別設定(コイル・接点だけ)。空欄=自動。位置は自動の位置からのずれ、サイズは全体の倍率に掛ける倍率
+    // クロスリファレンスの個別設定(コイル・接点と、ページ跨ぎの矢印の相手表示)。空欄=自動。位置は自動の位置からのずれ、サイズは全体の倍率に掛ける倍率
     if (_hasCR) {
       html += rpPaneOpen('cr');
       html += `<div class="pp-row"><label>図面に表示</label><input type="checkbox" id="pp-xshow"${el.xrefHide?'':' checked'} title="OFFにするとこの要素のクロスリファレンスを出しません"></div>`;
