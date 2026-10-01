@@ -6,7 +6,7 @@
 // ファイル群を対象にする)と同じく、**同じフォルダの図面ファイルの一覧(プロジェクト)**を持つ。
 //
 // 【仕組み】
-//   ・ボタン「プロジェクト」: フォルダを選ぶ → フォルダ内の図面(.json)から対象を選ぶ → フォルダに ecad_project.json として保存
+//   ・ボタン「参照図面」(データタブ): フォルダを選ぶ → フォルダ内の図面(.json)から対象を選ぶ → フォルダに ecad_project.json として保存
 //     (フォルダを選ぶだけにしないのは、別案件の図面が混ざらないため)
 //   ・「更新」を押すと、対象のファイルを読み直して計算する(読むだけ。図面には足さない・保存もしない)
 //   ・計算のあいだだけ、別ファイルのページを今の図面の後ろに足す(xprojWith)。位置は「ファイル名/ページ/区画」(elLocation)
@@ -123,7 +123,7 @@ function xprojCheckConflicts() {
   devResolveDialog(cf, { onDone: n => { if (n) { if (state.showXref === true) xrefRefresh(); if (typeof draw === 'function') draw(); } } });
 }
 
-// ボタン「プロジェクト」: フォルダを選び、対象の図面を選ぶ
+// ボタン「参照図面」(データタブ): フォルダを選び、対象の図面を選ぶ
 async function xprojSetup() {
   if (!window.showDirectoryPicker) { alert('このブラウザはフォルダ選択に対応していません(Chrome/Edgeで開いてください)'); return; }
   let dir;
@@ -148,7 +148,7 @@ async function xprojSetup() {
   await w.write(JSON.stringify({ version: 1, files: chosen }, null, 2));
   await w.close();
   await xprojReload();
-  if (typeof stToast === 'function') stToast(`プロジェクトを保存しました(${chosen.length}ファイル)。「更新」で相互参照に反映します`, 'ok');
+  if (typeof stToast === 'function') stToast(`参照図面を保存しました(${chosen.length}ファイル)。表示タブの「更新」でクロスリファレンスに反映します`, 'ok');
 }
 
 function xprojPickDialog(dirName, names, saved, _mine) {
@@ -158,7 +158,7 @@ function xprojPickDialog(dirName, names, saved, _mine) {
     const box = document.createElement('div');
     box.style.cssText = 'background:var(--bg2,#fff);color:var(--fg,#000);padding:14px 16px;border-radius:6px;min-width:340px;max-width:80vw;max-height:80vh;overflow:auto;font-size:13px';
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-    box.innerHTML = `<div style="font-weight:600;margin-bottom:6px">プロジェクトの図面(${esc(dirName)})</div>
+    box.innerHTML = `<div style="font-weight:600;margin-bottom:6px">参照図面(${esc(dirName)})</div>
       <div style="font-size:11px;opacity:.8;margin-bottom:8px">クロスリファレンス・ページ跨ぎの矢印で相手を探す図面を選びます。開いている図面と同じページ名のファイルは、開いている方を使います。</div>
       ${names.map((n, i) => `<label style="display:block"><input type="checkbox" data-i="${i}" ${saved.has(n) ? 'checked' : ''}> ${esc(n)}</label>`).join('') || '<div>図面(.json)がありません</div>'}
       <div style="margin-top:10px;text-align:right"><button id="xp-ng">やめる</button> <button id="xp-ok">保存</button></div>`;

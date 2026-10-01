@@ -321,10 +321,10 @@ function showConnTable() {
       + unc.map(u => `<tr onclick="jumpToRefEl(${u.pageIdx},${_jsArg(u.elId)},{x:${u.x},y:${u.y}})" title="クリックで図面のこの端子へ飛ぶ" style="cursor:pointer;background:rgba(200,60,60,.10)">`
         + `<td><span class="badge badge-b">${escH(_connTermTxt(u))}</span></td><td>${escH(u.page)}</td></tr>`).join('') + `</table>`
     : '';
-  // ページ跨ぎの矢印(送り・受け)の問題。行を押すとその矢印へ飛ぶ。別ファイルの相手は「プロジェクト」を設定して「更新」すると見つかる
+  // ページ跨ぎの矢印(送り・受け)の問題。行を押すとその矢印へ飛ぶ。別ファイルの相手は「参照図面」(データタブ)を設定して「更新」すると見つかる
   const noProj = !(typeof xprojState !== 'undefined' && xprojState.files.length);
   const arrHtml = arr.length
-    ? `<p style="font-size:11px;font-weight:600;margin:12px 0 3px">ページ跨ぎの矢印の問題<span style="color:var(--fg3);font-weight:400">（${arr.length}件。行を押すとその矢印へ飛びます。${noProj ? '相手が別ファイルにあるときは、表示タブの「プロジェクト」で図面を選び「更新」を押すと見つかります' : ''}）</span></p>`
+    ? `<p style="font-size:11px;font-weight:600;margin:12px 0 3px">ページ跨ぎの矢印の問題<span style="color:var(--fg3);font-weight:400">（${arr.length}件。行を押すとその矢印へ飛びます。${noProj ? '相手が別ファイルにあるときは、データタブの「参照図面」で図面を選び、表示タブの「更新」を押すと見つかります' : ''}）</span></p>`
       + `<table class="tbl"><tr><th>問題</th><th>ページ</th></tr>`
       + arr.map(a => `<tr onclick="jumpToRefEl(${a.pageIdx},${_jsArg(a.elId)},{x:${a.x},y:${a.y}})" title="クリックで図面のこの矢印へ飛ぶ" style="cursor:pointer;background:rgba(200,60,60,.10)">`
         + `<td>⚠ ${escH(a.txt)}</td><td>${escH(a.page)}</td></tr>`).join('') + `</table>`
