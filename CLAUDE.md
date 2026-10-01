@@ -18,6 +18,9 @@
 
 カタログCSV作成の状況だけは別ファイル → `electrical_cad_v3/ecad_v3/CATALOG_STATUS.md`
 
+**盛田さんの図面データはGoogleドライブにある**(フォルダ `1MOslJRXKDdU_pZmVgMN2dFze77fYjmNQ`、例: `教育①_all (1).json`)。
+図面を確かめるときは、盛田さんに頼む前にドライブを探す。**リポジトリは公開なので図面は入れない**(詳細は HANDOFF.md)。
+
 ## 2. main で直接作業する（ブランチを切らない）
 
 **作業ブランチを切ってプルリクエストを作る運用ではない。`main` に直接コミットしてpushする。**
