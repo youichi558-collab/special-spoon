@@ -617,6 +617,48 @@ function drawArcEl(el, sel, lc, lay) {
   ctx.restore();
 }
 
+// 【2026-10-01】端子台の端子(○◎)の円の中を通る線の部分を取り除く(盛田さん「dxf,pdfの◯は中が見えて線が貫通するように見える」)。
+// 展開接続図は端子の手前で線を止めて反対側から出す描き方なので、円の中の線は無いのが正しい。
+// DXF出力(dxf_export.js)と、端子を線の上に置いたときの線の分割(tools.js junctionTool)の両方で使う。
+// pts: 折れ線の点 [{x,y}…]、circles: [{x,y,r}…] → 円の外の部分だけの折れ線の配列(各2点以上)。円に掛からなければ元の形のまま1本
+function termCircles(elements) {
+  return (elements || []).filter(e => e.type === 'junction' && (e.style === 'circle' || e.style === 'dbl'))
+    .map(e => ({ x: e.x, y: e.y, r: e.r || 5 }));
+}
+function clipPolylineByCircles(pts, circles) {
+  const EPS = 1e-6, out = [];
+  let cur = null;
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const a = pts[i], b = pts[i + 1], dx = b.x - a.x, dy = b.y - a.y, A = dx * dx + dy * dy;
+    if (A < EPS) continue;
+    const iv = [];
+    circles.forEach(c => {
+      const fx = a.x - c.x, fy = a.y - c.y, B = 2 * (fx * dx + fy * dy), C = fx * fx + fy * fy - c.r * c.r;
+      const disc = B * B - 4 * A * C;
+      if (disc <= 0) return;
+      const sq = Math.sqrt(disc), t1 = Math.max(0, (-B - sq) / (2 * A)), t2 = Math.min(1, (-B + sq) / (2 * A));
+      if (t2 > t1 + EPS) iv.push([t1, t2]);
+    });
+    iv.sort((p, q) => p[0] - q[0]);
+    const pieces = [];
+    let t = 0;
+    iv.forEach(([u, v]) => { if (u > t + EPS) pieces.push([t, u]); t = Math.max(t, v); });
+    if (t < 1 - EPS) pieces.push([t, 1]);
+    pieces.forEach(([u, v]) => {
+      // 切った点は小数第6位で丸める。端子の円の初期の大きさ(5)と接続の許容誤差(5)が同じなので、
+      // 255.00000000000003 のような計算の誤差だけで「浮いている端」と判定された(実アプリで確認)
+      const rd = v => Math.round(v * 1e6) / 1e6;
+      const P = { x: rd(a.x + u * dx), y: rd(a.y + u * dy) }, Q = { x: rd(a.x + v * dx), y: rd(a.y + v * dy) };
+      if (cur && u <= EPS) cur.push(Q);                 // 前の線分の終わりから続いている
+      else { if (cur) out.push(cur); cur = [P, Q]; }
+      if (v < 1 - EPS) { out.push(cur); cur = null; }  // 円で切れた
+    });
+    if (!pieces.length && cur) { out.push(cur); cur = null; }
+  }
+  if (cur) out.push(cur);
+  return out.filter(pl => pl.length >= 2);
+}
+
 function drawJunctionEl(el, sel, lc) {
   ctx.save();
   const c = lc;
@@ -627,8 +669,9 @@ function drawJunctionEl(el, sel, lc) {
     ctx.beginPath(); ctx.arc(el.x, el.y, r + 2/state.zoom, 0, Math.PI*2); ctx.stroke();
   }
   if (style === 'circle' || style === 'dbl') {
-    // 白丸(端子台の端子): 背景色で塗って輪郭のみ描く
-    ctx.fillStyle = state.darkMode ? '#252525' : '#d4d4cc';
+    // 白丸(端子台の端子): 背景色で塗って輪郭のみ描く。PDF・SVG出力(pdfMode)は紙の色=白
+    // (以前は画面の背景の灰色のままで、白い紙に灰色の丸が出ていた。2026-10-01)
+    ctx.fillStyle = state.pdfMode ? '#ffffff' : (state.darkMode ? '#252525' : '#d4d4cc');
     ctx.beginPath(); ctx.arc(el.x, el.y, r, 0, Math.PI*2); ctx.fill();
     ctx.strokeStyle = c; ctx.lineWidth = Math.max(1, r*0.3) / state.zoom;
     ctx.beginPath(); ctx.arc(el.x, el.y, r, 0, Math.PI*2); ctx.stroke();

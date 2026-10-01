@@ -546,11 +546,15 @@ function exportDXF(){
   }
 
   // 配線
+  // 【2026-10-01】端子台の端子(○◎)の円の中を通る部分は出さない(draw.js clipPolylineByCircles)。
+  // DXFの端子は輪郭だけ(白マスクは他CADで白い円板に見えるため8-21に廃止)なので、円を貫通した線がそのまま見えていた。
+  const _tbCircles = (typeof termCircles === 'function') ? termCircles(elements) : [];
   wires.forEach(w=>{
     const layer=dxfLayer(w.layer||'配線');
     const lt=resolveLT(w.lineStyle);
     const pts=w.pts||[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
-    for(let i=0;i<pts.length-1;i++) eLine(layer,pts[i].x,pts[i].y,pts[i+1].x,pts[i+1].y,lt);
+    const pieces = (_tbCircles.length && typeof clipPolylineByCircles === 'function') ? clipPolylineByCircles(pts, _tbCircles) : [pts];
+    pieces.forEach(pl=>{ for(let i=0;i<pl.length-1;i++) eLine(layer,pl[i].x,pl[i].y,pl[i+1].x,pl[i+1].y,lt); });
     // 【本命修正】線番号の位置式が画面(draw.js)と全く別物だった。従来は単純にmp.y-8という、
     // 配線の向きを一切考慮しない固定オフセットで、縦方向の配線(今回のラダー図のような回路)では
     // 線番号が隣接する接点のデバイス名と同じY方向にずれるため重なって表示されていた

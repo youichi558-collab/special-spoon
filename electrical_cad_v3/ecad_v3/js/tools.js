@@ -509,6 +509,32 @@ const triTool = {
   onUp() {}, onHover(wx, wy, e) { this.onMove(wx, wy, e); }
 };
 
+function splitWiresAtTerminal(j) {
+  if (typeof clipPolylineByCircles !== 'function') return 0;
+  const c = [{ x: j.x, y: j.y, r: j.r || 5 }];
+  const len = pl => pl.reduce((n, p, i) => i ? n + Math.hypot(p.x - pl[i - 1].x, p.y - pl[i - 1].y) : 0, 0);
+  let n = 0;
+  const out = [];
+  state.wires.forEach(w => {
+    const pts = w.pts || [{ x: w.x1, y: w.y1 }, { x: w.x2, y: w.y2 }];
+    const pieces = clipPolylineByCircles(pts, c);
+    // 円の中を通っていない(形が変わらない)線はそのまま。端が円の中で止まっているだけの線は短くなる(円周で止まる)
+    const same = pieces.length === 1 && pieces[0].length === pts.length && pieces[0].every((p, i) => Math.hypot(p.x - pts[i].x, p.y - pts[i].y) < 1e-6);
+    if (same || !pieces.length) { out.push(w); return; }
+    n++;
+    let longest = 0;
+    pieces.forEach((pl, i) => { if (len(pl) > len(pieces[longest])) longest = i; });
+    pieces.forEach((pl, i) => {
+      const nw = Object.assign({}, w, { id: i === longest ? w.id : genId('w'), pts: pl.map(p => ({ x: p.x, y: p.y })),
+        x1: pl[0].x, y1: pl[0].y, x2: pl[pl.length - 1].x, y2: pl[pl.length - 1].y });
+      if (i !== longest) { nw.wireNo = ''; delete nw.wireNoOffX; delete nw.wireNoOffY; }
+      out.push(nw);
+    });
+  });
+  if (n) state.wires.splice(0, state.wires.length, ...out);
+  return n;
+}
+
 const junctionTool = {
   onDown(wx, wy) {
     const p = getAllSnapPoints(wx, wy);
@@ -520,6 +546,10 @@ const junctionTool = {
     // (未定義=従来どおり表示、なので新規分は明示的にfalseを入れる)
     if (_jst === 'circle' || _jst === 'dbl') _jn.showDev = false;
     state.elements.push(_jn);
+    // 【2026-10-01】端子(○◎)を引いてある線の上に置いたら、その線を円のところで切って分ける(盛田さん「端子台は後からのせるのはできないか」→「直していい」)。
+    // 端子台表・接続チェック・線番表は「円に線の端が乗っている」でつなぐので、貫通したままだと端子が未接続扱いになっていた。
+    // 切った両側は端子でつながる同じネットなので、線番は1ネット1か所の決まりどおり長い方に残す(文字の位置補正も長い方)。
+    if (_jst === 'circle' || _jst === 'dbl') splitWiresAtTerminal(_jn);
     draw();
   },
   onMove(wx, wy) {
