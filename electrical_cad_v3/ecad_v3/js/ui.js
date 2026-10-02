@@ -77,6 +77,66 @@ function equalizeRibbonHeight() {
 }
 window.addEventListener('resize', syncRibbonHeight);
 
+// ----------------------------------------------------------------
+// 【2026-10-02】左パネルの「固定」(ドッキング)(UIレビュー「左パネルをドッキング可能に」、盛田さん「左パネルも進めて」)
+//   ・ONのとき、シンボル一覧・レイヤー・部品DBの窓(sym/lay/prt-float)を縦タブのすぐ右に並べて置き、キャンバスはその右から始める
+//   ・タブで中身を切替(従来どおり1つだけ開く)。開いているタブを押す/×で畳む(=キャンバス全幅)
+//   ・右端のドラッグで幅(180〜600)。ON/OFFと幅は前回値を覚える(ecad_prefs の lpDocked・lpDockW)。既定はOFF(従来どおりの浮いた窓)
+// ----------------------------------------------------------------
+const LPD_W_DEF = 280, LPD_W_MIN = 180, LPD_W_MAX = 600;
+let _lpdW = LPD_W_DEF;
+function _lpdOpenPanel() {
+  return ['sym-float', 'lay-float', 'prt-float'].map(id => document.getElementById(id))
+    .find(p => p && p.style.display && p.style.display !== 'none') || null;
+}
+function applyLpLayout() {
+  const body = document.body, cw = document.getElementById('cw'), lp = document.getElementById('lp');
+  const mr = document.getElementById('main-row'), bar = document.getElementById('lpd-resizer');
+  if (!body || !cw) return;
+  const docked = body.classList.contains('lp-docked');
+  const open = docked && !body.classList.contains('fullscreen') && _lpdOpenPanel();
+  const max = Math.max(LPD_W_MIN, Math.min(LPD_W_MAX, (window.innerWidth || 1200) - 400));
+  _lpdW = Math.round(Math.max(LPD_W_MIN, Math.min(max, +_lpdW || LPD_W_DEF)));
+  const left = (lp && !lp.classList.contains('hide')) ? lp.getBoundingClientRect().right : 0;
+  const r = mr ? mr.getBoundingClientRect() : { top: 90, height: 600 };
+  const st = document.documentElement.style;
+  st.setProperty('--lpd-left', left + 'px'); st.setProperty('--lpd-top', r.top + 'px');
+  st.setProperty('--lpd-h', r.height + 'px'); st.setProperty('--lpd-w', _lpdW + 'px');
+  cw.style.marginLeft = open ? _lpdW + 'px' : '0';
+  if (bar) {
+    bar.style.display = open ? 'block' : 'none';
+    bar.style.left = (left + _lpdW - 3) + 'px'; bar.style.top = r.top + 'px'; bar.style.height = r.height + 'px';
+  }
+  document.getElementById('lt-dock')?.classList.toggle('on', docked);
+}
+function _lpdRelayout() { applyLpLayout(); if (typeof resize === 'function') resize(); if (typeof draw === 'function') draw(); }
+function toggleLpDock(on) {
+  const docked = (on === undefined) ? !document.body.classList.contains('lp-docked') : !!on;
+  document.body.classList.toggle('lp-docked', docked);
+  if (on === undefined && typeof stSetPref === 'function') stSetPref('lpDocked', docked ? 1 : '');
+  _lpdRelayout();
+}
+function lpdSetWidth(w, save) {
+  _lpdW = w;
+  _lpdRelayout();
+  if (save && typeof stSetPref === 'function') stSetPref('lpDockW', _lpdW);
+}
+function lpdStartResize(e) {
+  if (e.button !== 0) return;
+  e.preventDefault();
+  const bar = document.getElementById('lpd-resizer');
+  if (bar) bar.classList.add('on');
+  const lp = document.getElementById('lp');
+  const left = (lp && !lp.classList.contains('hide')) ? lp.getBoundingClientRect().right : 0;
+  const move = ev => lpdSetWidth(ev.clientX - left, false);
+  const up = () => {
+    document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
+    if (bar) bar.classList.remove('on');
+    if (typeof stSetPref === 'function') stSetPref('lpDockW', _lpdW);
+  };
+  document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+}
+
 function switchLTab(name, el) {
   const panelMap = { sym:'sym-float', lay:'lay-float', prt:'prt-float' };
   const fp = document.getElementById(panelMap[name]);
@@ -102,20 +162,24 @@ function switchLTab(name, el) {
     // 既に開いていたタブを再クリック → 閉じる
     fp.style.display = 'none';
   }
+  _lpdRelayout();   // 固定(ドッキング)のときは、開いた/畳んだ一覧に合わせてキャンバスの左を空ける
 }
 // closeLayFloat は下で定義
 
 function closeSym() {
   document.getElementById('sym-float').style.display = 'none';
   document.querySelectorAll('.lt').forEach(e => e.classList.remove('on'));
+  _lpdRelayout();
 }
 function closePrt() {
   document.getElementById('prt-float').style.display = 'none';
   document.querySelectorAll('.lt').forEach(e => e.classList.remove('on'));
+  _lpdRelayout();
 }
 function closeLayFloat() {
   document.getElementById('lay-float').style.display = 'none';
   document.querySelectorAll('.lt').forEach(e => e.classList.remove('on'));
+  _lpdRelayout();
 }
 
 // ----------------------------------------------------------------
@@ -3636,6 +3700,7 @@ function toggleDark() {
 function toggleLeftPanel() {
   const lp = document.getElementById('lp');
   if (lp) lp.classList.toggle('hide');
+  applyLpLayout();
   resize(); draw();
 }
 
@@ -3721,6 +3786,7 @@ function toggleExpand() {
 // ----------------------------------------------------------------
 let _lfOx = 0, _lfOy = 0;
 function layFloatDown(e) {
+  if (document.body.classList.contains('lp-docked')) return;   // 固定(ドッキング)中は動かさない
   if (e.target.tagName === 'BUTTON' || e.target.onclick) return;
   e.preventDefault();
   e.stopPropagation();
@@ -4058,6 +4124,7 @@ function filterParts(q) {
 function _makeFloatDrag(panelId) {
   let ox = 0, oy = 0;
   return function(e) {
+    if (document.body.classList.contains('lp-docked')) return;   // 固定(ドッキング)中は動かさない
     if (e.target.tagName === 'BUTTON' || e.target.onclick || e.target.tagName === 'INPUT') return;
     e.preventDefault(); e.stopPropagation();
     const p = document.getElementById(panelId);

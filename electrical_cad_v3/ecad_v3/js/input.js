@@ -19,7 +19,7 @@ function resize() {
   cv.width  = cwEl.clientWidth;
   cv.height = cwEl.clientHeight;
 }
-window.addEventListener('resize', () => { if (typeof applyRpLayout === 'function') applyRpLayout(); resize(); draw(); });   // 窓を狭めたら右パネルの幅も上限に合わせる
+window.addEventListener('resize', () => { if (typeof applyRpLayout === 'function') applyRpLayout(); if (typeof applyLpLayout === 'function') applyLpLayout(); resize(); draw(); });   // 窓を狭めたら右パネルの幅も上限に合わせる
 
 // ----------------------------------------------------------------
 // ズーム・パン

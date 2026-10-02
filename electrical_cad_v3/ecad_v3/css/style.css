@@ -261,6 +261,19 @@ button:not(.rep-tab):active{filter:brightness(.85);transform:scale(0.96);}      
 .page-tab-add:hover{background:var(--acc);color:#fff;}
 /* パネル表示切替 */
 #lp.hide{display:none!important;}
+/* 【2026-10-02】左パネルの「固定」(ドッキング)。ONのとき、シンボル一覧・レイヤー・部品DBの窓を縦タブのすぐ右に並べて置く
+   (位置と幅は ui.js applyLpLayout が --lpd-* で渡す)。キャンバスはその右から始まる。OFFは従来どおりの浮いた窓 */
+body.lp-docked #sym-float, body.lp-docked #prt-float, body.lp-docked #lay-float{
+  left:var(--lpd-left,52px)!important;top:var(--lpd-top,90px)!important;height:var(--lpd-h,600px)!important;
+  width:var(--lpd-w,280px)!important;min-width:0!important;max-height:none!important;
+  border-radius:0!important;box-shadow:none!important;border-top:none!important;z-index:19!important;}
+body.lp-docked #sym-float-title, body.lp-docked #prt-float-title, body.lp-docked #lay-float-title{cursor:default!important;border-radius:0!important;}
+body.lp-docked #sym-float-body, body.lp-docked #lay-float > div:last-child{flex:1;}
+body.fullscreen.lp-docked #sym-float, body.fullscreen.lp-docked #prt-float, body.fullscreen.lp-docked #lay-float{display:none!important;}
+#lpd-resizer{position:fixed;width:6px;cursor:ew-resize;z-index:22;display:none;}
+#lpd-resizer:hover,#lpd-resizer.on{background:var(--acc);opacity:.5;}
+.lt-dock{flex-shrink:0;white-space:nowrap;padding:10px 4px;font-size:11px;text-align:center;cursor:pointer;color:var(--fg3);writing-mode:vertical-rl;letter-spacing:0.1em;border-top:1px solid var(--bd);margin-top:auto;}
+.lt-dock.on{color:var(--acc);font-weight:600;background:var(--ribbon-sel);}
 #rp.hide{display:none!important;}
 /* 大画面モード */
 body.fullscreen #ribbon,

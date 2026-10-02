@@ -399,6 +399,8 @@
       <div class="lt" onclick="switchLTab('lay',this)">レイヤー</div>
       <div class="lt" onclick="switchLTab('prt',this)">部品DB</div>
     </div>
+    <!-- 【2026-10-02】固定(ドッキング)の切替。ONでシンボル一覧などを縦タブの右に並べて置く(ui.js toggleLpDock) -->
+    <div class="lt-dock" id="lt-dock" onclick="toggleLpDock()" title="ONにすると、シンボル一覧・レイヤー・部品DBを左に固定して並べます(キャンバスはその右から)。タブで切替、開いているタブをもう一度押すと畳みます。右端のドラッグで幅を変えられます。OFFは浮いた窓">📌固定</div>
     <!-- #lp-tabsのボタンはswitchLTab()経由でsym-float/lay-float/prt-float(浮動パネル)を開閉する。
          以前ここにあった#lp-body(旧インライン一覧)は常時display:noneで実際には表示されておらず、
          完全に未使用だったため削除した。カスタムシンボル一覧・レイヤー一覧・部品DB一覧は
@@ -787,6 +789,7 @@
 
   <!-- 右プロパティパネル -->
   <div id="rp-expand-btn" onclick="toggleRightPanel()" title="プロパティを開く">▶</div>
+  <div id="lpd-resizer" onmousedown="lpdStartResize(event)" title="ドラッグで左の一覧の幅を変えます(前回の幅を覚えます)"></div>
   <div id="rp">
     <div id="rp-resizer" onmousedown="rpStartResize(event)" title="ドラッグでプロパティ欄の幅を変えます(前回の幅を覚えます)。ダブルクリックで元の幅(200)に戻します" ondblclick="rpSetWidth(RP_W_DEF, true)"></div>
     <h4>プロパティ<button id="rp-toggle" onclick="toggleRightPanel()" title="パネルを折りたたむ">◀</button></h4>
