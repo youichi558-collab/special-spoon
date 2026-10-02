@@ -50,6 +50,10 @@ console.log('【DXF・PDFで円の中の線を見せない】');
 ok(/clipPolylineByCircles\(pts, _tbCircles\)/.test(R('js/dxf_export.js')), 'DXF: 配線は円の中の部分を出さない');
 ok(/state\.pdfMode \? '#ffffff'/.test(R('js/draw.js')), 'PDF・SVG: 端子の円の中は紙の色(白)で塗る');
 ok(/splitWiresAtTerminal\(_jn\)/.test(R('js/tools.js')), '端子(○◎)を置いたときに線を分ける');
+// 盛田さんのSheet3(2026-10-02受領): 円の中を通っていたのは配線ではなく盤の外枠(一点鎖線の作図線)とINVの枠(四角)
+ok(/_clipL\(\[\{x:el\.x1,y:el\.y1\},\{x:el\.x2,y:el\.y2\}\]\)/.test(R('js/dxf_export.js')), 'DXF: 作図線も円の中の部分を出さない');
+ok(/const pcs=_clipL\(rp\)/.test(R('js/dxf_export.js')), 'DXF: 四角の辺も円の中の部分を出さない');
+ok(/state\.elements\.filter\(el => !_isTerm\(el\)\)\.concat\(state\.elements\.filter\(_isTerm\)\)/.test(R('js/draw.js')), '画面・PDF: 端子(○◎)は最後に描く(後から描く線が塗った円に重ならない)');
 
 console.log(ng ? `\n失敗 ${ng}件` : '\n全て成功');
 process.exit(ng ? 1 : 0);

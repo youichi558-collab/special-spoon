@@ -229,7 +229,10 @@ function drawWirePreview() {
 // 要素
 // ----------------------------------------------------------------
 function drawElements() {
-  state.elements.forEach(el => {
+  // 【2026-10-01】端子台の端子(○◎)は最後に描く。円の中を塗って下の線を隠す作りなので、端子より後に描かれる線
+  // (盛田さんのSheet3: 盤の外枠の作図線)があると、塗った円の上に線が重なって貫通して見えた(画面・PDF)
+  const _isTerm = el => el.type === 'junction' && (el.style === 'circle' || el.style === 'dbl');
+  state.elements.filter(el => !_isTerm(el)).concat(state.elements.filter(_isTerm)).forEach(el => {
     const lay = LAYERS.find(l => l.name === el.layer);
     if (lay && !lay.visible) return;
     // 枠レイヤーの要素はdrawFrame()が描画するのでスキップ

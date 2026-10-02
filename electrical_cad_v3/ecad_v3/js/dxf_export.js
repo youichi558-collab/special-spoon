@@ -583,10 +583,18 @@ function exportDXF(){
     const layer=dxfLayer(el.layer||'回路');
     const lt=resolveLT(el.lineStyle);
     if(el.type==='dim') return;
+    // 【2026-10-01】作図線・四角の辺も、端子台の端子(○◎)の円の中は出さない。盛田さんのSheet3は盤の外枠(一点鎖線の作図線)と
+    // INVの枠(四角)の上に端子が乗っていて、配線だけを切った前回の直しでは枠の線が円の中を通って見えた
+    const _clipL = (ptsL) => (_tbCircles.length && typeof clipPolylineByCircles === 'function') ? clipPolylineByCircles(ptsL, _tbCircles) : [ptsL];
+    const _same = (pcs, ptsL) => pcs.length === 1 && pcs[0].length === ptsL.length && pcs[0].every((q, i) => Math.abs(q.x - ptsL[i].x) < 1e-6 && Math.abs(q.y - ptsL[i].y) < 1e-6);
     if(el.type==='fline'){
-      eLine(layer,el.x1,el.y1,el.x2,el.y2,lt);
+      _clipL([{x:el.x1,y:el.y1},{x:el.x2,y:el.y2}]).forEach(pl=>{ for(let i=0;i<pl.length-1;i++) eLine(layer,pl[i].x,pl[i].y,pl[i+1].x,pl[i+1].y,lt); });
     } else if(el.type==='rect'){
-      eRect(layer,el.x,el.y,el.w||0,el.h||0,lt);
+      const w=el.w||0, h=el.h||0;
+      const rp=[{x:el.x,y:el.y},{x:el.x+w,y:el.y},{x:el.x+w,y:el.y+h},{x:el.x,y:el.y+h},{x:el.x,y:el.y}];
+      const pcs=_clipL(rp);
+      if(_same(pcs, rp)) eRect(layer,el.x,el.y,w,h,lt);   // 円に掛からない四角は今までどおり
+      else pcs.forEach(pl=>{ for(let i=0;i<pl.length-1;i++) eLine(layer,pl[i].x,pl[i].y,pl[i+1].x,pl[i+1].y,lt); });
     } else if(el.type==='circle'){
       eCircle(layer,el.x,el.y,el.r||0,lt);
     } else if(el.type==='arc'){
