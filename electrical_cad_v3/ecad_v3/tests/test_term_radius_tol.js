@@ -31,6 +31,15 @@ setup([T('t1', 100, 100, 3, '1'), T('t2', 110, 100, 3, '2')],
   [W('a', 100, 50, 100, 97, 'W1'), W('b', 110, 50, 110, 97, 'W2')]);
 eq(sb.buildTerminalBlockRows().map(r => [r.termNo, r.conns]), [['1', ['W1']], ['2', ['W2']]], '隣の端子の線は拾わない(一番近い端子にだけ)');
 
+console.log('【端子の上をまっすぐ通して描いた線(2026-10-02)】');
+setup([T('t1', 200, 100, 3, '1')], [W('a', 100, 100, 300, 100, 'W5')]);
+eq(sb.buildTerminalBlockRows().map(r => r.conns), [['W5']], '端子台表: 円の中を通る線の線番が出る');
+eq(sb.analyzeConnections().map(x => x.terms.map(t => t.name + ':' + t.term)), [['TB1:1']], '接続チェック: 端子の一覧に出る');
+setup([T('t1', 200, 100, 3, '1')], [W('a', 100, 104, 300, 104, 'W5')]);
+eq(sb.buildTerminalBlockRows().map(r => r.conns), [[]], '円の外を通る線は拾わない');
+setup([T('t1', 200, 100, 3, '1')], [W('a', 100, 100, 300, 100, 'W5'), W('b', 200, 103, 200, 200)]);
+eq(sb.groupWiresByNet(sb.state.pages[0].wires, null, sb.state.pages[0].elements).length, 1, '端子を通る線と、端子に端が乗る線は同じネット');
+
 console.log('【分岐点●は今までどおり中心から】');
 setup([{ id: 'j', type: 'junction', style: 'dot', x: 200, y: 100, r: 2, layer: '回路' }], [W('a', 100, 100, 200, 100, 'W1'), W('b', 200, 100, 200, 200)]);
 eq(sb.collectTerminalPoints(sb.state.pages[0].elements)[0].r, 0, '●の判定には半径を足さない');

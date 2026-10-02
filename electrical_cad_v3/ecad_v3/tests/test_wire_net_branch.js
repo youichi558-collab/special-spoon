@@ -45,10 +45,12 @@ ok(sameNet(g([trunk, { x1: 50, y1: -50, x2: 50, y2: 50 }], [{ type: 'junction', 
 console.log('\n【●が無ければつながない(盛田さんの決定B)】');
 ok(!sameNet(g([trunk, branch], []), 0, 1), '●の無いT字はつながない');
 ok(!sameNet(g([trunk, branch]), 0, 1), 'elementsを渡さない呼び出しは従来どおり');
-ok(!sameNet(g([trunk, branch], [{ type: 'junction', x: 50, y: 0, style: 'circle' }]), 0, 1),
-   '端子台の○(circle)ではつながない');
-ok(!sameNet(g([trunk, branch], [{ type: 'junction', x: 50, y: 0, style: 'dbl' }]), 0, 1),
-   '端子台の◎(dbl)ではつながない');
+// 【2026-10-02 変更】端子台の端子(○◎)の円の中を通る線もその端子につなぐ(盛田さん「配線が貫通してないのはそう書いてるだけだ」→「直して」)。
+// 幹線が端子の上を通り、分岐の線の端が端子に乗っている=同じ端子の上の2本なので同じネット(以前は「つながない」)
+ok(sameNet(g([trunk, branch], [{ type: 'junction', x: 50, y: 0, style: 'circle' }]), 0, 1),
+   '端子台の○の上を通る線と、○に端が乗る線は同じネット');
+ok(sameNet(g([trunk, branch], [{ type: 'junction', x: 50, y: 0, style: 'dbl' }]), 0, 1),
+   '◎でも同じ');
 ok(!sameNet(g([trunk, { x1: 50, y1: -50, x2: 50, y2: 50 }], []), 0, 1), '●の無い交差はつながない');
 ok(!sameNet(g([trunk, branch, { x1: 200, y1: 0, x2: 300, y2: 0 }],
               [{ type: 'junction', x: 50, y: 0, style: 'dot' }]), 0, 2),
@@ -66,8 +68,10 @@ ok(sameNet(g([upper, lower], [{ type: 'junction', x: 360, y: 270, r: 3, style: '
 ok(!sameNet(g([upper, lower], []), 0, 1), '端子が無ければつながない(端が6離れている)');
 ok(!sameNet(g([upper, { x1: 360, y1: 290, x2: 360, y2: 300 }], [{ type: 'junction', x: 360, y: 270, r: 3, style: 'circle' }]), 0, 1),
    '端子から離れた所で終わる線はつながない');
-ok(!sameNet(g([upper, { x1: 340, y1: 270, x2: 380, y2: 270 }], [{ type: 'junction', x: 360, y: 270, r: 3, style: 'circle' }]), 0, 1),
-   '端子の上を通り抜けるだけの線はつながない');
+ok(sameNet(g([upper, { x1: 340, y1: 270, x2: 380, y2: 270 }], [{ type: 'junction', x: 360, y: 270, r: 3, style: 'circle' }]), 0, 1),
+   '端子の上を通り抜ける線も、その端子につながる(2026-10-02 変更。以前は「つながない」)');
+ok(!sameNet(g([upper, { x1: 340, y1: 275, x2: 380, y2: 275 }], [{ type: 'junction', x: 360, y: 270, r: 3, style: 'circle' }]), 0, 1),
+   '端子の円の外を通る線はつながない');
 
 console.log('\n【端どうしの重なりは従来どおり】');
 ok(sameNet(g([{ x1: 0, y1: 0, x2: 10, y2: 0 }, { x1: 10, y1: 0, x2: 20, y2: 0 }], []), 0, 1),

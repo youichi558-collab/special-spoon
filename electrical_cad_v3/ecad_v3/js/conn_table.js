@@ -172,6 +172,13 @@ function _analyzeConnections() {
             near: n ? { name: n.dispName || '-', term: n.dispTerm || '-', d: Math.round(Math.hypot(n.x - p.x, n.y - p.y) * 10) / 10 } : null });
         });
       });
+      // 【2026-10-02】端子台の端子(○◎)の円の中を通っている線も、その端子につながっている(端子の上をまっすぐ通して描いた線)
+      terms.forEach(t => {
+        if (t.kind !== 'junction' || !t.r) return;
+        const key = t.elId + ':' + t.termIdx;
+        if (seen.has(key)) return;
+        if (idxs.some(i => _wireThroughCircle(ptsOf(wires[i]), t))) { seen.add(key); net.terms.push({ name: t.dispName || '-', term: t.dispTerm || '-' }); }
+      });
       net.terms.sort((a, b) => (a.name + ' ' + a.term).localeCompare(b.name + ' ' + b.term, 'ja', { numeric: true }));
       out.push(net);
     });
@@ -368,6 +375,17 @@ function exportConnCSV() {
 // collectTerminals() / groupTerminalsByDevice() を共用する。
 // ----------------------------------------------------------------
 
+// 線が端子台の端子(○◎)の円の中を通っているか(端が乗っているだけ=円周で止めた線は含まない)。線番表(groupWiresByNet)と同じ判定
+function _wireThroughCircle(pts, t) {
+  const r = t.r || 5;
+  for (let k = 0; k + 1 < pts.length; k++) {
+    const a = pts[k], b = pts[k + 1], dx = b.x - a.x, dy = b.y - a.y, L = dx * dx + dy * dy;
+    const u = L ? Math.max(0, Math.min(1, ((t.x - a.x) * dx + (t.y - a.y) * dy) / L)) : 0;
+    if (Math.hypot(a.x + u * dx - t.x, a.y + u * dy - t.y) < r - 1e-6) return true;
+  }
+  return false;
+}
+
 // 端子に繋がっている線番を集める
 function _tbConnsOf(el, pg) {
   const conns = new Set();
@@ -386,6 +404,8 @@ function _tbConnsOf(el, pg) {
       });
       if (best === el) conns.add(netNo[wi] || '未採番');
     });
+    // 【2026-10-02】端子の円の中を通っている線(端子の上をまっすぐ通して描いた線)もつながっているとみなす
+    if (_wireThroughCircle(pts, el)) conns.add(netNo[wi] || '未採番');
   });
   return [...conns];
 }

@@ -218,6 +218,18 @@ function groupWiresByNet(wires, tol, elements) {
         if (firstAt.has(best)) union(firstAt.get(best), i); else firstAt.set(best, i);
       });
     });
+    // 【2026-10-02】端子の円の中を通っている線(端子の上をまっすぐ通して描いた線)も、その端子につなぐ。
+    // 盛田さん「配線が貫通してないのはそう書いてるだけだ」=円周で止めていたのは貫通して見えるから。円の中の線は画面・PDFは塗り、DXFは切って見せない
+    terms.forEach(t => {
+      const r = t.r || 5;
+      wires.forEach((w, i) => {
+        const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
+        let through = false;
+        for (let k = 0; k + 1 < pts.length && !through; k++) if (segDist(t, pts[k], pts[k+1]) < r - 1e-6) through = true;
+        if (!through) return;
+        if (firstAt.has(t)) union(firstAt.get(t), i); else firstAt.set(t, i);
+      });
+    });
   }
 
   (elements || []).forEach(el => {
