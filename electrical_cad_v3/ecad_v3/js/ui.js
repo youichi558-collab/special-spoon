@@ -3639,6 +3639,50 @@ function toggleLeftPanel() {
   resize(); draw();
 }
 
+// ----------------------------------------------------------------
+// 【2026-10-02】右パネル(プロパティ)の幅とキャンバスの範囲(UIレビューの「右プロパティ最優先」、盛田さん「右パネルから進めていい」)
+//   ・以前は幅200px固定・position:fixed でキャンバスの上に重なり、**キャンバスの右200px分の図面がパネルの下に隠れていた**
+//   ・今: キャンバスの右端をパネルの左端までにする(applyRpLayout。折りたたみ・非表示・大画面のときはキャンバスを全幅)
+//   ・パネルの左端をドラッグで幅を変える(200〜700。画面の幅から300はキャンバスに残す)。幅は前回値を覚える(ecad_prefs の rpWidth)
+//   ・中身(タブ・一括/タブごとのコピー)は変えていない
+// ----------------------------------------------------------------
+const RP_W_DEF = 200, RP_W_MIN = 200, RP_W_MAX = 700;
+let _rpW = RP_W_DEF;
+function rpClampWidth(w) {
+  const max = Math.max(RP_W_MIN, Math.min(RP_W_MAX, (window.innerWidth || 1200) - 300));
+  return Math.round(Math.max(RP_W_MIN, Math.min(max, +w || RP_W_DEF)));
+}
+function applyRpLayout() {
+  const rp = document.getElementById('rp'), cw = document.getElementById('cw');
+  if (!rp || !cw) return;
+  _rpW = rpClampWidth(_rpW);
+  rp.style.width = _rpW + 'px';
+  const off = rp.classList.contains('collapsed') || rp.classList.contains('hide') || document.body.classList.contains('fullscreen');
+  cw.style.marginRight = off ? '0' : _rpW + 'px';
+}
+function rpSetWidth(w, save) {
+  _rpW = rpClampWidth(w);
+  applyRpLayout();
+  if (typeof resize === 'function') resize();
+  if (typeof draw === 'function') draw();
+  if (save && typeof stSetPref === 'function') stSetPref('rpWidth', _rpW);
+}
+function rpStartResize(e) {
+  if (e.button !== 0) return;
+  e.preventDefault();
+  const bar = document.getElementById('rp-resizer');
+  if (bar) bar.classList.add('on');
+  const move = ev => rpSetWidth(window.innerWidth - ev.clientX, false);
+  const up = () => {
+    document.removeEventListener('mousemove', move);
+    document.removeEventListener('mouseup', up);
+    if (bar) bar.classList.remove('on');
+    if (typeof stSetPref === 'function') stSetPref('rpWidth', _rpW);
+  };
+  document.addEventListener('mousemove', move);
+  document.addEventListener('mouseup', up);
+}
+
 let _rpAutoCollapsed = false; // 自動折りたたみ由来かどうか（手動操作を優先するため）
 function toggleRightPanel(auto) {
   const rp = document.getElementById('rp');
@@ -3649,6 +3693,7 @@ function toggleRightPanel(auto) {
   if (btn) btn.textContent = collapsed ? '▶' : '◀';
   if (expBtn) expBtn.style.display = collapsed ? 'flex' : 'none';
   if (auto !== true) _rpAutoCollapsed = false; // 手動操作でフラグ解除
+  applyRpLayout();   // キャンバスの右端をパネルに合わせる(折りたたんだらキャンバスを全幅に)
   resize(); draw();
 }
 
@@ -3666,6 +3711,7 @@ function toggleExpand() {
   document.body.classList.toggle('fullscreen');
   const label = document.getElementById('exp-label');
   if (label) label.textContent = document.body.classList.contains('fullscreen') ? '元に戻す' : '大画面';
+  applyRpLayout();
   resize(); draw();
 }
 

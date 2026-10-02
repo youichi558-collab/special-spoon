@@ -89,7 +89,7 @@ body{font-family:'Segoe UI',sans-serif;font-size:12px;background:var(--bg);color
 .ln{font-size:11px;flex:1;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
 /* ========= キャンバス ========= */
-#cw{flex:1;overflow:visible;position:relative;background:var(--canvas);}
+#cw{flex:1;min-width:0;overflow:visible;position:relative;background:var(--canvas);}   /* min-width:0 = 中のキャンバスの幅に縛られず縮める(右パネルの分を空けるため、2026-10-02) */
 #cv{display:block;cursor:default;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
 
 /* ========= タッチデバイス対応（iPad/Apple Pencil等） =========
@@ -109,8 +109,12 @@ body{font-family:'Segoe UI',sans-serif;font-size:12px;background:var(--bg);color
 /* ========= 右プロパティパネル ========= */
 #rp{position:fixed;right:0;top:var(--ribbon-h,90px);bottom:24px;width:200px;background:var(--bg2);border-left:1px solid var(--bd);display:flex;flex-direction:column;transition:transform 0.2s;z-index:20;}
 #rp-body{flex:1;overflow-y:auto;}
+/* 【2026-10-02】右パネルの左端をドラッグして幅を変える(ui.js rpStartResize)。幅は前回値を覚える */
+#rp-resizer{position:absolute;left:-3px;top:0;bottom:0;width:6px;cursor:ew-resize;z-index:22;}
+#rp-resizer:hover,#rp-resizer.on{background:var(--acc);opacity:.5;}
+#rp.collapsed #rp-resizer{display:none;}
 #rp-footer{padding:4px 6px;border-top:1px solid var(--bd);background:var(--bg2);}
-#rp.collapsed{transform:translateX(200px);}
+#rp.collapsed{transform:translateX(100%);}   /* 幅はドラッグで変わるので、自分の幅だけ外へ(2026-10-02) */
 #rp h4{display:flex;justify-content:space-between;align-items:center;}
 #rp-toggle{background:none;border:none;cursor:pointer;color:var(--fg);font-size:10px;padding:0 2px;line-height:1;}
 #rp-toggle:hover{color:var(--acc);}

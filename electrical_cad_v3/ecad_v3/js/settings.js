@@ -269,6 +269,8 @@ function stApplyPrefs() {
   if (p.pdfDpi != null) setSel('pdf-dpi', p.pdfDpi);
   if (p.pdfFmt != null) setSel('pdf-fmt', p.pdfFmt);
   if (p.xrefScale >= 0.3 && p.xrefScale <= 2) state.xrefScale = +p.xrefScale;   // クロスリファレンスの表示(js/xref.js)
+  // 右パネル(プロパティ)の幅(2026-10-02、ui.js applyRpLayout)。前回値が無くてもキャンバスの右端をパネルに合わせる
+  if (typeof rpSetWidth === 'function') rpSetWidth(p.rpWidth || RP_W_DEF, false);
 }
 
 if (typeof window !== 'undefined') (window.__ecadLoaded = window.__ecadLoaded || {})['settings.js'] = 1;
