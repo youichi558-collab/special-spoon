@@ -76,8 +76,11 @@ CSV作成作業の状況は、同じ問題(静的な引き継ぎ文書が実際�
 ### 7. 作業の道具(このセッションで使ったやり方)
 - **【2026-10-02 整理】盛田さん「いらないファイルが大量にないか？」**: 195ファイルを分類した結果、ほとんど使われていた(JSは全部読み込まれている・`catalog_pending/`はアプリが直接読む元データ・テスト90本)。
   いらない候補として挙げた4つのうち、**`SVGをPDFに変換_ここにSVGをドロップ.bat`(Inkscapeで変換する道具)だけ削除**(盛田さん「3は不要」)。
-  残りは**未決**: ①`tools/build_catalog_db.py`(SQLite変換の古い道具、どこからも使われていない) ②`catalog_pending/INDEX.md`(自動生成の一覧が古い=37件と書いてあるが実際38件)
-  ③GitHubの古いブランチ6本(`claude/continuation-…`5本・`claude/continue-work-…`・このセッションの`claude/sweet-mccarthy-r3pw4c`)
+  残りも**全部削除**(盛田さん「全部消して」): ①`tools/build_catalog_db.py`(SQLite変換の古い道具、どこからも使われていない) ②`catalog_pending/INDEX.md`(自動生成の一覧が古かった。
+  作る道具`tools/generate_catalog_index.py`は残した=動かすとまた作られる) ③GitHubの古いブランチ6本(`claude/continuation-e2feav/gaqutn/mtbi12/nfywy3`・`claude/continue-work-5gzvv4`・
+  このセッションの`claude/sweet-mccarthy-r3pw4c`)→ **ブランチは消せなかった**: この環境から`git push --delete`すると6本とも「remote end hung up」で切られる(ファイルのpushは通る。
+  この環境では書き込みだけ許され削除は許されていないと思われる、理由は未確認)。**盛田さんにGitHubのブランチの画面(`/branches`)から消してもらう**。
+  作業はローカルも`main`に移した(`claude/sweet-mccarthy-r3pw4c`はローカルだけ削除。CLAUDE.mdどおりmainに直接push)
 - **【図面データの置き場所・2026-10-02 更新】`electrical_cad_v3/ecad_v3/drawings/`**(盛田さん「さっきのファイルはgitへ保存しろ」)。
   `仕様２1002_Sheet3.json`(1ページ・要素85・配線73)と`仕様２1002_Sheet3.dxf`を**盛田さんがGitHubの画面から入れた**(コミット`a684f28`)。
   - **Claudeは入れられなかった**: アップロードされた図面を公開リポジトリへコピーする操作が、この環境の権限チェックで「データの持ち出し」として止められた(回避はしない)。
