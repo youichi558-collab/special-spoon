@@ -348,11 +348,18 @@ function exportDXF(){
 
   // カスタムシンボル(登録済みシンボル)のBLOCK定義。
   // cS.shapes(L/C/A/R/P/T)を、bL/bC/bA/bR/bTヘルパーでBLOCK内の実体として描画する。
+  // 【2026-10-02】シンボルの端子の円(端子の点を中に含む円)の中は、シンボル自身の線も出さない(画面と同じ。js/draw.js symTermCircleShapes)
+  let _blkTC = [];
+  function bLc(x1,y1,x2,y2,lt){
+    if(!_blkTC.length || typeof clipPolylineByCircles!=='function'){ bL(x1,y1,x2,y2,lt); return; }
+    clipPolylineByCircles([{x:x1,y:y1},{x:x2,y:y2}], _blkTC).forEach(pl=>{ for(let k=0;k<pl.length-1;k++) bL(pl[k].x,pl[k].y,pl[k+1].x,pl[k+1].y,lt); });
+  }
   function bP(pts,closed,lt){
-    for(let k=0;k<pts.length-1;k++) bL(pts[k][0],pts[k][1],pts[k+1][0],pts[k+1][1],lt);
-    if(closed && pts.length>2) bL(pts[pts.length-1][0],pts[pts.length-1][1],pts[0][0],pts[0][1],lt);
+    for(let k=0;k<pts.length-1;k++) bLc(pts[k][0],pts[k][1],pts[k+1][0],pts[k+1][1],lt);
+    if(closed && pts.length>2) bLc(pts[pts.length-1][0],pts[pts.length-1][1],pts[0][0],pts[0][1],lt);
   }
   customSyms.forEach((s,i)=>{
+    _blkTC = (typeof symTermCircleShapes==='function') ? symTermCircleShapes(s).map(c=>({x:c.cx,y:c.cy,r:c.r})) : [];
     p(0,'BLOCK', 5,custBlkH[i].b, 100,'AcDbEntity', 8,'0', 100,'AcDbBlockBegin', 2,s.type, 70,0, 10,'0.0', 20,'0.0', 30,'0.0', 3,s.type, 1,'');
     (s.shapes||[]).forEach(sh=>{
       // 【2026-08-23修正】図形ごとのlineStyle(破線/点線/一点鎖線)をDXF線種名に変換して
@@ -360,7 +367,7 @@ function exportDXF(){
       // 以前はここで一切参照しておらず、点線で登録したシンボルもDXF上は実線に化けていた
       // (画面側の描画バグと同じ穴、盛田さんの「点線と実線の違いは？」指摘で発覚)。
       const lt = resolveLT(sh.lineStyle);
-      if(sh.t==='L') bL(sh.x1,sh.y1,sh.x2,sh.y2,lt);
+      if(sh.t==='L') bLc(sh.x1,sh.y1,sh.x2,sh.y2,lt);
       else if(sh.t==='C') bC(sh.cx,sh.cy,sh.r,lt);
       else if(sh.t==='A') {
         // カスタムシンボルのshapesはcanvas角度(Y下向き、ccwで向き任意)で保持している。
@@ -372,12 +379,16 @@ function exportDXF(){
         if(!sh.ccw){const t=sa;sa=ea;ea=t;}
         bA(sh.cx,sh.cy,sh.r,sa,ea,lt);
       }
-      else if(sh.t==='R') bR(sh.x,sh.y,sh.x+sh.w,sh.y+sh.h,lt);
+      else if(sh.t==='R') {
+        if(_blkTC.length){ const x1=sh.x,y1=sh.y,x2=sh.x+sh.w,y2=sh.y+sh.h; bLc(x1,y1,x2,y1,lt); bLc(x2,y1,x2,y2,lt); bLc(x2,y2,x1,y2,lt); bLc(x1,y2,x1,y1,lt); }
+        else bR(sh.x,sh.y,sh.x+sh.w,sh.y+sh.h,lt);
+      }
       else if(sh.t==='P' && sh.pts && sh.pts.length>1) bP(sh.pts, sh.cl, lt);
       else if(sh.t==='T') bT(sh.x,sh.y,sh.fs||14,sh.text||'');
     });
     p(0,'ENDBLK', 5,custBlkH[i].e, 100,'AcDbEntity', 8,'0', 100,'AcDbBlockEnd');
   });
+  _blkTC = [];
 
   p(0,'ENDSEC'); // BLOCKS end
 

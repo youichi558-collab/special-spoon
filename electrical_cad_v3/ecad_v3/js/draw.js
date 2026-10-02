@@ -625,8 +625,31 @@ function drawArcEl(el, sel, lc, lay) {
 // DXF出力(dxf_export.js)と、端子を線の上に置いたときの線の分割(tools.js junctionTool)の両方で使う。
 // pts: 折れ線の点 [{x,y}…]、circles: [{x,y,r}…] → 円の外の部分だけの折れ線の配列(各2点以上)。円に掛からなければ元の形のまま1本
 function termCircles(elements) {
-  return (elements || []).filter(e => e.type === 'junction' && (e.style === 'circle' || e.style === 'dbl'))
+  const out = (elements || []).filter(e => e.type === 'junction' && (e.style === 'circle' || e.style === 'dbl'))
     .map(e => ({ x: e.x, y: e.y, r: e.r || 5 }));
+  // 【2026-10-02】シンボル登録で描いた円のうち、端子の点を中に含む円(=端子の円)も同じ扱い
+  // (盛田さん「シンボル登録じも適用しているか」→「はい」。Sheet3のインバーター2・インバーター＜制御＞は端子の点が円の中心)
+  (elements || []).forEach(el => {
+    const cS = (state.customSymbols || []).find(x => x.type === el.type);
+    if (cS) out.push(...symTermCirclesWorld(el, cS));
+  });
+  return out;
+}
+// シンボルの図形のうち、端子の点を中に含む円(端子の円)。シンボルの中の座標のまま返す
+function symTermCircleShapes(cS) {
+  const terms = (cS && cS.terminals) || [];
+  if (!terms.length) return [];
+  // 端子の点が円の**内側**にあるものだけ(円の線の上にある=ランプ・電動機などの本体の円に端子が接しているもの、は対象外。
+  // 本体の円を塗るとシンボルの見た目が変わるため)
+  return (cS.shapes || []).filter(sh => sh.t === 'C' && sh.r > 0 && terms.some(t => Math.hypot(t.x - sh.cx, t.y - sh.cy) < sh.r - 0.01));
+}
+// 図面上の位置に直す。描き方(symbols.js drawSym・draw.js drawSymEl)と同じ順: 反転 → 回転 → 倍率 → 位置
+function symTermCirclesWorld(el, cS) {
+  const sc = el.scale || 1, a = (el.rot || 0) * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
+  return symTermCircleShapes(cS).map(sh => {
+    const lx = el.flipH ? -sh.cx : sh.cx, ly = el.flipV ? -sh.cy : sh.cy;
+    return { x: el.x + sc * (lx * cos - ly * sin), y: el.y + sc * (lx * sin + ly * cos), r: sh.r * sc };
+  });
 }
 function clipPolylineByCircles(pts, circles) {
   const EPS = 1e-6, out = [];

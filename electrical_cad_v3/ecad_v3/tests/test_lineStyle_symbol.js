@@ -165,6 +165,8 @@ console.log('【⑤js/dxf_export.js: customSyms出力でlineStyleがDXF線種名
     const sandbox = {
       console, p: () => {},
       bL: (x1,y1,x2,y2,lt) => calls.bL.push(lt),
+      // 2026-10-02: 線はシンボルの端子の円で切ってから出す bLc 経由になった(円が無ければそのまま bL)
+      bLc: (x1,y1,x2,y2,lt) => calls.bL.push(lt),
       bC: (cx,cy,r,lt) => calls.bC.push(lt),
       bA: (cx,cy,r,sa,ea,lt) => calls.bA.push(lt),
       bR: (x1,y1,x2,y2,lt) => calls.bR.push(lt),

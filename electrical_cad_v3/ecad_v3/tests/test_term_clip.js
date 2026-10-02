@@ -19,7 +19,7 @@ const r1 = pts => pts.map(pl => pl.map(p => [Math.round(p.x * 100) / 100, Math.r
 let gid = 0;
 const sb = { state: { wires: [] }, genId: k => k + '_new' + (++gid) };
 vm.createContext(sb);
-vm.runInContext([pick(R('js/draw.js'), 'termCircles'), pick(R('js/draw.js'), 'clipPolylineByCircles'), pick(R('js/tools.js'), 'splitWiresAtTerminal')].join('\n'), sb);
+vm.runInContext([pick(R('js/draw.js'), 'termCircles'), pick(R('js/draw.js'), 'symTermCircleShapes'), pick(R('js/draw.js'), 'symTermCirclesWorld'), pick(R('js/draw.js'), 'clipPolylineByCircles'), pick(R('js/tools.js'), 'splitWiresAtTerminal')].join('\n'), sb);
 const C = [{ x: 200, y: 100, r: 4 }];
 
 console.log('【円の中の部分を取り除く】');
@@ -54,6 +54,21 @@ ok(/splitWiresAtTerminal\(_jn\)/.test(R('js/tools.js')), '端子(○◎)を置�
 ok(/_clipL\(\[\{x:el\.x1,y:el\.y1\},\{x:el\.x2,y:el\.y2\}\]\)/.test(R('js/dxf_export.js')), 'DXF: 作図線も円の中の部分を出さない');
 ok(/const pcs=_clipL\(rp\)/.test(R('js/dxf_export.js')), 'DXF: 四角の辺も円の中の部分を出さない');
 ok(/state\.elements\.filter\(el => !_isTerm\(el\)\)\.concat\(state\.elements\.filter\(_isTerm\)\)/.test(R('js/draw.js')), '画面・PDF: 端子(○◎)は最後に描く(後から描く線が塗った円に重ならない)');
+
+
+console.log('【シンボル登録で描いた円のうち、端子の点を含む円(2026-10-02)】');
+{
+  const cS = { type: 'inv', terminals: [{ x: 0, y: -20 }, { x: 30, y: 25 }],
+    shapes: [{ t: 'C', cx: 0, cy: -20, r: 2 }, { t: 'C', cx: 30, cy: 20, r: 2 }, { t: 'C', cx: 0, cy: 0, r: 20 }, { t: 'R', x: -40, y: -20, w: 80, h: 40 }] };
+  eq(sb.symTermCircleShapes(cS).map(s => [s.cx, s.cy]), [[0, -20]], '端子の点を内側に含む円だけ(点が外の円・点が円の線の上にある本体の円は対象外)');
+  eq(sb.symTermCirclesWorld({ x: 100, y: 200, scale: 2, rot: 90 }, cS).map(c => [Math.round(c.x), Math.round(c.y), c.r]), [[140, 200, 4]], '図面上の位置に直す(倍率・回転)');
+  eq(sb.symTermCirclesWorld({ x: 100, y: 200, flipV: true }, cS).map(c => [c.x, c.y]), [[100, 220]], '上下反転も描き方と同じ順で');
+  sb.state.customSymbols = [cS];
+  eq(sb.termCircles([{ type: 'inv', x: 100, y: 200 }]).map(c => [c.x, c.y, c.r]), [[100, 180, 2]], 'termCircles(DXFで線を切る円)にシンボルの端子の円も入る');
+  sb.state.customSymbols = [];
+  ok(/if \(_tcs\.includes\(s\)\) return;/.test(R('js/symbols.js')) && /_drawTC\(\);/.test(R('js/symbols.js')), '画面・PDF: シンボルの端子の円は最後に塗ってから輪郭を描く');
+  ok(/_blkTC = \(typeof symTermCircleShapes==='function'\)/.test(R('js/dxf_export.js')), 'DXF: シンボル定義の中の線も端子の円で切る');
+}
 
 console.log(ng ? `\n失敗 ${ng}件` : '\n全て成功');
 process.exit(ng ? 1 : 0);

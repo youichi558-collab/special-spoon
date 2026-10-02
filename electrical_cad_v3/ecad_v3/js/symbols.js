@@ -30,7 +30,21 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc, lineStyle, lwOverride, symS
   if (cS) {
     ctx.lineWidth = (lwOverride || (isSel ? _defLw * 3 : _defLw)) * sInv;
     if (cS.shapes && cS.shapes.length) {
+      // 【2026-10-02】端子の点を中に含む円(端子の円)は**最後に**、中を背景色(PDF・SVGは白)で塗ってから輪郭を描く(js/draw.js symTermCircleShapes)。
+      // 配線はシンボルより前に描かれるので、端子の点(円の中心)まで引いた配線の端も、円に掛かるシンボル自身の線(INVの四角の辺)も円の中に見えない。
+      // 接続点の端子(○◎)を最後に描くのと同じ考え(盛田さん「シンボル登録じも適用しているか」→「はい」)
+      const _tcs = (typeof symTermCircleShapes === 'function') ? symTermCircleShapes(cS) : [];
+      const _drawTC = () => {
+        const bg = state.pdfMode ? '#ffffff' : (state.darkMode ? '#252525' : '#d4d4cc');
+        _tcs.forEach(s => {
+          ctx.save(); ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(s.cx, s.cy, s.r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+          ctx.lineWidth = (lwOverride || s.lineWidth || (isSel ? _defLw * 3 : _defLw)) * sInv;
+          applyLineStyle(ctx, s.lineStyle, zoom);
+          ctx.beginPath(); ctx.arc(s.cx, s.cy, s.r, 0, Math.PI * 2); ctx.stroke();
+        });
+      };
       cS.shapes.forEach(s => {
+        if (_tcs.includes(s)) return;   // 端子の円は最後に(_drawTC)
         // 図形ごとに太さを持っていればそれを使う(貼り付け元の太さを保持するため)。
         // 持っていない(手描き・旧データ)場合は従来どおりの既定値。
         // ただしシンボル線幅の上書き指定があれば、それを最優先する。
@@ -51,6 +65,7 @@ function drawSym(type, x, y, isSel, rot, fH, fV, lc, lineStyle, lwOverride, symS
         else if (s.t==='R') { ctx.strokeRect(s.x,s.y,s.w,s.h); }
         else if (s.t==='T') { ctx.font=`${s.fs||14}px sans-serif`; ctx.textAlign='center'; ctx.fillText(s.text,s.x,s.y); }
       });
+      _drawTC();
       ctx.setLineDash([]); // 次の描画(選択枠・後続シンボル等)に点線設定が漏れないよう必ず戻す
     } else {
       // フォールバック: 矩形+ラベル
