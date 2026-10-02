@@ -1,0 +1,6856 @@
+{
+  "version": 2,
+  "saveFileName": "仕様２1002",
+  "customSymbols": [
+    {
+      "type": "custom_mryh1kfx_dlh",
+      "name": "a接点",
+      "label": "a接点",
+      "cat": "カスタム",
+      "w": 14,
+      "h": 54,
+      "shapes": [
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 14,
+          "x2": -14,
+          "y2": -16
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 14,
+          "x2": 0,
+          "y2": 27
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -13,
+          "x2": 0,
+          "y2": -27
+        }
+      ],
+      "terminals": [
+        {
+          "id": "t0",
+          "x": 0,
+          "y": -25,
+          "label": ""
+        },
+        {
+          "id": "t1",
+          "x": 0,
+          "y": 25,
+          "label": ""
+        }
+      ],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAABe0lEQVR4AeyYMaqDQBCGhxTW2om1pdhqZal38AyewNvYeAfFStDG2ouIlSDv8QvKS5rwAu5AZoTJuhvi7P/tP5OQx4/w60HCLwUg3ACkDlAHCCegJSDcANoEtQS0BIQT0BLgNECe54Tg3IM4B7zCVgCvRO6cd1135+M/erYRB2zbRkVRUFVVtK7rRxu960NGAFiWRUmS0DiO1LbtpaUsS0JcCww3RgBAV5qmFEURNU1D+75jiYIgOOKYML0YA2DbNgEC+sBfFzDpvtIaA4CMAIBTFwvA87zDBQDQ9z2YsIdRB0BtlmUEEOgFmHOHcQC+7xMgwAXTNHHr5/lDBL0AX42AwE3AuAMgOAzDqxfM84wltmABALUog2VZnn4YYd10sAGI45gcx6FhGExrfsrHBgC7cF2X0AtwzxWsAEyIfpdDAbwj9O3vszqgrmtCcEJmBcAp/MytAE4SUkd1gNSTP3WrA04SUkd1gNSTP3WrA04SUkd1wLed/H/1/AIAAP//KChbCAAAAAZJREFUAwDKjUpwHOw7bAAAAABJRU5ErkJggg==",
+      "role": "contact_a"
+    },
+    {
+      "type": "custom_msc103jp_uzb",
+      "name": "補助継電器B接点",
+      "label": "補助継電器B接点",
+      "cat": "カスタム",
+      "role": "contact_b",
+      "w": 20,
+      "h": 80,
+      "shapes": [
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 20,
+          "x2": 16,
+          "y2": -24,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 20,
+          "x2": 0,
+          "y2": 40,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -40,
+          "x2": 0,
+          "y2": -20,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -20,
+          "x2": 20,
+          "y2": -20,
+          "lineWidth": 0.5
+        }
+      ],
+      "terminals": [
+        {
+          "x": 0,
+          "y": -40
+        },
+        {
+          "x": 0,
+          "y": 40
+        }
+      ],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAAB2ElEQVR4AeyZMYoCQRBFP6seQDARxMDIwEAjQU08gSCYGHgNryB4DyOvoSAmGhmKBmJkLCLu7m9cmTWRhpmuZroGCseepqbq/d/dgl/fgV9fCPxSAIEbAOoAdUDgBHQJBG4A2U1wOByCISmCLgFJ+j68Wx3ggwqSNXjpgMPh4IyJOIDr9Yrj8fiKxWJhTobxeGzG4ibxnk8UQLlcxna7RbfbfcVoNML5fMZ8PsdqtXqvN/bvogAmkwmm0+m/qNVqqFQq4LNMJhN7w+8JRQGwmH6/j79g4/v9Hr1eD4PBwIxzTpIhDiDaHNf/4/FAp9OJDid67w2A+/0OAmi326jX64k2HU3uDYDlcmk2PQKIFpj0vTcAqH6xWHRqf8L1AsDlcjH2b7Va5gRgYa7CCwBUf7fbwbX9CdkbANVqNUwAPPfpANq/UChQFKch7gA2fzqdRNQnaS8ANJvNMAFsNhuz+3Pzy+VyFMR5iDqA9v/9cxpc/847f75QDAB/+q7Xa5RKJTQajWc58X98yigGIJvN4na7IZ/Pf6ox0ediABLtyiK5ArCAlcqp6oBUymrRlDrAAlbsU2ezGRixJ7ZIqA6wgJXKqeqAVMpq0ZQ6wAJWKqeqA9Imq20/PwAAAP//oWruMQAAAAZJREFUAwBoPINwJSoSwgAAAABJRU5ErkJggg=="
+    },
+    {
+      "type": "custom_ms9tr3a8_yrh",
+      "name": "ブレーカー接点",
+      "label": "ブレーカー接点",
+      "cat": "カスタム",
+      "w": 18,
+      "h": 54,
+      "shapes": [
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 11,
+          "x2": -14,
+          "y2": -17
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 11,
+          "x2": 0,
+          "y2": 25
+        },
+        {
+          "t": "L",
+          "x1": -4,
+          "y1": -20,
+          "x2": 4,
+          "y2": -11
+        },
+        {
+          "t": "L",
+          "x1": 4,
+          "y1": -20,
+          "x2": -4,
+          "y2": -11
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -29,
+          "x2": 0,
+          "y2": -15
+        }
+      ],
+      "terminals": [
+        {
+          "x": 0,
+          "y": -25
+        },
+        {
+          "x": 0,
+          "y": 20
+        }
+      ],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAABoUlEQVR4AeyYMa6CQBCG/6CVjbHwDCZqZ6FX0HN4A4U7cA3uAJTQEgoKGg5AQklH+15mk5cYLOAVzBB2SIYsu5ud/b/5dwucH8sfB5Y/CsByA0AdoA6wnIAeAcsNoJegHgE9ApYTED0Cz+cTFJI1EAXQdR0orAUgIbyfU8wBQRCgaRoT1O5vjOubDUCe5/B93+hq2xZVVaGuaxPUpj4zyPxiAxCGIeI4RlmW2O12OBwOWK/XWK1Wpk19zNpNOse8GV73+91ceFEUIcsypGmK0+mE8/mMJElMH8M2vlKwAbher3g8HsYFm80GruuaeL/f8DwPNP61O4YONgCk5dMFx+PRiL7dbqA2jUsEKwCq8p8L6C6QENzPyQqAkn+6gL6lgx3A3FzADoAqPicXiACYkwtEAMzJBWIAyAXb7RZFURAPsRADQIr3+z0cR3QL+lNUFj/ZYOIYWl4BDBGacvz1eoFiyhxDa4s64HK5gGJok1OOiwKYUtjYtRXAWFJLnacOWGplx+pSB4wltdR56oClVnasLnXAWFJLnacOWFpl/6vnFwAA//+AcEUqAAAABklEQVQDACdgenBGhdeJAAAAAElFTkSuQmCC"
+    },
+    {
+      "type": "custom_msa5z5xf_606",
+      "name": "電磁接触器",
+      "label": "電磁接触器",
+      "cat": "カスタム",
+      "role": "contact_a",
+      "w": 12,
+      "h": 28,
+      "shapes": [
+        {
+          "t": "A",
+          "cx": 0,
+          "cy": -7,
+          "r": 3,
+          "sa": 90,
+          "ea": 270,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -9,
+          "y1": -7,
+          "x2": 0,
+          "y2": 10,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -4,
+          "x2": 0,
+          "y2": -14,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 10,
+          "x2": 0,
+          "y2": 14,
+          "lineWidth": 0.5
+        }
+      ],
+      "terminals": [],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAABbElEQVR4AeyVMaqDQBCGfywC6dIE0oUUgqXgNfQitpYWYmntOSwUK/EA3sBC0MYDiAfwvYzwmrxiSbMDuyOOum4x+3/zz67zY/nlwPJLAFhuAIgDxAGWE5AWsNwAsglKC0gLWE5AWsByA9h3CnwWXFrgk4htY1YHTNMECk7orADiOEaWZZz6eTbBcRyRpinmeWYVT8m1OmBZFpRlibquMQwD5WcPrQBerxe2bUPTNAiC4BT/9z4HDA+tAEhfFEW4XC64Xq+oqgpJktBvtnB0Z/Z9H2EYom1b7PuuO/2/fNoB0AoIwP1+PyHQmDNYAHieB2oFckHXdZz6eY5BUkwueDwe6Psex3HQL5ZgcQApfT6fuN1uWNcVjsO2DD4HEISiKJDnOX2yBR/6t2TXdUHx/mS7WQHoUK3KIQBUhEyfFweYXmGVPnGAipDp8+IA0yus0icOUBEyfV4cYHqFVfrEASpCps+LA0yr8Ld6fgEAAP//JddNYwAAAAZJREFUAwD88T5w3xSx1wAAAABJRU5ErkJggg=="
+    },
+    {
+      "type": "custom_msa78t87_vx2",
+      "name": "サーマル",
+      "label": "サーマル",
+      "cat": "カスタム",
+      "role": "",
+      "w": 10,
+      "h": 30,
+      "shapes": [
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -5,
+          "x2": 10,
+          "y2": -5,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 10,
+          "y1": 5,
+          "x2": 10,
+          "y2": -5,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 10,
+          "y1": 5,
+          "x2": 0,
+          "y2": 5,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -5,
+          "x2": 0,
+          "y2": -15,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 5,
+          "x2": 0,
+          "y2": 15,
+          "lineWidth": 0.5
+        }
+      ],
+      "terminals": [],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAABRklEQVR4AeyWMYqEQBBFP4ORt9ALGBkYq7F38BImhiZewkOYqrGBkRfQU5gJu1QwGwxCszBUQVc1/MBusPu/+tX6+lE+XlA+DIDyAMASYAlQTsBaQHkA7BK0FrAWUE7AWkB5APR9BT4Lbi3wSUTbs2gC+r4HSRK6KIB930FSC0DS+Htv0QTQIc7zRNu2f6I5TokC6LoO931jWRbM84xxHDEMA6d/2f+AOI6xbRvWdcU0Tbiui9U8bSaaADqAtEQBHMeBNE2RZRnKskQYhuw8RAHQ5RcEAfI8R1EUqKoKdV2zQhAFQE6jKAJdhm/RHKfEAXCafdpLFECSJCA9HYxrThRA0zQgcZl92kcUwNOBvj3nep8BcBHyfd0S4HuFXf4sAS5Cvq9bAnyvsMufJcBFyPd1S4DvFXb5swS4CPm+bgnwrcL/9fMLAAD//wzax0oAAAAGSURBVAMALb84cG2iaGcAAAAASUVORK5CYII="
+    },
+    {
+      "type": "custom_msaajw9n_hjs",
+      "name": "ELB",
+      "label": "ELB",
+      "cat": "カスタム",
+      "role": "",
+      "w": 28,
+      "h": 100,
+      "shapes": [
+        {
+          "t": "C",
+          "cx": 0,
+          "cy": 30,
+          "r": 8,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 10,
+          "x2": -20,
+          "y2": -34,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 4,
+          "y1": 26,
+          "x2": -4,
+          "y2": 34,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 10,
+          "x2": 0,
+          "y2": 50,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 6,
+          "y1": -36,
+          "x2": -6,
+          "y2": -24,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -6,
+          "y1": -36,
+          "x2": 6,
+          "y2": -24,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -50,
+          "x2": 0,
+          "y2": -30,
+          "lineWidth": 0.5
+        }
+      ],
+      "terminals": [],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAADLklEQVR4AeyZy0tqURTGvwx6jGrSYxBBNIgaFU2aVATVv9CsWUX0HETRn1HNmjRo1qRBk6ggo0lQIIIIvnCgIjgQBVFB4V6/TR4yULlw91qRisu991qy1/5+rnPOPkfXnxZ/udDirzaAFi8AtCtAswIuLy9B01yDagW43W64K9ayADSFV3OrVkB1EZqtGoBMJuPo/tp3nEIdEQDxeLxGztvbG87Pz1Eul42xT1/Nl4QGVgH4/X6cnZ3h7u6uRs77+zuur68Ri8WMsf/x8VHzHamBVQBTU1OIRCJ4fHxEKpVyNO3t7WFzc9P46N/a2sLu7q4Tl+xYBUAhq6ur8Hq9BgLHtGw2i0KhgI6ODmP5fB70MSZt1gEsLy9jfn7eACgWi0YoDwuW/cHBAQ4PD83hQJ8GBOsAenp6wCp4fX01EPr6+rC2tob9/X3wUGDpEwR9jNmugO/zWwfAhKyC6elpPDw8cIiJiQkj3gwqH4RAX6Ur/hYBMDg4iJWVFTw9PeHl5UVcZKOEIgC4AAIYGRlxqoC+n2BiAMbHx50q8Hg8P0G7WYMYAGZjFbCtngvY1zZRADMzM6YKuDEKh8Pa2k1+UQDMyEtiIpEwl0SOtU0cwMLCglMF3Aa3HAAKZhV83x7Tr2HiFUCRPBl+3R7Tp2UqALq7u2u2x1rimVcFABOzCsbGxtCyD0UHBgbQ39+PZDJJHmqmVgFU3NXVxUbVVAGoKv9Mrgbg/v4e0WjUGPuf6/nvTbMJVQCcnp5iZ2cH6XTaGPv0NVusjbg4gNvbW9zc3ODo6Aizs7MYHh7G0tKS8TFmQ2SjOcUB8LI3OjqK7e1t8J6A/xlwzGcFjDVarI2YOIBSqQRuhC4uLkDxQ0ND5vlgb28vGLMhstGc4gDm5uYQDAbh8/lA8fzln5+fEQqFwFijxdqIiQNYX1/H4uKiuR3O5XIIBALmfMC7RMZsiGw0pzgALubq6gonJyfo7OyEy+XC8fEx6GNM2lzSCav5+HfY5OQkaOxX/dKtGgBpofXytQHUIyPh5waIJpGrXg7VCtjY2ACt3uIk/KoAJAQ2y9EG0IzQb4//ugr41x/sLwAAAP//NkFhkAAAAAZJREFUAwDteRl/ku1k4QAAAABJRU5ErkJggg=="
+    },
+    {
+      "type": "custom_msbxi3vy_u8w",
+      "name": "押し釦スイッチA接点",
+      "label": "押し釦スイッチA接点",
+      "cat": "カスタム",
+      "role": "contact_a",
+      "w": 36,
+      "h": 80,
+      "shapes": [
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 20,
+          "x2": -20,
+          "y2": -24,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -36,
+          "y1": 0,
+          "x2": -26,
+          "y2": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -36,
+          "y1": -6,
+          "x2": -30,
+          "y2": -6,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -36,
+          "y1": 6,
+          "x2": -30,
+          "y2": 6,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -36,
+          "y1": -6,
+          "x2": -36,
+          "y2": 6,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 20,
+          "x2": 0,
+          "y2": 40,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -18,
+          "y1": 0,
+          "x2": -9,
+          "y2": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -20,
+          "x2": 0,
+          "y2": -40,
+          "lineWidth": 0.5
+        }
+      ],
+      "terminals": [
+        {
+          "x": 0,
+          "y": -40
+        },
+        {
+          "x": 0,
+          "y": 40
+        }
+      ],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAACKElEQVR4AeyXv4oCMRDGPywtRLGysRAbrQQFfQD1EUTsxEJrSx9ArHwDWxHBF1BbEUTExj+1hVhaiAiCd0zgJHh7K0I2CZcsjMwmu07mN192Z31fhh8+GH5YAIYLAFYBVgGGE7BbwHABqH0IVioVkKksgt0CKunrENsqQIcqqFyD5wq43++Yz+cqc3SN7SmA7XaLer2OyWTiugiZk6+xPAWQTCYRi8UYgM1m8xob0WiU2a8JiQOeAqA88vk8LpcLg0DnvHU6HZDxY7J9zwHkcjkUCgUG4HA4yM7vbTzPAdAKCMB+v2cQ6FwnkwaAIEynU5zPZ53yF/MtcL1e0ev1kEgkkMlkHBMkAIvFQjsVCFNAu91GOp1GqVT6E0A2mwWp4PF4OF6jYlAYAFr88XjEer1mX3iDwYCGmDWbTTQaDZxOJwZAp75AKACWrctPKBRCIBDQahsIBRCJRJBKpdDv91Eul58out0uGxuNRqhWqwyALu2xMACtVgur1QrD4fCZuJNDjVEwGGQQnOZljwkB4Pf7UavVsNvtsFwuXXOg9pjeCPQccGqPXW/2YFIIgE/XRSqg9ng8Hn96q/DrlQD4aY/plai6PVYCgMpYLBahQ3usDABtg3g8jtlsRjw8s3d/rAwALSwcDuN2u5GrzJQCUJY1F9gC4GAY6VoFGFl2LmmrAA6GdJe+GsmkB+YCWgVwMIx0rQKMLDuXtFUAB8NI1yrgv5X903y+AQAA//9usk1xAAAABklEQVQDAAIsmHDEoW1PAAAAAElFTkSuQmCC"
+    },
+    {
+      "type": "custom_msbxksjn_0vz",
+      "name": "押し釦スイッチB接点",
+      "label": "押し釦スイッチB接点",
+      "cat": "カスタム",
+      "role": "contact_b",
+      "w": 44,
+      "h": 80,
+      "shapes": [
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 20,
+          "x2": 0,
+          "y2": 40,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -40,
+          "x2": 0,
+          "y2": -20,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -20,
+          "x2": 20,
+          "y2": -20,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 20,
+          "x2": 16,
+          "y2": -24,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -24,
+          "y1": -6,
+          "x2": -24,
+          "y2": 6,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -24,
+          "y1": 6,
+          "x2": -18,
+          "y2": 6,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -24,
+          "y1": 0,
+          "x2": -12,
+          "y2": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -24,
+          "y1": -6,
+          "x2": -18,
+          "y2": -6,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -4,
+          "y1": 0,
+          "x2": 7,
+          "y2": 0,
+          "lineWidth": 0.5
+        }
+      ],
+      "terminals": [
+        {
+          "x": 0,
+          "y": -40
+        },
+        {
+          "x": 0,
+          "y": 40
+        }
+      ],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAACVElEQVR4AeyZz6sBURTHT8+PjY2FjQULK8WClcLGX6BEyoK9v8DKwors7W2UZOGPoGTDwlosZKeUkuS99731NE9kbs2dO83cqTON4zhzzud+770z+fp2+PFFDj8UAIcLgJQClAIcTkBNAYcLQO4iWKlUCCZzENQUkEnfCvdWCrDCKMiswZIK2G63pjGRDuByudBut3vYdDplO0Oj0WA+o0k855MKIBwO02q1olwu97BqtUqHw4FGoxHN5/Pneg3/LBVAu92mbrf7z+LxOEUiEep0OuRyuQxv+DmhVAAoplAo0J+h8c1mQ/l8norFIvMjRqRJB6BtDvP/fr9TNpvVuoVeWwbA7XYjAMhkMpRIJIQ2rU0uDMByuaR0Ok2xWIwmk4n2ni+vZ7MZW/QA4GWAIKcwAMPhkM7nM9VqNV2lY/SDwaCp8kdhwgAg+fV6JSgBMPDW12q14GbW6/XYfg9/qVSi8XjMFIOFkAWYdBIKQG8Pp9OJjscjmS1/1CcUgNfrZQtauVymwWBAzWYT92RWr9eZD/5kMknRaNReANC0z+ejfr/PGn53wr6P+Y8FMxAIvAsT5hemAGxlWNnX6zV7sHnXAZrf7/dSRh81CQOA5HoMAFKplDMBYIcAACx+Ho9HDy/DY6QqAM3//jnNtj/DO9OZUBoAPPouFgsKhUKEXUBnvdxhn34gDYDb7SY8KPn9/k81Cv1eGgChXXEkVwA4YNkyVCnAlsPK0ZRSAAcsw0PxJggzPDFHQqUADli2DFUKsOWwcjSlFMABy5ahSgF2G1befn4AAAD//6GBxEQAAAAGSURBVAMARlGtcC7Pm5AAAAAASUVORK5CYII="
+    },
+    {
+      "type": "custom_msbxnsrr_9fd",
+      "name": "補助継電器",
+      "label": "補助継電器",
+      "cat": "カスタム",
+      "role": "coil",
+      "w": 96,
+      "h": 80,
+      "shapes": [
+        {
+          "t": "L",
+          "x1": -48,
+          "y1": -23,
+          "x2": 48,
+          "y2": -23,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 48,
+          "y1": 25,
+          "x2": -48,
+          "y2": 25,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -48,
+          "y1": 25,
+          "x2": -48,
+          "y2": -23,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 48,
+          "y1": -23,
+          "x2": 48,
+          "y2": 25,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 25,
+          "x2": 0,
+          "y2": 41,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -39,
+          "x2": 0,
+          "y2": -23,
+          "lineWidth": 0.5
+        }
+      ],
+      "terminals": [
+        {
+          "id": "t0",
+          "x": 0,
+          "y": -40,
+          "label": ""
+        },
+        {
+          "id": "t1",
+          "x": 0,
+          "y": 40,
+          "label": ""
+        }
+      ],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAABgklEQVR4AeyZvY2DQBCFRy7ENVhCAlEKpdABERIJPxIBAQEJCWXQACKjBhq44wVOTpbhZrUaYAfxZMnszr755uHEjx/Hrwc5fikAxwNAmgBNgOME9BVwPACyP4Jd1xEkOQTRV2AYBoKcBSDZ+Pts0QS8TUh+KgAu/XEcyVTruhJkWgf7uX2wElAUBcVxTFEUGWmaJoJM68BLWZaHGPxdxAKAIsuyUNM01LatqOABXuCJIzYAHBYEAYVhKCp4gBeujABwDz3TPgVwpmlIeNEESFA/05magDNNQ8LLbRKw/b/D4ncbAKzut00KYIPg9K0JcHr8W/O3T8DW49fbCECWZZSmqajg4WuHOw9ZAHzfp9frRXVdU1VVbOV5TpBJDXiAF3ja6fXjYxYAz/Oo73ua59lIMA2Z1oEXePrY4c6XLAA7NS/1WAFcalwWzGoCLEA9XDJJEoIOb7CwUDQBz+eTIAt9HS4pCuCwS4sLFYBFuJcorQm4xJgsmtQEWIQrUvq/h/4CAAD//7WB+SAAAAAGSURBVAMAH/e+f7RvpmkAAAAASUVORK5CYII="
+    },
+    {
+      "type": "custom_msc00gdv_sy4",
+      "name": "サーマルB接点",
+      "label": "サーマルB接点",
+      "cat": "カスタム",
+      "role": "contact_b",
+      "w": 14,
+      "h": 80,
+      "shapes": [
+        {
+          "t": "C",
+          "cx": 0,
+          "cy": -20,
+          "r": 6,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 20,
+          "x2": 8,
+          "y2": -25,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 20,
+          "x2": 0,
+          "y2": 40,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -26,
+          "x2": 0,
+          "y2": -40,
+          "lineWidth": 0.5
+        }
+      ],
+      "terminals": [
+        {
+          "x": 0,
+          "y": -40
+        },
+        {
+          "x": 0,
+          "y": 40
+        }
+      ],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAABxklEQVR4AeyYv64BQRTGPxIV0ehUVjwAnc6fUqPXqjyBZ9DqPACNeBOiUyhIvACKTTab7N57v0luozGK2SM7Z5MvGJM5c77zOyei+OP5U4TnjxrgOQBQApQAzx3QFvAcANkhOJlMQEkWQVtA0v1viK0ESFUhTVPc73cjvpe6hwgBp9MJg8EA5/PZaDgcYrVagetZGyFiwGKxQBzHWK/XRlEUYblcYrvdOs//NYCIAYfDAePxGN1u16jX64EmNJvN1/s5/yxiQBAE2O/3CMPQiIYwU67zNUuJGDCbzXA8HtHpdIyu1ytKpRK8IWA0GmG322E6nRr1+320Wi3U6/Usi29iiRDAyO12G/P53Oj5fCL4awuuZy0xA/4T5W8BtoC3BlwuFzweD38JYPVJg8QAZFzxFiABtVrNbwJY/Wq1yoJkrq8gQGoA0m1RA263GzgDSAAvIyFRA5h8kiRoNBoSuZuYogZwAPIWXhPA6ntrAAmoVCooFAoEwYneHSraAvwrrFwuv7uj0+9FDXCameXhaoClUbndpgTktrSWiSkBlkY52bbZbEA5OdzyUCXA0qjcblMCcltay8SUAEujcrtNCchbaT/N5xcAAP//KS2cbQAAAAZJREFUAwDWGIZwmrQxEgAAAABJRU5ErkJggg=="
+    },
+    {
+      "type": "custom_msc0tnf8_xh3",
+      "name": "ランプ",
+      "label": "ランプ",
+      "cat": "カスタム",
+      "role": "",
+      "w": 40,
+      "h": 60,
+      "shapes": [
+        {
+          "t": "C",
+          "cx": 0,
+          "cy": 0,
+          "r": 20,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -14,
+          "y1": -14,
+          "x2": 14,
+          "y2": 14,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 14,
+          "y1": -14,
+          "x2": -14,
+          "y2": 14,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 30,
+          "x2": 0,
+          "y2": 20,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -20,
+          "x2": 0,
+          "y2": -30,
+          "lineWidth": 0.5
+        }
+      ],
+      "terminals": [
+        {
+          "x": 0,
+          "y": -30
+        },
+        {
+          "x": 0,
+          "y": 30
+        }
+      ],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAAC70lEQVR4AeyWO2hqQRCGhwSSOl1IUgWSOl0gXbp0IUWKFIIggmAh2GghiGChjWAhCCIIFhYWYmdnJ9hZK1ip2FkryL35Fjb4gsuFzB7BIxl3nMfu/P/ubPbsz4l/zuTEPz4BJ34AxD8B/gk4cQb8FjjxA+Bfgn4L+C3gIQOLxUIQD0vw9g6IRqOCnCwBXgK3a3t6CS6XS0FsMS7G3TWcE9ButyUYDMrj46MMBgMj6Njw7Rao/dsZAdPpVAKBgMTjcZnP5xIKhSSXyxlBx4aPGGK1gdv5nRAAoK+vL+n3+5LNZqXT6UgikZDPz08j6NjwEUMsObZIzdEJAclk0uz6er2WyWQiq9VqDxM2fMRwGsjZC1IwqBNAX/d6PclkMhKJRKRcLkuxWNwiAfDY8BFDLDnkKmDemlKdgFarJQ8PD8KxjsVieyTsgieGWHLI3apW4Yc6Aezk6+urKf3i4kIAyC6z24VCQRB0bPiIIZgcctE1RZWA2Wwm9PT9/f0PBgACNBwOS6VSMYKODZ8NJIdc5rA2jVGVAI2Cf3tOVQJubm7k/PxcxuPxT92259l9dh5B5xLEZwPJIZc5rE1jVCWAgl9eXqTb7aKamx+gtud5+CD0PzZ8lgRyyDWJil/qBHx8fMhoNJJGo2H+/QEUwLbn6Xt0bPgggVhyyFXEbqZWJ+D9/V3YyXQ6bd4AAAUwwE0F31/o2PBBArHkkPvtVv1TJ4DqefNfX1+b++Du7k4AjH1TsOGj74klZ9OvpTsh4Pb21rTA8/OzpFIpeXt7k3w+L81m0wg6NnzE0ALkaIHenNcJASwIoHq9bh4+7HC1WhXe+wg6Nh5FxBBLzm/Iv+ZwRoAthL6u1WoyHA7l6enJCDo2fDbO1eicgE1gl5eXgmzaXOueEuAa7KH1PCWgVCoJcqgwVzZPCbi6uhLEFdhD63hKwKGCXNt8Alwzfmzr+Sfg2HbEdT3+CXDN+LGt55+AY9sR1/X4J8A149rr/e/8fwEAAP//MhBISQAAAAZJREFUAwDbKUN/a0VY8gAAAABJRU5ErkJggg=="
+    },
+    {
+      "type": "custom_msc1f3od_brf",
+      "name": "サーマルA接点",
+      "label": "サーマルA接点",
+      "cat": "カスタム",
+      "role": "contact_a",
+      "w": 26,
+      "h": 80,
+      "shapes": [
+        {
+          "t": "C",
+          "cx": 0,
+          "cy": -20,
+          "r": 6,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 20,
+          "x2": -20,
+          "y2": -24,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 20,
+          "x2": 0,
+          "y2": 40,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -26,
+          "x2": 0,
+          "y2": -40,
+          "lineWidth": 0.5
+        }
+      ],
+      "terminals": [
+        {
+          "id": "t0",
+          "x": 0,
+          "y": -40,
+          "label": ""
+        },
+        {
+          "id": "t1",
+          "x": 0,
+          "y": 40,
+          "label": ""
+        }
+      ],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAACGUlEQVR4AeyYMa5BQRSGTyxAJFoNUamoaAkKDbVWIVZgDeyDzgbQikSIiojSBihIhMR7+U9C5t7m5RVzzo0ZyS9n5oq5/zf/XCdiP46/YuT4ywNwPADkE+AT4DgBfwQcD4DuQ7DdbhOkuQn+CGjSj8LaPgFau/B6veh8PrNQa92H9QQ8n09aLpcBf/v9nsrlMh2PR1alUiHMBT4kNLAKAKa63S7NZrOAncFgQI/Hg0ajEet+v9NwOAx8xtYg/L1WAeRyOcpkMgxgt9t91t5sNtRsNqlUKrFarRat1+vPdcnCKgAYqVardL1eGQLGUDqdZsO3240gmMccrknLOgDscq1WYwCn04n99Xo92m63VCgUWKgxxxeF36wDgB8AOBwODAHjRqNBk8mEOp0OCzXmcE1aYgAAYT6f0+VyYY/5fJ76/T4LNU8qvIkAgC8AWK1WnxRgLgoSBVAsFgkp0Gx8wtDFAMTjcUIKACDcF4RvSnIsBgCmAAC9gbMAUqkUpwAAwu0xAGlINAEwiMYokUhE5mEoDgBHAEcBKTDbY8DRkDgAmEQK0B5Pp1MMVaUC4N0e4xfh3R5rUVABALP1ep3M9hhzGlIDgGOQzWZpsVhY9f3Xl6sBwI0lk0nCnyGotaQKQMu0ua4HYNJwsfYJcHHXTc8+ASYN6Xo8HhMkva65nk+AScPF2ifAxV03PfsEmDRcrH0Cvm3X/+vnFwAA//8BbLQ7AAAABklEQVQDALj+tnAzZCvDAAAAAElFTkSuQmCC"
+    },
+    {
+      "type": "lib_JIS_C_0617______RY-A_S1V",
+      "name": "継電器A接点",
+      "label": "継電器A接点",
+      "cat": "接点",
+      "w": 20,
+      "h": 80,
+      "shapes": [
+        {
+          "t": "L",
+          "x1": 10,
+          "y1": 20,
+          "x2": -10,
+          "y2": -24
+        },
+        {
+          "t": "L",
+          "x1": 10,
+          "y1": 20,
+          "x2": 10,
+          "y2": 40
+        },
+        {
+          "t": "L",
+          "x1": 10,
+          "y1": -20,
+          "x2": 10,
+          "y2": -40
+        }
+      ],
+      "terminals": [
+        {
+          "id": "t0",
+          "x": 10,
+          "y": 40
+        },
+        {
+          "id": "t1",
+          "x": 10,
+          "y": -40
+        }
+      ],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAAA8CAYAAADxJz2MAAACFUlEQVR4AezavY3CQBAF4JEzqIEykMjogARCeqAXiGgCeiCkD6iB8O6epdHJgX3nHWO/EQ9p8YI1/vn0jHeB6kuPkEBleoQEBBjiMxOgAIMCwXIlUIBBgWC5EvhpgPf73bbbbfC0hytPl8DX62WPx2M4geCW0gEGz3fwcgEGST8RMEjWLBdg06P3KwH2JmsWCLDp0fsVDSCGJmi9z2DiAhrA/X5v1+t1Yo7+u6cB3O12drlcqAbJ/+GkATwcDvXxYqpWd1qeqqqy2WzWsnb8t2kAceqeQvTb2nq9ttvt1rZ69PepAJHC5/Npf6VwdKWOHVIB4jhXq5Udj0d0UzQ6QE9hliENHeBisTCk8HQ6KYGlAn4z+U1h6ZbeX0eXQJwyEogkZhhYUwICEZ+FuJmwp5AWEJdxhhTSAiKFQGSf3lED4jIGJPPAmhoQeJ5C9BkbPSBSyDy9owdE6jCswR0ZfbaWAtBTyDikSQGI4QxSyDi9SwGIy9ZvJmwpTAOIBCKJbNO79wEiNgM3fBbiZsKUwlSAuIzZUpgKEIFeLpd2Pp/RpWjpADebjc3ncwo8HEQ6wPqgf37axJKhpQRkgPNjEKBLFC4FWAjnZQJ0icKlAAvhvEyALlG4FGAhnJcJ0CUKlw3Awm2MWob/BmI+POpOO3aWDhBfazF9pZUOsCMMk6wSYJBdgAIMCgTLlUABBgWC5UpgEPAbAAD//3C8cncAAAAGSURBVAMAtf+6SER7brsAAAAASUVORK5CYII="
+    },
+    {
+      "type": "lib_JIS_C_0617______MC-3P_F1V",
+      "name": "電磁接触器",
+      "label": "電磁接触器",
+      "cat": "接触器・開閉器",
+      "w": 112,
+      "h": 80,
+      "shapes": [
+        {
+          "t": "A",
+          "cx": -32,
+          "cy": -20.000000000000448,
+          "r": 8,
+          "sa": 90,
+          "ea": 270
+        },
+        {
+          "t": "A",
+          "cx": 8,
+          "cy": -20.000000000000448,
+          "r": 8,
+          "sa": 90,
+          "ea": 270
+        },
+        {
+          "t": "A",
+          "cx": 48,
+          "cy": -20.000000000000448,
+          "r": 8,
+          "sa": 90,
+          "ea": 270
+        },
+        {
+          "t": "L",
+          "x1": -16,
+          "y1": -20,
+          "x2": 8,
+          "y2": 27.99999920000027
+        },
+        {
+          "t": "L",
+          "x1": 24,
+          "y1": -20,
+          "x2": 48,
+          "y2": 27.99999920000027
+        },
+        {
+          "t": "L",
+          "x1": -56,
+          "y1": -20,
+          "x2": -32,
+          "y2": 27.99999920000027
+        },
+        {
+          "t": "L",
+          "x1": -32,
+          "y1": -12,
+          "x2": -32,
+          "y2": -40
+        },
+        {
+          "t": "L",
+          "x1": -30,
+          "y1": 4,
+          "x2": -43.999999800000296,
+          "y2": 4
+        },
+        {
+          "t": "L",
+          "x1": 14,
+          "y1": 4,
+          "x2": 1.9999970390927047e-7,
+          "y2": 4
+        },
+        {
+          "t": "L",
+          "x1": 8,
+          "y1": -12,
+          "x2": 8,
+          "y2": -40
+        },
+        {
+          "t": "L",
+          "x1": -8,
+          "y1": 4,
+          "x2": -21.999999800000296,
+          "y2": 4
+        },
+        {
+          "t": "L",
+          "x1": 48,
+          "y1": -12,
+          "x2": 48,
+          "y2": -40
+        },
+        {
+          "t": "L",
+          "x1": 22,
+          "y1": 4,
+          "x2": 36.0000001999997,
+          "y2": 4
+        },
+        {
+          "t": "P",
+          "pts": [
+            [
+              -32,
+              27.99999920000027
+            ],
+            [
+              -32,
+              40
+            ]
+          ],
+          "cl": false
+        },
+        {
+          "t": "P",
+          "pts": [
+            [
+              8,
+              27.99999920000027
+            ],
+            [
+              8,
+              40
+            ]
+          ],
+          "cl": false
+        },
+        {
+          "t": "P",
+          "pts": [
+            [
+              48,
+              27.99999920000027
+            ],
+            [
+              48,
+              40
+            ]
+          ],
+          "cl": false
+        }
+      ],
+      "terminals": [],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAAA8CAYAAADxJz2MAAAF20lEQVR4AexbR0gkTRR+uPmw7LLsrooBvJgOIl4UQUUUVFDEjOEiIgqCIAYUD16MFzGAipjFg4LiRRQzCKIigidFBMEEXsxiAP3/+Xr/9nfGqZmurh7Y3elhXtdU1Xuvqr76ukJXj8M/+kcIAQfSP0II6AAKwUekA6gDKIiAoLnOQB1AQQQEzXUG/q4A1tfXE0Swfkbms7OzlJmZaZQmGjk/P6fIyEhCqMaXzRh4dXVFEDWVYtnc3t7SyckJK1tV+v39Pe3t7RFCNQ5sBqCayvyJNjqAgr1mjwAKQmZsrgNojAd3zCYArqys0Pb2Nh0dHXFXiGWws7NDS0tLdHl5yVLhTj89PaWJiQluu5cGmgJ4cHBAWVlZ0lID4F1cXLwsS/XvyspKiomJobW1Nbq7u1Pt56VhV1cXBQYG0sDAgJT88PAghbwXzQB8fHyk/Px8+vbtG62urlJERAT5+vry1ueVfllZGW1sbNDo6CgVFxfTz58/X+nwJgC0uro6amxspOHhYcn8/fv3Ush70QzAzs5OqeyWlhb6/v279Fv0AsYBuKamJvL39xd1J9mjo+EPi/y4uDgpTeSiCMDr62uJBZYKWlhYoISEBEsq3HkY88BkLy8vLtvDw0Om/vLyMj09PVFKSgpThydDEYBzc3OUm5trcfzBgMx7e4WFhZGlxsLnjx8/eNpDGRkZNDY2xrQ5N2zdtLpDUIgiAOPj48nJyYm6u7thY1bc3d0JM6XZTEYiBnGMcYxscnNzo93dXVa22fSgoCBqbm5mdoyLi4u0dbu5uTFrz5uoCEA4zcnJoZ6eHiYLY2NjaXBwkDATQ1+JFBYWSksdFgujoqJofX2dpqamlLiTdODT1dWVycKAgADy9vam9vZ2SV/0ohjAxMREiyxEPm7J7OxsmpmZIcNRl9W6oaGWWOjh4UGlpaVUUFBA/f39hIcJVp0aFJKSkiyysLy8XAKwpqaGjo+PDRbqv4oBRBFgIW5j1loMM3B0dDQVFRVJywOwB3aWBIzBmpHFwnzD0qi2tpZ6e3upoqKCeWu+LAM+0TmssTAkJISGhoZoc3OTkpOTJVOMt9IPzgsXgGCZs7OzxbGwpKREqhgajLHIWn3QUEsshH1aWhotLi7S5OQkNTQ0IMmqWGMhxsqRkRHJb3V1Nfn4+Fj1aU6BC0A4sMZC6Lx584ZCQ0OlsQZxawLGWGIh0S8Pnp6ehAntV8zyFT7ROSwWytaYqNLT0+Uod8gNoBIW8tYCDbXGQl6f0LfGQuiICjeAKFAJC6HHI2CMEhby+kTnWGMhj09TXVUA6iz8H0ZVAMJcZyFQIPWvdugsFAQQ5mBhW1sbtba2SgtTrO5N5eUDS+xDTfNN46mpqc+7E+zBTfNN46iHLFijmuYj/u7dO/ry5Qth4SzrahU6iDgCC9++fUvj4+PSM0A8BzSVra2t5yL29/eZerIdHmzKMzL21nI6K3x2bviBhTtL7+vXrzQ9Pa1oIW5wpfgrBCBKqaqqorOzM+ro6KC+vr5XgoU19CB+fn6v8vtMbIKDg0mekfG8zjTfNA6/soBtpvlyfH5+nmwxIwsDCBZa253IDVQaoqEyC5XaKNGzxbpQGEBUHGMhxh/WHhk6vCKzkLVH5vUHffhE52i5LtQEQHtmoSYAonftlYWaAfiKhUBVUHC7/e5joWYAAit7ZKGmANojCzUF0B5ZqDmA9sZCzQG0NxbaBECwEO+a5OXlAU9NBDMyTungWxOH/znBEQHObtRuAmwCIOqG8wuEWkp4eDihY7T0Kb+0rvZNMpsBiMMasEbLxuLNr48fP2rpUtiXzQAUrtkf4kAHULCjdAB1AAUREDQ3YqCgLyPzz58/E8QoUTDy6dMncnR0FPRibP7hwwfC8gihcY6ymIMyNX4tvAEF4bdkW+A/bXgpiK3Bn4OzEvwHDyG/tcCxpprC/kYbmzHwbwTLXJt0AM2hwpGmA8gBljlVHUBzqHCk6QBygGVOVQfQHCocaf8CAAD//7VYlV0AAAAGSURBVAMArhZadWNG6vcAAAAASUVORK5CYII="
+    },
+    {
+      "type": "lib_JIS_C_0617______MCCB_T1V",
+      "name": "配線用遮断器",
+      "label": "配線用遮断器",
+      "cat": "遮断器",
+      "w": 27.999999999998177,
+      "h": 79.99999999999544,
+      "shapes": [
+        {
+          "t": "L",
+          "x1": 7.999999999999089,
+          "y1": 19.99999999999863,
+          "x2": -13.999999999999089,
+          "y2": -21.999999999998636
+        },
+        {
+          "t": "L",
+          "x1": 7.999999999999089,
+          "y1": 19.99999999999863,
+          "x2": 7.999999999999089,
+          "y2": 39.99999999999772
+        },
+        {
+          "t": "L",
+          "x1": 1.9999999999990887,
+          "y1": -25.999999999997726,
+          "x2": 13.99999999999909,
+          "y2": -13.999999999997726
+        },
+        {
+          "t": "L",
+          "x1": 13.99999999999909,
+          "y1": -25.999999999997726,
+          "x2": 1.9999999999990887,
+          "y2": -13.999999999997726
+        },
+        {
+          "t": "L",
+          "x1": 7.999999999999089,
+          "y1": -39.999999999997726,
+          "x2": 7.999999999999089,
+          "y2": -19.999999999998636
+        }
+      ],
+      "terminals": [],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAAA8CAYAAADxJz2MAAACfklEQVR4AezYMbIBQRQF0FdKQiqQWIPUBpQFkLEHoVgsYw9krEAitAchgRUIBP/Xnemu+jPlF/qhb5enqrUZ8+g57vSYqfzYQyVQEXuoBAxQxSdigAaoFFCWWwINUCmgLLcEfhPgdruV0Wik3OXXlieVwMvlIufz+bUCyk9LClC5r28pN0Al6zcCKsmK5QZY9Hh6yQCfJisW0AMej0dBKw47X1qv1/mLiM/0gPv9Pvvvh/6v03A4lMVi8XdVlNfRAf9Ll9cYDAaCNplM5HA4ZKuBdzqdZLfbZcsxn6ID4sri3qE4Ho8zxNVqJYBDY8DDDxcdEOnCoXgviUDEgK/Xq8xmM7ykaNEBPUx5jivr4LCt1+uC7XE439u+XP+u5eiA2LF7KQSeP2wBiO1ZECkAgQLIzWaDrtAwP3o8/wa294h+XayeAhA7DxBglefCTqdz82wLRIYTCQ0gQABZTmGr1cJq2kYDCCGkcD6f37jywLucjQoQKUTiyinkpMtHRQWIIQExpRTSAeIwTimFdIBIIa40UkkhJSD+uqSSQkrAlFJIC4gUYj7EjQaAsjZaQIDhjIybBuWrE7zH0qgBMQ8iicwppAZEythTSA+IFGIuxO0rgLI1ekCA9fv97FY+7tZgmam9D/CFe+lTaIAKVMyFuLHKhphEAr17u92W6XTqFyn6pAB7vZ40Gg0KOD+IpAAx6Gq1io6mJQdII+cGYoAOIrQzwFA5V2eADiK0M8BQOVdngA4itDPAUDlXZ4AOIrQrAIZ+yKfqarWaNJvNT33dQ99TeWgrko263a4sl0uS0eTDSAowHzLXswEqfw8DNEClgLLcEmiASgFluSVQCfgLAAD//yBCqXwAAAAGSURBVAMAG2cFV/SaVkcAAAAASUVORK5CYII="
+    },
+    {
+      "type": "custom_msa5suje_ot5",
+      "name": "電磁接触器",
+      "label": "電磁接触器",
+      "cat": "カスタム",
+      "role": "contact_a",
+      "w": 12,
+      "h": 28,
+      "shapes": [
+        {
+          "t": "A",
+          "cx": 0,
+          "cy": -7,
+          "r": 3,
+          "sa": 90,
+          "ea": 270
+        },
+        {
+          "t": "L",
+          "x1": -9,
+          "y1": -7,
+          "x2": 0,
+          "y2": 10
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -4,
+          "x2": 0,
+          "y2": -14
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 10,
+          "x2": 0,
+          "y2": 14
+        }
+      ],
+      "terminals": [],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAABbElEQVR4AeyVMaqDQBCGfywC6dIE0oUUgqXgNfQitpYWYmntOSwUK/EA3sBC0MYDiAfwvYzwmrxiSbMDuyOOum4x+3/zz67zY/nlwPJLAFhuAIgDxAGWE5AWsNwAsglKC0gLWE5AWsByA9h3CnwWXFrgk4htY1YHTNMECk7orADiOEaWZZz6eTbBcRyRpinmeWYVT8m1OmBZFpRlibquMQwD5WcPrQBerxe2bUPTNAiC4BT/9z4HDA+tAEhfFEW4XC64Xq+oqgpJktBvtnB0Z/Z9H2EYom1b7PuuO/2/fNoB0AoIwP1+PyHQmDNYAHieB2oFckHXdZz6eY5BUkwueDwe6Psex3HQL5ZgcQApfT6fuN1uWNcVjsO2DD4HEISiKJDnOX2yBR/6t2TXdUHx/mS7WQHoUK3KIQBUhEyfFweYXmGVPnGAipDp8+IA0yus0icOUBEyfV4cYHqFVfrEASpCps+LA0yr8Ld6fgEAAP//JddNYwAAAAZJREFUAwD88T5w3xSx1wAAAABJRU5ErkJggg=="
+    },
+    {
+      "type": "custom_msctfsfu_t61",
+      "name": "電動機",
+      "label": "電動機",
+      "cat": "カスタム",
+      "role": "",
+      "w": 90,
+      "h": 64,
+      "shapes": [
+        {
+          "t": "C",
+          "cx": 0,
+          "cy": 20,
+          "r": 14,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -10,
+          "y1": 10,
+          "x2": -30,
+          "y2": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -30,
+          "y1": 0,
+          "x2": -30,
+          "y2": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -30,
+          "y1": 0,
+          "x2": -30,
+          "y2": -30,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 6,
+          "x2": 0,
+          "y2": -30,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 10,
+          "y1": 10,
+          "x2": 30,
+          "y2": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": 0,
+          "x2": 30,
+          "y2": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": 0,
+          "x2": 30,
+          "y2": -30,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -14,
+          "y1": 20,
+          "x2": -60,
+          "y2": 20,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -60,
+          "y1": 20,
+          "x2": -60,
+          "y2": -30,
+          "lineWidth": 0.5
+        }
+      ],
+      "terminals": [
+        {
+          "id": "t0",
+          "x": -30,
+          "y": -30,
+          "label": ""
+        },
+        {
+          "id": "t1",
+          "x": 0,
+          "y": -30,
+          "label": ""
+        },
+        {
+          "id": "t2",
+          "x": 30,
+          "y": -30,
+          "label": ""
+        },
+        {
+          "id": "t3",
+          "x": -60,
+          "y": -30,
+          "label": ""
+        }
+      ],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAAC5UlEQVR4AexYPUhyURh+aIy2IIIgaGkuGmoqGiKItmhpiIa2gqamamhoKHHSQXRQHATxZ3IVwUlEnVxEQcTBTZ0cBP2+7zl0QC5evZ+ee+P77hFezjnv+9znvu9z3nPvxZVfLv+twOU/LYDLGwC6A3QHuFwBfQRc3gD6IaiPgD4CFhTo9XqgWYAK3E9jreQpMZaOwMXFBbxer7xm5nhzc4O3t7eZGBl8eHgATa5njeQk9yzMIjFLAixC/K9c4zoBjBujBTAq4ra17gC37bixXt0BRkXcttYdoHrHx+MxarUaqtWqMmpykZPcyki/iZR3wP39Pfr9Ph4fH/H19bWUECycHOQiJ7m/81Y2KBfg+voafr8fJycnSCQSU4UYDofIZDJot9vCOKdPVjVZODnIRU5yS4yqUbkATOzw8BDv7+9ThfB4PDg6OsLT0xM6nY4wzuljTO74ZOHkIie5VZstAsgkmTST5+5xF6PRKAKBAA4ODhCLxdBoNIRxTh9jxBDr8/mEiOSQfHaMtgogE2YRV1dXGAwGuLy8RCgUAn2TcfoYI4ZYdoSM2zk6IgALiMfjWF1dxcfHB5dTjTFiiJ0KsMFpSYDRaIRms4l0Or2wZbNZnJ6eYm1tzbQMxogpFoumGNUBSwLc3d2hUCjg+fl5Yet2u1hfX5+bPzH9P6/RuUCLgHkwSwLwbOZyOSxjOzs7aLVa8/IRmM3Nzbk4VQBLAmxvb2NZOzs7Qz6fR71eN82dMWL4FjAFKQ5YEkDFPW9vb8X5f319FV+KRk62/cvLi8AQa4zbtXZMgI2NDfFpXCqVwH+Zg8EgKpWKMM7pK5fLAkOsXQUbeR0TgDc+Pz9HMpnE7u4uPj8/wU9bGuf0pVIpEEOsU+aoACxqf38fkUhEPA/C4TBoPPf07e3tEeKoOS6ArG5rawvHx8fCOJd+p8cfE8DpQs3upwUwU8Ytft0Bbtlpszp1B5gp4xa/7oD/baf/tp7fAAAA//9wsGTLAAAABklEQVQDAFVMdn+K7lKHAAAAAElFTkSuQmCC"
+    },
+    {
+      "type": "lib_JIS_C_0617______LS-B_S1V",
+      "name": "リミットスイッチB接点",
+      "label": "リミットスイッチB接点",
+      "cat": "接点",
+      "w": 20.000000000001815,
+      "h": 80.00000000000682,
+      "shapes": [
+        {
+          "t": "L",
+          "x1": -10.000000000000908,
+          "y1": -20.00000000000159,
+          "x2": 10.000000000000908,
+          "y2": -20.00000000000159
+        },
+        {
+          "t": "L",
+          "x1": -10.000000000000908,
+          "y1": 20.00000000000204,
+          "x2": 6.000000000000453,
+          "y2": -24.00000000000204
+        },
+        {
+          "t": "L",
+          "x1": -10.000000000000908,
+          "y1": 20.00000000000204,
+          "x2": -10.000000000000908,
+          "y2": 40.00000000000341
+        },
+        {
+          "t": "L",
+          "x1": -10.000000000000908,
+          "y1": -40.00000000000341,
+          "x2": -10.000000000000908,
+          "y2": -20.00000000000159
+        },
+        {
+          "t": "L",
+          "x1": -7.6258895989676585,
+          "y1": 12.918880849672176,
+          "x2": -7.922511866101557,
+          "y2": -11.171846962501375
+        },
+        {
+          "t": "L",
+          "x1": -7.922511866101557,
+          "y1": -11.171846962501375,
+          "x2": 0.09405748574681283,
+          "y2": -8.71275854867576
+        }
+      ],
+      "terminals": [],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAAA8CAYAAADxJz2MAAACpElEQVR4AezZvYrqUBAH8Imdgr6AAV9C0M4nsNFKOwsr0dJXELVSsLMSbLXxBey0sbDxA2xEwcpCEBvhXiZLLgl7Cw9jdv/ZHeGoiZmzk1/m5CTZyB99iQQipC+RgAKK+IgUUAGFAsJwrUAFFAoIw7UCfwpgoVCg5XIp3J2vD4epwNPpRI/H4+sFhH8RBlC4H98WroBC+t8IKCTzhyug38N4SQGNyfwBCuj3MF4KFSBf6hjvYcABoQHs9/vUbDYD5jDvHgbw+XzS4XCg1Wr139br9SiVSjm/rddr8z0NKAIG8H6/U7vdpnK5/KmVSiWyLIum06nzW71eD4jDvFsYwN1uR/v9nrbb7adWq9Wo0Wj8Wz+fz833NKCISED9vq1bnjh4+GYymbf1+c6O4AEnkwnZtk0K+MJh73a7NBwOfVsuFgsqFou+dUgLUBU4m82o1WpRLpdzJgvG5GeE/KwQCc2bCxRgMpmkTqdD4/GYstksjUYjisViZNu2N2eo71CArgyf83jWtSyLqtWquxryExKQpXj25caQvIza4ADP57Nj5c6+zgLwGxyga8XXfsizr5snJCAPXfc86CaK+gkJyMM3DNXHBxUO8Ha7EQ9f1DsPRvM2OMDNZgN96+bF4+9QgHze4/NfWIYvHCA/E2RA5Fs3RvM2qAo8Ho+USCScIUwheUEBXq9XqlQqIaH7SDM4wI/+X37noXu5XJwnzy8HAWwIA8jXfjyJAJgYpQADOBgMKJ1OGyWPsDEMYDwep3w+j2BilAMMYCQCk0o4AY2yBto4nIddAYEEhKloBSqgUEAYrhWogEIBYbhW4DsBhX2Jwvk+OBqNivr4jmCYCuSHCWH5P4j3QMEAepMK03cFFB4tBVRAoYAwXCtQAYUCwnCtQCHgXwAAAP//q7D5IwAAAAZJREFUAwDU/vZImu+U4wAAAABJRU5ErkJggg=="
+    },
+    {
+      "type": "custom_msekru4r_trn",
+      "name": "リミット",
+      "label": "リミット",
+      "cat": "カスタム",
+      "role": "",
+      "w": 20,
+      "h": 80,
+      "shapes": [
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -20,
+          "x2": 20,
+          "y2": -20
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 20,
+          "x2": 16,
+          "y2": -24
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 20,
+          "x2": 0,
+          "y2": 40
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -40,
+          "x2": 0,
+          "y2": -20
+        },
+        {
+          "t": "L",
+          "x1": 2,
+          "y1": 13,
+          "x2": 2,
+          "y2": -11
+        },
+        {
+          "t": "L",
+          "x1": 2,
+          "y1": -11,
+          "x2": 10,
+          "y2": -9
+        }
+      ],
+      "terminals": [
+        {
+          "x": 0,
+          "y": 40
+        },
+        {
+          "x": 0,
+          "y": -40
+        }
+      ],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAAB+0lEQVR4AeyZsc4BQRDH/zm0EolGIgqVQkGLxguQiChIeAiNQqIlXkM0PIAXkBCVKJRCpZNoiJDvM1tIXCOb3O1sbndjCnuT2Znf/Hdvk3P+DB8ODB8WgOECgFWAVYDhBOwWMFwAvIdgs9kEGWcT7BbgpK/D2lYBOnSBMwctFXA8HpUxYQdwv99xOp0+tlwuxZuh1+uJOa9JuOOxAkilUthutyiXyx9rt9s4n8+YzWZYr9fufD3/zwpgOBxiPB5/WTabRTqdxmg0QigU8rxgd0BWAJRMpVJBrVYTRoUfDgdUq1XU63UxRz5+GiuA1+uF1WqFbreLyWSC+XwOmiuVSn7W/BWbFQBl0ul0QAffYDDAYrEAFZ/L5eiREmMHQFW2Wi30+31cLhcUi0WaUmZaAHAcR5z8iURCKEBZ9e+FtABwu93ENigUCuIN8M5L2U8LAHTz2+/3yuVPlLUAQDfBTCZjNgCSfzwep6YoNS0UcL1eWbpPpNkBRKNRJJNJMwHsdjtx82s0GohEIuAYrAqgG+D74zRo/3MUT2uyAXg+n9hsNkL++XyecvHFfgVlAxAOh/F4PBCLxX7l6OtzNgC+ViUR3AKQgBVIV6uAQLZVoiirAAlYnrtOp1OQeR5YIqBVgASsQLpaBQSyrRJFWQVIwAqkq1VA0NoqW88/AAAA//9QlxR7AAAABklEQVQDAPs4iXB3ORzeAAAAAElFTkSuQmCC"
+    },
+    {
+      "type": "lib_JIS_C_0617______PBS-B_S1H",
+      "name": "押釦スイッチB接点",
+      "label": "押釦スイッチB接点",
+      "cat": "接点",
+      "w": 80,
+      "h": 43.99999841323688,
+      "shapes": [
+        {
+          "t": "L",
+          "x1": -6.0000031229319575,
+          "y1": 21.99999920661844,
+          "x2": 5.999996877067588,
+          "y2": 21.99999920661844
+        },
+        {
+          "t": "L",
+          "x1": 20,
+          "y1": -1.9999992066184404,
+          "x2": -24,
+          "y2": -17.99999920661844
+        },
+        {
+          "t": "L",
+          "x1": -6.0000031229319575,
+          "y1": 21.99999920661844,
+          "x2": -6.0000031229319575,
+          "y2": 15.999999206618888
+        },
+        {
+          "t": "L",
+          "x1": -40,
+          "y1": -1.9999992066184404,
+          "x2": -20,
+          "y2": -1.9999992066184404
+        },
+        {
+          "t": "L",
+          "x1": -20,
+          "y1": -1.9999992066184404,
+          "x2": -20,
+          "y2": -21.99999920661844
+        },
+        {
+          "t": "L",
+          "x1": 20,
+          "y1": -1.9999992066184404,
+          "x2": 40,
+          "y2": -1.9999992066184404
+        },
+        {
+          "t": "L",
+          "x1": -0.0000031229319576,
+          "y1": 21.99999920661844,
+          "x2": -0.0000031229319576,
+          "y2": 9.999999206618888
+        },
+        {
+          "t": "L",
+          "x1": 5.999996877067588,
+          "y1": 21.99999920661844,
+          "x2": 5.999996877067588,
+          "y2": 15.999999206618888
+        },
+        {
+          "t": "L",
+          "x1": -0.0000031229319576,
+          "y1": 1.9999992066198051,
+          "x2": -0.0000031229319576,
+          "y2": -9.160736781238256
+        }
+      ],
+      "terminals": [],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAAA8CAYAAADxJz2MAAADJElEQVR4AeyaoYs6URDHB+uFKwfHcce1a2a1CXaTTREsGo3+BVq0GQxWUTCYLBaDIKLYBAWDSZuIoKBBxJ/fhSciyO1v366O3iw3tw9m5u3MZ+fNPtl1HeTQIuAiObQICEAtfEQCUABqEtB0lwoUgJoENN2lAgWgJgFNd6lAAahJQNNdKlAA/jcBWx0cr8BisUjxeNzWoDlN5jjA/X5Pu92OU862xuI4QFujZTiZIwB7vR75/X7K5/M0nU4Zpm1fSI4A/Pz8pGQySd1ul6rVKvX7fQPmbDazL3ImMzkC8Ovri0KhEFUqFeMB8v7+bsCMRCIUDoepVqvRsxyOADyH8/r6St/f3wbMcrlMPp/PqEYs8VQqRVju9MCH4wDP2aAysbQBMpvNGipUJGCiXz4izJsCNIgd/wGk1+slQGy1Wqd+eQ7zUfrlXQAeGZ7+AFP1S8DEGA8f9MtgMEi5XO5ky3Fwd4DnUAATSxwPHyxzl8tFpVLJ2BJx7ZesAF7CdLvdFAgEjKUO3fkS59Iv2QIEMMjLywt5vXz7JXuAgKgESxw9Ekv8sl+iOu+xvzQNcLFYkBXZbDZ0OBwUA9vOgHneLy/3l51Ox1K8KkezgZoCWK/XyePxWJJCoUDD4dBsPJbsFEw8eLA1wiTRaNRSvCpP5Ix5fhNTALGdaLfbZFUajcZvcdiiB0i1v8Q1rcYLP+RsJihTADHRx8cHWZW3tzdMcVP5+fmxHC/yNBusaYBmJ/xrdqwBZjIZgnC+KawBcganYhOAioTFswC0CE65sQa43W4JooLleGYNMJ1OE4QjOBWTcwDVFZ78LAA1b7AAfCaAiUSC1uv11ZSgg81Vgzso2FTgarWiZrNJy+XyKgboYAPbq0Y3VrABeOO8bbucANREyQ7gYDAwvqXB9zTz+ZwgGEOg08zXdnc2ANUvDry+jMViFDsK3ntAMIZABwLKFuN7CxuA+ABpMpnQaDQyXgHgNcB4PCYIxhDoYAPbe4NT12cDUAX0aGcBqHnHBKCdADXn+pPuUoGat10ACkBNApruUoECUJOAprtUoADUJKDpLhWoCfAfAAAA//80WuqAAAAABklEQVQDAPsZB2YfYjCdAAAAAElFTkSuQmCC"
+    },
+    {
+      "type": "custom_msemh9hr_ahw",
+      "name": "押し釦スイッチB接点横",
+      "label": "押し釦スイッチB接点横",
+      "cat": "カスタム",
+      "role": "",
+      "w": 80,
+      "h": 44,
+      "shapes": [
+        {
+          "t": "L",
+          "x1": -6,
+          "y1": 24,
+          "x2": 6,
+          "y2": 24,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 20,
+          "y1": 0,
+          "x2": -24,
+          "y2": -16,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -6,
+          "y1": 24,
+          "x2": -6,
+          "y2": 18,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -40,
+          "y1": 0,
+          "x2": -20,
+          "y2": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -20,
+          "y1": 0,
+          "x2": -20,
+          "y2": -20,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 20,
+          "y1": 0,
+          "x2": 40,
+          "y2": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 24,
+          "x2": 0,
+          "y2": 12,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 6,
+          "y1": 24,
+          "x2": 6,
+          "y2": 18,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 4,
+          "x2": 0,
+          "y2": -7,
+          "lineWidth": 0.5
+        }
+      ],
+      "terminals": [
+        {
+          "x": -40,
+          "y": 0
+        },
+        {
+          "x": 40,
+          "y": 0
+        }
+      ],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAACdUlEQVR4AeyXv+t5URjH332iZDEYTJKyKv8AOxYpi8RgQBYZhI0Smf2IlFIsStlMMtgZWRSzzSh9v9/n1JXEx/dzu+dz5R713Puc59znOed5neece3390fjvCxr/CQAaLwCIChAVoHECYgtovADEISi2gNgCGicgtoDGC0B7b4H7Bee6BQ6HA8bjMSaTyf24b9PmCqDZbCKfz+NyubxNwvcT4QZgv99juVyy8brdLhqNBtbrNWu/04UbAJvNhnq9znI1Go0gCJFIBIlEAoPBALvdjvWpfeEGgBKzWq10QywWY0mnUimcTieUSiVEo1HkcjlMp1Mcj0f2nBoXrgBuE3K5XEin0wxEv9+H3+/HfD5HNptlgCqVChaLBc7n860bd/3XAEiZ6HQ6eDweFAoF2O12OBwOOJ1OzGYzxONxBoMOz9VqJblwvX8pET0cDuORZDKZb8Pr9XqYzWbUajVWGbQ1TCYTOp0O2yJer/dhXGmsb4P/Z6ciAJ6NZTAYEAqFEAwGnz1ytVM10CHZbrcZjGQyCYvFcu3npSgCYDQa4ZnQ6j6bvNvtBsl9v3Re9Hq9p3FpvHs/OW1FAMgZmHzorUBC+iOh8+KRXUmbqgCUTERuLFUBlMtlkMidvBJ+qgLYbDYgUSIRuTFUAUBffyTSpEknkdq/eVcFQLFYxHa7veZJOtmuBgWVV6FUAUAfO8PhEPS1R0I62V5Nlke/KgBarRZ8Ph8CgQAT0snGI8FXMVUB4Pr3x6hareJWyPZqsjz6VQHAIxG5MQUAueQ+xU9UwKespNw8RAXIJfcpfqICPmUl5eYhKkAuuU/xExXwKSsp5fHT+18AAAD///uRU7IAAAAGSURBVAMAUMfFcA8Htj4AAAAASUVORK5CYII="
+    },
+    {
+      "type": "custom_mt57jxh7_ei3",
+      "name": "漏電ブレーカー",
+      "label": "漏電ブレーカー",
+      "cat": "カスタム",
+      "role": "contact_a",
+      "w": 78.54540529964038,
+      "h": 57.701196692112234,
+      "shapes": [
+        {
+          "t": "L",
+          "x1": -33,
+          "y1": -11,
+          "x2": 40,
+          "y2": -11,
+          "lineWidth": 0.5,
+          "lineStyle": "dot"
+        },
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": 0,
+          "x2": -30,
+          "y2": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": 10,
+          "x2": -30,
+          "y2": 10,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": 20,
+          "x2": -30,
+          "y2": 20,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "A",
+          "cx": -30,
+          "cy": 5,
+          "r": 5,
+          "sa": -90,
+          "ea": 90,
+          "ccw": true,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "A",
+          "cx": -30,
+          "cy": 15,
+          "r": 5,
+          "sa": -90,
+          "ea": 90,
+          "ccw": true,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": 10,
+          "x2": 40,
+          "y2": 10,
+          "lineWidth": 0.5,
+          "lineStyle": "dot"
+        },
+        {
+          "t": "L",
+          "x1": 40,
+          "y1": 10,
+          "x2": 40,
+          "y2": -11,
+          "lineWidth": 0.5,
+          "lineStyle": "dot"
+        },
+        {
+          "t": "L",
+          "x1": -30,
+          "y1": -3.285752978853992,
+          "x2": -38.54540529964038,
+          "y2": -20.37656357813475,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -30,
+          "y1": -3.285752978853992,
+          "x2": -30,
+          "y2": 30,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -32.44154437132579,
+          "y1": -22.20772185662912,
+          "x2": -27.55845562867421,
+          "y2": -16.714247021146008,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -27.55845562867421,
+          "y1": -22.20772185662912,
+          "x2": -32.44154437132579,
+          "y2": -16.714247021146008,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -30,
+          "y1": -27.701196692112234,
+          "x2": -30,
+          "y2": -19.155791392471855,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -3.285752978853992,
+          "x2": -8.545405299640379,
+          "y2": -20.37656357813475,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -3.285752978853992,
+          "x2": 0,
+          "y2": 30,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -2.44154437132579,
+          "y1": -22.20772185662912,
+          "x2": 2.44154437132579,
+          "y2": -16.714247021146008,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 2.44154437132579,
+          "y1": -22.20772185662912,
+          "x2": -2.44154437132579,
+          "y2": -16.714247021146008,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -27.701196692112234,
+          "x2": 0,
+          "y2": -19.155791392471855,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": -3.285752978853992,
+          "x2": 21.45459470035962,
+          "y2": -20.37656357813475,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": -3.285752978853992,
+          "x2": 30,
+          "y2": 30,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 27.55845562867421,
+          "y1": -22.20772185662912,
+          "x2": 32.44154437132579,
+          "y2": -16.714247021146008,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 32.44154437132579,
+          "y1": -22.20772185662912,
+          "x2": 27.55845562867421,
+          "y2": -16.714247021146008,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": -27.701196692112234,
+          "x2": 30,
+          "y2": -19.155791392471855,
+          "lineWidth": 0.5
+        }
+      ],
+      "terminals": [
+        {
+          "x": -30,
+          "y": 30,
+          "label": ""
+        },
+        {
+          "x": -30,
+          "y": -28,
+          "label": ""
+        },
+        {
+          "x": 0,
+          "y": 30,
+          "label": ""
+        },
+        {
+          "x": 0,
+          "y": -28,
+          "label": ""
+        },
+        {
+          "x": 30,
+          "y": 30,
+          "label": ""
+        },
+        {
+          "x": 30,
+          "y": -28,
+          "label": ""
+        }
+      ],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAAEMklEQVR4AexZyyt9XxxdLknIM0XyGCAMUAaGxhQGilIUGVIemQjlMZIy8RpIpDBAGHgW/4AUUjLwzCPvRx7l8fvdtfte3Z/rnn2+zla/2z03q3PO3muvvT/rfPbjxPKPm/8scPOfaYCbJwDMDDAzwM0dMKeAmyeAuQiaU8CcAm7ugPIpsLa2BkKPr+QRqrl69Gwc5QbU19djYGDApq957ejoAKFJ+lNJTWr/eVR2UWbAxcUFzs/PcXZ2hu3tbby+vjod5N3dHR4eHrC3tyfAe2fkp6cnoUVNarMPZ1w95V85hg1g4ENDQ+jp6cHo6KgI7OjoCDMzM1/7AgMfGxtDa2srxsfHwbYE77+SGfjExARqa2sxPT0NatIo9vGVa+TZsAFhYWE4PT3F7Ows7u/v4e/vj9DQUHh5eTmMKzAwEJeXl5ibm8Ph4SGCgoIEfH19HbgsY8CLi4vY3NwUmtQODg524BopMGwAO8/OzoaPjw8+Pj7Q1NSEtrY25OXlscoBWVlZiI2NFZnS0tICorCw0IHHAnLT09PF1GpubhbaJSUlrFIGJQakpKSAg2Wqcip0dnYiJyfnW1RVVeH6+lqkdXt7O3p7e7/lsX15eTmOj4/BLOC0GRwc/OTm5+eLjDPqhBIDOAj7LIiMjIQW4uLi4Ofnh7e3N00eNeLj48U04aIaERHxyV9fX0d/fz+7NgRlBjALcnNz8fj4iLKyMvT19TnF8PAw+HZvb29RUFDglEeNQetbr6ysFNOAWcEywtPT01DgtsbKDKAgs4CL19TUFB81wSnDBZQLoibRWkluYmIilpeXRdZYi5T9KTVgf38fV1dXWFpaQlFRkSYaGxt1c6urq3FycoKtra1vdxcjbliMNLZvOz8/Dw7U+m8G+2LNe4tFf/ffbaua4jor9Y9AIriwsICoqCiBjIwMjIyMSJGcnAxCD5eaqua9fSjKDAgICBAL1fPzs5inPMTI8P7+DkLGYz13DIL3hH0QRu6VGVBcXAwPDw9xZOUakJaWhjQJVldXQch4rKfmwcHBpya3USOB29oqM2BlZQUvLy9if09KSkJDQ4MUMTExIPRwqcljsI3LrbGmpsYWx4+vygzgwSQhIUEcVGKtR93S0lLIEB4eDkLGYz01Q0JC/qP546jtGiozgPv0zs6OOOby+Do5OQkZ+CVIyHispybXC7uxK7lVZkBFRYX4Hri5ucHGxgbq6uqk2N3dBaGHS82fRCxro8wAdtTV1SW2wczMTHBNkCE1NRWEjMd6arIP1VBqAAfn7e0NHoejo6Mhg4/1E5qQ8VhPzf/1OYDBuyKUZwBPdfx212NGd3c3CD1calJbD/dvOMoN4F5N6BkEeYRqrh49G0e5ATZhV7maBrjKm/qtcZoZ8FvOuoqumQGu8qZ+a5xmBvyWs66ia2aAq7wpveP8W96/AAAA///0OEsuAAAABklEQVQDAAAVvY735HQnAAAAAElFTkSuQmCC"
+    },
+    {
+      "type": "custom_mt57stff_0vh",
+      "name": "CP",
+      "label": "CP",
+      "cat": "カスタム",
+      "role": "contact_a",
+      "w": 40.98694967096617,
+      "h": 32.96084901289865,
+      "shapes": [
+        {
+          "t": "L",
+          "x1": 20,
+          "y1": 8.714247021146022,
+          "x2": 11.454594700359621,
+          "y2": -8.37656357813475
+        },
+        {
+          "t": "L",
+          "x1": 20,
+          "y1": 8.714247021146022,
+          "x2": 20,
+          "y2": 17.259652320786415
+        },
+        {
+          "t": "L",
+          "x1": 17.55845562867421,
+          "y1": -10.20772185662912,
+          "x2": 22.44154437132579,
+          "y2": -4.714247021146022
+        },
+        {
+          "t": "L",
+          "x1": 22.44154437132579,
+          "y1": -10.20772185662912,
+          "x2": 17.55845562867421,
+          "y2": -4.714247021146022
+        },
+        {
+          "t": "L",
+          "x1": 20,
+          "y1": -15.701196692112234,
+          "x2": 20,
+          "y2": -7.155791392471841
+        },
+        {
+          "t": "L",
+          "x1": -10,
+          "y1": 8.714247021146022,
+          "x2": -18.54540529964038,
+          "y2": -8.37656357813475
+        },
+        {
+          "t": "L",
+          "x1": -10,
+          "y1": 8.714247021146022,
+          "x2": -10,
+          "y2": 17.259652320786415
+        },
+        {
+          "t": "L",
+          "x1": -12.44154437132579,
+          "y1": -10.20772185662912,
+          "x2": -7.55845562867421,
+          "y2": -4.714247021146022
+        },
+        {
+          "t": "L",
+          "x1": -7.55845562867421,
+          "y1": -10.20772185662912,
+          "x2": -12.44154437132579,
+          "y2": -4.714247021146022
+        },
+        {
+          "t": "L",
+          "x1": -10,
+          "y1": -15.701196692112234,
+          "x2": -10,
+          "y2": -7.155791392471841
+        },
+        {
+          "t": "L",
+          "x1": -14,
+          "y1": 0,
+          "x2": 15,
+          "y2": 0,
+          "lineWidth": 0.5,
+          "lineStyle": "dot"
+        }
+      ],
+      "terminals": [
+        {
+          "x": 20,
+          "y": 17,
+          "label": ""
+        },
+        {
+          "x": 20,
+          "y": -16,
+          "label": ""
+        },
+        {
+          "x": -10,
+          "y": 17,
+          "label": ""
+        },
+        {
+          "x": -10,
+          "y": -16,
+          "label": ""
+        }
+      ],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAACaklEQVR4AexWTatxURR+undwL6VIDP0CQ2YMyAAjGclMCgPyQ5QBcyNJKSMMZO5rxpAJAwP5jKKk923t8vbGPXEv56N79qm17bP3c/Za69nP2tvbH5U/b1D5wwlQuQDAFcAVoHIGeAmoXAD8EOQlwEtA5QzwElC5ANR3C1xvOC+Ba0bU9i6pAgqFAgKBAHa73V2eq9Uqw06n07vYZwCSErBcLjEcDh+Kd71eM+z5fH4I/1OQ6ARQArVaDf1+H/V6ncWZy+VwPB5Z/7ppNpsMW6lU2FQ+n8dms2F9MRrRCSgWi0in0+j1ejgcDiyH2WyGz89P1v+/Idknk0m0223s93s2NZ/PodFoWF+MRnQC/H4/7HY7BoMB4vE43G43IpHIl7n4fD44nU50u13EYjF4PB4kEgl8fHx8iX/FoOgEmEwmUGKtVgvlchnb7RbZbBbhcPjGotEo6NDrdDp4f38HlYrD4XhFnoJriE4AeSYVWK1WrFYrlhiNCZnRaITFYkGj0fhXMkLYV4xLQgCpIBgMgk72UCiEUqkkaKSSVCoFUsHl0HxFokJrSEIAOScV0FlAO3s6nWhI0LxeL1wuF1MBkSYIfMGEZASQCgwGAyaTieAVeMlHq9XCbDZjsVg89Kfp8t1PfiUjgIIjBYxGI+reNZvNhvF4fBf3LEBSAp4NVozvJSVAr9cjk8k8nMd3sA8vegWUlAC6Cch0Ot1VGLevhCOjK/F29vGRe0hJCbgXjBzznAA5WFeST64AJe2GHLFwBcjBupJ8cgUoaTfkiIUrQA7WleSTK0BJuyFHLFwBcrCuJJ+/TgHfJfcvAAAA///+24aQAAAABklEQVQDALViuXCyn65FAAAAAElFTkSuQmCC"
+    },
+    {
+      "type": "custom_mt6pr5m0_e2z",
+      "name": "マグネット接点",
+      "label": "マグネット接点",
+      "cat": "カスタム",
+      "role": "contact_a",
+      "w": 72,
+      "h": 28,
+      "shapes": [
+        {
+          "t": "L",
+          "x1": -34,
+          "y1": 0,
+          "x2": 25,
+          "y2": 0,
+          "lineWidth": 0.5,
+          "lineStyle": "dot"
+        },
+        {
+          "t": "A",
+          "cx": -30,
+          "cy": -8,
+          "r": 3,
+          "sa": 90,
+          "ea": 270,
+          "ccw": false,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -39,
+          "y1": -8,
+          "x2": -30,
+          "y2": 9,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -30,
+          "y1": -5,
+          "x2": -30,
+          "y2": -15,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -30,
+          "y1": 9,
+          "x2": -30,
+          "y2": 13,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "A",
+          "cx": 0,
+          "cy": -8,
+          "r": 3,
+          "sa": 90,
+          "ea": 270,
+          "ccw": false,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -9,
+          "y1": -8,
+          "x2": 0,
+          "y2": 9,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -5,
+          "x2": 0,
+          "y2": -15,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": 9,
+          "x2": 0,
+          "y2": 13,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "A",
+          "cx": 30,
+          "cy": -8,
+          "r": 3,
+          "sa": 90,
+          "ea": 270,
+          "ccw": false,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 21,
+          "y1": -8,
+          "x2": 30,
+          "y2": 9,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": -5,
+          "x2": 30,
+          "y2": -15,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": 9,
+          "x2": 30,
+          "y2": 13,
+          "lineWidth": 0.5
+        }
+      ],
+      "terminals": [
+        {
+          "x": -30,
+          "y": -15,
+          "label": ""
+        },
+        {
+          "x": -30,
+          "y": 13,
+          "label": ""
+        },
+        {
+          "x": 0,
+          "y": -15,
+          "label": ""
+        },
+        {
+          "x": 0,
+          "y": 13,
+          "label": ""
+        },
+        {
+          "x": 30,
+          "y": -15,
+          "label": ""
+        },
+        {
+          "x": 30,
+          "y": 13,
+          "label": ""
+        }
+      ],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAACrklEQVR4AexYPWsqURA9GNIkJJAPSBUSUiQhEFKGQJoERAT9A/4JxdrCQkGxsbAUO0VBRFHxA7TQQlux0EJQsBFBRVHQxvecBZuge316X4rduzjsxxzmzpx7Zi6o+aPySwOVX4IAlQsAQgFCASpnQLSAygUghqBoAdECKmdAtIDKBaC+U+DnhosW+MmI2t65K8DtdoNsFyIJR8Ybu0u8NYYrAdVqFcFgEN1udx1/671eryMcDqNWq23FrB3tdhvxeBzFYnH9idudCwG9Xg+lUgl2ux3z+Vw2ueFwiEwmA6fTiclkIoudTqeIRqNwuVzo9/tY/X0pi9/HeTABzWYTFosFqVQKi8VCNgdSxhrLImo0GsFsNktxZ7OZbNxDnAcT8Pz8jM/PTylRvV6Px8dHWK3WjTnd3t7i+/sb2WwWHx8feHh4gMPh2Ii9uLiATqdDuVzG6+srnp6e4PF4NmIP+XgwAbS40WiUEszn8zg7O4PNZoPJZNpo6XQa5+fniEQiuLy8lMXGYjEQEURCIBDA29sbLcfVuBBwd3cHg8EAGlbU43IZHh8f4/r6GuPxGIPBQA4KjUaDq6srNBoNJJNJWey+Ti4E0OJEwPv7O4gMv9+PUCi01eKrif719YWbmxt4vd6tOIqRy+UkcmnGdDodWoqrcSOAiiESCoUCc7dOT0+loujYpMJYFVHcVqvFjMuKs8nPjQAKTonSYKM+p3c5o7lxf3+/09mu1WoltVQqFbmQe/m4EkDD7eTkRBpyrGyOjo6kopbLJQsq+V9eXvA/jkOuBFCmiUQCPp+PHplGPU7GBK4AFJNirx65/rgTwDW7XwimeAJYHAoCWAwp3S8UoPQdZtUnFMBiSOl+oQCl7zCrPqEAFkNK9wsFKH2HWfUJBbAYUrpfKEBpO/yv9fwFAAD//yXoOooAAAAGSURBVAMAC/XycKTjr1cAAAAASUVORK5CYII="
+    },
+    {
+      "type": "custom_mt6q6rw0_dez",
+      "name": "ブレーカー接点",
+      "label": "ブレーカー接点",
+      "cat": "カスタム",
+      "role": "contact_a",
+      "w": 70.9869496709662,
+      "h": 32.96084901289865,
+      "shapes": [
+        {
+          "t": "L",
+          "x1": -25,
+          "y1": 7.714247021146008,
+          "x2": -33.54540529964038,
+          "y2": -9.37656357813475
+        },
+        {
+          "t": "L",
+          "x1": -25,
+          "y1": 7.714247021146008,
+          "x2": -25,
+          "y2": 16.259652320786415
+        },
+        {
+          "t": "L",
+          "x1": -27.44154437132582,
+          "y1": -11.20772185662912,
+          "x2": -22.55845562867418,
+          "y2": -5.714247021146008
+        },
+        {
+          "t": "L",
+          "x1": -22.55845562867418,
+          "y1": -11.20772185662912,
+          "x2": -27.44154437132582,
+          "y2": -5.714247021146008
+        },
+        {
+          "t": "L",
+          "x1": -25,
+          "y1": -16.701196692112234,
+          "x2": -25,
+          "y2": -8.155791392471855
+        },
+        {
+          "t": "L",
+          "x1": 5,
+          "y1": 7.714247021146008,
+          "x2": -3.545405299640379,
+          "y2": -9.37656357813475
+        },
+        {
+          "t": "L",
+          "x1": 5,
+          "y1": 7.714247021146008,
+          "x2": 5,
+          "y2": 16.259652320786415
+        },
+        {
+          "t": "L",
+          "x1": 2.5584556286741815,
+          "y1": -11.20772185662912,
+          "x2": 7.4415443713258185,
+          "y2": -5.714247021146008
+        },
+        {
+          "t": "L",
+          "x1": 7.4415443713258185,
+          "y1": -11.20772185662912,
+          "x2": 2.5584556286741815,
+          "y2": -5.714247021146008
+        },
+        {
+          "t": "L",
+          "x1": 5,
+          "y1": -16.701196692112234,
+          "x2": 5,
+          "y2": -8.155791392471855
+        },
+        {
+          "t": "L",
+          "x1": 35,
+          "y1": 7.714247021146008,
+          "x2": 26.45459470035962,
+          "y2": -9.37656357813475
+        },
+        {
+          "t": "L",
+          "x1": 35,
+          "y1": 7.714247021146008,
+          "x2": 35,
+          "y2": 16.259652320786415
+        },
+        {
+          "t": "L",
+          "x1": 32.55845562867418,
+          "y1": -11.20772185662912,
+          "x2": 37.44154437132582,
+          "y2": -5.714247021146008
+        },
+        {
+          "t": "L",
+          "x1": 37.44154437132582,
+          "y1": -11.20772185662912,
+          "x2": 32.55845562867418,
+          "y2": -5.714247021146008
+        },
+        {
+          "t": "L",
+          "x1": 35,
+          "y1": -16.701196692112234,
+          "x2": 35,
+          "y2": -8.155791392471855
+        },
+        {
+          "t": "L",
+          "x1": -28,
+          "y1": 0,
+          "x2": 31,
+          "y2": 0,
+          "lineWidth": 0.5,
+          "lineStyle": "dot"
+        }
+      ],
+      "terminals": [
+        {
+          "x": -25,
+          "y": 16,
+          "label": ""
+        },
+        {
+          "x": -25,
+          "y": -17,
+          "label": ""
+        },
+        {
+          "x": 5,
+          "y": 16,
+          "label": ""
+        },
+        {
+          "x": 5,
+          "y": -17,
+          "label": ""
+        },
+        {
+          "x": 35,
+          "y": 16,
+          "label": ""
+        },
+        {
+          "x": 35,
+          "y": -17,
+          "label": ""
+        }
+      ],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAADBElEQVR4AexYO0srQRg9K+IDC/EB/gFrC3+AnYUiNoqFYG0hCDbWolhpoWihaKGIimin2AhiJaQIaRKSkCKQNEmKhLwgT+7NGcJVTExGM8sud2fJt7Mzc/abb853ZmZJ1x+HX11w+KUJcLgAoBWgFeBwBvQScLgA9Caol4BeAg5nQC8BhwvAeafA14TrJfCVEVX1UCgEmow/4miqsTL+TFPA3NwcHh8fZWLAysoKLi8vpbDr6+s4PDyUwsqAlBMQi8UQjUZRrVbh9/tbxpBKpZBIJJDNZhEIBFpic7kcMpkM4vG4tLJaOqx3KiOAgV1cXIisHx8fo/ZXI1wuF97e3upDfRSc+PX1tcj66ekpCoUCvF4vnp+fP0D1p3w+j/v7exwcHOD8/BzpdBrhcFi01SEdFcoIGBsbg9vtxtPTkwhoYGAAo6OjKJfLov75NjQ09G/CpVIJvb29GB4eRqVS+QwTz/QTDAYFOVRAX18fBgcHBcEC0OFNGQGMY3Z2Fj6fD+Pj41hdXcXu7i6mp6fZ1WAzMzNC/iMjI1hbWxPY+fn5Bhwb6Jdld3c3Njc3sb29jaWlJTZ1bEoJ4KRot7e3eH19xdHREZaXl5vayckJmE3K+uXlBWdnZ01xfH9/fx+GYeDh4QETExPgGB3PvO5AKQH0yWxFIhEkk0lWWxplzyUgi6WzZvsE239ryglgdmhc53t7e7i5ufnWOJmFhQX09/dja2vrWxx98EhdXFwUe4HH4/ntfBveU04AR6AKuGFdXV2x2tJIVrFYBE+FlsBaJ/3WCtzd3bFQYqYQwElxGfT09LQNcmpqCjzq+N3QDjw5OQn65DdBO6xsvykEcHDDMFhIGXd3KWANxI2zVij7mUaAsghNdmQaAfy03djYkAr//f0dOzs7UlhunDxepcASINMIMAxDnN0SMQicYRgy0B9h6bCdmUZAu4Ht0q8JsEsmrIpDK8Aq5u0yrlaAXTJhVRxaAVYxb5dxtQLskgmr4tAKsIp5u4yrFWCXTFgVx3+ngJ8S+RcAAP//GIKY7AAAAAZJREFUAwAsQBx/CtHH2AAAAABJRU5ErkJggg=="
+    },
+    {
+      "type": "custom_muajd69w_hi7",
+      "name": "インバーター2",
+      "label": "インバーター2",
+      "cat": "カスタム",
+      "role": "contact_main",
+      "w": 82,
+      "h": 44,
+      "shapes": [
+        {
+          "t": "R",
+          "x": -40,
+          "y": -20,
+          "w": 80,
+          "h": 40,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "C",
+          "cx": 30,
+          "cy": -20,
+          "r": 2,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "C",
+          "cx": 0,
+          "cy": -20,
+          "r": 2,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "C",
+          "cx": -30,
+          "cy": -20,
+          "r": 2,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "C",
+          "cx": 30,
+          "cy": 20,
+          "r": 2,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "C",
+          "cx": 0,
+          "cy": 20,
+          "r": 2,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "C",
+          "cx": -30,
+          "cy": 20,
+          "r": 2,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "C",
+          "cx": -40,
+          "cy": 0,
+          "r": 2,
+          "lineWidth": 0.5
+        }
+      ],
+      "terminals": [
+        {
+          "id": "t0",
+          "x": -30,
+          "y": -20,
+          "label": ""
+        },
+        {
+          "id": "t1",
+          "x": 0,
+          "y": -20,
+          "label": ""
+        },
+        {
+          "id": "t2",
+          "x": 30,
+          "y": -20,
+          "label": ""
+        },
+        {
+          "id": "t3",
+          "x": -30,
+          "y": 20,
+          "label": ""
+        },
+        {
+          "id": "t4",
+          "x": 0,
+          "y": 20,
+          "label": ""
+        },
+        {
+          "id": "t5",
+          "x": 30,
+          "y": 20,
+          "label": ""
+        },
+        {
+          "id": "t6",
+          "x": -40,
+          "y": 0,
+          "label": ""
+        }
+      ],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAACuElEQVR4AexYT6sxURh/EgvKV7CwIaWIL2CJjSS2FhbKTlnJSlbKTllY2JJkg6UvQJQSGwtfQbEg7/v+To2m6Y4xnZn3zr1z1K9znj/n95zzO8+5Nxx/bP5xkM0/QgCbNwCJDhAdYHMFxBOweQOIP4LiCYgnYHMFxBOweQPw/xc4n88kYblcUiqVonw+T4fD4eWX4vJxtVpRJpNhwFweU87BBU5wo4Y8rvcClfncT2A8HlMikWAolUp0PB5pvV5TOp1mPimmHAuFAu12OwbMlXG5DS5wghs1pBhqKw+k1+YWAAWdTie1220qFoswyePxULVaZT74v0K5XCasAzD/KkfygQucIEcN+LEONi8MEQCbyGaz1Gg0aLvd0mazoUqlQvCpoVarsVzkY66WBz+4wIlc1IAPNY2AYQJIm/F6vexmJfvd6Ha7CXiXI8Vw4+CWbKNGwwUwamP/i0cIwKv06XSi5/NJ9/udl+pb1nN1wH6/p8ViwQSo1+vfcgDeolwC8Ba3wnouAUKhECWTSXI4HNRqtaxwHt174BIA1fx+PxPA5XLB/HHgFuDHnVixYSGAQhBu83K50OPx+IjndrsR8EkyOMH9Sa6eHMM6YDKZULPZpEgkQtFolLrdLsGnBnyhifzLBTBXy4MfXOBELmrAp+eQ73INEQC3gy80g8GA1bper9TpdAg+NfR6PdYpWIu5Wh784AInyFEDPqyDrQWtOLcAuVyO8CMF0O/3KRAIUCwWo9ls9vIjpsRwOKRwOMyAuTIut8EFTnCjhhRDba0DasW5BfD5fCQBP1TM53MajUYUDAZffikuH+PxOE2nUwbM5THlHFzgBDdqyONaB9SKcwugVcDqcSGA1W/I7P2JDjBbYavziw6w+g2ZvT/RAWYrbHV+0QFWvyGz9yc6wGyFrc7/6zpAr+B/AQAA//8D3KuSAAAABklEQVQDADOdjn/Ejc7qAAAAAElFTkSuQmCC"
+    },
+    {
+      "type": "custom_muc0o9zb_dgj",
+      "name": "漏電ブレーカー",
+      "label": "漏電ブレーカー",
+      "cat": "カスタム",
+      "role": "contact_main",
+      "w": 78.54540529964038,
+      "h": 57.701196692112234,
+      "shapes": [
+        {
+          "t": "L",
+          "x1": -33,
+          "y1": -11,
+          "x2": 40,
+          "y2": -11,
+          "lineWidth": 0.5,
+          "lineStyle": "dot"
+        },
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": 0,
+          "x2": -30,
+          "y2": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": 10,
+          "x2": -30,
+          "y2": 10,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": 20,
+          "x2": -30,
+          "y2": 20,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "A",
+          "cx": -30,
+          "cy": 5,
+          "r": 5,
+          "sa": -90,
+          "ea": 90,
+          "ccw": true,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "A",
+          "cx": -30,
+          "cy": 15,
+          "r": 5,
+          "sa": -90,
+          "ea": 90,
+          "ccw": true,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": 10,
+          "x2": 40,
+          "y2": 10,
+          "lineWidth": 0.5,
+          "lineStyle": "dot"
+        },
+        {
+          "t": "L",
+          "x1": 40,
+          "y1": 10,
+          "x2": 40,
+          "y2": -11,
+          "lineWidth": 0.5,
+          "lineStyle": "dot"
+        },
+        {
+          "t": "L",
+          "x1": -30,
+          "y1": -3.285752978853992,
+          "x2": -38.54540529964038,
+          "y2": -20.37656357813475,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -30,
+          "y1": -3.285752978853992,
+          "x2": -30,
+          "y2": 30,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -32.44154437132579,
+          "y1": -22.20772185662912,
+          "x2": -27.55845562867421,
+          "y2": -16.714247021146008,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -27.55845562867421,
+          "y1": -22.20772185662912,
+          "x2": -32.44154437132579,
+          "y2": -16.714247021146008,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -30,
+          "y1": -27.701196692112234,
+          "x2": -30,
+          "y2": -19.155791392471855,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -3.285752978853992,
+          "x2": -8.545405299640379,
+          "y2": -20.37656357813475,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -3.285752978853992,
+          "x2": 0,
+          "y2": 30,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -2.44154437132579,
+          "y1": -22.20772185662912,
+          "x2": 2.44154437132579,
+          "y2": -16.714247021146008,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 2.44154437132579,
+          "y1": -22.20772185662912,
+          "x2": -2.44154437132579,
+          "y2": -16.714247021146008,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -27.701196692112234,
+          "x2": 0,
+          "y2": -19.155791392471855,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": -3.285752978853992,
+          "x2": 21.45459470035962,
+          "y2": -20.37656357813475,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": -3.285752978853992,
+          "x2": 30,
+          "y2": 30,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 27.55845562867421,
+          "y1": -22.20772185662912,
+          "x2": 32.44154437132579,
+          "y2": -16.714247021146008,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 32.44154437132579,
+          "y1": -22.20772185662912,
+          "x2": 27.55845562867421,
+          "y2": -16.714247021146008,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": -27.701196692112234,
+          "x2": 30,
+          "y2": -19.155791392471855,
+          "lineWidth": 0.5
+        }
+      ],
+      "terminals": [
+        {
+          "x": -30,
+          "y": -25,
+          "label": ""
+        },
+        {
+          "x": -30,
+          "y": 25,
+          "label": ""
+        },
+        {
+          "x": 0,
+          "y": -25,
+          "label": ""
+        },
+        {
+          "x": 0,
+          "y": 25,
+          "label": ""
+        },
+        {
+          "x": 30,
+          "y": -25,
+          "label": ""
+        },
+        {
+          "x": 30,
+          "y": 25,
+          "label": ""
+        }
+      ],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAAEMklEQVR4AexZyyt9XxxdLknIM0XyGCAMUAaGxhQGilIUGVIemQjlMZIy8RpIpDBAGHgW/4AUUjLwzCPvRx7l8fvdtfte3Z/rnn2+zla/2z03q3PO3muvvT/rfPbjxPKPm/8scPOfaYCbJwDMDDAzwM0dMKeAmyeAuQiaU8CcAm7ugPIpsLa2BkKPr+QRqrl69Gwc5QbU19djYGDApq957ejoAKFJ+lNJTWr/eVR2UWbAxcUFzs/PcXZ2hu3tbby+vjod5N3dHR4eHrC3tyfAe2fkp6cnoUVNarMPZ1w95V85hg1g4ENDQ+jp6cHo6KgI7OjoCDMzM1/7AgMfGxtDa2srxsfHwbYE77+SGfjExARqa2sxPT0NatIo9vGVa+TZsAFhYWE4PT3F7Ows7u/v4e/vj9DQUHh5eTmMKzAwEJeXl5ibm8Ph4SGCgoIEfH19HbgsY8CLi4vY3NwUmtQODg524BopMGwAO8/OzoaPjw8+Pj7Q1NSEtrY25OXlscoBWVlZiI2NFZnS0tICorCw0IHHAnLT09PF1GpubhbaJSUlrFIGJQakpKSAg2Wqcip0dnYiJyfnW1RVVeH6+lqkdXt7O3p7e7/lsX15eTmOj4/BLOC0GRwc/OTm5+eLjDPqhBIDOAj7LIiMjIQW4uLi4Ofnh7e3N00eNeLj48U04aIaERHxyV9fX0d/fz+7NgRlBjALcnNz8fj4iLKyMvT19TnF8PAw+HZvb29RUFDglEeNQetbr6ysFNOAWcEywtPT01DgtsbKDKAgs4CL19TUFB81wSnDBZQLoibRWkluYmIilpeXRdZYi5T9KTVgf38fV1dXWFpaQlFRkSYaGxt1c6urq3FycoKtra1vdxcjbliMNLZvOz8/Dw7U+m8G+2LNe4tFf/ffbaua4jor9Y9AIriwsICoqCiBjIwMjIyMSJGcnAxCD5eaqua9fSjKDAgICBAL1fPzs5inPMTI8P7+DkLGYz13DIL3hH0QRu6VGVBcXAwPDw9xZOUakJaWhjQJVldXQch4rKfmwcHBpya3USOB29oqM2BlZQUvLy9if09KSkJDQ4MUMTExIPRwqcljsI3LrbGmpsYWx4+vygzgwSQhIUEcVGKtR93S0lLIEB4eDkLGYz01Q0JC/qP546jtGiozgPv0zs6OOOby+Do5OQkZ+CVIyHispybXC7uxK7lVZkBFRYX4Hri5ucHGxgbq6uqk2N3dBaGHS82fRCxro8wAdtTV1SW2wczMTHBNkCE1NRWEjMd6arIP1VBqAAfn7e0NHoejo6Mhg4/1E5qQ8VhPzf/1OYDBuyKUZwBPdfx212NGd3c3CD1calJbD/dvOMoN4F5N6BkEeYRqrh49G0e5ATZhV7maBrjKm/qtcZoZ8FvOuoqumQGu8qZ+a5xmBvyWs66ia2aAq7wpveP8W96/AAAA///0OEsuAAAABklEQVQDAAAVvY735HQnAAAAAElFTkSuQmCC"
+    },
+    {
+      "type": "custom_mueugeai_v8q",
+      "name": "インバーター＜制御＞",
+      "label": "インバーター＜制御＞",
+      "cat": "カスタム",
+      "role": "",
+      "w": 110,
+      "h": 79,
+      "shapes": [
+        {
+          "t": "R",
+          "x": -55,
+          "y": -37.5,
+          "w": 110,
+          "h": 75,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "C",
+          "cx": -10,
+          "cy": -37.5,
+          "r": 2,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "C",
+          "cx": 15,
+          "cy": -37.5,
+          "r": 2,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "C",
+          "cx": 40,
+          "cy": -37.5,
+          "r": 2,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "C",
+          "cx": -35,
+          "cy": -37.5,
+          "r": 2,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "C",
+          "cx": -35,
+          "cy": 37.5,
+          "r": 2,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -35,
+          "y1": 4.752708216128809,
+          "x2": -41.25270821612878,
+          "y2": -8.64595224700436
+        },
+        {
+          "t": "L",
+          "x1": -35,
+          "y1": 4.752708216128809,
+          "x2": -35,
+          "y2": 10.558794416819865
+        },
+        {
+          "t": "L",
+          "x1": -35,
+          "y1": -7.306086200691041,
+          "x2": -35,
+          "y2": -13.558794416819865
+        },
+        {
+          "t": "L",
+          "x1": -35,
+          "y1": -12.5,
+          "x2": -35,
+          "y2": -35.5
+        },
+        {
+          "t": "L",
+          "x1": -35,
+          "y1": 7.5,
+          "x2": -35,
+          "y2": 35.5
+        }
+      ],
+      "terminals": [
+        {
+          "x": -10,
+          "y": -37.5,
+          "label": ""
+        },
+        {
+          "x": 15,
+          "y": -37.5,
+          "label": ""
+        },
+        {
+          "x": 40,
+          "y": -37.5,
+          "label": ""
+        },
+        {
+          "x": -35,
+          "y": -37.5,
+          "label": ""
+        },
+        {
+          "x": -35,
+          "y": 37.5,
+          "label": ""
+        }
+      ],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAADFklEQVR4AeyZTUgqYRSGX4poFbVqFREEUe0KWrTpn4raRFAUtIkogiBaRLRoE7QIok27SnGpuHAniCKICIKKP7gRQXShCwXBHwQF5d57BpLUGWfmOoLjzMAZ5pvzzplznu+MzDcO/FH4NgCFbyoAhTcA1A5QO0DhBNRHQKoG8Hq9cDqdbcPF43FYLJa2mnK5DLPZjFwu11Zns9kQiUTaaoQ4BXdAsVjE09MTq11cXODk5ATn5+c4Pj5m1Tw8PGB3dxc3NzfY2tpi1VD8tbU13N7eYmNjg1Ozt7eH6+tr7O/v4+7urkVHuQopnjSCAZBYr9fDbre3mN/vJzdjNCtsGofDgWq1ymiSyWRLjJ9rstksoykUCpyaRCLBaGjncrkadJQjnRdqogBQ0KurK7jd7gYLBAKYnp7G2NgY6FFo9tPY4/Hg+fkZh4eHMJlMDdeT/8c0Gg0ODg7w8fHBqaHH6OjoCI+Pj/D5fHXd5eUlpSjKRAPgij4zM4Px8XEMDw9zSXB2doa3tzfMz89zalZXV/H+/g5qcy7R5OQkXl9f8T8FN8eUDEBzYLmMVQBymSmp8myOo3ZAMxGljSXrgH8flmTJTjIAqVQK+XxedhA6BhAOh/H5+YmJiQmMjo4qD8D39zesVivW19dxf3+vPAA7OzsIBoMolUrY3NxUHoDt7W1m9qkLxKzCeoVUx78BQ0NDIAi0mCEIvVKY0Dw6BkA3IgBzc3PMB5FarUanZGOSAKBlMHVCKBTC4OCgbIqnRCUBQIEymQzS6TQdysokA7CwsICpqSlZFU/JSgaAgsnRVABynDUxOfNp1Q7gI9TvfrUD+n2G+eqTrAOi0SjoZahSqfDds6f8ogF8fX1heXm5weglKBaLgf7QXFpaavA1a7s5pm8TYumKAnB6esqs+Wnd/9sWFxfr952dnWXV/NZ385hyrCcj4EAwgJGREby8vLCaVquFwWCATqeD0Whk1XBd243zlKuA2hmJYACMus2OWn9lZaWNojddkgHozfL4s1IB8DPqb4XaAf09v/zVqR3Az0heCrHZ/gUAAP//BSiHiQAAAAZJREFUAwBW0sF/xFJQ7AAAAABJRU5ErkJggg=="
+    },
+    {
+      "type": "custom_mug7x4o2_j2y",
+      "name": "電磁接触器",
+      "label": "電磁接触器",
+      "cat": "カスタム",
+      "role": "contact_main",
+      "w": 79,
+      "h": 75,
+      "shapes": [
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": 15,
+          "x2": 40,
+          "y2": 15,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 40,
+          "y1": 25,
+          "x2": 40,
+          "y2": 15,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 40,
+          "y1": 25,
+          "x2": 30,
+          "y2": 25,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": 15,
+          "x2": 30,
+          "y2": 5,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": 25,
+          "x2": 30,
+          "y2": 35,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -30,
+          "y1": 15,
+          "x2": -20,
+          "y2": 15,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -20,
+          "y1": 25,
+          "x2": -20,
+          "y2": 15,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -20,
+          "y1": 25,
+          "x2": -30,
+          "y2": 25,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -30,
+          "y1": 15,
+          "x2": -30,
+          "y2": 5,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -30,
+          "y1": 25,
+          "x2": -30,
+          "y2": 35,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -34,
+          "y1": -25,
+          "x2": 25,
+          "y2": -25,
+          "lineWidth": 0.5,
+          "lineStyle": "dot"
+        },
+        {
+          "t": "A",
+          "cx": -30,
+          "cy": -33,
+          "r": 3,
+          "sa": 90,
+          "ea": -90.00000000000001,
+          "ccw": false,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -39,
+          "y1": -33,
+          "x2": -30,
+          "y2": -16,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -30,
+          "y1": -30,
+          "x2": -30,
+          "y2": -40,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -30,
+          "y1": -16,
+          "x2": -30,
+          "y2": -12,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "A",
+          "cx": 0,
+          "cy": -33,
+          "r": 3,
+          "sa": 90,
+          "ea": -90.00000000000001,
+          "ccw": false,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -9,
+          "y1": -33,
+          "x2": 0,
+          "y2": -16,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -30,
+          "x2": 0,
+          "y2": -40,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -16,
+          "x2": 0,
+          "y2": -12,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "A",
+          "cx": 30,
+          "cy": -33,
+          "r": 3,
+          "sa": 90,
+          "ea": -90.00000000000001,
+          "ccw": false,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 21,
+          "y1": -33,
+          "x2": 30,
+          "y2": -16,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": -30,
+          "x2": 30,
+          "y2": -40,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": -16,
+          "x2": 30,
+          "y2": -12,
+          "lineWidth": 0.5
+        },
+        {
+          "t": "L",
+          "x1": -30,
+          "y1": -12,
+          "x2": -30,
+          "y2": 5
+        },
+        {
+          "t": "L",
+          "x1": 30,
+          "y1": -12,
+          "x2": 30,
+          "y2": 5
+        },
+        {
+          "t": "L",
+          "x1": 0,
+          "y1": -12,
+          "x2": 0,
+          "y2": 35
+        }
+      ],
+      "terminals": [
+        {
+          "x": -30,
+          "y": -40,
+          "label": ""
+        },
+        {
+          "x": -30,
+          "y": 35,
+          "label": ""
+        },
+        {
+          "x": 0,
+          "y": -40,
+          "label": ""
+        },
+        {
+          "x": 0,
+          "y": 35,
+          "label": ""
+        },
+        {
+          "x": 30,
+          "y": -40,
+          "label": ""
+        },
+        {
+          "x": 30,
+          "y": 35,
+          "label": ""
+        }
+      ],
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAYAAAChS3wfAAADqklEQVR4AexZTSh0URh+7iQLP0XCCqVkj5IUwwb5iyJRNhYWZGHB1taGBfJvo5SS/1ixQ4jCioWtsvH/W+b75jk1mzFz51z3FWbu5DHde57znPc89z3n3vuO61+Ef1yI8I9jQIQnAJwMcDIgwh1wlkCEJ4D8JtjY2IjOzk4tX5ubm0HokKlJbR2uFY7oEpidncXJyYnW+EtLSzg8PNTibm1tgbi9vdXiWyGJGLC3t4eVlRWMjo7C+2RtOv7R0RHm5uYwMTEBj8djyj07O8Pk5CSmp6fx/v5uyv1qo20Drq+vMTQ0hPX1daSmpprG8fz8jLGxMcVNSkoy5bJxamoKa2triI+P5+G3wLYBKSkpqKqqwvb2NkpLS9HS0oLh4eGAwcbExCju/v4+8vLy0NTUpLIhINl7srq6GpeXl8jKykJrayuWl5e9Z2X/bBvAcBhocXEx5ufn1YSys7MRDD09PXC5XMqkhYWFoDz27+jowNvbG1ZXV9HQ0AAayPEkIWIAU5RZcHV1hYKCArS3t5uirKxMmZCTk2PKow517+/v1bKRmLi/hogBFK2pqUF5eTkeHh7A21V3dzeCgUuktrYWNzc3qKysDMpj/8HBQdTV1am94Pj4mEOJQsyAqKgotb65c3NDDBUllw03UF0u9bgh8lsSYgYwqIqKCiQnJ2s9CxQVFSExMREHBwfsagoulYSEBOzs7JjyvtIoagADSE9Ph+4DC+8g3BDZLxTi4uKgc+sMpePfLm4AJ68bqGEYMAzDP6aAx9SkdsBGGyfFDbARy490dQz4Edt/0aBOBkhfDL61PT09ScuCmtSWFhbPgOjoaMTGxkrHqTSpLS0sboB0gN+tJ27Ax8cH7u7u1NMgq0OE1CReX1/FdcUNKCwsxO7uLurr69VLTF9fHxYXF217kJaWBr47UJfo6upSVSW7wuIGMDCWsIj+/n6cnp7ajVH17+3txcjIiCqPUZuv3o+Pj6rNzj9xA/iC43a74fYiPz/fTmyf+lLTB8PQe4T+JOJ3QtwAvuMPDAyAmJmZ8RvO3iE1fQhVUNUdSdyAtrY2VR0eHx9X5bGSkhJkZGToxhOUx98FqOkD64QswwXtoNkgbsDLywtY8jo/P8fFxQVY2c3NzdUMx5yWmZkJ6hIbGxuQ0BU3wHwKv6/VMUD6mmxubqqSt44ufyEidLgspFJbh2uF42SAFbfCketkQDheVStzcjLAilvhyHUyIByvqpU5ORlgxa2/wLUa438AAAD//woi39sAAAAGSURBVAMAAVZkf6fEnAcAAAAASUVORK5CYII="
+    }
+  ],
+  "wireNoRule": "MC1",
+  "layers": [
+    {
+      "name": "回路",
+      "color": "#1d6fb5",
+      "visible": true,
+      "locked": false,
+      "active": true,
+      "lineWidth": 0.5,
+      "lineDash": "solid",
+      "fontSize": null,
+      "attr": ""
+    },
+    {
+      "name": "配線",
+      "color": "#0F6E56",
+      "visible": true,
+      "locked": false,
+      "active": false,
+      "lineWidth": 1,
+      "lineDash": "solid",
+      "fontSize": null,
+      "attr": ""
+    },
+    {
+      "name": "注記",
+      "color": "#b45309",
+      "visible": true,
+      "locked": false,
+      "active": false,
+      "lineWidth": 1,
+      "lineDash": "solid",
+      "fontSize": null,
+      "attr": ""
+    },
+    {
+      "name": "外形",
+      "color": "#444",
+      "visible": true,
+      "locked": false,
+      "active": false,
+      "lineWidth": 1,
+      "lineDash": "solid",
+      "fontSize": null,
+      "attr": ""
+    },
+    {
+      "name": "寸法",
+      "color": "#744da9",
+      "visible": true,
+      "locked": false,
+      "active": false,
+      "lineWidth": 1,
+      "lineDash": "solid",
+      "fontSize": null,
+      "attr": ""
+    },
+    {
+      "name": "図面枠",
+      "color": "#222",
+      "visible": true,
+      "locked": false,
+      "active": false,
+      "lineWidth": 1,
+      "lineDash": "solid",
+      "fontSize": null,
+      "attr": ""
+    },
+    {
+      "name": "0",
+      "color": "#228844",
+      "visible": true,
+      "locked": false,
+      "active": false,
+      "lineWidth": 0.35,
+      "lineDash": "solid",
+      "fontSize": null,
+      "attr": "",
+      "_dxfImported": true
+    }
+  ],
+  "pages": [
+    {
+      "name": "Sheet3",
+      "elements": [
+        {
+          "id": "el_msfkww10_6kut",
+          "type": "fline",
+          "x1": 40,
+          "y1": 70,
+          "x2": 800,
+          "y2": 70,
+          "layer": "回路",
+          "lineWidth": 0.5,
+          "lineStyle": "dashdot",
+          "note": ""
+        },
+        {
+          "id": "el_msfkww10_je39",
+          "type": "fline",
+          "x1": 170,
+          "y1": 70,
+          "x2": 170,
+          "y2": 70,
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww10_s3mw",
+          "type": "junction",
+          "x": 100,
+          "y": 70,
+          "r": 3,
+          "style": "circle",
+          "layer": "回路",
+          "label": "1",
+          "partRef": "TB1",
+          "partModel": "",
+          "lineWidth": 0.5,
+          "showDev": false,
+          "devColor": "#ffffff",
+          "labelColor": "#ffffff",
+          "devFs": 6,
+          "devOffX": -15,
+          "devOffY": 17,
+          "labelFs": 6,
+          "labelOffX": 0,
+          "labelOffY": 5
+        },
+        {
+          "id": "el_msfkww10_ywhl",
+          "type": "junction",
+          "x": 130,
+          "y": 70,
+          "r": 3,
+          "style": "circle",
+          "layer": "回路",
+          "label": "2",
+          "partRef": "TB1",
+          "partModel": "",
+          "lineWidth": 0.5,
+          "showDev": false,
+          "devColor": "#ffffff",
+          "labelColor": "#ffffff",
+          "devFs": 6,
+          "devOffX": -15,
+          "devOffY": 17,
+          "labelFs": 6,
+          "labelOffX": 0,
+          "labelOffY": 5
+        },
+        {
+          "id": "el_msfkww10_qm6k",
+          "type": "junction",
+          "x": 160,
+          "y": 70,
+          "r": 3,
+          "style": "circle",
+          "layer": "回路",
+          "label": "3",
+          "partRef": "TB1",
+          "partModel": "",
+          "lineWidth": 0.5,
+          "showDev": false,
+          "devColor": "#ffffff",
+          "labelColor": "#ffffff",
+          "labelFs": 6,
+          "labelOffX": 0,
+          "labelOffY": 5,
+          "devFs": 6,
+          "devOffX": -15,
+          "devOffY": 17
+        },
+        {
+          "id": "el_msfkww10_jihr",
+          "type": "junction",
+          "x": 70,
+          "y": 70,
+          "r": 3,
+          "style": "circle",
+          "layer": "回路",
+          "label": "4",
+          "partRef": "TB1",
+          "partModel": "",
+          "lineWidth": 0.5,
+          "panelZone": "外",
+          "showDev": true,
+          "devColor": "#ffffff",
+          "labelColor": "#ffffff",
+          "labelOffX": 0,
+          "labelOffY": 5,
+          "devOffX": -15,
+          "devOffY": 17,
+          "devFs": 6,
+          "labelFs": 6
+        },
+        {
+          "id": "el_msfkww10_wvhj",
+          "type": "fline",
+          "x1": 40,
+          "y1": 420,
+          "x2": 800,
+          "y2": 420,
+          "layer": "回路",
+          "lineWidth": 0.5,
+          "lineStyle": "dashdot",
+          "note": ""
+        },
+        {
+          "id": "el_msfkww10_xut4",
+          "type": "junction",
+          "x": 100,
+          "y": 420,
+          "r": 3,
+          "style": "circle",
+          "layer": "回路",
+          "label": "1",
+          "partRef": "TB2",
+          "partModel": "",
+          "lineWidth": 0.5,
+          "labelColor": "#ffffff",
+          "labelFs": 6,
+          "labelOffX": 0,
+          "labelOffY": -9,
+          "showDev": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": -15,
+          "devOffY": 4
+        },
+        {
+          "id": "el_msfkww10_to11",
+          "type": "junction",
+          "x": 130,
+          "y": 420,
+          "r": 3,
+          "style": "circle",
+          "layer": "回路",
+          "label": "2",
+          "partRef": "TB2",
+          "partModel": "",
+          "lineWidth": 0.5,
+          "labelColor": "#ffffff",
+          "labelFs": 6,
+          "labelOffX": 0,
+          "labelOffY": -9,
+          "showDev": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": -15,
+          "devOffY": 4
+        },
+        {
+          "id": "el_msfkww10_l2nb",
+          "type": "junction",
+          "x": 160,
+          "y": 420,
+          "r": 3,
+          "style": "circle",
+          "layer": "回路",
+          "label": "3",
+          "partRef": "TB2",
+          "partModel": "",
+          "lineWidth": 0.5,
+          "labelColor": "#ffffff",
+          "labelFs": 6,
+          "labelOffX": 0,
+          "labelOffY": -9,
+          "showDev": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": -15,
+          "devOffY": 4
+        },
+        {
+          "id": "el_msfkww10_3jyi",
+          "type": "junction",
+          "x": 70,
+          "y": 420,
+          "r": 3,
+          "style": "circle",
+          "layer": "回路",
+          "label": "4",
+          "partRef": "TB2",
+          "partModel": "",
+          "lineWidth": 0.5,
+          "labelColor": "#ffffff",
+          "labelFs": 6,
+          "labelOffX": 0,
+          "labelOffY": -9,
+          "showDev": true,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": -15,
+          "devOffY": 4
+        },
+        {
+          "id": "el_msfkww10_tk8l",
+          "type": "text",
+          "x": 99,
+          "y": 49,
+          "text": "3相　AC200V",
+          "fs": 9,
+          "layer": "回路",
+          "textBox": false,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww10_p9py",
+          "type": "junction",
+          "x": 280,
+          "y": 70,
+          "r": 3,
+          "style": "circle",
+          "layer": "回路",
+          "label": "5",
+          "partRef": "TB1",
+          "partModel": "",
+          "lineWidth": 0.5,
+          "labelColor": "#ffffff",
+          "labelFs": 6,
+          "labelOffX": 0,
+          "labelOffY": 5,
+          "showDev": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": -15,
+          "devOffY": 17
+        },
+        {
+          "id": "el_msfkww10_97re",
+          "type": "junction",
+          "x": 310,
+          "y": 70,
+          "r": 3,
+          "style": "circle",
+          "layer": "回路",
+          "label": "6",
+          "partRef": "TB1",
+          "partModel": "",
+          "lineWidth": 0.5,
+          "labelColor": "#ffffff",
+          "labelFs": 6,
+          "labelOffX": 0,
+          "labelOffY": 5,
+          "showDev": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": -15,
+          "devOffY": 17
+        },
+        {
+          "id": "el_msfkww10_bzpf",
+          "type": "text",
+          "x": 67,
+          "y": 61,
+          "text": "E",
+          "fs": 10,
+          "layer": "回路",
+          "textBox": false,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww10_kd9f",
+          "type": "text",
+          "x": 260,
+          "y": 49,
+          "text": "単相　AC100V",
+          "fs": 9,
+          "layer": "回路",
+          "textBox": false,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww10_dshg",
+          "type": "fline",
+          "x1": 40,
+          "y1": 70,
+          "x2": 40,
+          "y2": 420,
+          "layer": "回路",
+          "lineWidth": 0.5,
+          "lineStyle": "dashdot",
+          "note": ""
+        },
+        {
+          "id": "el_msfkww10_q2l6",
+          "type": "fline",
+          "x1": 800,
+          "y1": 70,
+          "x2": 800,
+          "y2": 420,
+          "layer": "回路",
+          "lineWidth": 0.5,
+          "lineStyle": "dashdot",
+          "note": ""
+        },
+        {
+          "id": "el_msfkww10_4o8m",
+          "type": "custom_msctfsfu_t61",
+          "x": 130,
+          "y": 453,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "AC200V\n0.4kW",
+          "partRef": "M",
+          "partModel": "",
+          "terminals": "",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "labelColor": "#ffffff",
+          "labelFs": 9,
+          "labelAlign": "left",
+          "devHide": false,
+          "devFs": 11,
+          "devColor": "#1d6fb5",
+          "devOffX": 0,
+          "devOffY": 20,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "scale": 1,
+          "labelOffX": 40,
+          "labelOffY": 20,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww10_zw11",
+          "type": "junction",
+          "x": 360,
+          "y": 160,
+          "r": 1,
+          "style": "dot",
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww10_dabs",
+          "type": "custom_msbxi3vy_u8w",
+          "x": 360,
+          "y": 191,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "上昇",
+          "partRef": "PB1",
+          "partModel": "",
+          "terminals": "",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.34439645029269905,
+          "labelAlign": "left",
+          "devHide": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": 10,
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#ffffff",
+          "labelFs": 6,
+          "labelOffX": 5,
+          "labelOffY": 10,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww10_07rc",
+          "type": "custom_msbxnsrr_9fd",
+          "x": 360,
+          "y": 375,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "4C",
+          "partRef": "CR1",
+          "partModel": "MY4N",
+          "terminals": "13,14",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.29320578164550787,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 7,
+          "devColor": "#1d6fb5",
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#555555",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "lineWidth": 0.5,
+          "specHide": true,
+          "termFs": 5,
+          "showNote": false,
+          "noteFs": 11,
+          "noteColor": "#555555",
+          "textRot": 0,
+          "partVolt": "AC100V",
+          "termOff": [
+            [
+              -12,
+              34
+            ],
+            [
+              -12,
+              -24
+            ]
+          ],
+          "modelOffY": 0
+        },
+        {
+          "id": "el_msfkww10_0c5u",
+          "type": "custom_mryh1kfx_dlh",
+          "x": 390,
+          "y": 191,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "4C",
+          "partRef": "CR1",
+          "partModel": "MY4N",
+          "terminals": "9,5",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.4466220154377728,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": 10,
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#555555",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "lineWidth": 0.5,
+          "partVolt": "AC100V",
+          "textRot": 0,
+          "specHide": true,
+          "termFs": 5,
+          "showNote": false,
+          "noteFs": 11,
+          "noteColor": "#555555",
+          "termOff": [
+            [
+              -8,
+              20
+            ],
+            [
+              -8,
+              -10
+            ]
+          ]
+        },
+        {
+          "id": "el_msfkww10_0p46",
+          "type": "junction",
+          "x": 390,
+          "y": 160,
+          "r": 1,
+          "style": "dot",
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww10_g3ae",
+          "type": "junction",
+          "x": 420,
+          "y": 400,
+          "r": 1,
+          "style": "dot",
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww10_ug32",
+          "type": "junction",
+          "x": 360,
+          "y": 219,
+          "r": 1,
+          "style": "dot",
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww10_x7po",
+          "type": "junction",
+          "x": 420,
+          "y": 160,
+          "r": 1,
+          "style": "dot",
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww10_o15f",
+          "type": "fline",
+          "x1": 420,
+          "y1": 387,
+          "x2": 420,
+          "y2": 400,
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww10_9tz3",
+          "type": "junction",
+          "x": 480,
+          "y": 400,
+          "r": 1,
+          "style": "dot",
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww10_mcni",
+          "type": "junction",
+          "x": 480,
+          "y": 130,
+          "r": 1,
+          "style": "dot",
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww10_al70",
+          "type": "custom_msc0tnf8_xh3",
+          "x": 575,
+          "y": 374,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "",
+          "partRef": "YL",
+          "partModel": "",
+          "terminals": "",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.26150771159412706,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 7,
+          "devColor": "#1d6fb5",
+          "devOffX": 10,
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#555555",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww10_ot1n",
+          "type": "junction",
+          "x": 540,
+          "y": 400,
+          "r": 1,
+          "style": "dot",
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww10_ucij",
+          "type": "custom_msc103jp_uzb",
+          "x": 360,
+          "y": 334,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "4C",
+          "partRef": "CR2",
+          "partModel": "MY4N",
+          "terminals": "11,3",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.31973327714577005,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": 15,
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#555555",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "lineWidth": 0.5,
+          "specHide": true,
+          "termFs": 5,
+          "showNote": false,
+          "noteFs": 11,
+          "noteColor": "#555555",
+          "textRot": 0,
+          "termOff": [
+            [
+              -11,
+              35
+            ],
+            [
+              -10,
+              -25
+            ]
+          ],
+          "partVolt": "AC100V"
+        },
+        {
+          "id": "el_msfkww10_kfmg",
+          "type": "junction",
+          "x": 575,
+          "y": 400,
+          "r": 1,
+          "style": "dot",
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww10_thte",
+          "type": "junction",
+          "x": 540,
+          "y": 130,
+          "r": 1,
+          "style": "dot",
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww10_86x1",
+          "type": "text",
+          "x": 469,
+          "y": 410,
+          "text": "運転表示",
+          "fs": 6,
+          "layer": "回路",
+          "textBox": false,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww10_nt41",
+          "type": "text",
+          "x": 563,
+          "y": 410,
+          "text": "故障表示",
+          "fs": 6,
+          "layer": "回路",
+          "textBox": false,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww10_a52b",
+          "type": "custom_mryh1kfx_dlh",
+          "x": 715,
+          "y": 121,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "4C",
+          "partRef": "CR1A",
+          "partModel": "MY4N",
+          "terminals": "9,5",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.4466220154377728,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": 10,
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#555555",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "lineWidth": 0.5,
+          "partVolt": "AC100V",
+          "textRot": 0,
+          "termOff": [
+            [
+              -8,
+              20
+            ],
+            [
+              -8,
+              -10
+            ]
+          ],
+          "termFs": 5,
+          "specHide": true,
+          "showNote": false,
+          "noteFs": 11,
+          "noteColor": "#555555"
+        },
+        {
+          "id": "el_msfkww10_n3u4",
+          "type": "junction",
+          "x": 715,
+          "y": 95,
+          "r": 1,
+          "style": "dot",
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww10_km2n",
+          "type": "custom_msbxi3vy_u8w",
+          "x": 420,
+          "y": 191,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "下降",
+          "partRef": "PB2",
+          "partModel": "",
+          "terminals": "",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.34439645029269905,
+          "labelAlign": "left",
+          "devHide": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": 10,
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#ffffff",
+          "labelFs": 6,
+          "labelOffX": 5,
+          "labelOffY": 10,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww10_mmkl",
+          "type": "custom_msbxnsrr_9fd",
+          "x": 420,
+          "y": 375,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "4C",
+          "partRef": "CR2",
+          "partModel": "MY4N",
+          "terminals": "13,14",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.29320578164550787,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 7,
+          "devColor": "#1d6fb5",
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#555555",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "lineWidth": 0.5,
+          "textRot": 0,
+          "termOff": [
+            [
+              -12,
+              34
+            ],
+            [
+              -12,
+              -24
+            ]
+          ],
+          "termFs": 5,
+          "specHide": true,
+          "showNote": false,
+          "noteFs": 11,
+          "noteColor": "#555555",
+          "partVolt": "AC100V"
+        },
+        {
+          "id": "el_msfkww11_1jeb",
+          "type": "custom_mryh1kfx_dlh",
+          "x": 450,
+          "y": 191,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "4C",
+          "partRef": "CR2",
+          "partModel": "MY4N",
+          "terminals": "9,5",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.4466220154377728,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": 10,
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#555555",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "lineWidth": 0.5,
+          "partVolt": "AC100V",
+          "textRot": 0,
+          "termOff": [
+            [
+              -8,
+              20
+            ],
+            [
+              -8,
+              -10
+            ]
+          ],
+          "termFs": 5,
+          "specHide": true,
+          "showNote": false,
+          "noteFs": 11,
+          "noteColor": "#555555"
+        },
+        {
+          "id": "el_msfkww11_2e91",
+          "type": "junction",
+          "x": 420,
+          "y": 219,
+          "r": 1,
+          "style": "dot",
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww11_kaqq",
+          "type": "custom_msc103jp_uzb",
+          "x": 420,
+          "y": 334,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "4C",
+          "partRef": "CR1",
+          "partModel": "MY4N",
+          "terminals": "11,3",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.31973327714577005,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": 15,
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#555555",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "lineWidth": 0.5,
+          "specHide": true,
+          "termFs": 5,
+          "showNote": false,
+          "noteFs": 11,
+          "noteColor": "#555555",
+          "textRot": 0,
+          "termOff": [
+            [
+              -11,
+              35
+            ],
+            [
+              -10,
+              -25
+            ]
+          ],
+          "partVolt": "AC100V"
+        },
+        {
+          "id": "el_msfkww11_v2cz",
+          "type": "custom_msekru4r_trn",
+          "x": 360,
+          "y": 290,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "上限\n",
+          "partRef": "LS1",
+          "partModel": "",
+          "terminals": "",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.3594667570422886,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": 10,
+          "devOffY": 5,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#ffffff",
+          "labelFs": 6,
+          "labelOffX": 15,
+          "labelOffY": 15,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww11_z1zy",
+          "type": "custom_msekru4r_trn",
+          "x": 420,
+          "y": 290,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "下限\n",
+          "partRef": "LS2",
+          "partModel": "",
+          "terminals": "",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.3594667570422886,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": 10,
+          "devOffY": 5,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#ffffff",
+          "labelFs": 6,
+          "labelOffX": 15,
+          "labelOffY": 15,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww11_kw50",
+          "type": "custom_mryh1kfx_dlh",
+          "x": 480,
+          "y": 181,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "4C",
+          "partRef": "CR1",
+          "partModel": "MY4N",
+          "terminals": "10,6",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.4466220154377728,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": 10,
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#555555",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "lineWidth": 0.5,
+          "partVolt": "AC100V",
+          "specHide": true,
+          "termFs": 5,
+          "showNote": false,
+          "noteFs": 11,
+          "noteColor": "#555555",
+          "textRot": 0,
+          "termOff": [
+            [
+              -11,
+              20
+            ],
+            [
+              -10,
+              -10
+            ]
+          ]
+        },
+        {
+          "id": "el_msfkww11_jcv0",
+          "type": "custom_msc0tnf8_xh3",
+          "x": 480,
+          "y": 374,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "",
+          "partRef": "RL",
+          "partModel": "",
+          "terminals": "",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.26150771159412706,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 7,
+          "devColor": "#1d6fb5",
+          "devOffX": 10,
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#555555",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww11_ehj9",
+          "type": "custom_msc0tnf8_xh3",
+          "x": 540,
+          "y": 374,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "",
+          "partRef": "GL",
+          "partModel": "",
+          "terminals": "",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.26150771159412706,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 7,
+          "devColor": "#1d6fb5",
+          "devOffX": 10,
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#555555",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww11_e8dl",
+          "type": "text",
+          "x": 528,
+          "y": 410,
+          "text": "停止表示",
+          "fs": 6,
+          "layer": "回路",
+          "textBox": false,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww11_vmh3",
+          "type": "rect",
+          "x": 340,
+          "y": 270,
+          "w": 110,
+          "h": 40,
+          "layer": "回路",
+          "lineWidth": 0.5,
+          "lineStyle": "dashdot",
+          "note": ""
+        },
+        {
+          "id": "el_msfkww11_e1lo",
+          "type": "junction",
+          "x": 360,
+          "y": 270,
+          "r": 3,
+          "style": "circle",
+          "layer": "回路",
+          "label": "5",
+          "partRef": "TB2",
+          "partModel": "",
+          "lineWidth": 0.5,
+          "labelColor": "#ffffff",
+          "labelFs": 6,
+          "labelOffX": 0,
+          "labelOffY": -6,
+          "showDev": true,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": -15,
+          "devOffY": 6
+        },
+        {
+          "id": "el_msfkww11_s22r",
+          "type": "junction",
+          "x": 420,
+          "y": 270,
+          "r": 3,
+          "style": "circle",
+          "layer": "回路",
+          "label": "7",
+          "partRef": "TB2",
+          "partModel": "",
+          "lineWidth": 0.5,
+          "labelColor": "#ffffff",
+          "labelFs": 6,
+          "labelOffX": 0,
+          "labelOffY": -6,
+          "showDev": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": -15,
+          "devOffY": 6
+        },
+        {
+          "id": "el_msfkww11_squk",
+          "type": "junction",
+          "x": 360,
+          "y": 310,
+          "r": 3,
+          "style": "circle",
+          "layer": "回路",
+          "label": "6",
+          "partRef": "TB2",
+          "partModel": "",
+          "lineWidth": 0.5,
+          "labelColor": "#ffffff",
+          "labelFs": 6,
+          "labelOffX": 0,
+          "labelOffY": 2,
+          "showDev": false,
+          "devFs": 14,
+          "devColor": "#ffffff",
+          "devOffX": -15,
+          "devOffY": 14
+        },
+        {
+          "id": "el_msfkww11_tdmb",
+          "type": "junction",
+          "x": 420,
+          "y": 310,
+          "r": 3,
+          "style": "circle",
+          "layer": "回路",
+          "label": "8",
+          "partRef": "TB2",
+          "partModel": "",
+          "lineWidth": 0.5,
+          "labelColor": "#ffffff",
+          "labelFs": 6,
+          "labelOffX": 0,
+          "labelOffY": 2,
+          "showDev": false,
+          "devFs": 14,
+          "devColor": "#ffffff",
+          "devOffX": -15,
+          "devOffY": 14
+        },
+        {
+          "id": "el_msfkww11_1ndp",
+          "type": "custom_msemh9hr_ahw",
+          "x": 341,
+          "y": 160,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "非常停止",
+          "partRef": "PB3",
+          "partModel": "",
+          "terminals": "",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.42197211657272427,
+          "labelAlign": "center",
+          "labelColor": "#ffffff",
+          "labelFs": 6,
+          "labelOffX": 20,
+          "labelOffY": -10,
+          "devHide": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": 0,
+          "devOffY": -10,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww11_e2ga",
+          "type": "junction",
+          "x": 310,
+          "y": 130,
+          "r": 1,
+          "style": "dot",
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww11_dfza",
+          "type": "custom_msbxi3vy_u8w",
+          "x": 610,
+          "y": 181,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "非常停止",
+          "partRef": "PB3",
+          "partModel": "",
+          "terminals": "",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.34439645029269905,
+          "labelAlign": "left",
+          "devHide": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": 10,
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#ffffff",
+          "labelFs": 6,
+          "labelOffX": 5,
+          "labelOffY": 10,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww11_w4tj",
+          "type": "junction",
+          "x": 360,
+          "y": 400,
+          "r": 1,
+          "style": "dot",
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww11_kjc5",
+          "type": "custom_mryh1kfx_dlh",
+          "x": 575,
+          "y": 181,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "4C",
+          "partRef": "CR3",
+          "partModel": "MY4N",
+          "terminals": "9,5",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.4466220154377728,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": 10,
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#555555",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "lineWidth": 0.5,
+          "specHide": true,
+          "showNote": false,
+          "noteFs": 11,
+          "noteColor": "#555555",
+          "textRot": 0,
+          "termFs": 5,
+          "partVolt": "AC100V",
+          "termOff": [
+            [
+              -9,
+              20
+            ],
+            [
+              -9,
+              -10
+            ]
+          ]
+        },
+        {
+          "id": "el_msfkww11_w109",
+          "type": "junction",
+          "x": 575,
+          "y": 130,
+          "r": 1,
+          "style": "dot",
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww11_z5pm",
+          "type": "junction",
+          "x": 610,
+          "y": 130,
+          "r": 1,
+          "style": "dot",
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww11_t7j4",
+          "type": "junction",
+          "x": 665,
+          "y": 255,
+          "r": 1,
+          "style": "dot",
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww11_c375",
+          "type": "custom_msbxnsrr_9fd",
+          "x": 665,
+          "y": 375,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "4C",
+          "partRef": "CR3",
+          "partModel": "MY4N",
+          "terminals": "13,14",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.29320578164550787,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 7,
+          "devColor": "#1d6fb5",
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#555555",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "lineWidth": 0.5,
+          "specHide": true,
+          "modelOffY": 0,
+          "termFs": 5,
+          "showNote": false,
+          "noteFs": 11,
+          "noteColor": "#555555",
+          "textRot": 0,
+          "partVolt": "AC100V",
+          "termOff": [
+            [
+              -12,
+              34
+            ],
+            [
+              -12,
+              -24
+            ]
+          ]
+        },
+        {
+          "id": "el_msfkww11_alcz",
+          "type": "custom_mryh1kfx_dlh",
+          "x": 510,
+          "y": 181,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "4C",
+          "partRef": "CR2",
+          "partModel": "MY4N",
+          "terminals": "10,6",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.4466220154377728,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": 10,
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#555555",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "lineWidth": 0.5,
+          "partVolt": "AC100V",
+          "textRot": 0,
+          "termOff": [
+            [
+              -11,
+              20
+            ],
+            [
+              -10,
+              -10
+            ]
+          ],
+          "termFs": 5,
+          "specHide": true,
+          "showNote": false,
+          "noteFs": 11,
+          "noteColor": "#555555"
+        },
+        {
+          "id": "el_msfkww11_qay4",
+          "type": "junction",
+          "x": 510,
+          "y": 130,
+          "r": 1,
+          "style": "dot",
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww11_b482",
+          "type": "junction",
+          "x": 480,
+          "y": 230,
+          "r": 1,
+          "style": "dot",
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww11_z3nr",
+          "type": "custom_msc103jp_uzb",
+          "x": 540,
+          "y": 181,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "4C",
+          "partRef": "CR1",
+          "partModel": "MY4N",
+          "terminals": "10,2",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.31973327714577005,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": 15,
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#555555",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "lineWidth": 0.5,
+          "partVolt": "AC100V",
+          "textRot": 0,
+          "termOff": [
+            [
+              -11,
+              35
+            ],
+            [
+              -10,
+              -25
+            ]
+          ],
+          "termFs": 5,
+          "specHide": true,
+          "showNote": false,
+          "noteFs": 11,
+          "noteColor": "#555555"
+        },
+        {
+          "id": "el_msfkww11_8ku4",
+          "type": "custom_msc103jp_uzb",
+          "x": 540,
+          "y": 227,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "4C",
+          "partRef": "CR2",
+          "partModel": "MY4N",
+          "terminals": "12,4",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.31973327714577005,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": 15,
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#555555",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "lineWidth": 0.5,
+          "partVolt": "AC100V",
+          "textRot": 0,
+          "termOff": [
+            [
+              -11,
+              35
+            ],
+            [
+              -10,
+              -25
+            ]
+          ],
+          "termFs": 5,
+          "specHide": true,
+          "showNote": false,
+          "noteFs": 11,
+          "noteColor": "#555555"
+        },
+        {
+          "id": "el_msfkww11_qv2u",
+          "type": "custom_msc103jp_uzb",
+          "x": 540,
+          "y": 272,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "4C",
+          "partRef": "CR3",
+          "partModel": "MY4N",
+          "terminals": "12,4",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.31973327714577005,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": 15,
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#555555",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "lineWidth": 0.5,
+          "partVolt": "AC100V",
+          "textRot": 0,
+          "termOff": [
+            [
+              -11,
+              35
+            ],
+            [
+              -10,
+              -25
+            ]
+          ],
+          "termFs": 5,
+          "specHide": true,
+          "showNote": false,
+          "noteFs": 11,
+          "noteColor": "#555555"
+        },
+        {
+          "id": "el_msfkww11_78w2",
+          "type": "custom_msc103jp_uzb",
+          "x": 360,
+          "y": 240,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "4C",
+          "partRef": "CR3",
+          "partModel": "MY4N",
+          "terminals": "10,2",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.31973327714577005,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": 15,
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#555555",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "lineWidth": 0.5,
+          "partVolt": "AC100V",
+          "textRot": 0,
+          "termOff": [
+            [
+              -11,
+              35
+            ],
+            [
+              -8,
+              -25
+            ]
+          ],
+          "termFs": 5,
+          "specHide": true,
+          "showNote": false,
+          "noteFs": 11,
+          "noteColor": "#555555"
+        },
+        {
+          "id": "el_msfkww11_d4vh",
+          "type": "custom_msc103jp_uzb",
+          "x": 420,
+          "y": 240,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "4C",
+          "partRef": "CR3",
+          "partModel": "MY4N",
+          "terminals": "11,3",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.31973327714577005,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "devOffX": 15,
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#555555",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "lineWidth": 0.5,
+          "partVolt": "AC100V",
+          "textRot": 0,
+          "termOff": [
+            [
+              -11,
+              35
+            ],
+            [
+              -8,
+              -25
+            ]
+          ],
+          "termFs": 5,
+          "specHide": true,
+          "showNote": false,
+          "noteFs": 11,
+          "noteColor": "#555555"
+        },
+        {
+          "id": "el_msfkww11_h0v4",
+          "type": "custom_msbxnsrr_9fd",
+          "x": 390,
+          "y": 375,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "4C",
+          "partRef": "CR1A",
+          "partModel": "MY4N",
+          "terminals": "13,14",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.29320578164550787,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 7,
+          "devColor": "#1d6fb5",
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#555555",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "lineWidth": 0.5,
+          "specHide": true,
+          "modelOffY": 0,
+          "termFs": 5,
+          "showNote": false,
+          "noteFs": 11,
+          "noteColor": "#555555",
+          "textRot": 0,
+          "termOff": [
+            [
+              -12,
+              34
+            ],
+            [
+              -12,
+              -24
+            ]
+          ],
+          "partVolt": "AC100V"
+        },
+        {
+          "id": "el_msfkww11_trhx",
+          "type": "custom_msbxnsrr_9fd",
+          "x": 450,
+          "y": 375,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "4C",
+          "partRef": "CR2A",
+          "partModel": "MY4N",
+          "terminals": "13,14",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.29320578164550787,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 7,
+          "devColor": "#1d6fb5",
+          "devOffY": 0,
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#555555",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "lineWidth": 0.5,
+          "modelOffY": 0,
+          "textRot": 0,
+          "termOff": [
+            [
+              -12,
+              34
+            ],
+            [
+              -12,
+              -24
+            ]
+          ],
+          "termFs": 5,
+          "specHide": true,
+          "showNote": false,
+          "noteFs": 11,
+          "noteColor": "#555555",
+          "partVolt": "AC100V"
+        },
+        {
+          "id": "el_msfkww11_8sji",
+          "type": "junction",
+          "x": 390,
+          "y": 400,
+          "r": 1,
+          "style": "dot",
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww11_yuyj",
+          "type": "junction",
+          "x": 450,
+          "y": 400,
+          "r": 1,
+          "style": "dot",
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww11_livi",
+          "type": "junction",
+          "x": 420,
+          "y": 360,
+          "r": 1,
+          "style": "dot",
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww11_ha5z",
+          "type": "junction",
+          "x": 360,
+          "y": 360,
+          "r": 1,
+          "style": "dot",
+          "layer": "回路",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "el_msfkww11_j0va",
+          "type": "custom_mryh1kfx_dlh",
+          "x": 740,
+          "y": 121,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "4C",
+          "partRef": "CR2A",
+          "partModel": "MY4N",
+          "terminals": "9,5",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "scale": 0.4466220154377728,
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 6,
+          "devColor": "#ffffff",
+          "showModel": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "labelColor": "#555555",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "lineWidth": 0.5,
+          "devOffX": 10,
+          "devOffY": 0,
+          "textRot": 0,
+          "termOff": [
+            [
+              -8,
+              20
+            ],
+            [
+              -8,
+              -10
+            ]
+          ],
+          "termFs": 5,
+          "specHide": true,
+          "showNote": false,
+          "noteFs": 11,
+          "noteColor": "#555555",
+          "partVolt": "AC100V"
+        },
+        {
+          "id": "el_mt57ti8a_z5yqd",
+          "type": "custom_mt57stff_0vh",
+          "x": 290,
+          "y": 110,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "CP30-BA 2P 5A\n",
+          "partRef": "CP1",
+          "partModel": "CP30-BA",
+          "terminals": "4,3,2,1",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "labelAlign": "left",
+          "devHide": false,
+          "devFs": 7,
+          "devColor": "#ffffff",
+          "devOffX": 35,
+          "devOffY": -5,
+          "showModel": false,
+          "specHide": false,
+          "modelFs": 11,
+          "modelColor": "#555555",
+          "showNote": false,
+          "noteFs": 7,
+          "noteColor": "#555555",
+          "scale": 1,
+          "labelColor": "#ffffff",
+          "labelFs": 7,
+          "labelOffX": 30,
+          "labelOffY": 5,
+          "textRot": 0,
+          "termFs": 5,
+          "termOff": [
+            [
+              -10,
+              0
+            ],
+            [
+              -10,
+              10
+            ],
+            [
+              -10,
+              0
+            ],
+            [
+              -10,
+              10
+            ]
+          ],
+          "partPoles": "2P",
+          "partAmp": "5A",
+          "partChar": "中速形(M)"
+        },
+        {
+          "id": "el_mt6oh25s_20qtt",
+          "type": "junction",
+          "x": 70,
+          "y": 280,
+          "r": 2,
+          "style": "dot",
+          "layer": "回路"
+        },
+        {
+          "id": "el_mubxh8kw_0djgv",
+          "type": "custom_muajd69w_hi7",
+          "x": 130,
+          "y": 280,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "三相200V\n0.4kW",
+          "partRef": "INV",
+          "partModel": "FR-D720-0.4K",
+          "terminals": "R/L1,S/L2,T/L3,U,V,W,PE",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "labelAlign": "left",
+          "devHide": false,
+          "devFs": 11,
+          "devColor": "#1d6fb5",
+          "devOffY": 5,
+          "showModel": true,
+          "specHide": false,
+          "modelFs": 8,
+          "modelColor": "#555555",
+          "termFs": 5,
+          "showNote": false,
+          "noteFs": 11,
+          "noteColor": "#555555",
+          "scale": 1,
+          "labelColor": "#555555",
+          "labelFs": 7,
+          "labelOffX": 55,
+          "textRot": 0,
+          "modelOffX": 75,
+          "modelOffY": -15,
+          "labelOffY": -5
+        },
+        {
+          "id": "el_muc0ok44_18shp",
+          "type": "custom_muc0o9zb_dgj",
+          "x": 130,
+          "y": 130,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "",
+          "partRef": "",
+          "partModel": "",
+          "terminals": "",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "devHide": true,
+          "showModel": false,
+          "textRot": 0,
+          "specHide": false,
+          "showNote": false,
+          "scale": 1
+        },
+        {
+          "id": "el_mueugmh8_aojzf",
+          "type": "custom_mueugeai_v8q",
+          "x": 700,
+          "y": 188,
+          "rot": 0,
+          "flipH": false,
+          "flipV": false,
+          "label": "三相200V\n0.4kW",
+          "partRef": "INV",
+          "partModel": "FR-D720-0.4K",
+          "terminals": "SD,STF,STR,C,A",
+          "layer": "回路",
+          "wireNo": "",
+          "note": "",
+          "labelAlign": "center",
+          "devHide": false,
+          "devFs": 11,
+          "devColor": "#1d6fb5",
+          "devOffY": 20,
+          "showModel": true,
+          "specHide": true,
+          "modelFs": 7,
+          "modelColor": "#555555",
+          "modelOffX": 25,
+          "modelOffY": 30,
+          "termFs": 5,
+          "showNote": false,
+          "noteFs": 11,
+          "noteColor": "#555555",
+          "scale": 1,
+          "labelColor": "#555555",
+          "labelFs": 11,
+          "labelOffX": 0,
+          "textRot": 0,
+          "termOff": [
+            [
+              0,
+              10
+            ],
+            [
+              0,
+              10
+            ],
+            [
+              0,
+              10
+            ],
+            [
+              0,
+              10
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "devOffX": 35
+        },
+        {
+          "id": "el_mueuxcx4_c0tqr",
+          "type": "text",
+          "x": 669,
+          "y": 189,
+          "text": "ALM",
+          "fs": 8,
+          "layer": "回路",
+          "textBox": false
+        }
+      ],
+      "wires": [
+        {
+          "id": "w_msfkww11_1go2",
+          "pts": [
+            {
+              "x": 100,
+              "y": 73
+            },
+            {
+              "x": 100,
+              "y": 105
+            }
+          ],
+          "x1": 100,
+          "y1": 73,
+          "x2": 100,
+          "y2": 105,
+          "layer": "回路",
+          "wireNo": "R",
+          "fromElId": "el_msfkww10_s3mw",
+          "fromTermIdx": 0,
+          "toElId": "",
+          "toTermIdx": "",
+          "wireNoOffX": 20,
+          "wireNoOffY": 10,
+          "lineWidth": 0.5,
+          "wireNoFs": 7
+        },
+        {
+          "id": "w_msfkww11_umcu",
+          "pts": [
+            {
+              "x": 130,
+              "y": 160
+            },
+            {
+              "x": 130,
+              "y": 258
+            }
+          ],
+          "x1": 130,
+          "y1": 160,
+          "x2": 130,
+          "y2": 258,
+          "layer": "回路",
+          "wireNo": "S1",
+          "fromElId": "el_mt57kao0_shja5",
+          "fromTermIdx": 2,
+          "toElId": "el_mt2lswrq_140ci",
+          "toTermIdx": 0,
+          "wireNoOffX": 20,
+          "wireNoOffY": 5,
+          "lineWidth": 0.5,
+          "wireNoFs": 7
+        },
+        {
+          "id": "w_msfkww11_1qpk",
+          "pts": [
+            {
+              "x": 160,
+              "y": 160
+            },
+            {
+              "x": 160,
+              "y": 258
+            }
+          ],
+          "x1": 160,
+          "y1": 160,
+          "x2": 160,
+          "y2": 258,
+          "layer": "回路",
+          "wireNo": "T1",
+          "fromElId": "el_mt57kao0_shja5",
+          "fromTermIdx": 4,
+          "toElId": "el_mt2lsqt8_0tg2c",
+          "toTermIdx": 0,
+          "wireNoOffX": 20,
+          "wireNoOffY": 5,
+          "lineWidth": 0.5,
+          "wireNoFs": 7
+        },
+        {
+          "id": "w_msfkww11_5wlz",
+          "pts": [
+            {
+              "x": 100,
+              "y": 302
+            },
+            {
+              "x": 100,
+              "y": 417
+            }
+          ],
+          "x1": 100,
+          "y1": 302,
+          "x2": 100,
+          "y2": 417,
+          "layer": "回路",
+          "wireNo": "U",
+          "fromElId": "el_mt2ltmlh_5s5ca",
+          "fromTermIdx": 0,
+          "toElId": "el_msfkww10_xut4",
+          "toTermIdx": 0,
+          "wireNoFs": 7,
+          "wireNoOffX": 20,
+          "wireNoOffY": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_kn1z",
+          "pts": [
+            {
+              "x": 160,
+              "y": 302
+            },
+            {
+              "x": 160,
+              "y": 417
+            }
+          ],
+          "x1": 160,
+          "y1": 302,
+          "x2": 160,
+          "y2": 417,
+          "layer": "回路",
+          "wireNo": "W",
+          "fromElId": "el_mt2ltmlh_3608z",
+          "fromTermIdx": 0,
+          "toElId": "el_msfkww10_l2nb",
+          "toTermIdx": 0,
+          "wireNoFs": 7,
+          "wireNoOffX": 20,
+          "wireNoOffY": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_96sc",
+          "pts": [
+            {
+              "x": 100,
+              "y": 160
+            },
+            {
+              "x": 100,
+              "y": 258
+            }
+          ],
+          "x1": 100,
+          "y1": 160,
+          "x2": 100,
+          "y2": 258,
+          "layer": "回路",
+          "wireNo": "R1",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "el_mt2lt7xr_2ap1u",
+          "toTermIdx": 0,
+          "wireNoOffX": 20,
+          "wireNoOffY": 5,
+          "lineWidth": 0.5,
+          "wireNoFs": 7
+        },
+        {
+          "id": "w_msfkww11_8o6q",
+          "pts": [
+            {
+              "x": 130,
+              "y": 73
+            },
+            {
+              "x": 130,
+              "y": 105
+            }
+          ],
+          "x1": 130,
+          "y1": 73,
+          "x2": 130,
+          "y2": 105,
+          "layer": "回路",
+          "wireNo": "S",
+          "fromElId": "el_msfkww10_ywhl",
+          "fromTermIdx": 0,
+          "toElId": "",
+          "toTermIdx": "",
+          "wireNoOffX": 20,
+          "wireNoOffY": 10,
+          "lineWidth": 0.5,
+          "wireNoFs": 7
+        },
+        {
+          "id": "w_msfkww11_02t1",
+          "pts": [
+            {
+              "x": 160,
+              "y": 73
+            },
+            {
+              "x": 160,
+              "y": 105
+            }
+          ],
+          "x1": 160,
+          "y1": 73,
+          "x2": 160,
+          "y2": 105,
+          "layer": "回路",
+          "wireNo": "T",
+          "fromElId": "el_msfkww10_qm6k",
+          "fromTermIdx": 0,
+          "toElId": "",
+          "toTermIdx": "",
+          "wireNoOffX": 20,
+          "wireNoOffY": 10,
+          "lineWidth": 0.5,
+          "wireNoFs": 7
+        },
+        {
+          "id": "w_msfkww11_hj90",
+          "pts": [
+            {
+              "x": 70,
+              "y": 73
+            },
+            {
+              "x": 70.00000000000001,
+              "y": 417
+            }
+          ],
+          "x1": 70,
+          "y1": 73,
+          "x2": 70.00000000000001,
+          "y2": 417,
+          "layer": "回路",
+          "wireNo": "E",
+          "fromElId": "el_msfkww10_jihr",
+          "fromTermIdx": 0,
+          "toElId": "el_msfkww10_3jyi",
+          "toTermIdx": 0,
+          "wireNoFs": 7,
+          "wireNoOffX": -5,
+          "wireNoOffY": -30,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_23xb",
+          "pts": [
+            {
+              "x": 280,
+              "y": 400
+            },
+            {
+              "x": 665,
+              "y": 400
+            }
+          ],
+          "x1": 280,
+          "y1": 400,
+          "x2": 665,
+          "y2": 400,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_1dup",
+          "pts": [
+            {
+              "x": 357.87888466290894,
+              "y": 160
+            },
+            {
+              "x": 450,
+              "y": 160
+            }
+          ],
+          "x1": 357.87888466290894,
+          "y1": 160,
+          "x2": 450,
+          "y2": 160,
+          "layer": "回路",
+          "wireNo": "L2",
+          "fromElId": "el_msfkww11_1ndp",
+          "fromTermIdx": 1,
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5,
+          "wireNoFs": 7,
+          "wireNoOffX": 5,
+          "wireNoOffY": 10
+        },
+        {
+          "id": "w_msfkww11_ojd0",
+          "pts": [
+            {
+              "x": 280,
+              "y": 73
+            },
+            {
+              "x": 280,
+              "y": 95
+            }
+          ],
+          "x1": 280,
+          "y1": 73,
+          "x2": 280,
+          "y2": 95,
+          "layer": "回路",
+          "wireNo": "N",
+          "fromElId": "el_msfkww10_p9py",
+          "fromTermIdx": 0,
+          "toElId": "",
+          "toTermIdx": "",
+          "wireNoFs": 7,
+          "wireNoOffX": 20,
+          "wireNoOffY": 10,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_00um",
+          "pts": [
+            {
+              "x": 310,
+              "y": 73
+            },
+            {
+              "x": 310,
+              "y": 95
+            }
+          ],
+          "x1": 310,
+          "y1": 73,
+          "x2": 310,
+          "y2": 95,
+          "layer": "回路",
+          "wireNo": "L",
+          "fromElId": "el_msfkww10_97re",
+          "fromTermIdx": 0,
+          "toElId": "",
+          "toTermIdx": "",
+          "wireNoFs": 7,
+          "wireNoOffX": 20,
+          "wireNoOffY": 10,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_dojk",
+          "pts": [
+            {
+              "x": 280,
+              "y": 127
+            },
+            {
+              "x": 280,
+              "y": 400
+            }
+          ],
+          "x1": 280,
+          "y1": 127,
+          "x2": 280,
+          "y2": 400,
+          "layer": "回路",
+          "wireNo": "N1",
+          "fromElId": "el_mt57ti8a_z5yqd",
+          "fromTermIdx": 2,
+          "toElId": "",
+          "toTermIdx": "",
+          "wireNoFs": 7,
+          "wireNoOffX": 20,
+          "wireNoOffY": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_nzhb",
+          "pts": [
+            {
+              "x": 310,
+              "y": 127
+            },
+            {
+              "x": 310,
+              "y": 160
+            }
+          ],
+          "x1": 310,
+          "y1": 127,
+          "x2": 310,
+          "y2": 160,
+          "layer": "回路",
+          "wireNo": "L1",
+          "fromElId": "el_mt57ti8a_z5yqd",
+          "fromTermIdx": 0,
+          "toElId": "",
+          "toTermIdx": "",
+          "wireNoFs": 7,
+          "wireNoOffX": 20,
+          "wireNoOffY": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_imgc",
+          "pts": [
+            {
+              "x": 360,
+              "y": 160
+            },
+            {
+              "x": 360,
+              "y": 178
+            }
+          ],
+          "x1": 360,
+          "y1": 160,
+          "x2": 360,
+          "y2": 178,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "el_msbxc3al_xe9n",
+          "fromTermIdx": 0,
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_2gxn",
+          "pts": [
+            {
+              "x": 360,
+              "y": 204
+            },
+            {
+              "x": 360,
+              "y": 231
+            }
+          ],
+          "x1": 360,
+          "y1": 204,
+          "x2": 360,
+          "y2": 231,
+          "layer": "回路",
+          "wireNo": "01",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "el_msfkww10_dabs",
+          "toTermIdx": 1,
+          "wireNoFs": 6,
+          "wireNoOffX": 20,
+          "wireNoOffY": -5,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_dm90",
+          "pts": [
+            {
+              "x": 390,
+              "y": 161
+            },
+            {
+              "x": 390,
+              "y": 181
+            }
+          ],
+          "x1": 390,
+          "y1": 161,
+          "x2": 390,
+          "y2": 181,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_meks",
+          "pts": [
+            {
+              "x": 390,
+              "y": 203
+            },
+            {
+              "x": 390,
+              "y": 219
+            }
+          ],
+          "x1": 390,
+          "y1": 203,
+          "x2": 390,
+          "y2": 219,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_rgti",
+          "pts": [
+            {
+              "x": 360,
+              "y": 219
+            },
+            {
+              "x": 390,
+              "y": 219
+            }
+          ],
+          "x1": 360,
+          "y1": 219,
+          "x2": 390,
+          "y2": 219,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_dsew",
+          "pts": [
+            {
+              "x": 360,
+              "y": 400
+            },
+            {
+              "x": 360,
+              "y": 387
+            }
+          ],
+          "x1": 360,
+          "y1": 400,
+          "x2": 360,
+          "y2": 387,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "el_msbxl0q2_22b8",
+          "fromTermIdx": 1,
+          "toElId": "el_msc00nnh_7gu0",
+          "toTermIdx": 1,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_xeir",
+          "pts": [
+            {
+              "x": 360,
+              "y": 313
+            },
+            {
+              "x": 360,
+              "y": 325
+            }
+          ],
+          "x1": 360,
+          "y1": 313,
+          "x2": 360,
+          "y2": 325,
+          "layer": "回路",
+          "wireNo": "03",
+          "fromElId": "el_msfkww11_squk",
+          "fromTermIdx": 0,
+          "toElId": "",
+          "toTermIdx": "",
+          "wireNoFs": 6,
+          "wireNoOffX": 20,
+          "wireNoOffY": 5,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_59wv",
+          "pts": [
+            {
+              "x": 360,
+              "y": 345
+            },
+            {
+              "x": 360,
+              "y": 364
+            }
+          ],
+          "x1": 360,
+          "y1": 345,
+          "x2": 360,
+          "y2": 364,
+          "layer": "回路",
+          "wireNo": "04",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "wireNoFs": 6,
+          "wireNoOffX": 20,
+          "wireNoOffY": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_xzpj",
+          "pts": [
+            {
+              "x": 130,
+              "y": 302
+            },
+            {
+              "x": 130,
+              "y": 417
+            }
+          ],
+          "x1": 130,
+          "y1": 302,
+          "x2": 130,
+          "y2": 417,
+          "layer": "回路",
+          "wireNo": "V",
+          "fromElId": "el_mt2ltmlh_40y4g",
+          "fromTermIdx": 0,
+          "toElId": "el_msfkww10_to11",
+          "toTermIdx": 0,
+          "wireNoFs": 7,
+          "wireNoOffX": 20,
+          "wireNoOffY": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_zpxo",
+          "pts": [
+            {
+              "x": 690,
+              "y": 150.5
+            },
+            {
+              "x": 690,
+              "y": 95
+            }
+          ],
+          "x1": 690,
+          "y1": 150.5,
+          "x2": 690,
+          "y2": 95,
+          "layer": "回路",
+          "wireNo": "SD",
+          "fromElId": "el_mueugmh8_aojzf",
+          "fromTermIdx": 0,
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5,
+          "wireNoFs": 6,
+          "wireNoOffX": -5,
+          "wireNoOffY": 15
+        },
+        {
+          "id": "w_msfkww11_3xsg",
+          "pts": [
+            {
+              "x": 690,
+              "y": 95
+            },
+            {
+              "x": 740,
+              "y": 95
+            }
+          ],
+          "x1": 690,
+          "y1": 95,
+          "x2": 740,
+          "y2": 95,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_0nbu",
+          "pts": [
+            {
+              "x": 715,
+              "y": 110
+            },
+            {
+              "x": 715,
+              "y": 95
+            }
+          ],
+          "x1": 715,
+          "y1": 110,
+          "x2": 715,
+          "y2": 95,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_gi5j",
+          "pts": [
+            {
+              "x": 740,
+              "y": 110
+            },
+            {
+              "x": 740,
+              "y": 95
+            }
+          ],
+          "x1": 740,
+          "y1": 110,
+          "x2": 740,
+          "y2": 95,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_trq7",
+          "pts": [
+            {
+              "x": 715,
+              "y": 130
+            },
+            {
+              "x": 715,
+              "y": 150.5
+            }
+          ],
+          "x1": 715,
+          "y1": 130,
+          "x2": 715,
+          "y2": 150.5,
+          "layer": "回路",
+          "wireNo": "15",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "el_mueugmh8_aojzf",
+          "toTermIdx": 1,
+          "lineWidth": 0.5,
+          "wireNoFs": 6,
+          "wireNoOffX": 20,
+          "wireNoOffY": 0
+        },
+        {
+          "id": "w_msfkww11_a92k",
+          "pts": [
+            {
+              "x": 740,
+              "y": 130
+            },
+            {
+              "x": 740,
+              "y": 150.5
+            }
+          ],
+          "x1": 740,
+          "y1": 130,
+          "x2": 740,
+          "y2": 150.5,
+          "layer": "回路",
+          "wireNo": "16",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "el_mueugmh8_aojzf",
+          "toTermIdx": 2,
+          "lineWidth": 0.5,
+          "wireNoFs": 6,
+          "wireNoOffX": 20,
+          "wireNoOffY": 0
+        },
+        {
+          "id": "w_msfkww11_lizu",
+          "pts": [
+            {
+              "x": 420,
+              "y": 160
+            },
+            {
+              "x": 420,
+              "y": 178
+            }
+          ],
+          "x1": 420,
+          "y1": 160,
+          "x2": 420,
+          "y2": 178,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "el_msbxc3al_xe9n",
+          "fromTermIdx": 0,
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_0x4t",
+          "pts": [
+            {
+              "x": 420,
+              "y": 204
+            },
+            {
+              "x": 420,
+              "y": 231
+            }
+          ],
+          "x1": 420,
+          "y1": 204,
+          "x2": 420,
+          "y2": 231,
+          "layer": "回路",
+          "wireNo": "05",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "el_msfkww10_km2n",
+          "toTermIdx": 1,
+          "wireNoFs": 6,
+          "wireNoOffX": 20,
+          "wireNoOffY": -5,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_4a3k",
+          "pts": [
+            {
+              "x": 450,
+              "y": 160
+            },
+            {
+              "x": 450,
+              "y": 181
+            }
+          ],
+          "x1": 450,
+          "y1": 160,
+          "x2": 450,
+          "y2": 181,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_5uny",
+          "pts": [
+            {
+              "x": 450,
+              "y": 203
+            },
+            {
+              "x": 450,
+              "y": 219
+            }
+          ],
+          "x1": 450,
+          "y1": 203,
+          "x2": 450,
+          "y2": 219,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_uy40",
+          "pts": [
+            {
+              "x": 420,
+              "y": 219
+            },
+            {
+              "x": 450,
+              "y": 219
+            }
+          ],
+          "x1": 420,
+          "y1": 219,
+          "x2": 450,
+          "y2": 219,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_uvk0",
+          "pts": [
+            {
+              "x": 420,
+              "y": 400
+            },
+            {
+              "x": 420,
+              "y": 387
+            }
+          ],
+          "x1": 420,
+          "y1": 400,
+          "x2": 420,
+          "y2": 387,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "el_msbxl0q2_22b8",
+          "fromTermIdx": 1,
+          "toElId": "el_msc00nnh_7gu0",
+          "toTermIdx": 1,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_viou",
+          "pts": [
+            {
+              "x": 420,
+              "y": 313
+            },
+            {
+              "x": 420,
+              "y": 325
+            }
+          ],
+          "x1": 420,
+          "y1": 313,
+          "x2": 420,
+          "y2": 325,
+          "layer": "回路",
+          "wireNo": "07",
+          "fromElId": "el_msfkww11_tdmb",
+          "fromTermIdx": 0,
+          "toElId": "",
+          "toTermIdx": "",
+          "wireNoFs": 6,
+          "wireNoOffX": 20,
+          "wireNoOffY": 5,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_ciiu",
+          "pts": [
+            {
+              "x": 420,
+              "y": 345
+            },
+            {
+              "x": 420,
+              "y": 364
+            }
+          ],
+          "x1": 420,
+          "y1": 345,
+          "x2": 420,
+          "y2": 364,
+          "layer": "回路",
+          "wireNo": "08",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "wireNoFs": 6,
+          "wireNoOffX": 20,
+          "wireNoOffY": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_sel5",
+          "pts": [
+            {
+              "x": 480,
+              "y": 193
+            },
+            {
+              "x": 480,
+              "y": 366
+            }
+          ],
+          "x1": 480,
+          "y1": 193,
+          "x2": 480,
+          "y2": 366,
+          "layer": "回路",
+          "wireNo": "09",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "wireNoFs": 6,
+          "wireNoOffX": 20,
+          "wireNoOffY": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_hohp",
+          "pts": [
+            {
+              "x": 480,
+              "y": 130
+            },
+            {
+              "x": 480,
+              "y": 170
+            }
+          ],
+          "x1": 480,
+          "y1": 130,
+          "x2": 480,
+          "y2": 170,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_5kij",
+          "pts": [
+            {
+              "x": 540,
+              "y": 285
+            },
+            {
+              "x": 540,
+              "y": 366
+            }
+          ],
+          "x1": 540,
+          "y1": 285,
+          "x2": 540,
+          "y2": 366,
+          "layer": "回路",
+          "wireNo": "12",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "wireNoFs": 6,
+          "wireNoOffX": 20,
+          "wireNoOffY": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww11_bx7n",
+          "pts": [
+            {
+              "x": 540,
+              "y": 130
+            },
+            {
+              "x": 540,
+              "y": 170
+            }
+          ],
+          "x1": 540,
+          "y1": 130,
+          "x2": 540,
+          "y2": 170,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "el_mseev5en_qdi2",
+          "fromTermIdx": 0,
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww12_701f",
+          "pts": [
+            {
+              "x": 310,
+              "y": 160
+            },
+            {
+              "x": 325,
+              "y": 160
+            }
+          ],
+          "x1": 310,
+          "y1": 160,
+          "x2": 325,
+          "y2": 160,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww12_bcxx",
+          "pts": [
+            {
+              "x": 311,
+              "y": 130
+            },
+            {
+              "x": 665,
+              "y": 130
+            }
+          ],
+          "x1": 311,
+          "y1": 130,
+          "x2": 665,
+          "y2": 130,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "el_msemrlwp_5glf",
+          "fromTermIdx": 0,
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww12_768n",
+          "pts": [
+            {
+              "x": 610,
+              "y": 130
+            },
+            {
+              "x": 610,
+              "y": 170
+            }
+          ],
+          "x1": 610,
+          "y1": 130,
+          "x2": 610,
+          "y2": 170,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww12_ihva",
+          "pts": [
+            {
+              "x": 665,
+              "y": 225.5
+            },
+            {
+              "x": 665,
+              "y": 365
+            }
+          ],
+          "x1": 665,
+          "y1": 225.5,
+          "x2": 665,
+          "y2": 365,
+          "layer": "回路",
+          "wireNo": "14",
+          "fromElId": "el_mueugmh8_aojzf",
+          "fromTermIdx": 4,
+          "toElId": "",
+          "toTermIdx": "",
+          "wireNoFs": 6,
+          "wireNoOffX": 20,
+          "wireNoOffY": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww12_x4eq",
+          "pts": [
+            {
+              "x": 665,
+              "y": 385
+            },
+            {
+              "x": 665,
+              "y": 400
+            }
+          ],
+          "x1": 665,
+          "y1": 385,
+          "x2": 665,
+          "y2": 400,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww12_dgwq",
+          "pts": [
+            {
+              "x": 575,
+              "y": 130
+            },
+            {
+              "x": 575,
+              "y": 170
+            }
+          ],
+          "x1": 575,
+          "y1": 130,
+          "x2": 575,
+          "y2": 170,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "el_mseev5en_qdi2",
+          "fromTermIdx": 0,
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww12_4f93",
+          "pts": [
+            {
+              "x": 575,
+              "y": 193
+            },
+            {
+              "x": 575,
+              "y": 366
+            }
+          ],
+          "x1": 575,
+          "y1": 193,
+          "x2": 575,
+          "y2": 366,
+          "layer": "回路",
+          "wireNo": "13",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "wireNoFs": 6,
+          "wireNoOffX": 20,
+          "wireNoOffY": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww12_ubvk",
+          "pts": [
+            {
+              "x": 510,
+              "y": 130
+            },
+            {
+              "x": 510,
+              "y": 170
+            }
+          ],
+          "x1": 510,
+          "y1": 130,
+          "x2": 510,
+          "y2": 170,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "el_mseev5en_qdi2",
+          "fromTermIdx": 0,
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww12_et3h",
+          "pts": [
+            {
+              "x": 510,
+              "y": 190
+            },
+            {
+              "x": 510,
+              "y": 230
+            }
+          ],
+          "x1": 510,
+          "y1": 190,
+          "x2": 510,
+          "y2": 230,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww12_xbmt",
+          "pts": [
+            {
+              "x": 510,
+              "y": 230
+            },
+            {
+              "x": 480,
+              "y": 230
+            }
+          ],
+          "x1": 510,
+          "y1": 230,
+          "x2": 480,
+          "y2": 230,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww12_zrv0",
+          "pts": [
+            {
+              "x": 540,
+              "y": 190
+            },
+            {
+              "x": 540,
+              "y": 215
+            }
+          ],
+          "x1": 540,
+          "y1": 190,
+          "x2": 540,
+          "y2": 215,
+          "layer": "回路",
+          "wireNo": "10",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "wireNoFs": 6,
+          "wireNoOffX": 20,
+          "wireNoOffY": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww12_pp4d",
+          "pts": [
+            {
+              "x": 665,
+              "y": 130
+            },
+            {
+              "x": 665,
+              "y": 150
+            }
+          ],
+          "x1": 665,
+          "y1": 130,
+          "x2": 665,
+          "y2": 150,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww12_8m8g",
+          "pts": [
+            {
+              "x": 610,
+              "y": 195
+            },
+            {
+              "x": 610,
+              "y": 255
+            }
+          ],
+          "x1": 610,
+          "y1": 195,
+          "x2": 610,
+          "y2": 255,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww12_ai0m",
+          "pts": [
+            {
+              "x": 665,
+              "y": 255
+            },
+            {
+              "x": 610,
+              "y": 255
+            }
+          ],
+          "x1": 665,
+          "y1": 255,
+          "x2": 610,
+          "y2": 255,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww12_2qf5",
+          "pts": [
+            {
+              "x": 540,
+              "y": 235
+            },
+            {
+              "x": 540,
+              "y": 260
+            }
+          ],
+          "x1": 540,
+          "y1": 235,
+          "x2": 540,
+          "y2": 260,
+          "layer": "回路",
+          "wireNo": "11",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "wireNoFs": 6,
+          "wireNoOffX": 20,
+          "wireNoOffY": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww12_th9f",
+          "pts": [
+            {
+              "x": 360,
+              "y": 250
+            },
+            {
+              "x": 360,
+              "y": 267
+            }
+          ],
+          "x1": 360,
+          "y1": 250,
+          "x2": 360,
+          "y2": 267,
+          "layer": "回路",
+          "wireNo": "02",
+          "fromElId": "el_msfb1fvn_aevj",
+          "fromTermIdx": 1,
+          "toElId": "el_msfkww11_e1lo",
+          "toTermIdx": 0,
+          "wireNoFs": 6,
+          "wireNoOffX": 20,
+          "wireNoOffY": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww12_f8lm",
+          "pts": [
+            {
+              "x": 420,
+              "y": 250
+            },
+            {
+              "x": 420,
+              "y": 267
+            }
+          ],
+          "x1": 420,
+          "y1": 250,
+          "x2": 420,
+          "y2": 267,
+          "layer": "回路",
+          "wireNo": "06",
+          "fromElId": "el_msfb1fvn_aevj",
+          "fromTermIdx": 1,
+          "toElId": "el_msfkww11_s22r",
+          "toTermIdx": 0,
+          "wireNoFs": 6,
+          "wireNoOffX": 20,
+          "wireNoOffY": 0,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww12_16b0",
+          "pts": [
+            {
+              "x": 360,
+              "y": 360
+            },
+            {
+              "x": 390,
+              "y": 360
+            }
+          ],
+          "x1": 360,
+          "y1": 360,
+          "x2": 390,
+          "y2": 360,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "el_mselwbls_c7wd",
+          "fromTermIdx": 0,
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww12_qukn",
+          "pts": [
+            {
+              "x": 390,
+              "y": 360
+            },
+            {
+              "x": 390,
+              "y": 365
+            }
+          ],
+          "x1": 390,
+          "y1": 360,
+          "x2": 390,
+          "y2": 365,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww12_6a90",
+          "pts": [
+            {
+              "x": 420,
+              "y": 360
+            },
+            {
+              "x": 450,
+              "y": 360
+            }
+          ],
+          "x1": 420,
+          "y1": 360,
+          "x2": 450,
+          "y2": 360,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww12_trow",
+          "pts": [
+            {
+              "x": 450,
+              "y": 360
+            },
+            {
+              "x": 450,
+              "y": 365
+            }
+          ],
+          "x1": 450,
+          "y1": 360,
+          "x2": 450,
+          "y2": 365,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": "",
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww12_91wc",
+          "pts": [
+            {
+              "x": 390,
+              "y": 400
+            },
+            {
+              "x": 390,
+              "y": 387
+            }
+          ],
+          "x1": 390,
+          "y1": 400,
+          "x2": 390,
+          "y2": 387,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "el_msbxl0q2_22b8",
+          "fromTermIdx": 1,
+          "toElId": "el_msc00nnh_7gu0",
+          "toTermIdx": 1,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_msfkww12_321l",
+          "pts": [
+            {
+              "x": 450,
+              "y": 400
+            },
+            {
+              "x": 450,
+              "y": 387
+            }
+          ],
+          "x1": 450,
+          "y1": 400,
+          "x2": 450,
+          "y2": 387,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "el_msbxl0q2_22b8",
+          "fromTermIdx": 1,
+          "toElId": "el_msc00nnh_7gu0",
+          "toTermIdx": 1,
+          "lineWidth": 0.5
+        },
+        {
+          "id": "w_mt2lezkh_3mygo",
+          "pts": [
+            {
+              "x": 360,
+              "y": 307
+            },
+            {
+              "x": 360,
+              "y": 300
+            }
+          ],
+          "x1": 360,
+          "y1": 307,
+          "x2": 360,
+          "y2": 300,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "",
+          "toTermIdx": ""
+        },
+        {
+          "id": "w_mt2lf42p_417x6",
+          "pts": [
+            {
+              "x": 360,
+              "y": 280
+            },
+            {
+              "x": 360,
+              "y": 273
+            }
+          ],
+          "x1": 360,
+          "y1": 280,
+          "x2": 360,
+          "y2": 273,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "",
+          "fromTermIdx": "",
+          "toElId": "el_msfkww11_e1lo",
+          "toTermIdx": 0
+        },
+        {
+          "id": "w_mt2lf6fl_5gykp",
+          "pts": [
+            {
+              "x": 420,
+              "y": 273
+            },
+            {
+              "x": 420,
+              "y": 280
+            }
+          ],
+          "x1": 420,
+          "y1": 273,
+          "x2": 420,
+          "y2": 280,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "el_msfkww11_e1lo",
+          "fromTermIdx": 0,
+          "toElId": "el_msfkww11_d4vh",
+          "toTermIdx": 1
+        },
+        {
+          "id": "w_mt2lf9bd_6yajd",
+          "pts": [
+            {
+              "x": 420,
+              "y": 300
+            },
+            {
+              "x": 420,
+              "y": 307
+            }
+          ],
+          "x1": 420,
+          "y1": 300,
+          "x2": 420,
+          "y2": 307,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "el_msfkww11_d4vh",
+          "fromTermIdx": 1,
+          "toElId": "el_msfkww11_tdmb",
+          "toTermIdx": 0
+        },
+        {
+          "id": "w_mt6ogiu4_0u536",
+          "pts": [
+            {
+              "x": 90,
+              "y": 280
+            },
+            {
+              "x": 70,
+              "y": 280
+            }
+          ],
+          "x1": 90,
+          "y1": 280,
+          "x2": 70,
+          "y2": 280,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "el_msfkww10_xp89",
+          "fromTermIdx": 6,
+          "toElId": "",
+          "toTermIdx": ""
+        },
+        {
+          "id": "w_mune0qga_0tsi3",
+          "pts": [
+            {
+              "x": 480,
+              "y": 381.8452313478238
+            },
+            {
+              "x": 480,
+              "y": 400
+            }
+          ],
+          "x1": 480,
+          "y1": 381.8452313478238,
+          "x2": 480,
+          "y2": 400,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "el_msfkww11_jcv0",
+          "fromTermIdx": 1,
+          "toElId": "el_msfkww10_9tz3",
+          "toTermIdx": 0
+        },
+        {
+          "id": "w_mune0vt0_1ucz0",
+          "pts": [
+            {
+              "x": 540,
+              "y": 381.8452313478238
+            },
+            {
+              "x": 540,
+              "y": 400
+            }
+          ],
+          "x1": 540,
+          "y1": 381.8452313478238,
+          "x2": 540,
+          "y2": 400,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "el_msfkww10_9tz3",
+          "fromTermIdx": 0,
+          "toElId": "el_msfkww10_ot1n",
+          "toTermIdx": 0
+        },
+        {
+          "id": "w_mune10i4_2ctao",
+          "pts": [
+            {
+              "x": 575,
+              "y": 381.8452313478238
+            },
+            {
+              "x": 575,
+              "y": 400
+            }
+          ],
+          "x1": 575,
+          "y1": 381.8452313478238,
+          "x2": 575,
+          "y2": 400,
+          "layer": "回路",
+          "wireNo": "",
+          "fromElId": "el_msfkww10_ot1n",
+          "fromTermIdx": 0,
+          "toElId": "el_msfkww10_kfmg",
+          "toTermIdx": 0
+        }
+      ],
+      "groups": [],
+      "frameObj": {
+        "sc": 2,
+        "wMM": 420,
+        "hMM": 297,
+        "mg": 10,
+        "thMM": 30,
+        "cols": 12,
+        "rows": 4,
+        "tbTpl": "standard",
+        "drawno": "",
+        "title": "",
+        "company": "",
+        "equip": "仕様２",
+        "author": "盛田",
+        "approve": "",
+        "date": "2026-08-01",
+        "scale2": "",
+        "rev": "",
+        "chghist": "",
+        "page": ""
+      },
+      "guides": [],
+      "dirty": false
+    }
+  ]
+}
