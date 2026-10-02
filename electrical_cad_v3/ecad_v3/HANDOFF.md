@@ -81,7 +81,7 @@ CSV作成作業の状況は、同じ問題(静的な引き継ぎ文書が実際�
   残りも**全部削除**(盛田さん「全部消して」): ①`tools/build_catalog_db.py`(SQLite変換の古い道具、どこからも使われていない) ②`catalog_pending/INDEX.md`(自動生成の一覧が古かった。
   作る道具`tools/generate_catalog_index.py`は残した=動かすとまた作られる) ③GitHubの古いブランチ6本(`claude/continuation-e2feav/gaqutn/mtbi12/nfywy3`・`claude/continue-work-5gzvv4`・
   このセッションの`claude/sweet-mccarthy-r3pw4c`)→ **ブランチは消せなかった**: この環境から`git push --delete`すると6本とも「remote end hung up」で切られる(ファイルのpushは通る。
-  この環境では書き込みだけ許され削除は許されていないと思われる、理由は未確認)。**盛田さんにGitHubのブランチの画面(`/branches`)から消してもらう**。
+  この環境では書き込みだけ許され削除は許されていないと思われる、理由は未確認)。**盛田さんがGitHubのブランチの画面(`/branches`)から消した**(1回目は「Branch could not be deleted」と出たが、2回目で消えた。保護設定・開いたPRは無かった)。**今あるブランチは main だけ**(2026-10-02確認)。
   作業はローカルも`main`に移した(`claude/sweet-mccarthy-r3pw4c`はローカルだけ削除。CLAUDE.mdどおりmainに直接push)
 - **【図面データの置き場所・2026-10-02 更新】`electrical_cad_v3/ecad_v3/drawings/`**(盛田さん「さっきのファイルはgitへ保存しろ」)。
   `仕様２1002_Sheet3.json`(1ページ・要素85・配線73)と`仕様２1002_Sheet3.dxf`を**盛田さんがGitHubの画面から入れた**(コミット`a684f28`)。
