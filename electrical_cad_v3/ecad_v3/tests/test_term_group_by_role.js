@@ -96,6 +96,19 @@ console.log('  ← どちらも「接点」を含むので、素朴な部分一�
   ok(pick('contact_a') === '13,14', '補助接点 → 補助接点グループ');
 }
 
+console.log('【三菱ブレーカの補助スイッチ(AX): a接点・b接点の組を自動で選ぶ(2026-10-03)】');
+console.log('  ← 総合カタログp.203 表6-3: 11=共通/12=b接点/14=a接点');
+{
+  const g4 = parseTerminalGroups('主接点:1,3,5,2,4,6 / 補助(a接点):11,14 / 補助(b接点):11,12');
+  const pick = r => { const g = pickGroupByRole(g4, r); return g ? g.list.join(',') : null; };
+  ok(g4.length === 3 && g4[1].name === '補助(a接点)', '3グループに分かれ、名前に括弧が入っても読める');
+  ok(pick('contact_a') === '11,14', '★a接点のシンボル → 11,14');
+  ok(pick('contact_b') === '11,12', '★b接点のシンボル → 11,12');
+  ok(pick('contact_main') === '1,3,5,2,4,6', '主接点のシンボル → 主接点');
+  // 既存の「補助:13,14」(a/bの区別なし)は今まで通り両方に当たる
+  ok(pickGroupByRole(groups, 'contact_b').list.join(',') === '13,14', '区別の無い「補助」は今まで通り');
+}
+
 console.log('【書き方の揺れを吸収する】');
 {
   const g3 = parseTerminalGroups('操作コイル:A1,A2 / 主回路:1,2,3,4,5,6 / 補助:13,14');
