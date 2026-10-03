@@ -96,7 +96,7 @@ console.log('\n【接点(2026-10-03 追加)】');
   for (const role of ['contact_a', 'contact_b']) {
     const sa = load({ parts, sel: ['e1'], roles: { e1: role } });
     sa.render('1');
-    eq(sa.cards().sort(), ['C1', 'P1', 'T1'], `★${role}: 接点を持つ種別(電磁接触器・タイマ・押釦等)だけ。PLC・インバータ・ブレーカは出さない`);
+    eq(sa.cards().sort(), ['B1', 'C1', 'P1', 'T1'], `★${role}: 接点を持つ種別(電磁接触器・タイマ・押釦・ブレーカの補助接点等)だけ。PLC・インバータは出さない`);
   }
 }
 

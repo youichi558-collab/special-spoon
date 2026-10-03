@@ -3994,11 +3994,12 @@ async function toggleFavPart(ref) {
 //   主接点: 端子欄に「主接点」グループがある種別 = ブレーカ・電磁接触器・電磁開閉器
 //   a/b接点: 接点のグループがある種別(電磁接触器・電磁開閉器の「補助」「サーマル接点」、リレーの「接点1〜4」、
 //     タイマの「限時接点・瞬時接点」)と、部品そのものが接点のスイッチ類(押釦・セレクタ・レバー・接点ブロック・サーマル)
+//   ブレーカ: 補助接点(AX・AL)の端子データはカタログに無いが、盛田さん「ブレーカの補助接点も入れて」で a/b接点にも入れた
 //   PLC・インバータ・サーボ・HMI・ランプ等は入れない。外れていたら「解除」で全部出る
 const PART_ROLE_TYPES = {
   coil:         { types: COIL_VOLT_TYPES, label: 'コイル' },
   contact_main: { types: ['breaker', 'contactor', 'starter'], label: '主接点' },
-  contact_a:    { types: ['contactor', 'starter', 'coil', 'timer', 'thermal', 'pb', 'pb_lamp', 'pb_estop',
+  contact_a:    { types: ['contactor', 'starter', 'coil', 'timer', 'thermal', 'breaker', 'pb', 'pb_lamp', 'pb_estop',
                           'selector', 'selector_key', 'selector_lamp', 'selector_pb', 'lever', 'contact_unit'], label: '接点' },
 };
 PART_ROLE_TYPES.contact_b = PART_ROLE_TYPES.contact_a;
