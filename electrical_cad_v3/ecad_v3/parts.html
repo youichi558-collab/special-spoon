@@ -148,9 +148,9 @@
         CADのフォルダ内の catalog_pending(メーカー別CSV)を読み、下の検索で使うデータベースを作ります。<br>
         CSVを直すと、次の検索で自動的に作り直されます。カタログDBが使えなくても、部品DBの編集は通常どおり行えます。
       </p>
-      <div style="display:flex;gap:6px;align-items:center;margin:6px 0">
-        <button class="fp-btn" onclick="catalogRebuild()" title="catalog_pending のCSVを読み直して、データベースを作り直します">作り直す</button>
-      </div>
+      <!-- 【2026-10-03】「作り直す」ボタンは消した(盛田さん「作り直すをいつ押すのか？」→「消して」)。
+           検索のたびにCSVの変更を見て自動で作り直すので押す場面が無く、「部品DBをカタログ全件で作り直す」と紛らわしかった。
+           下の1行(件数・CSVの数)は取り込みタブを開くたびに出る。 -->
       <p id="cat-status" style="font-size:11px;color:var(--fg2)"></p>
 
       <hr style="margin:14px 0;border:none;border-top:1px solid var(--bd2)">

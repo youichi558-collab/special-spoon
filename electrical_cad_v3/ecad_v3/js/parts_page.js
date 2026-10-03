@@ -560,19 +560,7 @@ async function catalogRefreshStatus() {
   }
 }
 
-// 「作り直す」ボタン。検索時にも自動で作り直すが、手で確かめたいとき用
-async function catalogRebuild() {
-  const st = document.getElementById('cat-status');
-  if (st) st.textContent = '作り直し中...';
-  try {
-    const d = await (await fetch('/api/catalog/rebuild')).json();
-    if (!d.ok) { if (st) st.textContent = 'エラー: ' + (d.error || '作り直せませんでした'); return; }
-  } catch (e) {
-    if (st) st.textContent = 'サーバーとの通信に失敗しました。server.py(start.bat)を起動し直してください';
-    return;
-  }
-  catalogRefreshStatus();
-}
+// 【2026-10-03】「作り直す」ボタン(catalogRebuild)は消した。検索時に自動で作り直すため(parts.html の取り込みタブ参照)
 
 
 window.addEventListener('DOMContentLoaded', () => {

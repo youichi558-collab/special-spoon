@@ -76,7 +76,8 @@ try:
     html = open(os.path.join(ROOT, 'parts.html'), encoding='utf-8').read()
     ok('showDirectoryPicker' not in page and 'catalogPickFolder' not in html,
        '部品DB画面にフォルダ選択が残っていない')
-    ok('catalogRebuild()' in html and 'function catalogRebuild' in page, '「作り直す」ボタンがある')
+    ok('catalogRebuild' not in html and 'function catalogRebuild' not in page,
+       '「作り直す」ボタンは消した(検索時に自動で作り直すため・2026-10-03)')
     srv = open(os.path.join(ROOT, 'server.py'), encoding='utf-8').read()
     body = srv[srv.index('def handle_catalog_import'):srv.index('def handle_catalog(')]
     ok('import_files' not in body and '廃止' in body, '/api/catalog/import は断るだけ(別の場所へ書かない)')
