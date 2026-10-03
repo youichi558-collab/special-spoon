@@ -94,6 +94,20 @@ console.log('\n【最近使ったは20件まで】');
 }
 
 ok(!/function togglePartsMaker|_isCollapsed/.test(ui), '全件の木(メーカー→種別の折りたたみ)は無い');
+{
+  // メーカーのボタン: 「全て」は無い(押していない=絞らない)。押すと絞り、もう一度押すと解除
+  const tabs = ui.slice(ui.indexOf('function renderMakerTabs'), ui.indexOf('let _lastPartsQuery'));
+  const el = { innerHTML: '' };
+  const sb = { state: { partsMakerFilter: '' }, document: { getElementById: () => el },
+    allParts: () => [{ maker: '三菱' }, { maker: 'IDEC' }], escH: s => s, _escAttr: s => s, renderPartsTable2() {} };
+  vm.createContext(sb); vm.runInContext(tabs, sb);
+  vm.runInContext('renderMakerTabs()', sb);
+  ok(!/全て/.test(el.innerHTML), '★「全て」ボタンは無い(選ばれた見た目なのに全部出ない、を作らない)');
+  vm.runInContext("setPartsMakerFilter('三菱')", sb);
+  eq(sb.state.partsMakerFilter, '三菱', '押すとそのメーカーに絞る');
+  vm.runInContext("setPartsMakerFilter('三菱')", sb);
+  eq(sb.state.partsMakerFilter, '', '★もう一度押すと解除');
+}
 ok(/if \(typeof recordRecentPart === 'function'\) recordRecentPart\(ref\)/.test(ui), '割り当てたら最近使ったに入れる(placePart)');
 
 console.log(ng ? `\n失敗 ${ng} 件` : '\nすべて通過');

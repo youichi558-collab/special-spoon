@@ -3948,13 +3948,16 @@ function renderMakerTabs() {
   if (!el) return;
   const makers = [...new Set(allParts().map(p => p.maker).filter(Boolean))].sort();
   if (makers.length <= 1) { el.innerHTML = ''; return; }
-  const chip = (label, val) => `<span onclick="setPartsMakerFilter('${_escAttr(val)}')" style="font-size:10px;padding:2px 8px;border-radius:10px;cursor:pointer;white-space:nowrap;${
+  // 【2026-10-03】「全て」ボタンは消した(盛田さん「分類が全ては全て出るんじゃないのか？」→案1)。
+  // 段階4で、絞っていないときは★よく使う・最近使っただけを出す形にしたのに、「全て」が選ばれた見た目のまま
+  // 全部は出ない、という矛盾になっていた。メーカーのボタンは押すとそのメーカーに絞り、もう一度押すと解除。
+  const chip = val => `<span onclick="setPartsMakerFilter('${_escAttr(val)}')" title="${state.partsMakerFilter === val ? 'もう一度押すと解除' : 'このメーカーに絞る'}" style="font-size:10px;padding:2px 8px;border-radius:10px;cursor:pointer;white-space:nowrap;${
     state.partsMakerFilter === val ? 'background:var(--acc);color:#fff' : 'background:var(--bg3);color:var(--fg3);border:1px solid var(--bd2)'
-  }">${escH(label)}</span>`;
-  el.innerHTML = chip('全て', '') + makers.map(m => chip(m, m)).join('');
+  }">${escH(val)}</span>`;
+  el.innerHTML = makers.map(chip).join('');
 }
 function setPartsMakerFilter(m) {
-  state.partsMakerFilter = m;
+  state.partsMakerFilter = (state.partsMakerFilter === m) ? '' : m;   // 同じボタンをもう一度押したら解除
   renderMakerTabs();
   renderPartsTable2();
 }
