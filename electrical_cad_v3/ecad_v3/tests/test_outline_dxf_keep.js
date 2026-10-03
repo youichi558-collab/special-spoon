@@ -47,43 +47,8 @@ console.log('【carryOutlineDxf 単体】');
   eq(call({ ref: 'A' }, { ref: 'A' }), { ref: 'A' }, '外形図が無ければ何も足さない');
 }
 
-// ------------------------------------------------------------------
-// 作り直し(catalogResetPartsDb)の中核部分だけを取り出して実行する。
-// 関数全体はfetch/confirm/partsDb等に依存して重いので、置き換えの1行を実ソースから
-// 取り出して、それが carryOutlineDxf を通っていることを動作で確かめる。
-console.log('\n【作り直しで外形図が残る】');
-{
-  // 実装の書き方に依存しないよう、「customPartsをrowsで置き換える文」だけを
-  // 形を問わず取り出して実行する。引き継ぎが無い実装なら、ここで外形図が落ちる。
-  const body = pick(/(?:const prevByRef[^\n]*\n\s*)?state\.customParts = rows\.map\(r => [\s\S]*?\)\);/);
-  const sandbox = {
-    console,
-    state: {
-      customParts: [
-        { ref: 'S-T10', maker: '三菱電機', outlineDxf: 'DXF-A', outlineDxfName: 'st10.dxf' },
-        { ref: 'NF63-CV', maker: '三菱電機' },
-        { ref: '廃番品', maker: '三菱電機', outlineDxf: 'DXF-B' },   // カタログに無い
-      ],
-    },
-    rows: [
-      { ref: 'S-T10', maker: '三菱電機', type: 'contactor' },
-      { ref: 'NF63-CV', maker: '三菱電機', type: 'breaker' },
-      { ref: 'MSO-T21', maker: '三菱電機', type: 'starter' },        // カタログ側の新規
-    ],
-  };
-  vm.createContext(sandbox);
-  vm.runInContext(pick(/function carryOutlineDxf\([\s\S]*?\n\}/), sandbox);
-  vm.runInContext(body, sandbox);
-
-  const cp = sandbox.state.customParts;
-  eq(cp.length, 3, 'カタログの3件になる');
-  const st10 = cp.find(p => p.ref === 'S-T10');
-  eq(st10.outlineDxf, 'DXF-A', '外形図の紐付けが残る（ここが2回消えていた）');
-  eq(st10.outlineDxfName, 'st10.dxf', 'ファイル名も残る');
-  eq(st10.type, 'contactor', 'カタログ側の新しい内容は反映される');
-  ok(!cp.find(p => p.ref === '廃番品'), 'カタログに無い部品は消える（作り直しの仕様どおり）');
-  ok(cp.find(p => p.ref === 'MSO-T21'), 'カタログ側の新規は入る');
-}
+// 【2026-10-03 段階4】「カタログ全件で作り直す」は消した(部品DBはカタログの全件を土台にし、外形図は
+// parts_db.json の差分に入るので、カタログが変わっても消えない)。その確認は tests/test_parts_catalog_base.py。
 
 // ------------------------------------------------------------------
 console.log('\n【置き換える経路が全て carryOutlineDxf を通っている】');
@@ -96,18 +61,8 @@ console.log('\n【置き換える経路が全て carryOutlineDxf を通ってい
     ok(/carryOutlineDxf/.test(next),
        `${i + 1}箇所目の Object.assign(${target}, part) の直後に carryOutlineDxf がある`);
   });
-  // 作り直し側
-  ok(/state\.customParts = rows\.map\(r => carryOutlineDxf\(/.test(ui),
-     '作り直しの置き換えが carryOutlineDxf を通っている');
 }
 
-// ------------------------------------------------------------------
-console.log('\n【押す前に、何が残り何が消えるか出る】');
-{
-  ok(/外形図DXFの紐付け \$\{keptDxf\}件は引き継ぎます/.test(ui), '引き継ぐ件数を確認ダイアログに出す');
-  ok(/カタログに無い部品 \$\{dropped\.length\}件が削除されます/.test(ui), '削除される部品の件数を出す');
-  ok(/カタログに無い部品の外形図 \$\{lostDxf\}件は失われます/.test(ui), '失われる外形図がある場合は警告する');
-}
 
 console.log(ng === 0 ? '\n=== 全て OK ===' : `\n=== NG ${ng}件 ===`);
 process.exit(ng === 0 ? 0 : 1);

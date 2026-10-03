@@ -457,7 +457,7 @@ function allParts() {
     ...state.customParts.map(p => ({ ...p, custom:true })),
   ];
 }
-function renderPartsAll()  { renderMakerTabs(); renderPartsTable2(applyPartsFilters()); renderPartsDbCount(); }
+function renderPartsAll()  { renderMakerTabs(); renderPartsTable2(); renderPartsDbCount(); }
 
 // 部品DBパネルの見出しに件数を常時出す。
 // 2026-09-01: 約440型番が欠落していたのに気づくのが遅れた原因の一つが
@@ -766,6 +766,7 @@ function placePart(type, ref, terminals) {
         + `そのシンボルを選択した状態でこの部品をクリックしてください。`);
     return;
   }
+  if (typeof recordRecentPart === 'function') recordRecentPart(ref);   // 最近使った(段階4)
   const groups = parseTerminalGroups(terminals);
   if (groups.length <= 1) {
     doPlacePart(type, ref, groups.length ? groups[0].list.join(',') : '', '');
@@ -2359,6 +2360,9 @@ function deletePage(idx) {
 // 右パネル（プロパティ）
 // ----------------------------------------------------------------
 function updateRightPanel() {
+  // 部品パネルが開いていれば、選択中のシンボルの役割(コイル)で種別の絞り込みを付け直す(段階4)
+  const pf = document.getElementById('prt-float');
+  if (pf && pf.style.display !== 'none' && typeof renderPartsTable2 === 'function') { try { renderPartsTable2(); } catch (e) {} }
   const el  = state.sel.els.size  === 1 ? state.elements.find(e => state.sel.els.has(e.id))   : null;
   const wire= state.sel.wires.size === 1 ? state.wires.find(w    => state.sel.wires.has(w.id)) : null;
   const rp  = document.getElementById('rp-body');
@@ -3923,24 +3927,6 @@ function symRowPointerDown(e, i) {
   document.addEventListener('pointercancel', onUp);
 }
 
-// 折りたたみ状態。2026-08-19よりメーカーを第一階層、種別を第二階層とする2段構造に変更。
-// キーはメーカー名(第一階層)、または「メーカー名\u0000種別」(第二階層)。
-// 既定は全部閉じた状態。検索中は無視して全部展開する。リロードごとにリセット(永続化なし)。
-state.partsCollapsed = state.partsCollapsed || {};
-// 未知のキーは「閉じている」とみなすため、初期化で全部trueを詰める必要はない
-// (partsCollapsed[key]がundefinedのときは閉じた扱いにする)
-function _isCollapsed(key) {
-  return state.partsCollapsed[key] !== false;
-}
-function togglePartsMaker(maker) {
-  state.partsCollapsed[maker] = !_isCollapsed(maker) ? true : false;
-  renderPartsTable2(_lastPartsList || allParts());
-}
-function togglePartsCategory(maker, type) {
-  const key = maker + '\u0000' + type;
-  state.partsCollapsed[key] = !_isCollapsed(key) ? true : false;
-  renderPartsTable2(_lastPartsList || allParts());
-}
 // ----------------------------------------------------------------
 // 部品DBフローティングパネル
 // ----------------------------------------------------------------
@@ -3970,50 +3956,66 @@ function renderMakerTabs() {
 function setPartsMakerFilter(m) {
   state.partsMakerFilter = m;
   renderMakerTabs();
-  renderPartsTable2(applyPartsFilters());
+  renderPartsTable2();
 }
 // 検索欄(型番・メーカー文字列)とメーカータブ、両方の絞り込みをまとめて適用する
-function applyPartsFilters() {
-  const q = _lastPartsQuery;
-  return allParts().filter(p => {
-    if (state.partsMakerFilter && p.maker !== state.partsMakerFilter) return false;
-    if (q && !p.ref.toLowerCase().includes(q.toLowerCase()) && !p.maker.toLowerCase().includes(q.toLowerCase())) return false;
-    return true;
-  });
-}
-let _lastPartsList = null;
 let _lastPartsQuery = '';
-function renderPartsTable2(parts) {
+// 【2026-10-03 再設計の段階4】部品DBはカタログの全件(数千〜数万件)になったので、全件をメーカー→種別の木で
+// 並べるのをやめた(盛田さん「DBとしては全件持ってるのは普通だと思うが、CAD側で全件出るのはどうだろう」)。決定:
+//   ・検索していないとき: ★よく使う(ライブラリの part_favorites.json。PC間で共通)と、最近使った(このPC)だけ
+//   ・検索したとき / メーカーを選んだとき: 当たったものを上限付きで
+//   ・選択中のシンボルの役割がコイルなら、コイルを持つ種別(COIL_VOLT_TYPES)だけに自動で絞る(解除できる)
+//     接点など他の役割は、部品の種別との対応が決めきれないので絞らない
+//   「この図面で使っている型式」の一覧は入れない(描き始めは型式が無く、型式は後半に決まるため)
+const PARTS_LIST_LIMIT = 100;
+const PART_RECENT_KEY = 'ecad_part_recent';
+state.partsRoleFilterOff = state.partsRoleFilterOff || false;
+function partRecentRefs() {
+  try { const a = JSON.parse(localStorage.getItem(PART_RECENT_KEY) || '[]'); return Array.isArray(a) ? a : []; }
+  catch (e) { return []; }
+}
+function recordRecentPart(ref) {
+  if (!ref) return;
+  const a = [ref].concat(partRecentRefs().filter(r => r !== ref)).slice(0, 20);
+  try { localStorage.setItem(PART_RECENT_KEY, JSON.stringify(a)); } catch (e) {}
+}
+function partFavs() { return (typeof ecadLib !== 'undefined') ? ecadLib.get('partfavs') : {}; }
+async function toggleFavPart(ref) {
+  const cur = Object.assign({}, partFavs());
+  if (cur[ref]) delete cur[ref]; else cur[ref] = { at: Date.now() };
+  const r = await ecadLib.save('partfavs', cur);
+  if (!r.ok) { alert(r.error); return; }
+  renderPartsTable2();
+}
+// 選択中のシンボルが全部コイルなら、コイルを持つ種別だけに絞る
+function partsRoleTypes() {
+  if (state.partsRoleFilterOff) return null;
+  const sel = state.elements.filter(e => state.sel.els.has(e.id) && e.type !== 'junction');
+  if (!sel.length) return null;
+  const roles = [...new Set(sel.map(e => (typeof symTermRole === 'function') ? symTermRole(e) : ''))];
+  return (roles.length === 1 && roles[0] === 'coil') ? COIL_VOLT_TYPES : null;
+}
+function setPartsRoleFilterOff(v) { state.partsRoleFilterOff = !!v; renderPartsTable2(); }
+
+function renderPartsTable2() {
   const el = document.getElementById('parts-table2');
   if (!el) return;
-  _lastPartsList = parts;
-  const searching = !!_lastPartsQuery || !!state.partsMakerFilter;
+  const all = allParts();
+  const q = (_lastPartsQuery || '').trim().toLowerCase();
+  const maker = state.partsMakerFilter;
+  const roleTypes = partsRoleTypes();
+  const favs = partFavs();
+  const fits = p => !roleTypes || roleTypes.includes(p.type);
 
-  // メーカー(第一階層) → 種別(第二階層) の2段でグループ化する。
-  // 部品数が数百件規模になり、種別だけの1段では一覧が長くなりすぎるため
-  // 2026-08-19にこの構造へ変更した。検索中は絞り込み結果を見せたいので全部展開する。
-  const byMaker = {};
-  parts.forEach(p => {
-    const mk = p.maker || '(メーカー未設定)';
-    (byMaker[mk] = byMaker[mk] || []).push(p);
-  });
-  // メーカーは件数の多い順(同数なら名前順)で並べる
-  const makersPresent = Object.keys(byMaker).sort((a, b) =>
-    byMaker[b].length - byMaker[a].length || a.localeCompare(b, 'ja'));
-
-  // 【2026-09-03】編集(✎)・削除(×)・非表示(×)・外形図添付(添付)は、
-  // 部品DB(customParts)への書き込みなのでCADからは無くした。
-  // 部品の登録・編集は部品DB単独画面(parts.html)で行う。
   const cardHtml = p => `
     <div style="padding:4px 3px;border-bottom:1px solid var(--bg4);cursor:pointer" title="選択中のシンボルにこの部品を割り当てます（型番・端子番号・コイル電圧）" onclick="placePart('${_escAttr(p.type)}','${_escAttr(p.ref)}','${_escAttr(p.terminals||'')}')">
-      <div style="display:flex;justify-content:space-between">
+      <div style="display:flex;justify-content:space-between;align-items:center">
         <span style="font-size:11px;font-weight:600;color:var(--fg)">${escH(p.ref)}</span>
+        <span onclick="event.stopPropagation();toggleFavPart('${_escAttr(p.ref)}')" title="${favs[p.ref] ? 'よく使うから外す' : 'よく使うに入れる(どのPCでも出ます)'}" style="cursor:pointer;font-size:12px;color:${favs[p.ref] ? '#e0a800' : 'var(--fg3)'}">${favs[p.ref] ? '★' : '☆'}</span>
       </div>
-      <div style="font-size:10px;color:var(--fg3)">${escH(p.maker)} ${escH(p.volt||'')} ${escH(p.amp||'')}</div>
+      <div style="font-size:10px;color:var(--fg3)">${escH(p.maker)} ${escH(PART_TYPE_LABELS[p.type] || p.type || '')} ${escH(p.volt||'')} ${escH(p.amp||'')}</div>
       ${p.contacts?`<div style="font-size:10px;color:var(--acc)">接点:${escH(p.contacts)}</div>`:''}
       ${p.source?`<div style="font-size:9px;color:var(--fg3)" title="出典">📖 ${
-        // 【2026-09-20】カタログURLがあれば出典をリンクにする。分割済みカタログなら
-        // そのページが直接開く。http/https以外は素通ししない(javascript:等を弾く)。
         /^https?:\/\//.test(p.catalogUrl||'')
           ? `<a href="${escH(p.catalogUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--acc)" title="カタログのページを開く">${escH(p.source)}</a>`
           : escH(p.source)
@@ -4022,46 +4024,34 @@ function renderPartsTable2(parts) {
         ? `<div style="font-size:9px;color:var(--acc)">外形図: ${escH(p.outlineDxfName||'あり')} <span onclick="event.stopPropagation();placePartOutline('${_escAttr(p.ref)}')" style="cursor:pointer;text-decoration:underline">配置</span></div>`
         : ''}
     </div>`;
+  const head = t => `<div style="font-size:10px;color:var(--fg2);font-weight:600;margin:6px 0 2px;padding:2px 4px;background:var(--bg3);border-radius:3px">${t}</div>`;
+  const note = t => `<div style="font-size:10px;color:var(--fg3);padding:4px">${t}</div>`;
 
-  el.innerHTML = makersPresent.map(mk => {
-    const mkParts = byMaker[mk];
-    const mkCollapsed = !searching && _isCollapsed(mk);
-    // このメーカー内を種別でさらに分ける
-    const groups = {};
-    mkParts.forEach(p => { (groups[p.type] = groups[p.type] || []).push(p); });
-    const typesPresent = PART_TYPE_ORDER.filter(t => groups[t]?.length);
-    Object.keys(groups).forEach(t => { if (!typesPresent.includes(t)) typesPresent.push(t); });
-
-    const inner = mkCollapsed ? '' : typesPresent.map(t => {
-      const list = groups[t];
-      const key = mk + '\u0000' + t;
-      const collapsed = !searching && _isCollapsed(key);
-      // 2026-08-23: 廃止した種別(sw_no/sw_nc)で登録されたままの部品は、
-      // 生のコードではなく「a接点(要再分類)」のように表示して、直す必要が
-      // あることが一覧を見ただけで分かるようにする。
-      const label = PART_TYPE_LABELS[t]
-        || (LEGACY_PART_TYPES[t] ? `${LEGACY_PART_TYPES[t]}（要再分類）` : t);
-      return `<div class="parts-cat" style="margin-left:8px">
-        <div onclick="togglePartsCategory('${_escAttr(mk)}','${_escAttr(t)}')" style="display:flex;justify-content:space-between;align-items:center;padding:4px;cursor:pointer;background:var(--bg2);border-radius:3px;margin-top:3px">
-          <span style="font-size:10px;color:var(--fg2)">${escH(label)}（${list.length}）</span>
-          <span style="font-size:9px;color:var(--fg3)">${collapsed ? '▶' : '▼'}</span>
-        </div>
-        ${collapsed ? '' : list.map(cardHtml).join('')}
-      </div>`;
-    }).join('');
-
-    return `<div class="parts-maker">
-      <div onclick="togglePartsMaker('${_escAttr(mk)}')" style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;cursor:pointer;background:var(--bg3);border-radius:3px;margin-top:5px;border-left:3px solid var(--acc)">
-        <span style="font-size:12px;font-weight:600;color:var(--fg)">${escH(mk)}（${mkParts.length}）</span>
-        <span style="font-size:10px;color:var(--fg3)">${mkCollapsed ? '▶' : '▼'}</span>
-      </div>
-      ${inner}
-    </div>`;
-  }).join('');
+  let html = roleTypes
+    ? `<div style="font-size:10px;color:var(--acc);padding:2px 4px">選択中のシンボルがコイルなので、コイルを持つ種別だけ出しています <a href="javascript:void(0)" onclick="setPartsRoleFilterOff(true)" style="color:var(--acc)">解除</a></div>`
+    : (state.partsRoleFilterOff ? `<div style="font-size:10px;color:var(--fg3);padding:2px 4px">種別の自動の絞り込みを解除中 <a href="javascript:void(0)" onclick="setPartsRoleFilterOff(false)" style="color:var(--acc)">戻す</a></div>` : '');
+  if (!q && !maker) {
+    const byRef = new Map(all.map(p => [p.ref, p]));
+    const favList = Object.keys(favs).map(r => byRef.get(r)).filter(Boolean).filter(fits);
+    const recList = partRecentRefs().map(r => byRef.get(r)).filter(Boolean).filter(fits);
+    html += head(`★ よく使う（${favList.length}）`)
+      + (favList.length ? favList.map(cardHtml).join('') : note('部品の ☆ を押すと、ここに出ます（ライブラリに入るので、どのPCでも出ます）'));
+    html += head(`最近使った（${recList.length}）`)
+      + (recList.length ? recList.map(cardHtml).join('') : note('割り当てた部品が、ここに出ます（このPCだけ）'));
+    html += note(`ほかの部品は、上の欄で型番・メーカーを検索するか、メーカーを選んでください（全${all.length}件）`);
+  } else {
+    const hits = all.filter(p => (!maker || p.maker === maker) && fits(p)
+      && (!q || [p.ref, p.maker, p.note, p.type, PART_TYPE_LABELS[p.type]].some(v => String(v || '').toLowerCase().includes(q))));
+    // 型番の前方一致を先に
+    if (q) hits.sort((a, b) => (String(b.ref).toLowerCase().startsWith(q) ? 1 : 0) - (String(a.ref).toLowerCase().startsWith(q) ? 1 : 0));
+    html += head(`検索結果（${hits.length}件${hits.length > PARTS_LIST_LIMIT ? `・上位${PARTS_LIST_LIMIT}件を表示。絞り込んでください` : ''}）`)
+      + (hits.length ? hits.slice(0, PARTS_LIST_LIMIT).map(cardHtml).join('') : note('当たる部品がありません'));
+  }
+  el.innerHTML = html;
 }
 function filterParts(q) {
   _lastPartsQuery = q || '';
-  renderPartsTable2(applyPartsFilters());
+  renderPartsTable2();
 }
 
 // ----------------------------------------------------------------

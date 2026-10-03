@@ -77,7 +77,14 @@ async function loadAll() {
   serverPath = stats.path || '';
   loadedVersion = all.version || '';
   saveLocked = false;
-  setStatus(`部品DB: ${serverPath.split(/[\\/]/).pop()} (${state.customParts.length}件・サーバー経由)`);
+  // 【2026-10-03 段階4】一覧はカタログの全件＋自分で足した・直した部品(サーバーが重ねて返す)
+  const n = k => state.customParts.filter(p => p._origin === k).length;
+  setStatus(`部品DB: ${state.customParts.length}件（カタログ ${n('catalog') + n('edited')}件うち直した ${n('edited')}件・自分で足した ${n('own')}件）`);
+  if (all.catalog === false) {
+    // カタログが読めないと差分が取れない(カタログの部品が「自分で足した部品」に化ける)ので保存しない
+    setBanner('⚠ カタログDB(catalog_pending)が読めないため、自分で足した・直した部品だけを表示しています。保存はできません（start.bat を開き直してください）');
+    saveLocked = true;
+  }
   renderAll();
 }
 
@@ -124,6 +131,8 @@ async function saveAll(force) {
   }
   loadedVersion = j.version || loadedVersion;
   setBanner('');
+  // サーバーがカタログとの差分を取り直したので、出どころの印(カタログ/直した/自分)を読み直す(段階4)
+  if (typeof document !== 'undefined' && document.getElementById('pp-tbody')) { try { await loadAll(); } catch (e) {} }
   setStatus(`部品DB: ${(j.path || serverPath).split(/[\\/]/).pop()} `
     + `(${state.customParts.length}件・保存済み)`
     + (j.backup ? `／直前の内容は ${j.backup} に残っています` : ''));
@@ -132,7 +141,7 @@ async function saveAll(force) {
 
 // ---- 一覧・絞り込み ----------------------------------------------
 let filterText = '', filterMaker = '', filterType = '';
-let filterNoOutline = false, filterNoType = false, filterLegacy = false;
+let filterNoOutline = false, filterNoType = false, filterLegacy = false, filterMine = false;
 let sortKey = 'ref', sortDir = 1;
 
 function filteredParts() {
@@ -143,6 +152,7 @@ function filteredParts() {
     if (filterNoOutline && p.outlineDxf) return false;
     if (filterNoType && p.type) return false;
     if (filterLegacy && !LEGACY_PART_TYPES[p.type]) return false;
+    if (filterMine && p._origin !== 'own' && p._origin !== 'edited') return false;
     if (q && !['ref','maker','type','volt','amp','note','source','catalogUrl']
       .some(k => String(p[k] || '').toLowerCase().includes(q))) return false;
     return true;
@@ -186,8 +196,20 @@ function renderTable() {
       <td>${escH(p.volt || '')}</td>
       <td>${escH(p.amp || '')}</td>
       <td style="text-align:center">${p.outlineDxf ? '✓' : ''}</td>
+      <td>${originLabel(p)}</td>
     </tr>`;
   }).join('');
+}
+
+// 出どころ(段階4): カタログのまま / 直した(カタログ側も後で変わったら ⚠) / 自分で足した
+function originLabel(p) {
+  if (p._origin === 'own') return '<span style="color:var(--acc)">自分</span>';
+  if (p._origin === 'edited') {
+    return '<span style="color:var(--org,#c77b00)">直した</span>'
+      + (p._catalogChanged && p._catalogChanged.length
+        ? ` <span style="color:var(--red)" title="直した後にカタログ側が変わった項目: ${escH(p._catalogChanged.join(', '))}">⚠</span>` : '');
+  }
+  return '<span style="color:var(--fg3)">カタログ</span>';
 }
 
 function renderAll() {
@@ -203,6 +225,7 @@ function setFilter(k, v) {
   else if (k === 'noOutline') filterNoOutline = v;
   else if (k === 'noType') filterNoType = v;
   else if (k === 'legacy') filterLegacy = v;
+  else if (k === 'mine') filterMine = v;
   renderTable();
 }
 function sortBy(key) {
@@ -250,8 +273,13 @@ function selectPart(ref) {
   $('pp-source').value = p.source || '';
   $('pp-caturl').value = p.catalogUrl || '';
   $('pp-outline-status').textContent = p.outlineDxf ? `外形図: ${p.outlineDxfName || 'あり'}` : '';
-  $('pp-delete').style.display = '';
-  $('pp-form-title').textContent = `編集: ${p.ref}`;
+  // 【2026-10-03 段階4】カタログの部品は消せない(部品DBはカタログの全件を持つ)。直した部品は「カタログの内容に戻す」
+  const del = $('pp-delete');
+  del.style.display = p._origin === 'catalog' ? 'none' : '';
+  del.textContent = p._origin === 'edited' ? 'カタログの内容に戻す' : '削除';
+  $('pp-form-title').textContent = `編集: ${p.ref}`
+    + (p._origin === 'own' ? '（自分で足した部品）' : p._origin === 'edited' ? '（カタログの部品・直した項目あり）' : '（カタログの部品）')
+    + (p._catalogChanged && p._catalogChanged.length ? `　⚠ 直した後にカタログ側が変わった項目: ${p._catalogChanged.join(', ')}` : '');
   renderTable();
 }
 async function savePart() {
@@ -264,7 +292,7 @@ async function savePart() {
     maker: $('pp-maker').value, ref, type: $('pp-type').value,
     volt: $('pp-volt').value, amp: $('pp-amp').value,
     terminals: $('pp-term').value, contacts: $('pp-contacts').value,
-    note: $('pp-note').value, source: $('pp-source').value, catalogUrl: $('pp-caturl').value.trim(), custom: true,
+    note: $('pp-note').value, source: $('pp-source').value, catalogUrl: $('pp-caturl').value.trim(),
     outlineDxf, outlineDxfName,
   };
   if (existing) Object.assign(existing, part); else state.customParts.push(part);
@@ -274,6 +302,17 @@ async function savePart() {
 }
 async function deleteCurrent() {
   if (!editingRef) return;
+  const cur = state.customParts.find(p => p.ref === editingRef);
+  if (cur && cur._origin === 'edited') {
+    // 直した項目をカタログの値に戻す(外形図はそのまま)。保存するとサーバーが差分を取り直し、直した印が消える
+    if (!confirm(`「${editingRef}」の直した項目をカタログの内容に戻しますか？（外形図はそのままです）`)) return;
+    Object.assign(cur, cur._catalogValues || {});
+    renderAll();
+    await saveAll();
+    newPart();
+    return;
+  }
+  if (cur && cur._origin === 'catalog') return;   // カタログの部品は消せない(ボタンも出していない)
   if (!confirm(`「${editingRef}」を削除しますか？`)) return;
   state.customParts = state.customParts.filter(p => p.ref !== editingRef);
   renderAll();
@@ -351,7 +390,7 @@ async function bulkImportParts() {
         skipped++; return;
       }
     }
-    const part = { maker: maker || '', ref, type: type || '', volt: volt || '', amp: amp || '', terminals: terminals || '', contacts: contacts || '', note: note || '', source: source || '', catalogUrl: catalogUrl || '', custom: true };
+    const part = { maker: maker || '', ref, type: type || '', volt: volt || '', amp: amp || '', terminals: terminals || '', contacts: contacts || '', note: note || '', source: source || '', catalogUrl: catalogUrl || '' };
     const existing = state.customParts.find(p => p.ref === ref);
     if (existing) {
       const prev = { ...existing };
@@ -376,122 +415,10 @@ async function bulkImportParts() {
   if (ok) $('pp-csv').value = '';
 }
 
-// ---- 保留CSV -------------------------------------------------
-async function refreshPendingCsvList() {
-  const sel = $('pp-pc-file');
-  if (!sel) return;
-  try {
-    const data = await (await fetch('/api/pending_csv')).json();
-    const files = data.files || [];
-    sel.innerHTML = files.length
-      ? files.map(f => `<option value="${escH(f)}">${escH(f)}</option>`).join('')
-      : '<option value="">(登録待ちCSVはありません)</option>';
-  } catch (e) {
-    sel.innerHTML = '<option value="">(サーバーに接続できません)</option>';
-  }
-}
-async function loadPendingCsv() {
-  const name = $('pp-pc-file')?.value;
-  if (!name) { setStatus('ファイルを選択してください', true); return; }
-  try {
-    const res = await fetch('catalog_pending/' + encodeURIComponent(name));
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const text = (await res.text()).trim();
-    const csvEl = $('pp-csv');
-    csvEl.value = csvEl.value.trim() ? (csvEl.value.trim() + '\n' + text) : text;
-    setStatus(`読み込みました(${text.split('\n').filter(l => l.trim()).length}行)。内容を確認して「CSVから一括登録」を押してください`);
-  } catch (e) {
-    setStatus('読み込みに失敗しました: ' + (e.message || e), true);
-  }
-}
-
-// ---- カタログDB検索 -------------------------------------------------
-let _catalogResults = [];
-async function catalogSearch() {
-  const q = $('pp-cat-q')?.value.trim() || '';
-  const box = $('pp-cat-result');
-  if (!q) { setStatus('キーワードを入力してください', true); return; }
-  setStatus('検索中...');
-  try {
-    const d = await (await fetch('/api/catalog/search?q=' + encodeURIComponent(q) + '&limit=100')).json();
-    if (!d.ok) { setStatus('エラー: ' + (d.error || '検索に失敗しました'), true); box.style.display = 'none'; return; }
-    _catalogResults = d.results || [];
-    setStatus(`${d.count}件ヒット${d.count >= 100 ? '（上位100件を表示）' : ''}`);
-    if (!_catalogResults.length) { box.style.display = 'none'; return; }
-    box.style.display = 'block';
-    box.innerHTML = _catalogResults.map((r, i) => {
-      const already = state.customParts.some(p => p.ref === r.ref);
-      const spec = [r.type, r.volt, r.amp, r.contacts].filter(Boolean).join(' / ');
-      return `<div style="display:flex;gap:6px;align-items:flex-start;padding:4px 0;border-bottom:1px solid var(--bd2)">
-        <div style="flex:1;min-width:0">
-          <div><b>${escH(r.ref)}</b> <span style="color:var(--fg3)">${escH(r.maker)}</span></div>
-          <div style="color:var(--fg3);font-size:10px">${escH(spec)}</div>
-        </div>
-        <button class="fp-btn" style="font-size:10px;padding:2px 6px" onclick="catalogAddToParts(${i})">${already ? '上書き' : '部品DBへ'}</button>
-      </div>`;
-    }).join('');
-  } catch (e) { setStatus('エラー: ' + (e.message || e), true); }
-}
-async function catalogAddToParts(idx) {
-  const r = _catalogResults[idx];
-  if (!r) return;
-  const part = { maker: r.maker || '', ref: r.ref, type: r.type || '', volt: r.volt || '', amp: r.amp || '', terminals: r.terminals || '', contacts: r.contacts || '', note: r.note || '', source: r.source || '', catalogUrl: r.catalogUrl || '', custom: true };
-  const existing = state.customParts.find(p => p.ref === r.ref);
-  if (existing) {
-    if (!confirm(`「${r.ref}」は既に部品DBにあります。カタログの内容で上書きしますか？（外形図は保持されます）`)) return;
-    const prev = { ...existing };
-    Object.assign(existing, part);
-    carryOutlineDxf(existing, prev);
-  } else { state.customParts.push(part); }
-  renderAll();
-  await saveAll();
-  setStatus(`「${r.ref}」を部品DBに${existing ? '上書き' : '追加'}しました`);
-  catalogSearch();
-}
-
-// ---- カタログ全件で作り直す(破壊的) -------------------------------
-async function catalogResetPartsDb() {
-  // 【2026-10-03】部品DBの場所が未設定(保存できない)なら、確認を出す前に止める。
-  // 以前は「バックアップを書き出します」と確認したうえで最後の保存で失敗し、画面だけ入れ替わっていた
-  // (盛田さん「parts_db.json が無い状態で作り直すは効かない」)。
-  if (!serverPath) {   // loadAll が書ける部品DBを読めたときだけ入る
-    setStatus('部品DBの場所が未設定のため作り直せません。上の「部品DBの場所」の「フォルダを選ぶ」で設定してから(部品DBが無いフォルダなら作れます)、もう一度押してください', true);
-    return;
-  }
-  try {
-    const d = await (await fetch('/api/catalog/all')).json();
-    if (!d.ok) { setStatus('エラー: ' + (d.error || '取得に失敗しました'), true); return; }
-    const rows = d.results || [];
-    if (!rows.length) { setStatus('カタログDBが空です', true); return; }
-    const now = state.customParts.length;
-    const catalogRefs = new Set(rows.map(r => r.ref));
-    const withDxf = state.customParts.filter(p => p.outlineDxf);
-    const keptDxf = withDxf.filter(p => catalogRefs.has(p.ref)).length;
-    const lostDxf = withDxf.length - keptDxf;
-    const dropped = state.customParts.filter(p => !catalogRefs.has(p.ref)).map(p => p.ref);
-    if (!confirm(`部品DBの中身を破棄し、カタログDBの${rows.length}件で作り直します。\n\n`
-      + `　現在の部品DB: ${now}件 → 破棄されます\n　作り直し後　: ${rows.length}件\n`
-      + (keptDxf ? `\n外形図DXFの紐付け ${keptDxf}件は引き継ぎます。\n` : '')
-      + (lostDxf ? `⚠ カタログに無い部品の外形図 ${lostDxf}件は失われます。\n` : '')
-      + (dropped.length ? `⚠ カタログに無い部品 ${dropped.length}件が削除されます。\n` : '')
-      + `\n実行前にバックアップを書き出します。\n\n続けますか？`)) return;
-
-    setStatus('バックアップ中...');
-    const bres = await (await fetch('/api/parts/backup', { method: 'POST' })).json();
-    if (!bres.ok && now > 0) {
-      if (!confirm('バックアップを書き出せませんでした。このまま作り直すと現在の内容は戻せません。続けますか？')) { setStatus('中止しました'); return; }
-    }
-    setStatus('作り直し中...');
-    const prevByRef = new Map(state.customParts.map(p => [p.ref, p]));
-    state.customParts = rows.map(r => carryOutlineDxf({
-      maker: r.maker || '', ref: r.ref, type: r.type || '', volt: r.volt || '', amp: r.amp || '',
-      terminals: r.terminals || '', contacts: r.contacts || '', note: r.note || '', source: r.source || '', catalogUrl: r.catalogUrl || '', custom: true,
-    }, prevByRef.get(r.ref)));
-    renderAll();
-    const ok = await saveAll(true);   // 全件入れ替えなので確認は済んでいる。強制で通す
-    setStatus(ok ? `部品DBを${rows.length}件で作り直しました` : '保存できませんでした（画面上だけ変わっています）', !ok);
-  } catch (e) { setStatus('エラー: ' + (e.message || e), true); }
-}
+// 【2026-10-03 段階4】部品DBはカタログ(catalog_pending)の全件を土台にした(盛田さんの決定(2) (b))。
+// カタログの部品は最初から全部入っているので、「保留CSVを読み込む」「カタログDBから探す→部品DBへ追加」
+// 「部品DBをカタログ全件で作り直す」は要らなくなり、消した。カタログCSVを直せば次に読んだときに反映される
+// (自分で直した項目はそのまま。カタログ側が変わったら一覧に ⚠ が出る)。
 
 // ---- タブ -------------------------------------------------
 function switchTab(name) {
@@ -499,7 +426,7 @@ function switchTab(name) {
     $('pp-tab-' + t).classList.toggle('on', t === name);
     $('pp-panel-' + t).style.display = t === name ? '' : 'none';
   });
-  if (name === 'import') { refreshPendingCsvList(); catalogRefreshStatus(); }
+  if (name === 'import') catalogRefreshStatus();
 }
 
 function toggleDark() {

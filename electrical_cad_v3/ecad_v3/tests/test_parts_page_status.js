@@ -75,22 +75,6 @@ console.log('\n【source=path_missing: 設定されているのに見つから�
   ok(msg.includes(staleError), '★サーバーの具体的な案内(元のフォルダ・準備待ち・もう一度確かめる)がそのまま出る');
 }
 
-console.log('\n【場所が未設定のまま「カタログ全件で作り直す」を押した(2026-10-03)】');
-{
-  const s = load({ available: true, ok: false, writable: false, source: 'unset',
-                   count: 0, path: '', error: '部品DBの場所が未設定です' });
-  await s.loadAll();
-  let fetched = [];
-  const f0 = s.fetch;
-  s.fetch = async url => { fetched.push(url); return f0(url); };
-  let asked = false;
-  s.confirm = () => { asked = true; return true; };
-  await vm.runInContext('catalogResetPartsDb', s)();
-  const msg = s._statusHistory[s._statusHistory.length - 1];
-  ok(!asked && fetched.length === 0, '★確認も通信もせずに止める(以前は確認→最後の保存で失敗し、画面だけ入れ替わっていた)');
-  ok(/未設定/.test(msg) && /フォルダを選ぶ/.test(msg), '場所を設定してから押すよう案内する');
-}
-
 console.log(ng ? `\n失敗 ${ng} 件` : '\nすべて通過');
 process.exit(ng ? 1 : 0);
 })();

@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 # ================================================================
 # server.py — ecad_v3 ローカルサーバー
-# 静的ファイル配信(index.html等)に加え、/api/pending_csv で
-# catalog_pending/ 配下の「登録待ちCSV」一覧を返す。
+# 静的ファイル配信(index.html等)に加え、部品DB・ライブラリ・カタログDB・図面のバックアップのAPIを持つ。
 #
 # 起動: py server.py  (start.bat から呼ばれる)
 # 停止: Ctrl+C
 #
 # 【2026-08-17】カタログPDF全文検索(/api/search, pdfplumber, catalog_config.json,
 # フォルダブラウザ)は実務で使われず撤去した。カタログの読み取りは
-# Claudeとの会話で行い、結果のCSVを catalog_pending/ に置いて
-# 「部品登録」パネルの「保留CSVを読み込む」で取り込む運用に一本化。
+# Claudeとの会話で行い、結果のCSVを catalog_pending/ に置く運用に一本化。
+# 【2026-10-03 段階4】catalog_pending は部品DBの土台になった(全件が部品DBに入る)ので、
+# 「保留CSVを読み込む」と /api/pending_csv は消した。
 # 外部ライブラリへの依存は無くなり、標準ライブラリのみで動く。
 # ================================================================
 import json
@@ -191,9 +191,6 @@ class Handler(SimpleHTTPRequestHandler):
         if not self._guard('GET'):
             return
         parsed = urllib.parse.urlparse(self.path)
-        if parsed.path == '/api/pending_csv':
-            self.handle_pending_csv_list()
-            return
         if parsed.path == '/api/serverinfo':
             self.handle_serverinfo()
             return
@@ -233,7 +230,7 @@ class Handler(SimpleHTTPRequestHandler):
         if parsed.path == '/api/backup/save':
             self.handle_backup_save()
             return
-        if parsed.path in ('/api/library/frames', '/api/library/titleblocks', '/api/library/symbols'):
+        if parsed.path in ('/api/library/frames', '/api/library/titleblocks', '/api/library/symbols', '/api/library/partfavs'):
             self.handle_library('POST', parsed.path[len('/api/library/'):])
             return
         self.send_error(404)
@@ -341,11 +338,23 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             db = parts_db.PartsDB()
             if action == 'stats':
-                self._send_json({'available': True, **db.stats()})
+                st = db.stats()
+                if st.get('ok'):
+                    rows = self._catalog_rows()
+                    st['catalog'] = rows is not None
+                    if rows is not None:   # 件数はカタログに重ねた後の全件(段階4)
+                        st['own_count'] = st['count']
+                        st['count'] = len(parts_db.merge_with_catalog(rows, db.load()['parts']))
+                self._send_json({'available': True, **st})
             elif action == 'all':
+                # 【2026-10-03 段階4】カタログ(catalog_pending)の全件に parts_db.json(自分で足した・直した分)を重ねて返す。
+                # カタログが読めないときは parts_db.json の中身だけ(catalog:false。部品DB画面はそのとき保存しない)
                 d = db.load()
+                rows = self._catalog_rows() if d['ok'] else None
+                parts = parts_db.merge_with_catalog(rows, d['parts']) if rows is not None else d['parts']
                 self._send_json({'ok': d['ok'], 'available': True,
-                                 'customParts': d['parts'],
+                                 'customParts': parts,
+                                 'catalog': rows is not None,
                                  'hiddenBuiltinRefs': d['hidden'],
                                  'source': d['source'], 'error': d['error'],
                                  'version': d['version']})
@@ -354,6 +363,21 @@ class Handler(SimpleHTTPRequestHandler):
                                  'error': 'unknown action'}, 404)
         except Exception as e:
             self._send_json({'ok': False, 'available': True, 'error': str(e)})
+
+    def _catalog_rows(self):
+        """カタログDBの全件(部品DBの土台。段階4)。読めなければ None。必要なら先に作る。"""
+        if catalog_db is None:
+            return None
+        try:
+            cdb = catalog_db.CatalogDB()
+            if cdb.is_configured():
+                cdb.ensure_built()
+            if not os.path.exists(cdb.db_path):
+                return None
+            return cdb.search('', '', '', 1000000)
+        except Exception as e:
+            print(f'(カタログDBを読めませんでした: {e})', flush=True)
+            return None
 
     # ---- 部品DBの場所(ライブラリフォルダ)を画面から設定する ----------------------
     # 2026-10-02 に画面から設定できるようにし(以前はコマンドだけ)、2026-10-03 にファイルではなく
@@ -488,7 +512,16 @@ class Handler(SimpleHTTPRequestHandler):
                 return
             payload = json.loads(self.rfile.read(n).decode('utf-8'))
             force = bool(payload.get('force'))
-            res = parts_db.PartsDB().save(payload, force=force, base_version=payload.get('version'))
+            # 【2026-10-03 段階4】画面から来るのはカタログに重ねた一覧。カタログとの差分にして書く。
+            # カタログが読めないときは書かない(差分が取れず、カタログの部品が「自分で足した部品」に化けるため)
+            rows = self._catalog_rows()
+            if rows is None:
+                self._send_json({'ok': False, 'available': True, 'reason': 'no_catalog',
+                                 'error': 'カタログDB(catalog_pending)が読めないため保存しません。'
+                                          'start.bat を開き直してください'})
+                return
+            res = parts_db.PartsDB().save(payload, force=force, base_version=payload.get('version'),
+                                          catalog_rows=rows)
             self._send_json({'available': True, **res})
         except Exception as e:
             self._send_json({'ok': False, 'available': True, 'error': str(e)})
@@ -563,19 +596,6 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header('Cache-Control', 'no-store, must-revalidate')
         self.send_header('Pragma', 'no-cache')
         super().end_headers()
-
-    def handle_pending_csv_list(self):
-        """catalog_pending/ フォルダ内のCSVファイル一覧を返す。
-        Claudeがgit push経由で置いた「登録待ちCSV」を、部品登録パネルから
-        ボタン一つで読み込めるようにするため(コピペの手間を省く目的)。
-        実ファイルの取得は静的配信(catalog_pending/<name>)をそのまま使う。"""
-        base = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'catalog_pending')
-        files = []
-        if os.path.isdir(base):
-            for name in sorted(os.listdir(base)):
-                if name.lower().endswith('.csv'):
-                    files.append(name)
-        self._send_json({"files": files})
 
     def _send_json(self, obj, status=200):
         body = json.dumps(obj, ensure_ascii=False).encode('utf-8')

@@ -15,6 +15,7 @@ parts_db.py — 部品DB(parts_db.json)の読み書き。ライブラリフォ�
             frames.json        図面枠テンプレート(段階2)
             titleblocks.json   表題欄の様式(段階2)
             symbols.json       登録シンボル(段階3)
+            part_favorites.json  CADの部品パネルの「★よく使う」(段階4)
             backup/            保存のたびに溜まる世代バックアップ(古いものから消す)
 
     フォルダの場所はPCごとの設定 %LOCALAPPDATA%\\ecad\\parts_db_config.json に入る
@@ -58,7 +59,8 @@ BACKUP_KEEP = 30            # 世代バックアップを何個まで残すか
 # ライブラリフォルダに置くほかのファイル(2026-10-03 段階2)。画面から指定できるのはこの名前だけ
 LIBRARY_FILES = {'frames': 'frames.json',            # 図面枠テンプレート(寸法・区画の組)
                  'titleblocks': 'titleblocks.json',  # 表題欄の様式(客先様式)
-                 'symbols': 'symbols.json'}          # 登録シンボル(段階3。{type: 定義}、キーの順がパレットの並び)
+                 'symbols': 'symbols.json',          # 登録シンボル(段階3。{type: 定義}、キーの順がパレットの並び)
+                 'partfavs': 'part_favorites.json'}  # CADの部品パネルの「★よく使う」(段階4。{型番: {at}})
 
 
 def _backup_re(stem):
@@ -165,6 +167,116 @@ def is_suspicious_drop(prev, now):
     if now == 0:
         return True
     return prev >= 10 and now < prev / 2
+
+
+# ----------------------------------------------------------------------------
+# カタログを土台にする(2026-10-03 再設計の段階4・盛田さんの決定(2) (b))
+#
+# 部品DBとしては全件を持つ(カタログ catalog_pending の全型番)。parts_db.json に入れるのは
+#   ・カタログに無い、自分で足した部品(全項目)
+#   ・カタログの部品のうち、自分で直した項目だけ(＋直した時点のカタログの値 _catalog)
+#   ・外形図DXF(outlineDxf / outlineDxfName)など、カタログに無い項目
+# 読むときはカタログに重ねる(merge_with_catalog)。保存するときは差分に戻す(overlay_from)。
+# カタログCSVを直せば、自分で直していない項目にはそのまま流れる(全件作り直しは要らない)。
+# 自分で直した項目のカタログ側が後で変わったら _catalogChanged で知らせる。
+# ----------------------------------------------------------------------------
+CATALOG_FIELDS = ('maker', 'type', 'volt', 'amp', 'terminals', 'contacts', 'note', 'source', 'catalogUrl')
+
+
+def _clean_part(p):
+    """画面だけで使う印(_で始まるキー)と、廃止した custom フラグを落とす。"""
+    return {k: v for k, v in p.items() if not str(k).startswith('_') and k != 'custom'}
+
+
+def merge_with_catalog(catalog_rows, overlay):
+    """カタログの全件に parts_db.json の中身を重ねた一覧を返す。
+
+    各部品に画面用の印を付ける:
+      _origin          'catalog'(カタログのまま) / 'edited'(自分で直した項目がある) / 'own'(自分で足した)
+      _catalogValues   直した項目の、今のカタログの値 {項目: 値}(「カタログの内容に戻す」に使う)
+      _catalogChanged  直した後にカタログ側が変わった項目の一覧
+    """
+    ov = {}
+    for p in overlay or []:
+        if isinstance(p, dict) and p.get('ref'):
+            ov[p['ref']] = p
+    out, seen = [], set()
+    for row in catalog_rows or []:
+        ref = (row.get('ref') or '').strip()
+        if not ref or ref in seen:
+            continue
+        seen.add(ref)
+        part = {'ref': ref}
+        for f in CATALOG_FIELDS:
+            part[f] = row.get(f) or ''
+        o = ov.get(ref)
+        if o is None:
+            part['_origin'] = 'catalog'
+        else:
+            snap = o.get('_catalog') or {}
+            # 値がカタログと違う項目だけを「直した」とみなす(以前のカタログ丸写しの parts_db.json を直した扱いにしない)
+            overridden = [f for f in CATALOG_FIELDS if f in o and (o[f] or '') != part[f]]
+            extra = {k: v for k, v in _clean_part(o).items() if k not in CATALOG_FIELDS and k != 'ref'}
+            part['_catalogValues'] = {f: part[f] for f in overridden}
+            changed = [f for f in overridden if f in snap and (snap[f] or '') != part[f]]
+            for f in overridden:
+                part[f] = o[f]
+            part.update(extra)
+            part['_origin'] = 'edited' if overridden else 'catalog'
+            if changed:
+                part['_catalogChanged'] = changed
+        out.append(part)
+    for ref, o in ov.items():
+        if ref in seen:
+            continue
+        part = _clean_part(o)
+        part['_origin'] = 'own'
+        out.append(part)
+    return out
+
+
+def overlay_from(catalog_rows, merged, old_overlay=None):
+    """画面から来た一覧(カタログに重ねた形)を、parts_db.json に入れる差分に戻す。
+
+    直した項目の「直した時点のカタログの値」(_catalog)は、同じ値のまま直し続けている間は
+    前回のものを引き継ぐ(引き継がないと、カタログ側が変わったことに気づけなくなる)。
+    """
+    cat = {}
+    for row in catalog_rows or []:
+        ref = (row.get('ref') or '').strip()
+        if ref and ref not in cat:
+            cat[ref] = row
+    old = {p.get('ref'): p for p in (old_overlay or []) if isinstance(p, dict) and p.get('ref')}
+    out = []
+    for p in merged or []:
+        if not isinstance(p, dict) or not (p.get('ref') or '').strip():
+            continue
+        ref = p['ref'].strip()
+        clean = _clean_part(p)
+        clean['ref'] = ref
+        row = cat.get(ref)
+        if row is None:
+            out.append(clean)          # 自分で足した部品は全項目
+            continue
+        d = {'ref': ref}
+        snap = {}
+        prev = old.get(ref) or {}
+        prev_snap = prev.get('_catalog') or {}
+        for f in CATALOG_FIELDS:
+            v = clean.get(f, '') or ''
+            c = row.get(f) or ''
+            if v != c:
+                d[f] = v
+                # 同じ値で直し続けているなら、直した時点のカタログの値を引き継ぐ
+                snap[f] = prev_snap[f] if (f in prev and (prev.get(f) or '') == v and f in prev_snap) else c
+        for k, v in clean.items():
+            if k not in CATALOG_FIELDS and k != 'ref' and v not in ('', None, [], {}):
+                d[k] = v               # 外形図DXFなど、カタログに無い項目
+        if snap:
+            d['_catalog'] = snap
+        if len(d) > 1:
+            out.append(d)
+    return out
 
 
 def file_version(path):
@@ -381,9 +493,11 @@ class PartsDB:
             return {'ok': False, 'reason': 'error', 'name': '', 'error': str(e)}
         return {'ok': True, 'name': f'{BACKUP_DIR_NAME}/{name}', 'error': ''}
 
-    def save(self, data, force=False, base_version=None):
+    def save(self, data, force=False, base_version=None, catalog_rows=None):
         """部品DBを保存する。**部品DB画面の保存経路。他からは呼ばない。**
 
+        catalog_rows を渡したとき(段階4〜 server.py は常に渡す): data はカタログに重ねた一覧で、
+        カタログとの差分(overlay_from)にして書く。件数激減の確認は重ねた後の件数で比べる。
         戻り値は必ず ok を含む dict(例外にしない。保存できなかったことを画面に出すため)。
           reason='conflict' … 読んだ後に別の画面・別のPCで保存されていた(書かない。force でも通さない)
           reason='drop'     … 件数が激減(書かない。人が確かめて force=True で送り直したときだけ書く)
@@ -408,6 +522,14 @@ class PartsDB:
                     'error': f'保存する中身の形が違います: {e}'}
         now = len(info['customParts'])
         prev = self._count_on_disk(path)
+        if catalog_rows is not None:
+            try:
+                with open(path, encoding='utf-8') as f:
+                    old = normalize(json.load(f))['customParts']
+            except Exception:
+                old = []
+            prev = len(merge_with_catalog(catalog_rows, old))
+            info['customParts'] = overlay_from(catalog_rows, info['customParts'], old)
         if is_suspicious_drop(prev, now) and not force:
             return {'ok': False, 'reason': 'drop', 'prev': prev, 'now': now,
                     'count': prev or 0, 'path': path,

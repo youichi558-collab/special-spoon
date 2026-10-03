@@ -81,7 +81,7 @@ const read = p => fs.readFileSync(path.join(root, p), 'utf8').replace(/\r\n/g, '
     eq(partsRoutes, ['/api/parts/save', '/api/parts/backup',
                      '/api/parts/pick', '/api/parts/create', '/api/parts/find', '/api/parts/use'],
        'POSTで受けるのは保存・退避と、場所の設定(フォルダを選ぶ・作る・探す・候補から選ぶ)だけ');
-    ok(/save\(payload, force=force, base_version=payload\.get\('version'\)\)/.test(cad),
+    ok(/save\(payload, force=force, base_version=payload\.get\('version'\)/.test(cad),
        '★保存は画面が読んだ時点の版を渡す');
     const place = cad.match(/def handle_parts_place[\s\S]*?def handle_parts_save/)[0];
     ok(!/body\.get\('(path|folder)'/.test(place) && /Handler\._place_found\[i\]/.test(place)

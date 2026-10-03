@@ -80,7 +80,10 @@ function usedPartsForSave(pages) {
     (pg.groups || []).forEach(g => add(g.partModel));
   });
   return (state.customParts || []).filter(p => p && refs.has(p.ref))
-    .map(({ outlineDxf, outlineDxfName, ...rest }) => rest);
+    .map(({ outlineDxf, outlineDxfName, ...rest }) => {
+      Object.keys(rest).forEach(k => { if (k.startsWith('_')) delete rest[k]; });   // 画面用の印(_origin 等。段階4)は入れない
+      return rest;
+    });
 }
 
 // 図面に入れる表題欄様式の写し(2026-10-03 段階2)。表題欄は描くときに様式を引く(js/data.js titleBlockCells)ので、

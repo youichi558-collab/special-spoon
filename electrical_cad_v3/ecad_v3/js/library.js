@@ -15,8 +15,8 @@
 // (js/edit.js usedTitleBlockTplsForSave)。引く順は 組み込み → 図面の写し → ライブラリ(ライブラリが正)。
 // ================================================================
 const ecadLib = (() => {
-  const KINDS = ['frames', 'titleblocks', 'symbols'];
-  const LABEL = { frames: '図面枠テンプレート', titleblocks: '表題欄の様式', symbols: '登録シンボル' };
+  const KINDS = ['frames', 'titleblocks', 'symbols', 'partfavs'];   // partfavs: 部品パネルの★よく使う(段階4。旧置き場所は無い)
+  const LABEL = { frames: '図面枠テンプレート', titleblocks: '表題欄の様式', symbols: '登録シンボル', partfavs: 'よく使う部品' };
   // 旧置き場所(消さない)。登録シンボルの旧データだけは配列([{type,...}])なので {type: 定義} に直して扱う(legacyMap)
   const LEGACY = { frames: 'ecad_frame_tpls', titleblocks: 'ecad_titleblock_tpls', symbols: 'ecad_customSymbols' };
   const CACHE = k => 'ecad_lib_cache_' + k;
@@ -33,6 +33,7 @@ const ecadLib = (() => {
   };
   const writeJson = (key, o) => { try { localStorage.setItem(key, JSON.stringify(o)); } catch (e) {} };
   function legacyMap(k) {
+    if (!LEGACY[k]) return {};
     if (k !== 'symbols') return readJson(LEGACY[k]);
     let arr = [];
     try { arr = JSON.parse(localStorage.getItem(LEGACY.symbols) || '[]'); } catch (e) {}
@@ -49,6 +50,7 @@ const ecadLib = (() => {
     if (typeof refreshFrameTplSel === 'function') { try { refreshFrameTplSel(); } catch (e) {} }
     if (typeof refreshTitleBlockSel === 'function') { try { refreshTitleBlockSel(); } catch (e) {} }
     if (typeof rebuildSymbolPalette === 'function') { try { rebuildSymbolPalette(); } catch (e) { console.error('[library] シンボル一覧でエラー:', e); } }
+    if (typeof renderPartsTable2 === 'function') { try { renderPartsTable2(); } catch (e) {} }   // ★よく使う(段階4)
     if (typeof draw === 'function') { try { draw(); } catch (e) { console.error('[library] 再描画でエラー:', e); } }
   }
 

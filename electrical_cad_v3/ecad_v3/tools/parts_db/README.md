@@ -16,6 +16,7 @@
     frames.json        図面枠テンプレート（段階2・CADの図面枠パネルが書く）
     titleblocks.json   表題欄の様式（段階2・CADの図面枠パネルが書く）
     symbols.json       登録シンボル（段階3・CADのシンボル登録・パレットが書く。キーの順がパレットの並び）
+    part_favorites.json CADの部品パネルの「★よく使う」（段階4）
     backup/            保存のたびに溜まる世代バックアップ（ファイルごとに30個まで。古いものから消す）
 ```
 
@@ -35,6 +36,19 @@ frames.json・titleblocks.json・symbols.json も parts_db.json と同じく、�
 設定のフォルダが無ければ、ドライブ文字だけ付け替えて探す（同期ソフトのドライブ文字は環境で変わるため。一瞬で済む）。
 それでも無ければ「見つかりません（同期ソフトやネットワークの準備待ちかも）」を返し、画面に「もう一度確かめる」が出る。
 **ディスク全体を勝手に探したり、古い控えを読んだりはしない**（2026-10-03 にやめた）。
+
+## カタログを土台にする（段階4・2026-10-03）
+
+部品DBとしては**カタログ（`catalog_pending` のメーカー別CSV）の全件**を持つ。parts_db.json に入れるのは差分だけ:
+
+- カタログに無い、自分で足した部品（全項目）
+- カタログの部品のうち、自分で直した項目だけ（＋直した時点のカタログの値 `_catalog`）
+- 外形図DXFなど、カタログに無い項目
+
+`server.py` が読むときにカタログへ重ね（`merge_with_catalog`）、保存のときに差分へ戻す（`overlay_from`）。
+画面には出どころの印（`_origin`: catalog/edited/own）と、直した後にカタログ側が変わった項目（`_catalogChanged`）が付く。
+カタログCSVを直せば、自分で直していない項目にはそのまま流れる。カタログが読めない間は保存しない（差分が取れないため）。
+以前の「カタログを丸写しした parts_db.json」もそのまま読め、次に保存すると差分に縮む。
 
 ## 【最重要】書き手は常に1つ
 
@@ -62,7 +76,7 @@ frames.json・titleblocks.json・symbols.json も parts_db.json と同じく、�
 | `GET /api/parts/all` | 外形図DXFまで含めた全件と版（CAD・部品DB画面の読み込み用） |
 | `POST /api/parts/save` | 保存（`{customParts, hiddenBuiltinRefs, force?, version}`）。部品DB画面だけが呼ぶ |
 | `POST /api/parts/backup` | 退避を1つ書き出す（カタログ全件で作り直す前） |
-| `GET/POST /api/library/frames` `titleblocks` `symbols` | 図面枠テンプレート・表題欄様式・登録シンボルの読み書き（`{data, version}`。版が違えば conflict）。種類はこの3つだけ |
+| `GET/POST /api/library/frames` `titleblocks` `symbols` `partfavs` | 図面枠テンプレート・表題欄様式・登録シンボル・★よく使うの読み書き（`{data, version}`。版が違えば conflict）。種類はこの4つだけ |
 | `POST /api/parts/pick` `create` `find` `use` | 場所の設定（Windowsの窓でフォルダを選ぶ／そこに作る／探す／候補から選ぶ）。このPCからだけ受け付け、**画面から送られたパスは使わない** |
 
 2026-10-03 に、他ソフト向けの `parts_db_server.py` と `/api/parts/search`・`/get`、

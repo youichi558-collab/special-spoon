@@ -75,6 +75,7 @@
         <label class="pp-chk"><input type="checkbox" onchange="setFilter('noOutline', this.checked)"> 外形図なし</label>
         <label class="pp-chk"><input type="checkbox" onchange="setFilter('noType', this.checked)"> 種別が空欄</label>
         <label class="pp-chk"><input type="checkbox" onchange="setFilter('legacy', this.checked)"> 要再分類(廃止種別)</label>
+        <label class="pp-chk"><input type="checkbox" onchange="setFilter('mine', this.checked)"> 自分で足した・直したものだけ</label>
       </div>
       <div id="pp-list-main">
         <div id="pp-list-bar">
@@ -90,6 +91,7 @@
               <th onclick="sortBy('volt')">電圧</th>
               <th onclick="sortBy('amp')">電流</th>
               <th>外形図</th>
+              <th title="カタログ: カタログのまま／直した: カタログの部品の項目を自分で直した(⚠はその後カタログ側も変わった)／自分: カタログに無く自分で足した">出どころ</th>
             </tr></thead>
             <tbody id="pp-tbody"></tbody>
           </table>
@@ -142,8 +144,8 @@
            フォルダの選択・取り込みは無くなり、検索時にCSVの変更を見て自動で作り直す。 -->
       <h3>カタログDB</h3>
       <p style="font-size:11px;color:var(--fg3)">
-        CADのフォルダ内の catalog_pending(メーカー別CSV)を読み、下の検索で使うデータベースを作ります。<br>
-        CSVを直すと、次の検索で自動的に作り直されます。カタログDBが使えなくても、部品DBの編集は通常どおり行えます。
+        CADのフォルダ内の catalog_pending(メーカー別CSV)を読みます。<b>部品DBの土台</b>で、カタログの部品は全部、部品DBの一覧に入っています(2026-10-03〜)。<br>
+        CSVを直すと、次に読んだときに部品DBにも反映されます(自分で直した項目はそのまま)。カタログDBが読めない間は、部品DBの保存はできません。
       </p>
       <!-- 【2026-10-03】「作り直す」ボタンは消した(盛田さん「作り直すをいつ押すのか？」→「消して」)。
            検索のたびにCSVの変更を見て自動で作り直すので押す場面が無く、「部品DBをカタログ全件で作り直す」と紛らわしかった。
@@ -151,32 +153,16 @@
       <p id="cat-status" style="font-size:11px;color:var(--fg2)"></p>
 
       <hr style="margin:14px 0;border:none;border-top:1px solid var(--bd2)">
-      <h3>カタログDBから探す</h3>
-      <p style="font-size:11px;color:var(--fg3)">カタログDB(catalog_pending のメーカー別CSV)から型番を検索し、選んだものだけを部品DBに追加します。</p>
-      <div style="display:flex;gap:6px;margin-top:6px">
-        <input type="text" id="pp-cat-q" placeholder="型番・メーカーで検索" style="flex:1" onkeydown="if(event.key==='Enter')catalogSearch()">
-        <button class="fp-btn" onclick="catalogSearch()">検索</button>
-      </div>
-      <div id="pp-cat-result"></div>
-
-      <h3>保留CSVを読み込む</h3>
-      <p style="font-size:11px;color:var(--fg3)">Claudeがカタログから起こして置いた「登録待ちCSV」を読み込みます。読み込むだけでは登録されません。</p>
-      <div style="display:flex;gap:6px;margin-top:6px">
-        <select id="pp-pc-file" style="flex:1"><option value="">(読込中...)</option></select>
-        <button class="fp-btn" onclick="loadPendingCsv()">読み込む</button>
-      </div>
-
+      <!-- 【2026-10-03 段階4】部品DBはカタログの全件を土台にしたので、「カタログDBから探す→部品DBへ」「保留CSVを読み込む」
+           「部品DBをカタログ全件で作り直す」は消した(js/parts_page.js 参照)。カタログの部品は一覧・編集タブに最初から全部ある -->
       <h3>CSV一括登録</h3>
-      <p style="font-size:11px;color:var(--fg3)">1行1部品。形式: メーカー,型番,種別,定格電圧,定格電流,端子番号,接点構成,備考,出典,カタログURL<br>
+      <p style="font-size:11px;color:var(--fg3)">カタログに無い部品を足すとき、カタログの部品の項目をまとめて直すときに使います。1行1部品。形式: メーカー,型番,種別,定格電圧,定格電流,端子番号,接点構成,備考,出典,カタログURL<br>
         列は8列以上あれば読めます（足りない列は空、余分な列は無視）。9列までの古いCSVもそのまま読めます。</p>
       <textarea id="pp-csv" rows="8" placeholder="三菱電機,S-T21,coil,AC200V,21A,&quot;A1,A2,1,3,5,2,4,6&quot;,a3b1,"></textarea>
       <div style="margin-top:6px">
         <button class="fp-btn primary" onclick="bulkImportParts()">CSVから一括登録</button>
       </div>
 
-      <h3>部品DBをカタログ全件で作り直す</h3>
-      <p style="font-size:11px;color:var(--red)">⚠ 破壊的操作。現在の部品DBを破棄し、カタログDBの全件で作り直します(外形図は引き継がれます)。実行前に自動でバックアップを取ります。</p>
-      <button class="fp-btn danger" onclick="catalogResetPartsDb()">部品DBをカタログ全件で作り直す</button>
     </div>
   </div>
 </div>

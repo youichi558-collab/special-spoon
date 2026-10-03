@@ -51,7 +51,8 @@ console.log('【CSVの列の読み方】');
   ok(/const \[maker, ref, type, volt, amp, terminals, contacts, note, source, catalogUrl\]/.test(pp),
      '10列目を catalogUrl として受けている');
   const n = (pp.match(/catalogUrl:/g) || []).length;
-  ok(n >= 4, `部品オブジェクトを組む箇所すべてに catalogUrl がある（${n}箇所）`);
+  // 2026-10-03 段階4: カタログから写す経路(探す→追加・全件作り直し)を消したので、組む箇所は手入力とCSV一括の2つ
+  ok(n >= 2, `部品オブジェクトを組む箇所すべてに catalogUrl がある（${n}箇所）`);
 }
 
 // ---- INDEX生成スクリプトの列数検証 ----
