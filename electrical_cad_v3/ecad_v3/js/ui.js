@@ -3967,8 +3967,7 @@ let _lastPartsQuery = '';
 // 並べるのをやめた(盛田さん「DBとしては全件持ってるのは普通だと思うが、CAD側で全件出るのはどうだろう」)。決定:
 //   ・検索していないとき: ★よく使う(ライブラリの part_favorites.json。PC間で共通)と、最近使った(このPC)だけ
 //   ・検索したとき / メーカーを選んだとき: 当たったものを上限付きで
-//   ・選択中のシンボルの役割がコイルなら、コイルを持つ種別(COIL_VOLT_TYPES)だけに自動で絞る(解除できる)
-//     接点など他の役割は、部品の種別との対応が決めきれないので絞らない
+//   ・選択中のシンボルの役割がコイル・接点なら、その役割を持つ種別だけに自動で絞る(解除できる。PART_ROLE_TYPES)
 //   「この図面で使っている型式」の一覧は入れない(描き始めは型式が無く、型式は後半に決まるため)
 const PARTS_LIST_LIMIT = 100;
 const PART_RECENT_KEY = 'ecad_part_recent';
@@ -3990,13 +3989,26 @@ async function toggleFavPart(ref) {
   if (!r.ok) { alert(r.error); return; }
   renderPartsTable2();
 }
-// 選択中のシンボルが全部コイルなら、コイルを持つ種別だけに絞る
-function partsRoleTypes() {
+// 役割ごとに、その役割を持つ部品の種別。
+// 【2026-10-03】接点を足した(盛田さん「接点の絞り込みも足して」)。カタログ636件の端子欄のグループで裏を取った:
+//   主接点: 端子欄に「主接点」グループがある種別 = ブレーカ・電磁接触器・電磁開閉器
+//   a/b接点: 接点のグループがある種別(電磁接触器・電磁開閉器の「補助」「サーマル接点」、リレーの「接点1〜4」、
+//     タイマの「限時接点・瞬時接点」)と、部品そのものが接点のスイッチ類(押釦・セレクタ・レバー・接点ブロック・サーマル)
+//   PLC・インバータ・サーボ・HMI・ランプ等は入れない。外れていたら「解除」で全部出る
+const PART_ROLE_TYPES = {
+  coil:         { types: COIL_VOLT_TYPES, label: 'コイル' },
+  contact_main: { types: ['breaker', 'contactor', 'starter'], label: '主接点' },
+  contact_a:    { types: ['contactor', 'starter', 'coil', 'timer', 'thermal', 'pb', 'pb_lamp', 'pb_estop',
+                          'selector', 'selector_key', 'selector_lamp', 'selector_pb', 'lever', 'contact_unit'], label: '接点' },
+};
+PART_ROLE_TYPES.contact_b = PART_ROLE_TYPES.contact_a;
+// 選択中のシンボルの役割が揃っていれば、その役割を持つ種別だけに絞る({types, label})
+function partsRoleFilter() {
   if (state.partsRoleFilterOff) return null;
   const sel = state.elements.filter(e => state.sel.els.has(e.id) && e.type !== 'junction');
   if (!sel.length) return null;
   const roles = [...new Set(sel.map(e => (typeof symTermRole === 'function') ? symTermRole(e) : ''))];
-  return (roles.length === 1 && roles[0] === 'coil') ? COIL_VOLT_TYPES : null;
+  return roles.length === 1 ? (PART_ROLE_TYPES[roles[0]] || null) : null;
 }
 function setPartsRoleFilterOff(v) { state.partsRoleFilterOff = !!v; renderPartsTable2(); }
 
@@ -4006,7 +4018,8 @@ function renderPartsTable2() {
   const all = allParts();
   const q = (_lastPartsQuery || '').trim().toLowerCase();
   const maker = state.partsMakerFilter;
-  const roleTypes = partsRoleTypes();
+  const roleF = partsRoleFilter();
+  const roleTypes = roleF ? roleF.types : null;
   const favs = partFavs();
   const fits = p => !roleTypes || roleTypes.includes(p.type);
 
@@ -4031,7 +4044,7 @@ function renderPartsTable2() {
   const note = t => `<div style="font-size:10px;color:var(--fg3);padding:4px">${t}</div>`;
 
   let html = roleTypes
-    ? `<div style="font-size:10px;color:var(--acc);padding:2px 4px">選択中のシンボルがコイルなので、コイルを持つ種別だけ出しています <a href="javascript:void(0)" onclick="setPartsRoleFilterOff(true)" style="color:var(--acc)">解除</a></div>`
+    ? `<div style="font-size:10px;color:var(--acc);padding:2px 4px">選択中のシンボルが${roleF.label}なので、${roleF.label}を持つ種別だけ出しています <a href="javascript:void(0)" onclick="setPartsRoleFilterOff(true)" style="color:var(--acc)">解除</a></div>`
     : (state.partsRoleFilterOff ? `<div style="font-size:10px;color:var(--fg3);padding:2px 4px">種別の自動の絞り込みを解除中 <a href="javascript:void(0)" onclick="setPartsRoleFilterOff(false)" style="color:var(--acc)">戻す</a></div>` : '');
   if (!q && !maker) {
     const byRef = new Map(all.map(p => [p.ref, p]));

@@ -82,7 +82,22 @@ console.log('\n【選択中のシンボルがコイルなら、コイルを持�
   eq(sb.cards().sort(), ['B1', 'C1', 'R1'], '解除すると全部');
   const sb2 = load({ parts, sel: ['e1', 'e2'], roles: { e1: 'coil', e2: 'contact_a' } });
   sb2.render('1');
-  eq(sb2.cards().length, 3, 'コイル以外(接点)が混ざっていれば絞らない');
+  eq(sb2.cards().length, 3, '役割が混ざっていれば絞らない');
+}
+
+console.log('\n【接点(2026-10-03 追加)】');
+{
+  const parts = [{ ref: 'C1', type: 'contactor' }, { ref: 'B1', type: 'breaker' }, { ref: 'T1', type: 'timer' },
+                 { ref: 'P1', type: 'pb' }, { ref: 'PLC1', type: 'plc' }, { ref: 'INV1', type: 'inverter' }].map(p => Object.assign({ maker: 'M' }, p));
+  const sb = load({ parts, sel: ['e1'], roles: { e1: 'contact_main' } });
+  sb.render('1');
+  eq(sb.cards().sort(), ['B1', 'C1'], '★主接点: 主接点を持つ種別(ブレーカ・電磁接触器等)だけ。インバータの主回路は入れない');
+  ok(/主接点を持つ種別だけ/.test(sb._el.innerHTML), '何で絞っているか出す');
+  for (const role of ['contact_a', 'contact_b']) {
+    const sa = load({ parts, sel: ['e1'], roles: { e1: role } });
+    sa.render('1');
+    eq(sa.cards().sort(), ['C1', 'P1', 'T1'], `★${role}: 接点を持つ種別(電磁接触器・タイマ・押釦等)だけ。PLC・インバータ・ブレーカは出さない`);
+  }
 }
 
 console.log('\n【最近使ったは20件まで】');
