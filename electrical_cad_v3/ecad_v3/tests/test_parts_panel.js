@@ -39,6 +39,7 @@ function load({ parts, favs = {}, sel = [], roles = {} }) {
     escH: s => String(s == null ? '' : s),
     _escAttr: s => String(s == null ? '' : s),
     PART_TYPE_LABELS: { coil: 'リレーコイル', contactor: '電磁接触器', breaker: 'ブレーカ' },
+    PART_TYPE_ORDER: ['breaker', 'contactor', 'coil'],
     _lastPartsQuery: '',
     _el: el,
   };
@@ -98,6 +99,27 @@ console.log('\n【接点(2026-10-03 追加)】');
     sa.render('1');
     eq(sa.cards().sort(), ['B1', 'C1', 'P1', 'T1'], `★${role}: 接点を持つ種別(電磁接触器・タイマ・押釦・ブレーカの補助接点等)だけ。PLC・インバータは出さない`);
   }
+}
+
+console.log('\n【メーカーを選んだら種別ごとの見出しで全件(2026-10-03)】');
+{
+  const parts = Array.from({ length: 250 }, (_, i) => ({ ref: 'M-' + i, maker: '三菱', type: i < 200 ? 'contactor' : 'breaker' }))
+    .concat([{ ref: 'O-1', maker: 'オムロン', type: 'coil' }]);
+  const sb = load({ parts });
+  vm.runInContext("state.partsMakerFilter = '三菱'", sb);
+  sb.render('');
+  eq(sb.cards().length, 0, '最初は見出しだけ(畳んである)');
+  ok(/電磁接触器（200）/.test(sb._el.innerHTML) && /ブレーカ（50）/.test(sb._el.innerHTML), '★種別ごとの見出しに件数');
+  ok(/三菱（250件）/.test(sb._el.innerHTML), 'メーカーの全件数');
+  vm.runInContext("togglePartsType('三菱', 'contactor')", sb);
+  eq(sb.cards().length, 200, '★開くとその種別の部品が全部出る(上限100で切らない)');
+  ok(!sb.cards().includes('O-1'), '他のメーカーは出ない');
+  const sc = load({ parts, sel: ['e1'], roles: { e1: 'contact_main' } });
+  vm.runInContext("state.partsMakerFilter = '三菱'; togglePartsType('三菱','breaker'); togglePartsType('三菱','contactor')", sc);
+  sc.render('');
+  eq(sc.cards().length, 250, '主接点の絞り込み(ブレーカ・電磁接触器)はそのまま効く');
+  sb.render('M-1');
+  ok(/検索結果/.test(sb._el.innerHTML), '検索したときは今まで通り検索結果');
 }
 
 console.log('\n【最近使ったは20件まで】');

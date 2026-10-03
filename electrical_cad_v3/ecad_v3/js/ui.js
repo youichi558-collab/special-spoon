@@ -3970,7 +3970,9 @@ let _lastPartsQuery = '';
 // 【2026-10-03 再設計の段階4】部品DBはカタログの全件(数千〜数万件)になったので、全件をメーカー→種別の木で
 // 並べるのをやめた(盛田さん「DBとしては全件持ってるのは普通だと思うが、CAD側で全件出るのはどうだろう」)。決定:
 //   ・検索していないとき: ★よく使う(ライブラリの part_favorites.json。PC間で共通)と、最近使った(このPC)だけ
-//   ・検索したとき / メーカーを選んだとき: 当たったものを上限付きで
+//   ・検索したとき: 当たったものを上限付きで
+//   ・メーカーを選んだとき(検索していない): そのメーカーの部品を種別ごとの畳める見出しで、全件
+//     (2026-10-03 盛田さん「三菱の中での分類はなくなったのか？」。上限100件で三菱505件の大半が出ていなかった)
 //   ・選択中のシンボルの役割がコイル・接点なら、その役割を持つ種別だけに自動で絞る(解除できる。PART_ROLE_TYPES)
 //   「この図面で使っている型式」の一覧は入れない(描き始めは型式が無く、型式は後半に決まるため)
 const PARTS_LIST_LIMIT = 100;
@@ -4016,6 +4018,13 @@ function partsRoleFilter() {
   return roles.length === 1 ? (PART_ROLE_TYPES[roles[0]] || null) : null;
 }
 function setPartsRoleFilterOff(v) { state.partsRoleFilterOff = !!v; renderPartsTable2(); }
+// メーカーを選んだときの種別の見出しの開閉(既定は畳む。キーは「メーカー\u0000種別」。再読み込みで戻る)
+state.partsTypeOpen = state.partsTypeOpen || {};
+function togglePartsType(maker, type) {
+  const k = maker + '\u0000' + type;
+  state.partsTypeOpen[k] = !state.partsTypeOpen[k];
+  renderPartsTable2();
+}
 
 function renderPartsTable2() {
   const el = document.getElementById('parts-table2');
@@ -4060,6 +4069,21 @@ function renderPartsTable2() {
     html += head(`最近使った（${recList.length}）`)
       + (recList.length ? recList.map(cardHtml).join('') : note('割り当てた部品が、ここに出ます（このPCだけ）'));
     html += note(`ほかの部品は、上の欄で型番・メーカーを検索するか、メーカーを選んでください（全${all.length}件）`);
+  } else if (maker && !q) {
+    // メーカーを選んだ(検索していない): 種別ごとの見出し(件数付き・畳める)で全件
+    const mine = all.filter(p => p.maker === maker && fits(p));
+    const groups = {};
+    mine.forEach(p => { (groups[p.type || ''] = groups[p.type || ''] || []).push(p); });
+    const order = PART_TYPE_ORDER.filter(t => groups[t]).concat(Object.keys(groups).filter(t => !PART_TYPE_ORDER.includes(t)));
+    html += head(`${escH(maker)}（${mine.length}件）`);
+    html += order.map(t => {
+      const open = !!state.partsTypeOpen[maker + '\u0000' + t];
+      const label = PART_TYPE_LABELS[t] || ((typeof LEGACY_PART_TYPES !== 'undefined' && LEGACY_PART_TYPES[t]) ? `${LEGACY_PART_TYPES[t]}（要再分類）` : (t || '(種別未設定)'));
+      return `<div onclick="togglePartsType('${_escAttr(maker)}','${_escAttr(t)}')" style="display:flex;justify-content:space-between;align-items:center;padding:4px;cursor:pointer;background:var(--bg2);border-radius:3px;margin-top:3px">
+          <span style="font-size:10px;color:var(--fg2)">${escH(label)}（${groups[t].length}）</span>
+          <span style="font-size:9px;color:var(--fg3)">${open ? '▼' : '▶'}</span>
+        </div>` + (open ? groups[t].map(cardHtml).join('') : '');
+    }).join('') || note('当たる部品がありません');
   } else {
     const hits = all.filter(p => (!maker || p.maker === maker) && fits(p)
       && (!q || [p.ref, p.maker, p.note, p.type, PART_TYPE_LABELS[p.type]].some(v => String(v || '').toLowerCase().includes(q))));
