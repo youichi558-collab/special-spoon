@@ -252,7 +252,7 @@ function savePinEdits() {
     DEFS[_peType].terminals = cS.terminals.map((t, i) => ({ id: `t${i}`, x: t.x, y: t.y, label: t.label || '' }));
     DEFS[_peType].role = cS.role;
   }
-  if (typeof saveSymbolsToStorage === 'function') saveSymbolsToStorage();
+  if (typeof symStorePut === 'function') symStorePut([cS]);   // ライブラリへ(2026-10-03 段階3)
   closeFP('pin-edit-p');
   if (typeof draw === 'function') draw();
   alert(`「${cS.name || _peType}」の端子(${cS.terminals.length}点)を保存しました。`);

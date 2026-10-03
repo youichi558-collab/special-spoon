@@ -88,6 +88,10 @@ try:
     r = db.save_library('frames', {'a': '文字'}, v)
     ok(not r['ok'] and r['reason'] == 'bad_data', '{キー: 定義(オブジェクト)} の形でなければ書かない')
     ok(db.save_library('frames', {'A3': {'w': '420', 'h': '297'}}, v)['ok'], 'frames.json も同じ形で保存できる')
+    # 段階3: 登録シンボル。キーの順がパレットの並びなので、順が保たれること
+    syms = {'custom_b': {'type': 'custom_b', 'w': 1}, 'custom_a': {'type': 'custom_a', 'w': 2}}
+    ok(db.save_library('symbols', syms, '')['ok'], 'symbols.json(登録シンボル・段階3)も保存できる')
+    ok(list(db.read_library('symbols')['data'].keys()) == ['custom_b', 'custom_a'], '★キーの順(パレットの並び)が保たれる')
 
     print('\n【フォルダが見つからなければ読まない・書かない】')
     v = db.read_library('frames')['version']

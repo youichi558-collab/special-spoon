@@ -14,6 +14,7 @@ parts_db.py — 部品DB(parts_db.json)の読み書き。ライブラリフォ�
             parts_db.json      部品DB本体
             frames.json        図面枠テンプレート(段階2)
             titleblocks.json   表題欄の様式(段階2)
+            symbols.json       登録シンボル(段階3)
             backup/            保存のたびに溜まる世代バックアップ(古いものから消す)
 
     フォルダの場所はPCごとの設定 %LOCALAPPDATA%\\ecad\\parts_db_config.json に入る
@@ -56,7 +57,8 @@ BACKUP_DIR_NAME = 'backup'
 BACKUP_KEEP = 30            # 世代バックアップを何個まで残すか
 # ライブラリフォルダに置くほかのファイル(2026-10-03 段階2)。画面から指定できるのはこの名前だけ
 LIBRARY_FILES = {'frames': 'frames.json',            # 図面枠テンプレート(寸法・区画の組)
-                 'titleblocks': 'titleblocks.json'}  # 表題欄の様式(客先様式)
+                 'titleblocks': 'titleblocks.json',  # 表題欄の様式(客先様式)
+                 'symbols': 'symbols.json'}          # 登録シンボル(段階3。{type: 定義}、キーの順がパレットの並び)
 
 
 def _backup_re(stem):

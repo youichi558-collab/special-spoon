@@ -90,7 +90,7 @@ function bkBuildData() {
     backup: true,
     savedAt: Date.now(),
     saveFileName: state.saveFileName,
-    customSymbols: state.customSymbols,
+    customSymbols: (typeof usedSymbolsForSave === 'function') ? usedSymbolsForSave(state.pages) : state.customSymbols,   // 使ったシンボルだけ(段階3)
     customParts:   (typeof usedPartsForSave === 'function') ? usedPartsForSave(state.pages) : undefined,   // 使った型式の写しだけ(2026-10-03)
     titleBlockTpls: (typeof usedTitleBlockTplsForSave === 'function') ? usedTitleBlockTplsForSave(state.pages) : undefined,   // 使った表題欄様式の写し(段階2)
     wireNoRule: state.wireNoRule,

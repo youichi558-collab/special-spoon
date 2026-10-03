@@ -78,8 +78,9 @@ function _safeInit(label, fn, critical) {
     state.customSymbols.forEach(s => { DEFS[s.type] = s; });
   });
 
-  // localStorageからシンボルライブラリを読み込む
-  _safeInit('シンボルライブラリ読込', loadSymbolsFromStorage);
+  // 登録シンボルのパレットを組む(図面の中＋前回読めたライブラリ＋ブラウザに残っている旧データ。2026-10-03 段階3、js/sym_store.js)。
+  // ライブラリは部品DBが読めた後に読み直す(js/parts_db.js → js/library.js)
+  _safeInit('シンボルパレット', rebuildSymbolPalette);
 
   // 部品DB（外部ファイル）を読む。
   //

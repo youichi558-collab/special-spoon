@@ -12,7 +12,8 @@ const state = {
   saveFileName: '',
   customSymbols: [],
   customParts:   [],
-  drawingTbTpls: {},   // 図面に入っている表題欄様式の写し(2026-10-03 段階2。js/data.js userTitleBlockTpls)
+  drawingTbTpls: {},
+  drawingSymbols: {},  // 図面に入っているシンボル {type: 定義}(2026-10-03 段階3。js/sym_store.js)   // 図面に入っている表題欄様式の写し(2026-10-03 段階2。js/data.js userTitleBlockTpls)
   hiddenBuiltinRefs: [], // 【2026-10-03】標準部品の非表示機能はやめた。parts_db.json に残っている値を消さないよう読んだまま持つだけ
   wireNoRule: {
     mode: 'sequence',   // 'sequence' | 'position' | 'prefix'

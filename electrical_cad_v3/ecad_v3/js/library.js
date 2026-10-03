@@ -1,5 +1,5 @@
 // ================================================================
-// library.js — ライブラリフォルダの図面枠テンプレート・表題欄様式(2026-10-03 再設計の段階2)
+// library.js — ライブラリフォルダの図面枠テンプレート・表題欄様式(2026-10-03 再設計の段階2)・登録シンボル(段階3)
 //
 // 以前はブラウザの中(localStorage の ecad_frame_tpls・ecad_titleblock_tpls)にしか無く、
 // 別のPCでは使えず、ブラウザのデータを消すと無くなった(書き出し・バックアップの経路も無かった)。
@@ -15,16 +15,31 @@
 // (js/edit.js usedTitleBlockTplsForSave)。引く順は 組み込み → 図面の写し → ライブラリ(ライブラリが正)。
 // ================================================================
 const ecadLib = (() => {
-  const KINDS = ['frames', 'titleblocks'];
-  const LABEL = { frames: '図面枠テンプレート', titleblocks: '表題欄の様式' };
-  const LEGACY = { frames: 'ecad_frame_tpls', titleblocks: 'ecad_titleblock_tpls' };   // 旧置き場所(消さない)
+  const KINDS = ['frames', 'titleblocks', 'symbols'];
+  const LABEL = { frames: '図面枠テンプレート', titleblocks: '表題欄の様式', symbols: '登録シンボル' };
+  // 旧置き場所(消さない)。登録シンボルの旧データだけは配列([{type,...}])なので {type: 定義} に直して扱う(legacyMap)
+  const LEGACY = { frames: 'ecad_frame_tpls', titleblocks: 'ecad_titleblock_tpls', symbols: 'ecad_customSymbols' };
   const CACHE = k => 'ecad_lib_cache_' + k;
   const SKIP_KEY = 'ecad_lib_migrate_skip';
+  // 移した旧データのキー {kind: [キー]}。旧データは消さないので、覚えておかないと、ライブラリから削除した後に
+  // また「移しますか？」と聞いたり、シンボルのパレットに旧データが出続けたりする(2026-10-03 段階3で気づいて追加)
+  const MIGRATED_KEY = 'ecad_lib_migrated';
+  const migratedAll = () => { const o = readJson(MIGRATED_KEY); return o; };
+  const migrated = k => new Set(Array.isArray(migratedAll()[k]) ? migratedAll()[k] : []);
+  const setMigrated = (k, set) => { const o = migratedAll(); o[k] = [...set]; writeJson(MIGRATED_KEY, o); };
   const readJson = key => {
     try { const o = JSON.parse(localStorage.getItem(key) || '{}'); return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {}; }
     catch (e) { return {}; }
   };
   const writeJson = (key, o) => { try { localStorage.setItem(key, JSON.stringify(o)); } catch (e) {} };
+  function legacyMap(k) {
+    if (k !== 'symbols') return readJson(LEGACY[k]);
+    let arr = [];
+    try { arr = JSON.parse(localStorage.getItem(LEGACY.symbols) || '[]'); } catch (e) {}
+    const o = {};
+    (Array.isArray(arr) ? arr : []).forEach(s => { if (s && s.type) o[s.type] = s; });
+    return o;
+  }
 
   const st = {};
   KINDS.forEach(k => { st[k] = { data: readJson(CACHE(k)), version: null, ok: false, error: '' }; });
@@ -33,6 +48,7 @@ const ecadLib = (() => {
   function refreshViews() {
     if (typeof refreshFrameTplSel === 'function') { try { refreshFrameTplSel(); } catch (e) {} }
     if (typeof refreshTitleBlockSel === 'function') { try { refreshTitleBlockSel(); } catch (e) {} }
+    if (typeof rebuildSymbolPalette === 'function') { try { rebuildSymbolPalette(); } catch (e) { console.error('[library] シンボル一覧でエラー:', e); } }
     if (typeof draw === 'function') { try { draw(); } catch (e) { console.error('[library] 再描画でエラー:', e); } }
   }
 
@@ -55,6 +71,7 @@ const ecadLib = (() => {
     await Promise.all(KINDS.map(loadKind));
     refreshViews();
     offerMigration();
+    if (typeof checkDrawingSymbolsVsLibrary === 'function') { try { checkDrawingSymbolsVsLibrary(); } catch (e) { console.error(e); } }
   }
 
   // 保存。戻り値 {ok, error}
@@ -89,8 +106,9 @@ const ecadLib = (() => {
     if (skip) return;
     const missing = {};
     KINDS.forEach(k => {
-      const legacy = readJson(LEGACY[k]);
-      missing[k] = Object.keys(legacy).filter(key => !(key in st[k].data)).map(key => [key, legacy[key]]);
+      const legacy = legacyMap(k);
+      const done = migrated(k);
+      missing[k] = Object.keys(legacy).filter(key => !(key in st[k].data) && !done.has(key)).map(key => [key, legacy[key]]);
     });
     const total = KINDS.reduce((n, k) => n + missing[k].length, 0);
     if (!total) return;
@@ -121,7 +139,8 @@ const ecadLib = (() => {
         const next = Object.assign({}, st[k].data);
         missing[k].forEach(([key, v]) => { next[key] = v; });
         const r = await save(k, next);
-        if (!r.ok) errs.push(`${LABEL[k]}: ${r.error}`);
+        if (!r.ok) { errs.push(`${LABEL[k]}: ${r.error}`); continue; }
+        const done = migrated(k); missing[k].forEach(([key]) => done.add(key)); setMigrated(k, done);
       }
       close();
       alert(errs.length ? '移せなかったものがあります:\n' + errs.join('\n') : `ライブラリへ移しました（${total}件）`);
@@ -132,6 +151,12 @@ const ecadLib = (() => {
     load,
     save,
     get: k => st[k].data,
+    legacy: legacyMap,
+    // 旧置き場所へ書いたので、次に読めたときにまた「移しますか？」と聞く(sym_store.js がライブラリに書けないときの退避で使う)
+    resetMigrationSkip: () => { try { localStorage.removeItem(SKIP_KEY); } catch (e) {} migrateAsked = false; },
+    migrated,
+    // 旧置き場所に書き直したキーは、また移す対象に戻す(sym_store.js)
+    unmarkMigrated: (k, keys) => { const done = migrated(k); keys.forEach(x => done.delete(x)); setMigrated(k, done); },
     isReady: k => st[k].ok,
     error: k => st[k].error,
   };

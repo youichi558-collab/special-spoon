@@ -5,7 +5,7 @@
 // 部品DBが605件→168件に巻き戻った事故の原因は、保存の失敗を誰にも伝えない
 // コードだった。同じ性質の箇所を横断で探したところ、localStorage側に2つ残っていた:
 //
-//   A. saveSymbolsToStorage() が catch(e) {} で握りつぶしていた。
+//   A. saveSymbolsToStorage() が catch(e) {} で握りつぶしていた(2026-10-03 段階3で js/sym_store.js へ移った)。
 //      localStorageが容量超過すると、登録したカスタムシンボルが無言で保存されず、
 //      タブを閉じた時点で消える。図面の自動保存と同じlocalStorageを共有するため、
 //      図面が育つほど起こりやすい。
@@ -47,34 +47,38 @@ function makeDom() {
 }
 
 // ------------------------------------------------------------------
-console.log('【A: 容量超過を知らせる(登録シンボル)】');
-{
+// 【2026-10-03 段階3】登録シンボルの保存先はライブラリになり、ブラウザの中(localStorage)へ書くのは
+// ライブラリが読めていない間だけになった(js/sym_store.js _symLegacyWrite)。そこで容量超過したら知らせることを見る。
+console.log('【A: 容量超過を知らせる(登録シンボル・ライブラリが読めていない間の保存)】');
+const aDone = (async () => {
   const dom = makeDom();
   let quotaFull = true;
+  const alerts = [];
+  const store = {};
   const sandbox = {
-    console, state: { customSymbols: [{ type: 'sym1' }] },
+    console, state: { customSymbols: [], pages: [], drawingSymbols: {} },
     document: dom.document,
+    alert: m => alerts.push(String(m)),
+    ecadLib: { isReady: () => false, get: () => ({}), resetMigrationSkip() {}, unmarkMigrated() {}, migrated: () => new Set() },
     localStorage: {
-      setItem() { if (quotaFull) { const e = new Error('quota'); e.name = 'QuotaExceededError'; throw e; } },
-      getItem: () => null,
+      setItem(k, v) { if (quotaFull) { const e = new Error('quota'); e.name = 'QuotaExceededError'; throw e; } store[k] = v; },
+      getItem: k => (k in store ? store[k] : null),
     },
   };
   vm.createContext(sandbox);
   vm.runInContext(pick(stateSrc, /function showTopBanner\([\s\S]*?\n\}/), sandbox);
-  vm.runInContext(pick(uiSrc, /function saveSymbolsToStorage\([\s\S]*?\n\}/), sandbox);
+  vm.runInContext(fs.readFileSync(__dirname + '/../js/sym_store.js', 'utf8'), sandbox);
 
-  eq(vm.runInContext('saveSymbolsToStorage()', sandbox), false, '保存できなければ false を返す');
-  const banner = dom.els['sym-save-banner'];
-  ok(banner, '画面に帯が出る');
-  ok(banner && /保存できませんでした/.test(banner.textContent), '保存できなかったと書いてある');
-  ok(banner && /容量が一杯/.test(banner.textContent), '容量超過だと分かる');
-  ok(banner && /閉じると消えます/.test(banner.textContent), '放置した場合どうなるかが書いてある');
+  eq(await vm.runInContext('symStorePut', sandbox)([{ type: 'sym1' }]), false, '保存できなければ false を返す');
+  ok(alerts.some(m => /保存できませんでした/.test(m) && /容量が一杯/.test(m)), '★保存できなかったこと・容量超過だと知らせる');
+  ok(alerts.some(m => /ライブラリフォルダ/.test(m)), 'ライブラリフォルダを設定すれば保存できると案内する');
 
-  // 空きができたら帯は消える
   quotaFull = false;
-  eq(vm.runInContext('saveSymbolsToStorage()', sandbox), true, '保存できたら true');
-  ok(!dom.els['sym-save-banner'], '保存できたら帯が消える');
-}
+  eq(await vm.runInContext('symStorePut', sandbox)([{ type: 'sym1' }]), true, '保存できたら true');
+  ok(/sym1/.test(store.ecad_customSymbols || ''), 'ブラウザの中に保存された');
+  const banner = dom.els['sym-save-banner'];
+  ok(banner && /ライブラリ/.test(banner.textContent), '★ライブラリではなくブラウザの中に保存したことを帯で知らせる');
+})();
 
 // ------------------------------------------------------------------
 console.log('\n【B: 保存データが壊れていても機能が死なない】');
@@ -106,5 +110,7 @@ console.log('\n【帯の実装が1箇所にまとまっている】');
      'parts_db.js に帯のDOM生成が残っていない');
 }
 
-console.log(ng === 0 ? '\n=== 全て OK ===' : `\n=== NG ${ng}件 ===`);
-process.exit(ng === 0 ? 0 : 1);
+aDone.then(() => {
+  console.log(ng === 0 ? '\n=== 全て OK ===' : `\n=== NG ${ng}件 ===`);
+  process.exit(ng === 0 ? 0 : 1);
+});

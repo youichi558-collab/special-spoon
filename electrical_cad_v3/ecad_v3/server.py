@@ -233,7 +233,7 @@ class Handler(SimpleHTTPRequestHandler):
         if parsed.path == '/api/backup/save':
             self.handle_backup_save()
             return
-        if parsed.path in ('/api/library/frames', '/api/library/titleblocks'):
+        if parsed.path in ('/api/library/frames', '/api/library/titleblocks', '/api/library/symbols'):
             self.handle_library('POST', parsed.path[len('/api/library/'):])
             return
         self.send_error(404)
@@ -444,9 +444,9 @@ class Handler(SimpleHTTPRequestHandler):
         except Exception as e:
             self._send_json({'ok': False, 'error': str(e)})
 
-    # ---- ライブラリの図面枠テンプレート・表題欄様式(2026-10-03 段階2) ----------------
-    # GET  /api/library/frames|titleblocks → {ok, source, data, version, error}
-    # POST /api/library/frames|titleblocks  {data, version} → 版が読んだ時点と違えば conflict で書かない
+    # ---- ライブラリの図面枠テンプレート・表題欄様式(2026-10-03 段階2)・登録シンボル(段階3) ----
+    # GET  /api/library/frames|titleblocks|symbols → {ok, source, data, version, error}
+    # POST /api/library/frames|titleblocks|symbols  {data, version} → 版が読んだ時点と違えば conflict で書かない
     # 種類は parts_db.LIBRARY_FILES の名前だけ(画面からファイル名やパスは受け取らない)。
     def handle_library(self, method, kind):
         if parts_db is None:

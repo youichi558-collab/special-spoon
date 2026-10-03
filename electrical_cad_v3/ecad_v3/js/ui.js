@@ -2187,14 +2187,11 @@ function saveCustomSymbol() {
   const role = document.getElementById('sr-role')?.value || '';
   const sym = { type, name, label:name, cat, role, w, h, shapes:[..._srShapes], terminals:[..._srTerms], preview };
   state.customSymbols.push(sym);
-  saveSymbolsToStorage();
-  if (typeof DEFS !== 'undefined') {
-    DEFS[type] = { w, h, cat, name, role,
-      terminals: _srTerms.map((t,i) => ({ id:`t${i}`, x:t.x, y:t.y, label:t.label||'' })) };
-  }
+  if (typeof DEFS !== 'undefined') DEFS[type] = sym;
   closeFP('sym-reg-p');
   renderSymFloat();
-  alert(`「${name}」を登録しました。シンボルパレットのカスタムタブから配置できます。`);
+  // 【2026-10-03 段階3】保存先はライブラリ(読めていなければブラウザの中。js/sym_store.js)
+  symStorePut([sym]).then(ok => { if (ok) alert(`「${name}」を登録しました。シンボルパレットのカスタムタブから配置できます。`); });
 }
 
 // 任意のshapes配列からプレビュー画像(64x48 PNG dataURL)を生成する。
@@ -2259,16 +2256,15 @@ function rescaleCustomSym(type) {
     DEFS[type].w = sym.w; DEFS[type].h = sym.h;
     DEFS[type].terminals = (sym.terminals||[]).map((t,i) => ({ id:`t${i}`, x:t.x, y:t.y, label:t.label||'' }));
   }
-  saveSymbolsToStorage();
   renderSymFloat();
+  symStorePut([sym]);   // ライブラリへ(段階3)
 }
 
+// 【2026-10-03 段階3】ライブラリから消す。図面で使っているシンボルは、図面の中には残る(置いた要素が描けなくならない)
 function delCusSym(type) {
-  if (!confirm('削除しますか？')) return;
-  state.customSymbols = state.customSymbols.filter(s => s.type !== type);
-  saveSymbolsToStorage();
-  delete DEFS[type];
-  renderSymFloat();
+  const inUse = (state.pages || []).some(pg => (pg.elements || []).some(e => e.type === type));
+  if (!confirm(inUse ? 'ライブラリから削除しますか？\n（この図面で使っているので、この図面の中には残ります）' : 'ライブラリから削除しますか？')) return;
+  symStoreDelete(type);
 }
 
 // ----------------------------------------------------------------
@@ -3808,47 +3804,9 @@ function initLayFloat() {}
 // ----------------------------------------------------------------
 // シンボルフローティングパネル
 // ----------------------------------------------------------------
-// カスタムシンボルをlocalStorageへ保存する。
-//
-// 【2026-09-01】以前は catch(e) {} で握りつぶしていた。localStorageが容量超過
-// (QuotaExceededError)すると、登録したシンボルが無言で保存されず、閉じた時点で
-// 消える。図面の自動保存(ecad_autosave)と同じlocalStorageを共有しているので、
-// 図面が大きくなるほど起こりやすい。autosave.js 側は容量超過を検知して自動保存を
-// 止め画面に出すのに、こちらだけ何も出さない状態だった。
-// 部品DB消失(2026-08-20)と同じ「無言で保存できていない」性質なので、必ず知らせる。
-//
-// 戻り値は保存できたかどうか。
-function saveSymbolsToStorage() {
-  try {
-    localStorage.setItem('ecad_customSymbols', JSON.stringify(state.customSymbols));
-    showTopBanner('sym-save-banner', '');   // 直った場合は帯を消す
-    return true;
-  } catch (e) {
-    showTopBanner('sym-save-banner',
-      '⚠ 登録シンボルを保存できませんでした'
-      + (e && e.name === 'QuotaExceededError' ? '（ブラウザの保存容量が一杯です）' : `（${e && e.message || e}）`)
-      + '。いま登録したシンボルは、このタブを閉じると消えます。'
-      + '図面を「JSONファイルに保存」してから、不要なページを整理してください');
-    return false;
-  }
-}
-
-function loadSymbolsFromStorage() {
-  try {
-    const data = localStorage.getItem('ecad_customSymbols');
-    if (!data) return;
-    const syms = JSON.parse(data);
-    if (!Array.isArray(syms)) return;
-    // プロジェクトのシンボルとマージ（typeが重複しないように）
-    const existing = new Set(state.customSymbols.map(s => s.type));
-    syms.forEach(s => {
-      if (!existing.has(s.type)) {
-        state.customSymbols.push(s);
-        if (typeof DEFS !== 'undefined') DEFS[s.type] = s;
-      }
-    });
-  } catch(e) {}
-}
+// 【2026-10-03 段階3】登録シンボルの保存先をブラウザの中(localStorage)からライブラリフォルダの
+// symbols.json に移した。保存・読み込みは js/sym_store.js(saveSymbolsToStorage/loadSymbolsFromStorage は廃止)。
+// ライブラリが読めていない間はブラウザの中に保存する(容量超過は知らせる。2026-09-01の教訓のまま)。
 
 function exportCustomSymbols() {
   const json = JSON.stringify(state.customSymbols, null, 2);
@@ -3869,15 +3827,8 @@ function importCustomSymbols() {
         const syms = JSON.parse(ev.target.result);
         if (!Array.isArray(syms)) { alert('形式が正しくありません'); return; }
         const existing = new Set(state.customSymbols.map(s => s.type));
-        syms.forEach(s => {
-          if (!existing.has(s.type)) {
-            state.customSymbols.push(s);
-            if (typeof DEFS !== 'undefined') DEFS[s.type] = s;
-          }
-        });
-        saveSymbolsToStorage();
-        renderSymFloat();
-        alert(`${syms.length}件のシンボルを読み込みました`);
+        const add = syms.filter(s => s && s.type && !existing.has(s.type));
+        symStorePut(add).then(ok => { if (ok) alert(`${add.length}件のシンボルを読み込みました（同じものが既にある${syms.length - add.length}件は今のまま）`); });   // ライブラリへ(段階3)
       } catch(e) { alert('読み込みエラー'); }
     };
     reader.readAsText(file);
@@ -3937,8 +3888,8 @@ function symDrop(e, toIdx) {
   const moved = state.customSymbols.splice(_symDragFrom, 1)[0];
   state.customSymbols.splice(toIdx, 0, moved);
   _symDragFrom = -1;
-  saveSymbolsToStorage();
   renderSymFloat();
+  symStoreReorder();   // ライブラリの並びにする(段階3)
 }
 function symDragEnd(e) {
   e.currentTarget.style.opacity = '';
@@ -3962,7 +3913,7 @@ function symRowPointerDown(e, i) {
     renderSymFloat();
   };
   const onUp = () => {
-    if (moved) saveSymbolsToStorage();
+    if (moved) symStoreReorder();
     document.removeEventListener('pointermove', onMove);
     document.removeEventListener('pointerup', onUp);
     document.removeEventListener('pointercancel', onUp);

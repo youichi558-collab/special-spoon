@@ -141,7 +141,7 @@ function doAutosave() {
       autosave: true,
       savedAt: Date.now(),
       saveFileName: state.saveFileName,
-      customSymbols: state.customSymbols,
+      customSymbols: (typeof usedSymbolsForSave === 'function') ? usedSymbolsForSave(state.pages) : state.customSymbols,   // 使ったシンボルだけ(段階3)
       // 使った型式の部品の写しだけ(2026-10-03。外形図DXFは入れないので容量は小さい。edit.js usedPartsForSave)
       customParts:   (typeof usedPartsForSave === 'function') ? usedPartsForSave(state.pages) : undefined,
       titleBlockTpls: (typeof usedTitleBlockTplsForSave === 'function') ? usedTitleBlockTplsForSave(state.pages) : undefined,   // 使った表題欄様式の写し(段階2)
@@ -273,6 +273,7 @@ function restoreAutosave() {
     state.saveFileName = d.saveFileName || '';
     state.wireNoRule   = d.wireNoRule || state.wireNoRule;
     state.customSymbols= d.customSymbols || [];
+    if (typeof setDrawingSymbols === 'function') setDrawingSymbols(state.customSymbols);   // パレットは起動処理の rebuildSymbolPalette で組む(段階3)
     state.drawingTbTpls = (d.titleBlockTpls && typeof d.titleBlockTpls === 'object') ? d.titleBlockTpls : {};   // 表題欄様式の写し(段階2)
     state.customParts  = d.customParts   || [];   // 図面の写し。後でライブラリが読めたら mergeEmbedded がライブラリを正にして重ねる
     state.customSymbols.forEach(s => { DEFS[s.type] = s; });

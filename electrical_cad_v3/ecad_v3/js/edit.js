@@ -262,7 +262,7 @@ function saveProject() {
     const data = {
       version: 2,
       saveFileName: state.saveFileName,
-      customSymbols: state.customSymbols,
+      customSymbols: usedSymbolsForSave([pg]),   // 使ったシンボルだけ(2026-10-03 段階3。以前はパレット丸ごと)
       customParts:   usedPartsForSave([pg]),   // 使った型式の写しだけ(2026-10-03)
       titleBlockTpls: usedTitleBlockTplsForSave([pg]),   // 使った表題欄様式の写し(2026-10-03 段階2)
       wireNoRule:    state.wireNoRule,
@@ -293,7 +293,7 @@ function saveAllProject() {
     const data = {
       version: 2,
       saveFileName: state.saveFileName,
-      customSymbols: state.customSymbols,
+      customSymbols: usedSymbolsForSave(state.pages),   // 使ったシンボルだけ(段階3)
       customParts:   usedPartsForSave(state.pages),   // 使った型式の写しだけ(2026-10-03)
       titleBlockTpls: usedTitleBlockTplsForSave(state.pages),   // 使った表題欄様式の写し(2026-10-03 段階2)
       wireNoRule:    state.wireNoRule,
@@ -350,6 +350,12 @@ function applyProjectData(d) {
       state.drawingTbTpls = (d.titleBlockTpls && typeof d.titleBlockTpls === 'object') ? d.titleBlockTpls : {};   // 図面の表題欄様式の写し(段階2)
       state.currentPage = 0;
       state.customSymbols.forEach(s => { DEFS[s.type] = s; });
+      // 図面のシンボル＋ライブラリでパレットを組み直し、ライブラリと違えば知らせる(段階3・決定(3)。js/sym_store.js)
+      if (typeof setDrawingSymbols === 'function') {
+        setDrawingSymbols(state.customSymbols);
+        rebuildSymbolPalette();
+        setTimeout(() => { if (typeof checkDrawingSymbolsVsLibrary === 'function') checkDrawingSymbolsVsLibrary(); }, 0);
+      }
       state.saveFileName = d.saveFileName || '';
       state.sel.els.clear(); state.sel.wires.clear();
       stripLegacyColors(state.pages);
@@ -395,6 +401,7 @@ function appendProjectData(d) {
   (d.customSymbols || []).forEach(sym => {
     if (state.customSymbols.some(x => x.type === sym.type)) { symKept++; return; }
     state.customSymbols.push(sym); DEFS[sym.type] = sym; symAdded++;
+    if (state.drawingSymbols && !(sym.type in state.drawingSymbols)) state.drawingSymbols[sym.type] = sym;   // 段階3
   });
   // 表題欄様式の写し: 無いキーだけ足す(2026-10-03 段階2)
   state.drawingTbTpls = state.drawingTbTpls || {};
@@ -854,6 +861,7 @@ function newProject() {
   state.currentPage = 0;
   state.saveFileName = '';
   state.drawingTbTpls = {};   // 前の図面の表題欄様式の写しは持ち越さない(段階2)
+  state.drawingSymbols = {};  // 前の図面のシンボルも持ち越さない(段階3。パレットはライブラリ＋ブラウザの旧データになる)
   state.sel.els.clear(); state.sel.wires.clear();
   state.wirePoints = []; state.preview = null;
   state.hist = []; state.redoHist = [];
@@ -862,6 +870,7 @@ function newProject() {
   // また元の図面が復元されてしまい「新規作成」の意味がなくなるため。
   try { localStorage.removeItem(AUTOSAVE_KEY); } catch (e) {}
 
+  if (typeof rebuildSymbolPalette === 'function') rebuildSymbolPalette();
   renderPageTabs(); draw(); updateRightPanel();
   const h = document.getElementById('s-hint');
   if (h) h.textContent = '新規図面を作成しました';

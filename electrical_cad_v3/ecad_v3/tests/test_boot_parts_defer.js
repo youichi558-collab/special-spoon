@@ -62,7 +62,7 @@ console.log('【起動処理の中で部品DBを読んでいないこと】');
   sandbox.window.__ecadLoaded = {};
   // _safeInit(ラベル, 関数) の第2引数は**呼び出し時に評価される**ので、
   // 未定義だと try/catch の外で ReferenceError になる。名前だけ通す。
-  ['restoreAutosave','loadSymbolsFromStorage','renderLayers','renderPartsAll',
+  ['restoreAutosave','rebuildSymbolPalette','renderLayers','renderPartsAll',
    'renderSymFloat','renderPageTabs','draw','updateHint','updateRightPanel']
     .forEach(n => { sandbox[n] = function(){}; });
   vm.createContext(sandbox);
@@ -139,7 +139,7 @@ console.log('\n【JS読み込み欠けの検出】');
       setTimeout: fn => { timers.push(fn); },
       _asMissingScripts: () => [],
     };
-    ['restoreAutosave','loadSymbolsFromStorage','renderLayers','renderPartsAll',
+    ['restoreAutosave','rebuildSymbolPalette','renderLayers','renderPartsAll',
      'renderSymFloat','renderPageTabs','draw','updateHint','updateRightPanel']
       .forEach(n => { sb[n] = function(){}; });
     vm2.createContext(sb);

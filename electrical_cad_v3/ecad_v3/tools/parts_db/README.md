@@ -15,11 +15,12 @@
     parts_db.json      部品DB本体
     frames.json        図面枠テンプレート（段階2・CADの図面枠パネルが書く）
     titleblocks.json   表題欄の様式（段階2・CADの図面枠パネルが書く）
+    symbols.json       登録シンボル（段階3・CADのシンボル登録・パレットが書く。キーの順がパレットの並び）
     backup/            保存のたびに溜まる世代バックアップ（ファイルごとに30個まで。古いものから消す）
 ```
 
-frames.json・titleblocks.json も parts_db.json と同じく、版の確認・世代バックアップ・tmp経由の置き換えをする
-（`read_library` / `save_library`）。画面側は `js/library.js`。
+frames.json・titleblocks.json・symbols.json も parts_db.json と同じく、版の確認・世代バックアップ・tmp経由の置き換えをする
+（`read_library` / `save_library`）。画面側は `js/library.js`（登録シンボルは `js/sym_store.js` も）。
 
 - フォルダの場所は PC ごとの設定 `%LOCALAPPDATA%\ecad\parts_db_config.json`（キー `library_dir`）に入る。
 - 設定は画面から：CADの設定タブ／部品DB画面（`部品DBを開く.bat`）の「部品DBの場所」で
@@ -61,7 +62,7 @@ frames.json・titleblocks.json も parts_db.json と同じく、版の確認・�
 | `GET /api/parts/all` | 外形図DXFまで含めた全件と版（CAD・部品DB画面の読み込み用） |
 | `POST /api/parts/save` | 保存（`{customParts, hiddenBuiltinRefs, force?, version}`）。部品DB画面だけが呼ぶ |
 | `POST /api/parts/backup` | 退避を1つ書き出す（カタログ全件で作り直す前） |
-| `GET/POST /api/library/frames` `titleblocks` | 図面枠テンプレート・表題欄様式の読み書き（`{data, version}`。版が違えば conflict）。種類はこの2つだけ |
+| `GET/POST /api/library/frames` `titleblocks` `symbols` | 図面枠テンプレート・表題欄様式・登録シンボルの読み書き（`{data, version}`。版が違えば conflict）。種類はこの3つだけ |
 | `POST /api/parts/pick` `create` `find` `use` | 場所の設定（Windowsの窓でフォルダを選ぶ／そこに作る／探す／候補から選ぶ）。このPCからだけ受け付け、**画面から送られたパスは使わない** |
 
 2026-10-03 に、他ソフト向けの `parts_db_server.py` と `/api/parts/search`・`/get`、
