@@ -209,6 +209,9 @@ class Handler(SimpleHTTPRequestHandler):
             q = {k: v[0] for k, v in urllib.parse.parse_qs(parsed.query).items()}
             self.handle_backup_get(parsed.path[len('/api/backup/'):], q)
             return
+        if parsed.path.startswith('/api/library/'):
+            self.handle_library('GET', parsed.path[len('/api/library/'):])
+            return
         super().do_GET()
 
     def do_POST(self):
@@ -229,6 +232,9 @@ class Handler(SimpleHTTPRequestHandler):
             return
         if parsed.path == '/api/backup/save':
             self.handle_backup_save()
+            return
+        if parsed.path in ('/api/library/frames', '/api/library/titleblocks'):
+            self.handle_library('POST', parsed.path[len('/api/library/'):])
             return
         self.send_error(404)
 
@@ -437,6 +443,30 @@ class Handler(SimpleHTTPRequestHandler):
             self._send_json({'ok': True, 'path': folder, 'count': st.get('count', 0)})
         except Exception as e:
             self._send_json({'ok': False, 'error': str(e)})
+
+    # ---- ライブラリの図面枠テンプレート・表題欄様式(2026-10-03 段階2) ----------------
+    # GET  /api/library/frames|titleblocks → {ok, source, data, version, error}
+    # POST /api/library/frames|titleblocks  {data, version} → 版が読んだ時点と違えば conflict で書かない
+    # 種類は parts_db.LIBRARY_FILES の名前だけ(画面からファイル名やパスは受け取らない)。
+    def handle_library(self, method, kind):
+        if parts_db is None:
+            self._send_json({'ok': False, 'available': False,
+                             'error': '部品DBの機能(tools/parts_db)が導入されていません'})
+            return
+        if kind not in parts_db.LIBRARY_FILES:
+            self.send_error(404)
+            return
+        try:
+            db = parts_db.PartsDB()
+            if method == 'GET':
+                self._send_json({'available': True, **db.read_library(kind)})
+                return
+            n = int(self.headers.get('Content-Length') or 0)
+            payload = json.loads(self.rfile.read(n).decode('utf-8')) if n else {}
+            self._send_json({'available': True,
+                             **db.save_library(kind, payload.get('data'), payload.get('version'))})
+        except Exception as e:
+            self._send_json({'ok': False, 'available': True, 'error': str(e)})
 
     def handle_parts_save(self):
         """部品DB画面(parts.html)からの保存要求。**ここが parts_db.json の唯一の書き手。**

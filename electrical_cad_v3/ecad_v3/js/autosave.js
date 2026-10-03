@@ -144,6 +144,7 @@ function doAutosave() {
       customSymbols: state.customSymbols,
       // 使った型式の部品の写しだけ(2026-10-03。外形図DXFは入れないので容量は小さい。edit.js usedPartsForSave)
       customParts:   (typeof usedPartsForSave === 'function') ? usedPartsForSave(state.pages) : undefined,
+      titleBlockTpls: (typeof usedTitleBlockTplsForSave === 'function') ? usedTitleBlockTplsForSave(state.pages) : undefined,   // 使った表題欄様式の写し(段階2)
       wireNoRule:    state.wireNoRule,
       layers:        LAYERS,
       pages:         state.pages,
@@ -272,6 +273,7 @@ function restoreAutosave() {
     state.saveFileName = d.saveFileName || '';
     state.wireNoRule   = d.wireNoRule || state.wireNoRule;
     state.customSymbols= d.customSymbols || [];
+    state.drawingTbTpls = (d.titleBlockTpls && typeof d.titleBlockTpls === 'object') ? d.titleBlockTpls : {};   // 表題欄様式の写し(段階2)
     state.customParts  = d.customParts   || [];   // 図面の写し。後でライブラリが読めたら mergeEmbedded がライブラリを正にして重ねる
     state.customSymbols.forEach(s => { DEFS[s.type] = s; });
     if (d.layers && d.layers.length) { LAYERS.length = 0; d.layers.forEach(l => LAYERS.push(l)); }

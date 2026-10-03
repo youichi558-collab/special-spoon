@@ -152,6 +152,8 @@ const partsDb = (() => {
     setBanner('');
     mergeEmbedded({ customParts: data.customParts || [], hiddenBuiltinRefs: data.hiddenBuiltinRefs || [] });
     setStatus(`部品DB: ${baseName(serverPath)} (${state.customParts.length}件・読み取り専用)`);
+    // 同じライブラリフォルダの図面枠テンプレート・表題欄様式も読み直す(2026-10-03 段階2、js/library.js)
+    if (typeof ecadLib !== 'undefined') ecadLib.load();
   }
 
   // hasFile() は autosave.js / edit.js が「部品DBを外部ファイルで管理できているか」の

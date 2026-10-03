@@ -83,6 +83,18 @@ function usedPartsForSave(pages) {
     .map(({ outlineDxf, outlineDxfName, ...rest }) => rest);
 }
 
+// 図面に入れる表題欄様式の写し(2026-10-03 段階2)。表題欄は描くときに様式を引く(js/data.js titleBlockCells)ので、
+// ライブラリが無いPC・ライブラリに無い様式でも同じ表題欄で描けるよう、使った様式(組み込み以外)の写しを入れる。
+function usedTitleBlockTplsForSave(pages) {
+  const user = (typeof userTitleBlockTpls === 'function') ? userTitleBlockTpls() : {};
+  const out = {};
+  (pages || []).forEach(pg => {
+    const k = pg && pg.frameObj && pg.frameObj.tbTpl;
+    if (k && user[k]) out[k] = user[k];
+  });
+  return out;
+}
+
 // 図面ファイルに入っていた部品(写し)を読み込むときの扱い。
 // ライブラリ(部品DB)が読めていれば、ライブラリに無い型式だけ足す(ライブラリが正。読込のたびに上書きしない)。
 // 読めていなければ写しを使う(後でライブラリが読めたら js/parts_db.js の mergeEmbedded がライブラリを正にして重ねる)。
@@ -252,6 +264,7 @@ function saveProject() {
       saveFileName: state.saveFileName,
       customSymbols: state.customSymbols,
       customParts:   usedPartsForSave([pg]),   // 使った型式の写しだけ(2026-10-03)
+      titleBlockTpls: usedTitleBlockTplsForSave([pg]),   // 使った表題欄様式の写し(2026-10-03 段階2)
       wireNoRule:    state.wireNoRule,
       layers:        LAYERS,
       pages: [pg],
@@ -282,6 +295,7 @@ function saveAllProject() {
       saveFileName: state.saveFileName,
       customSymbols: state.customSymbols,
       customParts:   usedPartsForSave(state.pages),   // 使った型式の写しだけ(2026-10-03)
+      titleBlockTpls: usedTitleBlockTplsForSave(state.pages),   // 使った表題欄様式の写し(2026-10-03 段階2)
       wireNoRule:    state.wireNoRule,
       layers:        LAYERS,
       pages: state.pages,
@@ -333,6 +347,7 @@ function applyProjectData(d) {
         _mergeOrSetCustomParts(d.customParts);
       }
 
+      state.drawingTbTpls = (d.titleBlockTpls && typeof d.titleBlockTpls === 'object') ? d.titleBlockTpls : {};   // 図面の表題欄様式の写し(段階2)
       state.currentPage = 0;
       state.customSymbols.forEach(s => { DEFS[s.type] = s; });
       state.saveFileName = d.saveFileName || '';
@@ -381,6 +396,10 @@ function appendProjectData(d) {
     if (state.customSymbols.some(x => x.type === sym.type)) { symKept++; return; }
     state.customSymbols.push(sym); DEFS[sym.type] = sym; symAdded++;
   });
+  // 表題欄様式の写し: 無いキーだけ足す(2026-10-03 段階2)
+  state.drawingTbTpls = state.drawingTbTpls || {};
+  Object.entries((d.titleBlockTpls && typeof d.titleBlockTpls === 'object') ? d.titleBlockTpls : {})
+    .forEach(([k, v]) => { if (!(k in state.drawingTbTpls)) state.drawingTbTpls[k] = v; });
   // 部品(図面に入っている写し): 無い ref だけ足す
   let partsAdded = 0;
   state.customParts = state.customParts || [];
@@ -834,6 +853,7 @@ function newProject() {
   state.pages = [{ name: 'Sheet1', elements: [], wires: [], groups: [], guides: [], frameObj: null }];
   state.currentPage = 0;
   state.saveFileName = '';
+  state.drawingTbTpls = {};   // 前の図面の表題欄様式の写しは持ち越さない(段階2)
   state.sel.els.clear(); state.sel.wires.clear();
   state.wirePoints = []; state.preview = null;
   state.hist = []; state.redoHist = [];

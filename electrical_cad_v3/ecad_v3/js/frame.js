@@ -3,10 +3,10 @@
 // ================================================================
 function loadFrameTpl(val){
   if(!val||val==='custom')return;
-  // ユーザー保存テンプレートチェック
+  // ユーザー保存テンプレートチェック(2026-10-03〜 ライブラリの frames.json。js/library.js)
   if(val.startsWith('_')){
     const name=val.slice(1);
-    const saved=JSON.parse(localStorage.getItem('ecad_frame_tpls')||'{}');
+    const saved=ecadLib.get('frames');
     if(saved[name]){Object.entries(saved[name]).forEach(([k,v])=>{const el=document.getElementById('f-'+k)||document.getElementById('frame-'+k);if(el)el.value=v;});}
     return;
   }
@@ -48,21 +48,24 @@ function applyFrame(){
   closeFP('frame-p');resetView();draw();
 }
 function removeFrame(){pushH();state.frameObj=null;draw();}
-function saveFrameTplUser(){
+// 【2026-10-03 段階2】保存先をブラウザの中(localStorage)からライブラリフォルダの frames.json に移した
+async function saveFrameTplUser(){
+  if(!ecadLib.isReady('frames')){alert((await ecadLib.save('frames',{})).error);return;}
   const name=prompt('テンプレート名:');if(!name)return;
-  const tpls=JSON.parse(localStorage.getItem('ecad_frame_tpls')||'{}');
+  const tpls=Object.assign({},ecadLib.get('frames'));
+  if(tpls[name]&&!confirm(`「${name}」は既にあります。上書きしますか？`))return;
   tpls[name]={w:document.getElementById('frame-w').value,h:document.getElementById('frame-h').value,mg:document.getElementById('frame-mg').value,th:document.getElementById('frame-th').value,cols:document.getElementById('frame-cols').value,rows:document.getElementById('frame-rows').value};
-  localStorage.setItem('ecad_frame_tpls',JSON.stringify(tpls));
-  // セレクトに追加
-  refreshFrameTplSel();
-  alert(`「${name}」を保存しました`);
+  const r=await ecadLib.save('frames',tpls);   // 保存できたらセレクトも描き直る
+  alert(r.ok?`「${name}」をライブラリに保存しました`:r.error);
 }
 function refreshFrameTplSel(){
   const sel=document.getElementById('frame-tpl');
+  if(!sel)return;
   sel.querySelectorAll('option.user').forEach(o=>o.remove());
-  const tpls=JSON.parse(localStorage.getItem('ecad_frame_tpls')||'{}');
+  sel.querySelectorAll('optgroup.user').forEach(o=>o.remove());
+  const tpls=ecadLib.get('frames');
   if(Object.keys(tpls).length){
-    const grp=document.createElement('optgroup');grp.label='保存済みテンプレート';
+    const grp=document.createElement('optgroup');grp.label='保存済みテンプレート';grp.className='user';
     Object.keys(tpls).forEach(k=>{const o=document.createElement('option');o.value='_'+k;o.textContent=k;o.className='user';grp.appendChild(o);});
     sel.appendChild(grp);
   }
@@ -73,12 +76,16 @@ function refreshTitleBlockSel(){
   const sel=document.getElementById('frame-tbtpl');
   if(!sel) return;
   const cur=(state.frameObj&&state.frameObj.tbTpl)||'standard';
-  const user=userTitleBlockTpls();
+  const user=userTitleBlockTpls(), lib=libTitleBlockTpls();
   const mk=(k,v)=>`<option value="${escH(k)}">${escH((v&&v.label)||k)}</option>`;
   let html=Object.entries(TITLE_BLOCK_TPLS).filter(([k])=>!user[k]).map(([k,v])=>mk(k,v)).join('');
-  const uKeys=Object.keys(user);
-  if(uKeys.length){
-    html+=`<optgroup label="読み込んだ様式">`+uKeys.map(k=>mk(k,user[k])).join('')+`</optgroup>`;
+  const lKeys=Object.keys(user).filter(k=>lib[k]), dKeys=Object.keys(user).filter(k=>!lib[k]);
+  if(lKeys.length){
+    html+=`<optgroup label="読み込んだ様式">`+lKeys.map(k=>mk(k,user[k])).join('')+`</optgroup>`;
+  }
+  // ライブラリに無く、図面に写しが入っているだけの様式(別のPCで作った図面など。2026-10-03)
+  if(dKeys.length){
+    html+=`<optgroup label="図面に入っている様式（ライブラリに無い）">`+dKeys.map(k=>mk(k,user[k])).join('')+`</optgroup>`;
   }
   sel.innerHTML=html;
   sel.value=allTitleBlockTpls()[cur]?cur:'standard';
@@ -90,8 +97,9 @@ function refreshTitleBlockSel(){
 function loadTitleBlockTpl(input){
   const f=input.files&&input.files[0];
   if(!f)return;
+  if(!ecadLib.isReady('titleblocks')){ecadLib.save('titleblocks',{}).then(r=>alert(r.error));input.value='';return;}
   const rd=new FileReader();
-  rd.onload=e=>{
+  rd.onload=async e=>{
     try{
       const data=JSON.parse(e.target.result);
       if(!data||typeof data!=='object'||Array.isArray(data)) throw new Error('様式定義の形式が違います');
@@ -103,16 +111,15 @@ function loadTitleBlockTpl(input){
         alert('様式の定義に問題があるため読み込めませんでした:\n\n'+errs.slice(0,10).join('\n'));
         return;
       }
-      const cur=userTitleBlockTpls();
+      const cur=Object.assign({},libTitleBlockTpls());   // 【2026-10-03】ライブラリの titleblocks.json へ
       const added=[],replaced=[];
       Object.entries(tpls).forEach(([k,v])=>{
         (cur[k]?replaced:added).push((v&&v.label)||k);
         cur[k]=v;
       });
-      localStorage.setItem(TB_TPL_STORE,JSON.stringify(cur));
-      refreshTitleBlockSel();
-      draw();
-      alert(`表題欄の様式を読み込みました\n`
+      const r=await ecadLib.save('titleblocks',cur);   // 保存できたらセレクトと図面も描き直る
+      if(!r.ok){alert(r.error);return;}
+      alert(`表題欄の様式をライブラリに読み込みました\n`
         +(added.length?`\n追加: ${added.join(', ')}`:'')
         +(replaced.length?`\n更新: ${replaced.join(', ')}`:''));
     }catch(err){
@@ -132,17 +139,21 @@ function exportTitleBlockTpl(){
   dl(JSON.stringify({[key]:tpl},null,2),`titleblock_${key}.json`,'application/json');
 }
 
-// 読み込んだ様式を削除する（組み込み様式は消せない）
-function deleteTitleBlockTpl(){
+// 読み込んだ様式をライブラリから削除する（組み込み様式・図面に入っている写しは消せない）
+async function deleteTitleBlockTpl(){
   const sel=document.getElementById('frame-tbtpl');
   const key=sel?sel.value:'';
-  const user=userTitleBlockTpls();
-  if(!user[key]){alert('読み込んだ様式を選んでください（組み込みの様式は削除できません）');return;}
-  if(!confirm(`様式「${user[key].label||key}」を削除しますか？\nこの様式を使っている図面は標準様式で表示されるようになります。`))return;
+  const user=Object.assign({},libTitleBlockTpls());
+  if(!user[key]){
+    alert(userTitleBlockTpls()[key]
+      ?'この様式はライブラリには無く、図面に写しが入っているだけです（削除するものがありません）'
+      :'読み込んだ様式を選んでください（組み込みの様式は削除できません）');
+    return;
+  }
+  if(!confirm(`様式「${user[key].label||key}」をライブラリから削除しますか？\nこの様式を使っている図面は、図面に入っている写しで表示されます（写しの無い古い図面は標準様式になります）。`))return;
   delete user[key];
-  localStorage.setItem(TB_TPL_STORE,JSON.stringify(user));
-  refreshTitleBlockSel();
-  draw();
+  const r=await ecadLib.save('titleblocks',user);
+  if(!r.ok)alert(r.error);
 }
 
 function showFramePanel(){

@@ -12,6 +12,8 @@ parts_db.py — 部品DB(parts_db.json)の読み書き。ライブラリフォ�
 
         <ライブラリフォルダ>/
             parts_db.json      部品DB本体
+            frames.json        図面枠テンプレート(段階2)
+            titleblocks.json   表題欄の様式(段階2)
             backup/            保存のたびに溜まる世代バックアップ(古いものから消す)
 
     フォルダの場所はPCごとの設定 %LOCALAPPDATA%\\ecad\\parts_db_config.json に入る
@@ -52,8 +54,14 @@ CONFIG_NAME = 'parts_db_config.json'
 PARTS_NAME = 'parts_db.json'
 BACKUP_DIR_NAME = 'backup'
 BACKUP_KEEP = 30            # 世代バックアップを何個まで残すか
-# 世代バックアップの名前。消してよいのはこの形に一致するものだけ(人が置いたファイルは消さない)
-_BACKUP_RE = re.compile(r'^parts_db_\d{8}_\d{6}(_\d+)?\.json$')
+# ライブラリフォルダに置くほかのファイル(2026-10-03 段階2)。画面から指定できるのはこの名前だけ
+LIBRARY_FILES = {'frames': 'frames.json',            # 図面枠テンプレート(寸法・区画の組)
+                 'titleblocks': 'titleblocks.json'}  # 表題欄の様式(客先様式)
+
+
+def _backup_re(stem):
+    """世代バックアップの名前(<stem>_YYYYMMDD_HHMMSS.json)。消してよいのはこの形に一致するものだけ。"""
+    return re.compile(r'^' + re.escape(stem) + r'_\d{8}_\d{6}(_\d+)?\.json$')
 
 
 # ----------------------------------------------------------------
@@ -329,14 +337,16 @@ class PartsDB:
             return None
 
     def _backup_file(self, path):
-        """今の parts_db.json を <ライブラリ>/backup/ に世代として残し、古いものから消す。
+        """今のファイル(parts_db.json 等)を <ライブラリ>/backup/ に世代として残し、古いものから消す。
 
         中身は「今ディスクにあるもの」(これから書く内容ではない)。戻したいのは上書きされる前の方。
-        消すのは _BACKUP_RE に一致する自分の作った名前だけ。
+        消すのは _backup_re(ファイル名の幹) に一致する自分の作った名前だけ。
         """
         folder = os.path.join(os.path.dirname(path), BACKUP_DIR_NAME)
         os.makedirs(folder, exist_ok=True)
-        base = 'parts_db_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        stem = os.path.splitext(os.path.basename(path))[0]
+        pat = _backup_re(stem)
+        base = stem + '_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
         name = base + '.json'
         for i in range(2, 100):   # 同じ秒に2回でも上書きしない
             if not os.path.exists(os.path.join(folder, name)):
@@ -349,7 +359,7 @@ class PartsDB:
         with open(tmp, 'w', encoding='utf-8') as f:
             f.write(body)
         os.replace(tmp, dst)
-        olds = sorted(n for n in os.listdir(folder) if _BACKUP_RE.match(n))
+        olds = sorted(n for n in os.listdir(folder) if pat.match(n))
         for n in olds[:-BACKUP_KEEP] if len(olds) > BACKUP_KEEP else []:
             try:
                 os.remove(os.path.join(folder, n))
@@ -414,6 +424,64 @@ class PartsDB:
         self._cache_key = None
         return {'ok': True, 'count': now, 'path': path, 'version': file_version(path),
                 'backup': f'{BACKUP_DIR_NAME}/{backup}', 'error': ''}
+
+    # ---- ライブラリのほかのファイル(図面枠テンプレート・表題欄様式。2026-10-03 段階2) ----
+    #
+    # 中身は {キー: 定義} のオブジェクト1つ。書くのはCAD(図面枠のパネル)。parts_db.json と同じく
+    # 版の確認・世代バックアップ・tmp経由の置き換えをする。ライブラリフォルダの場所は parts_db.json と同じ
+    # (parts_db.json があるフォルダ。部品DBが未設定・見つからないなら、これらも読み書きしない)。
+    def _library_file(self, kind):
+        name = LIBRARY_FILES.get(kind)
+        if not name:
+            raise ValueError(f'ライブラリのファイルの種類が違います: {kind}')
+        p, source = self.resolve()
+        if p is None:
+            return None, source
+        return os.path.join(os.path.dirname(p), name), source
+
+    def read_library(self, kind):
+        """{'ok', 'source', 'data', 'version', 'error'}。ファイルがまだ無ければ data={}・source='nofile'。"""
+        path, source = self._library_file(kind)
+        if path is None:
+            return {'ok': False, 'source': source, 'data': {}, 'version': '',
+                    'error': self.missing_message() if source == 'path_missing'
+                    else '部品DBの場所(ライブラリフォルダ)が未設定です'}
+        if not os.path.isfile(path):
+            return {'ok': True, 'source': 'nofile', 'data': {}, 'version': '', 'error': ''}
+        try:
+            ver = file_version(path)
+            with open(path, encoding='utf-8') as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                raise ValueError('中身がオブジェクトではありません')
+        except Exception as e:
+            return {'ok': False, 'source': source, 'data': {}, 'version': '',
+                    'error': f'{os.path.basename(path)} を読めませんでした({path}): {e}'}
+        return {'ok': True, 'source': source, 'data': data, 'version': ver, 'error': ''}
+
+    def save_library(self, kind, data, base_version=None):
+        """保存。版が読んだ時点と違えば reason='conflict' で書かない(ファイルがまだ無いときの版は '')。"""
+        path, source = self._library_file(kind)
+        if path is None:
+            return {'ok': False, 'reason': source,
+                    'error': (self.missing_message() if source == 'path_missing' else
+                              '部品DBの場所(ライブラリフォルダ)が未設定です。設定タブの「部品DB」で設定してください')}
+        if not isinstance(data, dict) or not all(isinstance(v, dict) for v in data.values()):
+            return {'ok': False, 'reason': 'bad_data', 'error': '保存する中身の形が違います({キー: 定義} の形)'}
+        cur = file_version(path)
+        if base_version is None or base_version != cur:
+            return {'ok': False, 'reason': 'conflict', 'version': cur,
+                    'error': (f'{os.path.basename(path)} が、読み込んだ後に別の画面か別のPCで保存されています。'
+                              '上書きしないよう保存を止めました。読み直したので、もう一度操作してください')
+                             if base_version is not None else
+                             '画面が古い版です。再読み込み(Ctrl+Shift+R)してください'}
+        try:
+            if cur:
+                self._backup_file(path)
+            _write_json(path, data)
+        except Exception as e:
+            return {'ok': False, 'reason': 'error', 'error': f'保存できませんでした({path}): {e}'}
+        return {'ok': True, 'version': file_version(path), 'path': path, 'error': ''}
 
     def stats(self):
         d = self.load()

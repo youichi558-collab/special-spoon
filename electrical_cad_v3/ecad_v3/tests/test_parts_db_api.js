@@ -54,8 +54,8 @@ const read = p => fs.readFileSync(path.join(root, p), 'utf8').replace(/\r\n/g, '
     // ファイルを消すのは世代バックアップの整理だけ(自分の作った名前に一致するものだけ)
     const removes = libCode.match(/os\.remove\(|shutil\.|\.unlink\(/g) || [];
     eq(removes.length, 1, 'ファイルを消す経路は1つだけ');
-    ok(/_BACKUP_RE\.match\(n\)[\s\S]{0,200}os\.remove/.test(libCode),
-       '★消すのは世代バックアップの名前(_BACKUP_RE)に一致するものだけ');
+    ok(/pat\.match\(n\)[\s\S]{0,200}os\.remove/.test(libCode) && /def _backup_re/.test(libCode),
+       '★消すのは世代バックアップの名前(_backup_re)に一致するものだけ');
     ok(!/def write_mirror|mirror_path|MIRROR_NAME/.test(libCode), '控え(mirror)はもう無い');
 
     // save() の本体だけを切り出す(次のメソッド定義の手前まで)

@@ -117,18 +117,20 @@ function titleBlockCells(fr) {
   return t.cells;
 }
 
-// 読み込んだ客先様式の保存先。客先ごとに様式が違うため、コードに埋め込むのではなく
+// 読み込んだ客先様式。客先ごとに様式が違うため、コードに埋め込むのではなく
 // JSONで足せるようにしてある。図面枠パネルの「様式を読込」から追加する。
-const TB_TPL_STORE = 'ecad_titleblock_tpls';
-
+// 【2026-10-03 段階2】置き場所をブラウザの中(localStorage の ecad_titleblock_tpls)から
+// ライブラリフォルダの titleblocks.json に移した(js/library.js)。
+//
+// libTitleBlockTpls : ライブラリの様式だけ(読込・削除で書き換えるのはこれ)
+// userTitleBlockTpls: 図面に入っている写し(state.drawingTbTpls)＋ライブラリ。ライブラリが正(同じキーならライブラリ)。
+//   ライブラリが無いPC・ライブラリに無い様式でも、図面の写しで表題欄が描ける
+function libTitleBlockTpls() {
+  return (typeof ecadLib !== 'undefined') ? ecadLib.get('titleblocks') : {};
+}
 function userTitleBlockTpls() {
-  try {
-    const o = JSON.parse(localStorage.getItem(TB_TPL_STORE) || '{}');
-    return (o && typeof o === 'object') ? o : {};
-  } catch (e) {
-    console.warn('[titleBlock] 保存済み様式の読み出しに失敗:', e);
-    return {};
-  }
+  const fromDrawing = (typeof state !== 'undefined' && state.drawingTbTpls) || {};
+  return Object.assign({}, fromDrawing, libTitleBlockTpls());
 }
 
 // 組み込み様式 + 読み込んだ客先様式。同じキーなら読み込んだ方を優先する
