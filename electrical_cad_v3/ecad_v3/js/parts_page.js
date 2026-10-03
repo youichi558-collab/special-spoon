@@ -59,11 +59,10 @@ async function loadAll() {
     // parts_db.py はこの2つを source で区別して返しているので、そのまま使う。
     if (stats.source === 'path_missing') {
       setStatus(`${stats.error}\n`
-        + 'ドライブの文字が変わっていないか確認し、'
-        + 'py tools\\parts_db\\parts_db.py setpath <新しいパス> を実行してから開き直してください', true);
+        + 'ドライブの文字が変わっていないか確認し、上の「部品DBの場所」の「ファイルを選ぶ」か「探す」で選び直してください', true);
     } else {
       setStatus('部品DBの場所が未設定です。'
-        + 'py tools\\parts_db\\parts_db.py setpath <parts_db.jsonのパス> を実行してから開き直してください', true);
+        + '上の「部品DBの場所」の「ファイルを選ぶ」「探す」「新規作成」で設定してください', true);
     }
     saveLocked = true;
     return;

@@ -55,12 +55,16 @@ const read = p => fs.readFileSync(path.join(root, p), 'utf8').replace(/\r\n/g, '
     // ——「開いた瞬間に中身が消える」FSAのcreateWritableを避けたのがこの形。
     const writeOpens = [...libCode.matchAll(/open\(\s*([A-Za-z_][\w.()\[\] +]*?)\s*,\s*'w'/g)]
       .map(m => m[1]);
-    eq(writeOpens.length, 4, '書きモードで open するのは4箇所(設定＋tmp×3)');
+    // 2026-10-02: 画面の「新規作成」(create_new)で空の部品DBを作る書き込みが1つ増えた。これも tmp → os.replace で、
+    // しかも既にあるファイルには作らない(create_new の os.path.exists で弾く)。
+    eq(writeOpens.length, 5, '書きモードで open するのは5箇所(設定＋tmp×4)');
     ok(writeOpens.some(v => /config_path/.test(v)), '設定ファイルへの書き込みがある');
-    eq(writeOpens.filter(v => /tmp/.test(v)).length, 3,
-       '★残り3つ(控え・退避・部品DB本体)はすべて tmp に書く');
-    eq((libCode.match(/os\.replace\(/g) || []).length, 3,
-       '★tmpに書いたものは os.replace で置き換える(3箇所)');
+    eq(writeOpens.filter(v => /tmp/.test(v)).length, 4,
+       '★残り4つ(控え・退避・部品DB本体・新規作成)はすべて tmp に書く');
+    eq((libCode.match(/os\.replace\(/g) || []).length, 4,
+       '★tmpに書いたものは os.replace で置き換える(4箇所)');
+    ok(/def create_new[\s\S]*?if os\.path\.exists\(path\):\s*raise FileExistsError/.test(libCode),
+       '★新規作成は既にあるファイルには作らない(今の部品DBを空で上書きしない)');
 
     // 実ファイルを直接 'w'/'a' で開く経路が無いこと。
     // load() は open(path) を読みモードでしか呼ばない。
@@ -98,8 +102,15 @@ const read = p => fs.readFileSync(path.join(root, p), 'utf8').replace(/\r\n/g, '
     // server.py の /api/parts/ で受ける書き込みは、保存・退避・控えの3つだけ。
     const partsPost = cad.match(/def do_POST[\s\S]*?self\.send_error\(404\)/)[0];
     const partsRoutes = [...partsPost.matchAll(/'(\/api\/parts\/[a-z]+)'/g)].map(m => m[1]);
-    eq(partsRoutes, ['/api/parts/mirror', '/api/parts/save', '/api/parts/backup'],
-       'POSTで受けるのは控え・保存・退避の3つだけ');
+    // 2026-10-02: 部品DBの場所を画面から設定する4つ(pick/new/find/use)が増えた。
+    // どれも画面から送られたパスは使わない(窓で人が選んだもの・サーバーが探した候補の番号だけ)。
+    eq(partsRoutes, ['/api/parts/mirror', '/api/parts/save', '/api/parts/backup',
+                     '/api/parts/pick', '/api/parts/new', '/api/parts/find', '/api/parts/use'],
+       'POSTで受けるのは控え・保存・退避と、場所の設定(選ぶ・新規作成・探す・候補から選ぶ)だけ');
+    const place = cad.match(/def handle_parts_place[\s\S]*?def handle_parts_mirror/)[0];
+    ok(!/body\.get\('path'/.test(place) && /Handler\._place_found\[i\]/.test(place),
+       '★場所の設定は画面から送られたパスを使わない(候補は番号で選ぶ)');
+    ok(/self\.client_address\[0\] not in \('127\.0\.0\.1'/.test(place), '★場所の設定はこのPC自身からの要求だけ');
 
     // 控えの書き先が parts_db.json ではないこと
     ok(/mirror_path/.test(lib.slice(lib.indexOf('def write_mirror'))),

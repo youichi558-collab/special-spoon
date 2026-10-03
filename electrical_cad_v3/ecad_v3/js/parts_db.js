@@ -95,7 +95,7 @@ const partsDb = (() => {
       }
       setStatus(`部品DBを読み込めませんでした(${e.message})`);
       setBanner(`⚠ 部品DBを読み込めませんでした(${e.message})。`
-        + '部品DBの場所を確認してください（py tools\\parts_db\\parts_db.py setpath ...）。'
+        + '部品DBの場所を確認してください（設定タブの「部品DB」の「ファイルを選ぶ」「探す」で設定できます）。'
         + '部品の登録・編集は「部品DBを開く.bat」（部品DB単独画面）で行います。');
       return;
     }

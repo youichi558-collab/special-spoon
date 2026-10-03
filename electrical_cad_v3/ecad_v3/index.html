@@ -307,6 +307,11 @@
         <div class="rg-btns" id="st-outdir" style="align-items:center"></div>
         <div class="rg-label">保存先（保存・出力のたびに選びます）</div>
       </div>
+      <!-- 【2026-10-02】部品DB(parts_db.json)の場所(js/parts_db_place.js)。以前はコマンド(setpath)でしか設定できなかった -->
+      <div class="rg">
+        <div class="rg-btns" id="pdb-place" style="flex-direction:column;align-items:flex-start;padding:0 6px;max-width:560px"></div>
+        <div class="rg-label">部品DB</div>
+      </div>
     </div>
     <!-- 表示タブ: 画面の見え方をここに集約した(2026-09-19)。 -->
     <div id="rp-view" class="rg-wrap" style="display:none;gap:0">
@@ -859,6 +864,7 @@
 <script src="js/xref.js"></script>
 <script src="js/xref_project.js"></script>
 <script src="js/parts_db.js"></script>
+<script src="js/parts_db_place.js"></script>
 <script src="js/part_options.js"></script>
 <script src="js/backup.js"></script>
 <script src="js/settings.js"></script>

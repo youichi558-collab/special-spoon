@@ -61,7 +61,7 @@ console.log('【source=unset: 一度も設定していない】');
   await s.loadAll();
   const msg = s._statusHistory[s._statusHistory.length - 1];
   ok(/未設定/.test(msg), '「未設定」と案内する');
-  ok(/setpath/.test(msg), 'setpathコマンドを案内する');
+  ok(/ファイルを選ぶ/.test(msg) && /新規作成/.test(msg), '画面の「部品DBの場所」で設定するよう案内する(2026-10-02、以前はsetpathコマンド)');
 }
 
 console.log('\n【source=path_missing: 設定されているのに見つからない(ドライブ文字が変わった等)】');
@@ -75,7 +75,7 @@ console.log('\n【source=path_missing: 設定されているのに見つから�
      '★「未設定」から始まらない(実際には設定済みなので誤解を招く)');
   ok(msg.includes(staleError), '★元のパス(I:\\...)を含む具体的な案内が出る');
   ok(/ドライブの文字/.test(msg), 'ドライブ文字が変わった可能性を案内する');
-  ok(/setpath/.test(msg), '新しいパスでsetpathし直す案内がある');
+  ok(/ファイルを選ぶ/.test(msg), '画面の「部品DBの場所」で選び直す案内がある(2026-10-02、以前はsetpathコマンド)');
 }
 
 console.log('\n【source=mirror: setpathしていないが控えは読める(書けない)】');

@@ -280,10 +280,12 @@ class PartsDB:
         return (load_config(self.data_dir).get('path') or '').strip()
 
     def set_path(self, path):
-        """parts_db.json の場所を設定する。CLIからのみ呼ぶ。
+        """parts_db.json の場所を設定する。
 
-        HTTPからは受け付けない(catalog_db の setdir を撤去したのと同じ理由 ——
-        GET一発でサーバーに任意のファイルを読ませられるため)。
+        **HTTPから任意のパスを受け取って呼ばない**(catalog_db の setdir を撤去したのと同じ理由 ——
+        画面から送ったパスでサーバーに任意のファイルを読ませられるため)。
+        2026-10-02 から画面(server.py の /api/parts/pick・new・use)でも設定できるが、パスは
+        **盛田さんがWindowsの窓で選んだもの**か**サーバー自身が探した候補**だけで、画面から送られたパスは使わない。
         """
         path = os.path.abspath(os.path.expanduser(path))
         if not os.path.isfile(path):
@@ -295,6 +297,24 @@ class PartsDB:
         cfg['path_tail'] = path_tail(path)
         save_config(cfg, self.data_dir)
         return path
+
+    def create_new(self, path):
+        """空の部品DB(登録0件)を新しく作り、読み込み先に設定する(2026-10-02、画面の「新規作成」)。
+
+        **既にあるファイルには書かない**(今の部品DBを空で上書きする事故を防ぐ)。
+        アプリに最初から入っている部品は、部品DBが空でも今までどおり使える。
+        """
+        path = os.path.abspath(os.path.expanduser(path))
+        if os.path.exists(path):
+            raise FileExistsError(f'既にあるファイルには作りません(上書きしません): {path}')
+        d = os.path.dirname(path)
+        if d and not os.path.isdir(d):
+            raise FileNotFoundError(f'フォルダが見つかりません: {d}')
+        tmp = _tmp_name(path)
+        with open(tmp, 'w', encoding='utf-8') as f:
+            json.dump({'customParts': [], 'hiddenBuiltinRefs': []}, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, path)
+        return self.set_path(path)
 
     def resolve(self):
         """(実ファイルのパス, 由来) を返す。見つからなければ (None, 理由)。

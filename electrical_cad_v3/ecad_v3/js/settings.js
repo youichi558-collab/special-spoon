@@ -199,6 +199,8 @@ async function stRenderRibbon() {
         ? btn('stPickOutDir()', 'フォルダを選ぶ', '保存・出力のたびに「名前を付けて保存」の窓が開きます。ここで選ぶと、その窓がこのフォルダから開きます（先に選んでおく必要はありません。前回保存した場所から開きます）')
         : `<span style="font-size:11px;color:var(--red)">このブラウザはフォルダの選択に対応していません（Chrome か Edge で開いてください）</span>`)
     + (handle ? btn('stClearOutDir()', '解除', '前回の保存先を忘れます（次の保存のときの窓は既定の場所から開きます）') : '');
+  // 部品DBの場所(2026-10-02、js/parts_db_place.js)。設定したらCADの部品DBを読み直す
+  if (typeof pdbPlaceRender === 'function') pdbPlaceRender('pdb-place', () => { if (typeof partsDb !== 'undefined') partsDb.reload(); });
   if (typeof syncRibbonHeight === 'function') syncRibbonHeight();
 }
 

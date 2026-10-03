@@ -230,6 +230,9 @@ class Handler(SimpleHTTPRequestHandler):
         if parsed.path == '/api/parts/backup':
             self.handle_parts_backup()
             return
+        if parsed.path in ('/api/parts/pick', '/api/parts/new', '/api/parts/find', '/api/parts/use'):
+            self.handle_parts_place(parsed.path[len('/api/parts/'):])
+            return
         if parsed.path == '/api/backup/save':
             self.handle_backup_save()
             return
@@ -357,6 +360,83 @@ class Handler(SimpleHTTPRequestHandler):
                                  'error': 'unknown action'}, 404)
         except Exception as e:
             self._send_json({'ok': False, 'available': True, 'error': str(e)})
+
+    # ---- 部品DBの場所を画面から設定する(2026-10-02、盛田さん「parts_db.jsonの場所を設定できるようにしないといかんな」) ----
+    # 以前は `py tools\parts_db\parts_db.py setpath ...` のコマンドだけだった。
+    #   pick: Windowsの「ファイルを開く」窓(このPCのサーバーが出す)で parts_db.json を選ぶ
+    #   new : Windowsの「名前を付けて保存」窓で置き場所を選び、空の部品DBを作って設定する(既にあるファイルには作らない)
+    #   find: ディスクから parts_db.json を探して候補を返す(数十秒かかることがある)
+    #   use : find で返した候補の番号を選んで設定する
+    # **画面から送られたパスは使わない**(set_path の説明)。パスは窓で人が選んだものか、サーバー自身が探した候補だけ。
+    # さらにこのPC自身(127.0.0.1)からの要求だけ受ける(LANに広げた ECAD_HOST のときに、他のPCから場所を変えられないように)。
+    _place_lock = threading.Lock()
+    _place_found = []
+
+    def _tk_dialog(self, save, initial):
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()
+        try:
+            root.attributes('-topmost', True)   # ブラウザの裏に隠れにくくする
+        except Exception:
+            pass
+        try:
+            kw = {'parent': root, 'filetypes': [('部品DB', '*.json'), ('すべて', '*.*')]}
+            if initial and os.path.isdir(initial):
+                kw['initialdir'] = initial
+            if save:
+                return filedialog.asksaveasfilename(title='新しい部品DBの置き場所', defaultextension='.json',
+                                                    initialfile='parts_db.json', confirmoverwrite=False, **kw) or ''
+            return filedialog.askopenfilename(title='部品DB(parts_db.json)を選ぶ', **kw) or ''
+        finally:
+            root.destroy()
+
+    def handle_parts_place(self, action):
+        if parts_db is None:
+            self._send_json({'ok': False, 'error': '部品DBの機能(tools/parts_db)が導入されていません'})
+            return
+        if self.client_address[0] not in ('127.0.0.1', '::1', '::ffff:127.0.0.1'):
+            self._send_json({'ok': False, 'error': '部品DBの場所は、このPCの画面からだけ変えられます'}, 403)
+            return
+        try:
+            n = int(self.headers.get('Content-Length') or 0)
+            body = json.loads(self.rfile.read(n).decode('utf-8') or '{}') if n else {}
+        except Exception:
+            body = {}
+        db = parts_db.PartsDB()
+        try:
+            if action in ('pick', 'new'):
+                cur = db.configured_path()
+                with Handler._place_lock:   # 窓は1つずつ
+                    try:
+                        path = self._tk_dialog(action == 'new', os.path.dirname(cur) if cur else '')
+                    except Exception as e:
+                        self._send_json({'ok': False, 'error': f'ファイルを選ぶ窓を出せませんでした({e})'})
+                        return
+                if not path:
+                    self._send_json({'ok': False, 'cancelled': True})
+                    return
+                path = db.create_new(path) if action == 'new' else db.set_path(path)
+            elif action == 'find':
+                found, _backups = parts_db.find_candidates(parts_db.SCAN_ROOTS)
+                Handler._place_found = [f[0] for f in found]
+                self._send_json({'ok': True, 'candidates': [
+                    {'i': i, 'path': f[0], 'count': f[1], 'mtime': f[2]} for i, f in enumerate(found)]})
+                return
+            elif action == 'use':
+                i = int(body.get('i', -1))
+                if not (0 <= i < len(Handler._place_found)):
+                    self._send_json({'ok': False, 'error': '候補が古くなっています。「探す」からやり直してください'})
+                    return
+                path = db.set_path(Handler._place_found[i])
+            else:
+                self.send_error(404)
+                return
+            st = db.stats()
+            self._send_json({'ok': True, 'path': path, 'count': st.get('count', 0)})
+        except Exception as e:
+            self._send_json({'ok': False, 'error': str(e)})
 
     def handle_parts_mirror(self):
         """CADが保存した部品DBの中身を控えとして受け取る。

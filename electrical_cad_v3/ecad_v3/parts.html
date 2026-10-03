@@ -55,6 +55,8 @@
     <span id="pp-status"></span>
     <button class="fp-btn" onclick="toggleDark()">ダーク切替</button>
   </div>
+  <!-- 【2026-10-02】部品DB(parts_db.json)の場所(js/parts_db_place.js)。CADの設定タブと同じ部品 -->
+  <div id="pdb-place" style="padding:6px 12px;border-bottom:1px solid var(--bd);background:var(--bg2)"></div>
   <div id="pp-banner"></div>
   <div id="pp-tabs">
     <div class="pp-tab on" id="pp-tab-list" onclick="switchTab('list')">一覧・編集</div>
@@ -186,5 +188,7 @@
 <script src="js/data.js"></script>
 <script src="js/sjis.js"></script>
 <script src="js/parts_page.js"></script>
+<script src="js/parts_db_place.js"></script>
+<script>pdbPlaceRender('pdb-place', () => loadAll());   // 部品DBの場所を設定したら一覧を読み直す</script>
 </body>
 </html>
