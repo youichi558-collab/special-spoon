@@ -23,7 +23,7 @@ vm.runInContext(R('js/report.js'), sb);
 vm.runInContext(R('js/devices.js'), sb);   // 接点Refの型式欄はデバイス台帳を通る
 const frame = R('js/frame.js');
 vm.runInContext([pick(frame, /function frameGeom\([\s\S]*?\n\}/), pick(frame, /function zoneColLabel[^\n]*/), pick(frame, /function zoneRowLabel[^\n]*/),
-  pick(R('js/ui.js'), /function parseTerminalGroups\([\s\S]*?\n\}/)].join('\n'), sb);
+  pick(R('js/ui.js'), /function parseTerminalGroups\([\s\S]*?\n\}/), pick(R('js/ui.js'), /function cContactRoles\([\s\S]*?\n\}/)].join('\n'), sb);
 vm.runInContext(R('js/xref.js'), sb);
 
 const FRAME = { sc: 2, wMM: 420, hMM: 297, mg: 10, thMM: 30, cols: 12, rows: 4 };
@@ -121,6 +121,16 @@ console.log('\n【H3Y(MYとピンコンパチ)はMY系と同じ並びとして�
   const els = [coil('T4', 100, 100, { partModel: 'H3Y-2' })];
   const L = setup(els, [], [{ ref: 'H3Y-2', type: 'timer', terminals: 'コイル:13,14 / 限時接点1:1,5,9 / 限時接点2:4,8,12' }]);
   eq(L.blocks[0].lines.slice(3).map(l => l.t), ['a 9-5', 'b 9-1', 'a 12-8', 'b 12-4'], 'H3Y-2: 昇順でNC・NO・共通');
+}
+
+console.log('\n【名前に端子の並びを書いたc接点(2026-10-03)は、その並びで枠を作る】');
+{
+  const L = setup([coil('T5', 100, 100, { partModel: 'MY2N' })], [], [{ ref: 'MY2N', type: 'coil', terminals: 'コイル:13,14 / 接点1(NC・NO・共通):1,5,9 / 接点2(NC・NO・共通):4,8,12' }]);
+  eq(L.blocks[0].lines.slice(3).map(l => l.t), ['a 9-5', 'b 9-1', 'a 12-8', 'b 12-4'], '★MY2N: 名前の並び(NC・NO・共通)で枠');
+  const X = setup([coil('T6', 100, 100, { partModel: 'X-1' })], [], [{ ref: 'X-1', type: 'timer', terminals: 'コイル:2,7 / 限時接点(共通・NC・NO):8,5,6' }]);
+  eq(X.blocks[0].lines.slice(3).map(l => l.t), ['a 8-6', 'b 8-5'], '★表に無い型式でも、名前に並びがあればその並び(共通・NC・NO)');
+  const H = setup([coil('T7', 100, 100, { partModel: 'H3Y-4' })], [], [{ ref: 'H3Y-4', type: 'timer', terminals: 'コイル:13,14 / 限時接点1(NC・NO・共通):1,5,9' }]);
+  eq(H.blocks[0].lines.slice(3).map(l => l.t), ['a 9-5', 'b 9-1'], 'H3Y-4: 名前を変えても今まで通り');
 }
 
 console.log('\n【富士 HH5 系はMY系と同じ並びとして枠を作る(盛田さんの判断: ソケット共用)】');

@@ -63,8 +63,9 @@ vm.runInContext([
   grab('matchGroupsByRole'),
   grab('pickGroupByRole'),
   grab('parseTerminalGroups'),
+  grab('cContactRoles'),
 ].join('\n'), sandbox);
-const { matchGroupsByRole, pickGroupByRole, parseTerminalGroups } = sandbox;
+const { matchGroupsByRole, pickGroupByRole, parseTerminalGroups, cContactRoles } = sandbox;
 
 // 富士SC09XAをグループ形式で書いた場合
 const FUJI = 'コイル:A1,A2 / 主接点:L1,L2,L3,T1,T2,T3 / 補助:13,14';
@@ -113,6 +114,23 @@ console.log('  ← 総合カタログp.203 表6-3: 11=共通/12=b接点/14=a接�
   ok(names('contact_main') === '1,3,5,2,4,6', '主接点には警報を混ぜない');
   // 既存の「補助:13,14」(a/bの区別なし)は今まで通り両方に当たる
   ok(pickGroupByRole(groups, 'contact_b').list.join(',') === '13,14', '区別の無い「補助」は今まで通り');
+}
+
+console.log('【リレー・タイマのc接点: 名前に書いた並びを読む(2026-10-03)】');
+{
+  const my = parseTerminalGroups('コイル:13,14 / 接点1(NC・NO・共通):1,5,9 / 接点2(NC・NO・共通):4,8,12');
+  ok(JSON.stringify(cContactRoles(my[1].name, my[1].list)) === '{"nc":"1","no":"5","com":"9"}', '★MY: NC・NO・共通 → 共通9・NO5・NC1');
+  const cr = parseTerminalGroups('コイル:2,10 / 制御入力:5,6,7 / 限時接点1(共通・NO・NC):1,3,4 / 限時接点2(共通・NC・NO):11,8,9');
+  const r2 = cContactRoles(cr[3].name, cr[3].list);
+  ok(r2.com === '11' && r2.no === '9' && r2.nc === '8', '★H3CR-Aの接点2: 共通・NC・NO → 共通11・NO9・NC8');
+  ok(cContactRoles('接点1', ['1', '5', '9']) === null, '並びが書いていなければ読まない(推測しない)');
+  ok(cContactRoles('接点1(NC・NO・共通)', ['1', '5']) === null, '3端子でなければ読まない');
+  ok(cContactRoles('補助(a接点)', ['11', '14']) === null, '補助(a接点)は c接点ではない');
+  const names = (g, r) => matchGroupsByRole(g, r).map(x => x.name).join(' | ');
+  ok(names(my, 'contact_a') === '接点1(NC・NO・共通) | 接点2(NC・NO・共通)', '★a接点のシンボル → c接点のグループだけが候補(コイルは出さない)');
+  ok(names(my, 'contact_b') === '接点1(NC・NO・共通) | 接点2(NC・NO・共通)', '★b接点のシンボルも同じ');
+  ok(names(cr, 'contact_a') === '限時接点1(共通・NO・NC) | 限時接点2(共通・NC・NO)', '制御入力は候補に出さない');
+  ok(names(my, 'coil') === 'コイル' && names(my, 'contact_main') === '', 'コイル・主接点には混ざらない');
 }
 
 console.log('【書き方の揺れを吸収する】');

@@ -539,6 +539,23 @@ function parseTerminalGroups(str) {
   }).filter(g => g);
 }
 
+// 【2026-10-03】c接点(3端子)のグループ名に書いた端子の並び「接点1(NC・NO・共通):1,5,9」を読み、
+// { com, no, nc } を返す。並びが書いていない・3端子でない・共通/NO/NCが揃っていないときは null。
+// 並びは型式ごとに違う(MYは NC・NO・共通、H3CR-Aの接点2は 共通・NC・NO)ので、カタログで確かめてCSVの名前に書く。
+// a接点のシンボルに割り当てると 共通,NO、b接点なら 共通,NC を入れる(doPlacePart)。クロスリファレンスの空き接点の枠も読む(xref.js)
+function cContactRoles(name, list) {
+  const m = String(name || '').match(/[(（]([^)）]*)[)）]/);
+  if (!m || !list || list.length !== 3) return null;
+  const toks = m[1].split(/[・,、\/]/).map(t => t.trim().toUpperCase());
+  if (toks.length !== 3) return null;
+  const out = {};
+  toks.forEach((t, i) => {
+    const k = t === '共通' || t === 'COM' || t === 'C' ? 'com' : t === 'NO' ? 'no' : t === 'NC' ? 'nc' : '';
+    if (k) out[k] = String(list[i]).trim();
+  });
+  return (out.com && out.no && out.nc) ? out : null;
+}
+
 // 選択中のシンボルの端子点の数を返す（グループ自動判定に使う）。
 // カスタムシンボル以外・端子未設定は0。
 function symTerminalCount(el) {
@@ -824,8 +841,9 @@ const TERM_GROUP_PATTERNS = {
   coil:         [/コイル/, /操作/],
   contact_main: [/主接点/, /主回路/, /^\s*主/],
   // 【2026-10-03】三菱ブレーカの警報スイッチ(AL)も接点(「警報(a接点)」等)。AXと両方当たるので選択パネルで選ぶ
-  contact_a:    [/補助/i, /^aux/i, /警報/],
-  contact_b:    [/補助/i, /^aux/i, /警報/],
+  // 【2026-10-03】リレー・タイマのc接点は名前に端子の並びを書いた「接点1(NC・NO・共通)」等。a・bどちらにも使えるので両方に当てる
+  contact_a:    [/補助/i, /^aux/i, /警報/, /[(（][^)）]*N[CO][^)）]*[)）]/],
+  contact_b:    [/補助/i, /^aux/i, /警報/, /[(（][^)）]*N[CO][^)）]*[)）]/],
 };
 
 // 上のパターンに当たってしまうが、その種別ではないもの。
@@ -880,9 +898,14 @@ function doPlacePart(type, ref, terminals, groupName) {
   // デバイス台帳(js/devices.js): 割り当てる前のデバイスの仕様。デバイスに既に仕様があれば、自動の仕様は入れない(手書きの保護)
   const specBefore = new Map();
   if (typeof deviceLedger === 'function') deviceLedger().forEach(d => { if (d.vals.label) specBefore.set(d.key, d.vals.label); });
+  // 【2026-10-03】c接点(3端子)のグループを a接点のシンボルに割り当てたら 共通,NO、b接点なら 共通,NC だけを入れる
+  const cc = (terminals && typeof cContactRoles === 'function') ? cContactRoles(groupName, String(terminals).split(',')) : null;
   targets.forEach(el => {
     el.partModel = ref;
-    if (terminals) el.terminals = terminals;
+    if (terminals) {
+      const r = cc ? symTermRole(el) : '';
+      el.terminals = r === 'contact_a' ? cc.com + ',' + cc.no : r === 'contact_b' ? cc.com + ',' + cc.nc : terminals;
+    }
     applyDefaultVolt(el);          // AC200V優先で代表値を入れる
     applyDefaultChoices(el);       // ブレーカ系: 極数は2P(電流・特性は未選択)
     // 仕様欄に主要項目（電圧・電流・接点構成）を入れる。

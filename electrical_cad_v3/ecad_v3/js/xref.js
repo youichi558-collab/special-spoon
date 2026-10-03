@@ -95,7 +95,11 @@ function xrefSlots(model) {
   parseTerminalGroups(p.terminals).forEach(g => {
     const nums = g.list.map(s => parseInt(s, 10));
     if (nums.some(n => !Number.isFinite(n))) return;
-    if (/^(限時)?接点\d*$/.test(g.name) && nums.length === 3) {
+    // 【2026-10-03】名前に端子の並びを書いたc接点「接点1(NC・NO・共通)」は、その並びで枠を作る(型式の確認はCSVを書くときに済ませている)
+    const cc = (typeof cContactRoles === 'function') ? cContactRoles(g.name, nums) : null;
+    if (cc) {
+      out.push({ kind: 'a', t: [+cc.com, +cc.no] }, { kind: 'b', t: [+cc.com, +cc.nc] });
+    } else if (/^(限時)?接点\d*$/.test(g.name) && nums.length === 3) {
       // 「昇順で NC・NO・共通」は**確認できた型式でだけ**使う(XREF_C_ORDER_OK)。他の型式(例: H3CRの`1,3,4`)は
       // この並びとは限らず、間違った端子番号を図面に出すのは出さないより悪いので、枠を作らない(使用中の接点は端子番号つきで出る)
       if (!XREF_C_ORDER_OK.test(model)) return;
