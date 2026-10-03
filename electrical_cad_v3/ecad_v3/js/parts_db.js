@@ -84,8 +84,21 @@ const partsDb = (() => {
     let data;
     try {
       data = await (await fetch('/api/parts/all')).json();
-      if (!data || !data.ok) throw new Error((data && data.error) || '不明なエラー');
-    } catch (e) {
+    } catch (e) { data = null; }
+    // 【2026-10-03】サーバーは応答したが読めない(場所が未設定・見つからない等。ok:false)ときは
+    // やり直さない。上の説明どおりの作りのはずが、ok:false も取りこぼしと同じ扱いでやり直していて、
+    // 部品DBがまだ無いPC(新規・別PC)で「読み込みに失敗しました。やり直しています…」が約10秒続いていた。
+    if (data && !data.ok) {
+      const err = data.error || '不明なエラー';
+      setStatus(`部品DBを読み込めませんでした(${err})`);
+      // サーバーの文言(tools/parts_db/parts_db.py の load)が既に設定のしかたを案内していれば重ねない
+      setBanner(`⚠ 部品DBを読み込めませんでした(${err})。`
+        + (/「部品DBの場所」/.test(err) ? ''
+           : '設定タブの「部品DB」で「ファイルを選ぶ」「探す」、まだ部品DBが無ければ「新規作成」で設定してください。')
+        + '部品の登録・編集は「部品DBを開く.bat」（部品DB単独画面）で行います。');
+      return;
+    }
+    if (!data) {
       // stats は返ったのに all が落ちた = 取りこぼしの可能性があるのでやり直す。
       // 605KBと一番大きい応答なので、混んでいるときはここが落ちやすい。
       if (n < RETRY_WAIT.length) {
@@ -93,14 +106,16 @@ const partsDb = (() => {
         await sleep(RETRY_WAIT[n]);
         return autoRestore(n + 1);
       }
-      setStatus(`部品DBを読み込めませんでした(${e.message})`);
-      setBanner(`⚠ 部品DBを読み込めませんでした(${e.message})。`
-        + '部品DBの場所を確認してください（設定タブの「部品DB」の「ファイルを選ぶ」「探す」で設定できます）。'
-        + '部品の登録・編集は「部品DBを開く.bat」（部品DB単独画面）で行います。');
+      setStatus('部品DBを読み込めませんでした(サーバーから応答がありません)');
+      setBanner(`⚠ 部品DBを読み込めませんでした(${RETRY_WAIT.length}回やり直してもサーバーから応答がありません)。`
+        + '部品DBパネルの「読み直す」か、CADを開き直してください。');
       return;
     }
     connected = true;
     serverPath = st.path || '';
+    // 読めなかったときの帯を消す(設定タブで場所を設定して読み直したときに残らないように。2026-10-03)。
+    // mergeEmbedded が別の知らせを出すことがあるので、その前に消す。
+    setBanner('');
     mergeEmbedded({ customParts: data.customParts || [], hiddenBuiltinRefs: data.hiddenBuiltinRefs || [] });
     setStatus(`部品DB: ${baseName(serverPath)} (${state.customParts.length}件・読み取り専用)`);
   }

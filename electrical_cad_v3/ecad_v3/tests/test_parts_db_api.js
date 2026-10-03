@@ -99,15 +99,16 @@ const read = p => fs.readFileSync(path.join(root, p), 'utf8').replace(/\r\n/g, '
     ok(!/\.save\(|\.backup\(/.test(srv),
        '★他ソフト向けサーバーは save()/backup() を呼ばない');
 
-    // server.py の /api/parts/ で受ける書き込みは、保存・退避・控えの3つだけ。
+    // server.py の /api/parts/ で受ける書き込みは、保存・退避の2つと場所の設定だけ。
+    // 2026-10-03: 控えを受け取る口(/api/parts/mirror)は呼ぶ側が無くなっていたので消した(控えは save() の中で書く)。
     const partsPost = cad.match(/def do_POST[\s\S]*?self\.send_error\(404\)/)[0];
     const partsRoutes = [...partsPost.matchAll(/'(\/api\/parts\/[a-z]+)'/g)].map(m => m[1]);
     // 2026-10-02: 部品DBの場所を画面から設定する4つ(pick/new/find/use)が増えた。
     // どれも画面から送られたパスは使わない(窓で人が選んだもの・サーバーが探した候補の番号だけ)。
-    eq(partsRoutes, ['/api/parts/mirror', '/api/parts/save', '/api/parts/backup',
+    eq(partsRoutes, ['/api/parts/save', '/api/parts/backup',
                      '/api/parts/pick', '/api/parts/new', '/api/parts/find', '/api/parts/use'],
-       'POSTで受けるのは控え・保存・退避と、場所の設定(選ぶ・新規作成・探す・候補から選ぶ)だけ');
-    const place = cad.match(/def handle_parts_place[\s\S]*?def handle_parts_mirror/)[0];
+       'POSTで受けるのは保存・退避と、場所の設定(選ぶ・新規作成・探す・候補から選ぶ)だけ');
+    const place = cad.match(/def handle_parts_place[\s\S]*?def handle_parts_save/)[0];
     ok(!/body\.get\('path'/.test(place) && /Handler\._place_found\[i\]/.test(place),
        '★場所の設定は画面から送られたパスを使わない(候補は番号で選ぶ)');
     ok(/self\.client_address\[0\] not in \('127\.0\.0\.1'/.test(place), '★場所の設定はこのPC自身からの要求だけ');

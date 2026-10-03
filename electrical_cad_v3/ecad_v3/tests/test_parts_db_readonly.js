@@ -116,6 +116,38 @@ console.log('\n【/api/parts/all が失敗する(部品DBの場所が壊れて�
   await s.partsDb.autoRestore();
   ok(!s.partsDb.hasFile(), '接続済みにならない');
   ok(s._banner && /部品DBの場所が未設定です/.test(s._banner.textContent), '理由が画面に出る');
+  // 2026-10-03: 場所が未設定なのは何度やっても同じ。新規・別PCで「やり直しています…」が約10秒続いていた
+  eq(s.calls.filter(u => u === '/api/parts/all').length, 1, '★サーバーが ok:false を返したらやり直さない');
+  ok(/新規作成/.test(s._banner.textContent), '★部品DBがまだ無いときのために「新規作成」も案内する');
+}
+
+// ------------------------------------------------------------------
+console.log('\n【/api/parts/all が取りこぼされる(応答が来ない)ときはやり直し、読めたら帯を消す】');
+{
+  let n = 0;
+  const s = load({ routes: {
+    '/api/parts/stats': STATS_OK,
+    '/api/parts/all': () => (++n < 3 ? new Error('接続が切れました') : ALL_OK(5)),
+  } });
+  await s.partsDb.autoRestore();
+  ok(s.partsDb.hasFile(), '3回目で読めて接続済みになる');
+  eq(s.state.customParts.length, 5, '5件読める');
+}
+
+// ------------------------------------------------------------------
+console.log('\n【場所を設定して読み直したら、前の失敗の帯が消える】');
+{
+  let set = false;
+  const s = load({ routes: {
+    '/api/parts/stats': STATS_OK,
+    '/api/parts/all': () => (set ? ALL_OK(0) : { ok: false, error: '部品DBの場所が未設定です' }),
+  } });
+  await s.partsDb.autoRestore();
+  ok(!!s._banner, '最初は帯が出る');
+  set = true;   // 設定タブで「新規作成」した
+  await s.partsDb.reload();
+  ok(s.partsDb.hasFile(), '読み直すと接続済みになる');
+  ok(!s._banner, '★前の失敗の帯が残らない');
 }
 
 // ------------------------------------------------------------------

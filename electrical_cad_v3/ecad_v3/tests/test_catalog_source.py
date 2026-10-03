@@ -79,6 +79,9 @@ try:
     ok('catalogRebuild' not in html and 'function catalogRebuild' not in page,
        '「作り直す」ボタンは消した(検索時に自動で作り直すため・2026-10-03)')
     srv = open(os.path.join(ROOT, 'server.py'), encoding='utf-8').read()
+    allpart = srv[srv.index("elif action == 'all':"):srv.index("elif action == 'search':")]
+    ok('ensure_built' in allpart,
+       '/api/catalog/all も必要なら先に作る(新しいPCで「カタログ全件で作り直す」が未取込で止まらない・2026-10-03)')
     body = srv[srv.index('def handle_catalog_import'):srv.index('def handle_catalog(')]
     ok('import_files' not in body and '廃止' in body, '/api/catalog/import は断るだけ(別の場所へ書かない)')
 finally:

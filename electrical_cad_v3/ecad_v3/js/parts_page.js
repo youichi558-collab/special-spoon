@@ -5,8 +5,8 @@
 // 分担は HANDOFF.md の設計どおり: 部品DB単独画面=書く / CAD=読むだけ。
 //
 // 書き込みは server.py の POST /api/parts/save 一本(Stage 1で作った経路)。
-// js/parts_db.js(CAD用・File System Access APIのフォールバックを持つ)は使わない
-// ——単独画面は常にサーバー経由で、setpathが必要。書き手を増やさないため。
+// js/parts_db.js(CAD用・読み取り専用)は使わない。
+// 単独画面は常にサーバー経由で、部品DBの場所の設定が必要(画面上の「部品DBの場所」)。
 //
 // state.customParts / state.hiddenBuiltinRefs は js/state.js の定義をそのまま使う。
 // BUILTIN_PARTS は js/data.js、種別コードは js/part_types.js(CADと共有)。
@@ -50,7 +50,7 @@ async function loadAll() {
     return;
   }
   if (!stats.writable) {
-    // 単独画面は常に書く前提。控え(mirror)しか無い=setpath未設定では書けない。
+    // 単独画面は常に書く前提。控え(mirror)しか無い=場所が未設定では書けない。
     //
     // 【2026-09-02】「未設定」と「設定されているが見つからない」を区別する。
     // 後者はGoogleドライブ(Drive for Desktop)がドライブ文字を変えたときに起きる
@@ -478,6 +478,13 @@ async function catalogAddToParts(idx) {
 
 // ---- カタログ全件で作り直す(破壊的) -------------------------------
 async function catalogResetPartsDb() {
+  // 【2026-10-03】部品DBの場所が未設定(保存できない)なら、確認を出す前に止める。
+  // 以前は「バックアップを書き出します」と確認したうえで最後の保存で失敗し、画面だけ入れ替わっていた
+  // (盛田さん「parts_db.json が無い状態で作り直すは効かない」)。
+  if (!serverPath) {   // loadAll が書ける部品DBを読めたときだけ入る
+    setStatus('部品DBの場所が未設定のため作り直せません。上の「部品DBの場所」で「新規作成」するか「ファイルを選ぶ」で設定してから、もう一度押してください', true);
+    return;
+  }
   try {
     const d = await (await fetch('/api/catalog/all')).json();
     if (!d.ok) { setStatus('エラー: ' + (d.error || '取得に失敗しました'), true); return; }

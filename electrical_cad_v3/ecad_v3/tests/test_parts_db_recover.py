@@ -138,7 +138,7 @@ try:
     found, _bk = parts_db.PartsDB.scan_candidates()
     ok(len(found) >= 2, f'候補は覚えている ({len(found)}件)')
     err = db.load()['error']
-    ok('候補' in err and 'setpath' in err, '画面に出す文言に候補とsetpathが入る')
+    ok('候補' in err and '探す' in err, '画面に出す文言に候補と「探す」の案内が入る(2026-10-03、以前はsetpathコマンド)')
     ok(found[0][1] >= found[-1][1], '件数が多い順に並ぶ(空ファイルを先頭に出さない)')
 
 finally:

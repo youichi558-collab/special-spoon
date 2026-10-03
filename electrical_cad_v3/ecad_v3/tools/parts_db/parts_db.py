@@ -19,41 +19,37 @@ catalog_db.py と同じ発想を部品DBに適用したもの。
     残って次の起動で読めなくなる。2026-09-01に「保存できていないことに誰も
     気づけない」事故を起こしたばかりのファイルなので、ここは崩さない。
 
-    【2026-09-02 変更】その「1つ」を、CAD(ブラウザのFile System Access API)から
-    このライブラリに移した。理由:
-      ・ブラウザの許可はページを開くたびに下りないことがあり、それが9-01の事故の
-        根本だった。サーバーからの書き込みには許可ダイアログが無い。
-      ・tmpに書いてから os.replace で置き換えられる(FSAのcreateWritableは
-        開いた瞬間に中身を捨てるので、途中で落ちるとファイルが空になる)。
-      ・バックアップを parts_db.json と同じフォルダへ自動で置ける
-        (Chromeに getParent() が無く、FSAではフォルダを別途選ばせる必要があった)。
+    【2026-09-02】その「1つ」を、CAD(ブラウザのFile System Access API)から
+    このライブラリに移した(ブラウザの許可が下りずに保存が空振りしたのが9-01の事故の根本。
+    サーバーなら tmp に書いて os.replace で置き換えられ、バックアップも同じフォルダに置ける)。
+    【2026-09-03】CADは部品DBを読むだけになり、書くのは部品DB単独画面(parts.html)だけ。
+    ブラウザ側で書く経路(File System Access API)はもう無い。
 
-    移した後も書き手は1つのまま。守り方は下の3つ:
-      1. 書けるのは setpath で場所を設定したときだけ(save() が resolve ではなく
+    今の守り方:
+      1. 書けるのは場所を設定したときだけ(save() が resolve ではなく
          configured_path() だけを見る)。控え(mirror)には保存しない。
-      2. 書き込み口はCAD自身の server.py の POST /api/parts/save だけ。
-         他ソフト向けの parts_db_server.py は今まで通り読み取り専用(405)。
-      3. setpath が未設定なら save() は失敗を返し、CAD側は従来どおり
-         File System Access API で書く(=そのときも書き手は1つ)。
+      2. 書き込み口は server.py の POST /api/parts/save と /api/parts/backup だけで、
+         呼ぶのは parts.html だけ。他ソフト向けの parts_db_server.py は読み取り専用(405)。
+      3. 場所が未設定なら save() は失敗を返す(どこにも書かない)。
 
 ■ 部品DBの実体をどうやって見つけるか
-    2通りある。上から順に試す。
+    上から順に試す(resolve())。
 
-    1. パス設定(推奨・CADを起動していなくても読める)
-           py parts_db.py find                  ← 場所が分からなければ探す
-           py parts_db.py setpath "G:\\マイドライブ\\...\\parts_db.json"
-       設定は %LOCALAPPDATA%\\ecad\\parts_db_config.json に入る。
-       以後はこのファイルを直接読むので、常に最新。
+    1. 設定した場所(正)
+       CADの設定タブ／部品DB画面の「部品DBの場所」(ファイルを選ぶ・探す・新規作成。2026-10-02〜)、
+       またはコマンド `py parts_db.py setpath <パス>` で設定する。
+       設定は %LOCALAPPDATA%\\ecad\\parts_db_config.json に入る(PCごと)。
+       外れていたら、ドライブ文字の付け替え→ディスク全走査(1プロセス1回)で探し直す。
 
-    2. CADが置いていく控え(設定不要・CADを一度開いていれば読める)
-       CADが部品DBを保存するたびに、その中身を server.py 経由で
-       %LOCALAPPDATA%\\ecad\\parts_db_mirror.json に写す。
-       パスを一度も設定していない場合はこちらを読む。
-       **CADが最後に保存した時点の内容**なので、1より鮮度は落ちる。
+    2. 控え(mirror)
+       保存が成功するたびに %LOCALAPPDATA%\\ecad\\parts_db_mirror.json へ写している。
+       場所が未設定のときだけこちらを読む(書けない)。**最後に保存した時点の内容**。
 
     どちらも読めない場合、search() 等は空を返し、stats() が理由を返す。
     呼び出し側が「部品DBが無い」と「部品が0件」を区別できるようにするため、
     例外ではなく status で返す。
+
+    (2026-10-03の再設計案で、控え・全走査はやめる予定。HANDOFF.md「ライブラリの置き場所の再設計」)
 
 ■ 他ツールからの使い方
     import parts_db
@@ -64,14 +60,8 @@ catalog_db.py と同じ発想を部品DBに適用したもの。
     db.outline('S-T21')             # 外形図DXFの中身(無ければNone)
 
     HTTPで使いたいなら parts_db_server.py を起動する(既定 http://127.0.0.1:8091)。
-    **他ツールからは読むだけにすること。** 書き込み(save/backup)はCADのために
-    用意してあるもので、server.py の /api/parts/save 以外からは呼ばない。
-
-■ 消したくなったら
-    このフォルダ(tools/parts_db/)を削除すれば元の状態に戻る。
-    CADは setpath が読めなくなった時点で、従来の File System Access API による
-    保存へ自動的に戻る(js/parts_db.js の restoreFromServer が false を返す)ので、
-    部品DBの読み書きはそのまま続けられる。
+    **他ツールからは読むだけにすること。** 書き込み(save/backup)は部品DB単独画面のための
+    もので、server.py の /api/parts/save・/api/parts/backup 以外からは呼ばない。
 """
 import json
 import os
@@ -214,7 +204,7 @@ def save_config(cfg, data_dir=None):
 def normalize(data):
     """parts_db.json の中身を {'customParts': [...], 'hiddenBuiltinRefs': [...]} に揃える。
 
-    古い版のファイルは配列そのものだった(js/parts_db.js の readFromHandle と同じ扱い)。
+    古い版のファイルは配列そのものだった(以前CADが File System Access API で読んでいた頃の形)。
     ここを合わせておかないと、古いファイルを読んだときだけ0件になる。
     """
     if isinstance(data, list):
@@ -411,18 +401,17 @@ class PartsDB:
                 'path_missing': f'設定された部品DBが見つかりません: {self.configured_path()}',
             }.get(source, '部品DBを読めません')
             # 【2026-09-21】自動で探した結果をそのまま出す。
-            # 「未設定です。setpathしてください」だけだと、どこにあるか分からない
-            # 盛田さんが毎回 find を打つことになる(パスはブラウザしか知らないため)。
+            # 【2026-10-03】案内はコマンド(setpath/find)ではなく画面の「部品DBの場所」へ(2026-10-02〜)。
             found, _bk = self.scan_candidates()
             if len(found) > 1:
-                base += ('。自動で探したところ候補が%d個ありました。'
-                         'どれか1つを選んで設定してください: ' % len(found))
+                base += ('。自動で探したところ候補が%d個ありました: ' % len(found))
                 base += ' / '.join(f'{p}（{n}件）' for p, n, _m in found[:5])
-                base += '  例: py tools/parts_db/parts_db.py setpath "%s"' % found[0][0]
+                base += '。「部品DBの場所」の「探す」から1つ選んでください'
             elif _scan_done and not found:
-                base += '。自動で探しましたが parts_db.json が見つかりませんでした'
+                base += ('。自動で探しましたが parts_db.json が見つかりませんでした。'
+                         '「部品DBの場所」の「新規作成」で作るか、「ファイルを選ぶ」で選んでください')
             else:
-                base += '(py tools/parts_db/parts_db.py find で探せます)'
+                base += '。「部品DBの場所」の「ファイルを選ぶ」「探す」「新規作成」で設定してください'
             return {'ok': False, 'parts': [], 'hidden': [], 'source': source,
                     'error': base}
         try:
@@ -518,7 +507,7 @@ class PartsDB:
             return {'ok': False, 'reason': why, 'count': 0, 'path': '',
                     'error': {
                         'unset': '部品DBの場所が未設定です'
-                                 '(py parts_db.py setpath <parts_db.jsonのパス>)',
+                                 '(「部品DBの場所」の「ファイルを選ぶ」「探す」「新規作成」で設定してください)',
                         'path_missing': '設定された部品DBが見つかりません: '
                                         + self.configured_path(),
                     }.get(why, '部品DBに保存できません')}
@@ -576,9 +565,8 @@ class PartsDB:
         d = self.load()
         path, _ = self.resolve()
         # writable は「このライブラリから保存できるか」。
-        # setpath 済み(source='path')のときだけ真になり、控え(mirror)しか
-        # 無いときは偽。CAD側はこれを見て、保存をサーバーに任せるか
-        # 従来の File System Access API で書くかを決める。
+        # 場所を設定済みで実在するときだけ真になり、控え(mirror)しか
+        # 無いときは偽。部品DB単独画面(parts_page.js)はこれが偽だと保存しない。
         wpath, _ = self.writable_path()
         s = {'ok': d['ok'], 'count': len(d['parts']), 'source': d['source'],
              'path': path or '', 'error': d['error'],
@@ -639,9 +627,9 @@ class PartsDB:
 def find_candidates(roots=None, max_depth=6):
     """parts_db.json をディスクから探す。
 
-    部品DBの場所はブラウザしか知らない(File System Access API は絶対パスを
-    JSに渡さない)ので、盛田さん自身もパスを即答できない。setpath を使うために
-    毎回エクスプローラで探させるのは無駄なので、こちらで探す。
+    以前は部品DBの場所をブラウザしか知らなかった(File System Access API は絶対パスを
+    JSに渡さない)ので、こちらで探す仕組みを作った。今は画面の「探す」(server.py の
+    /api/parts/find)とコマンド `find`、場所が外れたときの自動復帰が使う。
 
     バックアップ(parts_db_backup_*.json)も拾う —— 本体が見つからないときの
     手がかりになるため。ただし本体と区別して返す。
@@ -712,7 +700,7 @@ def main(argv):
         found, backups = find_candidates()
         if not found and not backups:
             print('見つかりませんでした。', file=sys.stderr)
-            print('  CADの「部品登録」パネルで一度保存すると作られます。',
+            print('  部品DB画面(部品DBを開く.bat)の「部品DBの場所」→「新規作成」で作れます。',
                   file=sys.stderr)
             return 1
         def show(rows, label):

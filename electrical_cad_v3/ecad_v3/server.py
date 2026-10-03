@@ -119,21 +119,18 @@ except Exception as _e:  # ImportError/構文エラー等、何が起きてもCA
     print(f'(カタログDB機能は無効: {_e})')
 
 # ----------------------------------------------------------------------------
-# 部品DBの外部公開(任意機能・2026-09-02)
+# 部品DB(2026-09-02〜)
 #
 # tools/parts_db/parts_db.py があれば読み込んで /api/parts/* を有効にする。
-# 無くても・壊れていてもCADは通常通り動く(部品DBはブラウザ側のFile System
-# Access APIで読み書きしており、この機能はそこに一切関与しない)。
+# 無くても・壊れていてもCADは起動する(部品DBが0件になり、案内の帯が出る)。
+# 2026-09-03以降、部品DBの読み書きはこの経路だけ(ブラウザで直接読み書きする経路は無い)。
 #
-# 目的は「他ソフトからも部品DBを引けるようにする」こと。CADが部品DBを保存する
-# たびに、その中身の控えを %LOCALAPPDATA%\ecad\parts_db_mirror.json へ写す。
-# これにより、CADを起動していない時間帯でも他ツールが部品DBを読める。
-#
-# 【2026-09-02 追加】部品DBの保存もここを通るようになった(/api/parts/save)。
+# 【2026-09-02】部品DBの保存もここを通るようになった(/api/parts/save)。
 # ブラウザの許可が下りずに保存できない、という9-01の事故の根本を無くすため。
-# 書き手が2つになったわけではなく、CAD側が「サーバーで書く」か
-# 「今まで通りFile System Access APIで書く」かのどちらか一方を選ぶ
-# (setpath が設定されていればサーバー、無ければブラウザ)。
+# 【2026-09-03】CADは読むだけになり、書くのは部品DB画面(parts.html)だけ。
+# ブラウザ側で書く経路(File System Access API)は廃止した。
+# 保存のたびに控えを %LOCALAPPDATA%\ecad\parts_db_mirror.json へ写す(parts_db.save の中)。
+# 【2026-10-03】CADから控えを受け取る口(/api/parts/mirror)は、呼ぶ側が無くなっていたので消した。
 # 詳しくは tools/parts_db/parts_db.py の冒頭を参照。
 # ----------------------------------------------------------------------------
 parts_db = None
@@ -221,9 +218,6 @@ class Handler(SimpleHTTPRequestHandler):
         if parsed.path == '/api/catalog/import':
             self.handle_catalog_import()
             return
-        if parsed.path == '/api/parts/mirror':
-            self.handle_parts_mirror()
-            return
         if parsed.path == '/api/parts/save':
             self.handle_parts_save()
             return
@@ -289,6 +283,10 @@ class Handler(SimpleHTTPRequestHandler):
             elif action == 'all':
                 # カタログDBの全件を返す(部品DBの一括作り直し用)。
                 # 数万件になると重いので上限を付けてある。超えた場合は truncated を立てる。
+                # 【2026-10-03】検索と同じく、必要なら先に作る。新しいPCでは検索する前は未作成で、
+                # 「カタログ全件で作り直す」が「未取込です」で止まっていた。
+                if db.is_configured():
+                    db.ensure_built(verbose=True)
                 if not os.path.exists(db.db_path):
                     self._send_json({'ok': False, 'available': True,
                                      'error': 'カタログDBが未取込です'})
@@ -438,37 +436,13 @@ class Handler(SimpleHTTPRequestHandler):
         except Exception as e:
             self._send_json({'ok': False, 'error': str(e)})
 
-    def handle_parts_mirror(self):
-        """CADが保存した部品DBの中身を控えとして受け取る。
-
-        書き先は %LOCALAPPDATA%\\ecad\\parts_db_mirror.json であって、
-        盛田さんの parts_db.json ではない。控えが壊れても原本は無傷。
-
-        これがあるおかげで、CADを起動していない時間帯でも他ツールが部品DBを
-        読める。CADの保存が成功したときだけ送られてくる(js/parts_db.js)。
-        """
-        if parts_db is None:
-            self._send_json({'ok': False, 'available': False,
-                             'error': '部品DBの外部公開機能が導入されていません'})
-            return
-        try:
-            n = int(self.headers.get('Content-Length') or 0)
-            if not n:
-                self._send_json({'ok': False, 'available': True, 'error': '中身が空です'})
-                return
-            res = parts_db.write_mirror(self.rfile.read(n).decode('utf-8'))
-            self._send_json({'ok': True, 'available': True, **res})
-        except Exception as e:
-            self._send_json({'ok': False, 'available': True, 'error': str(e)})
-
     def handle_parts_save(self):
-        """CADからの保存要求。**ここが parts_db.json の唯一の書き手。**
+        """部品DB画面(parts.html)からの保存要求。**ここが parts_db.json の唯一の書き手。**
 
-        setpath が未設定なら ok:false / reason:'unset' を返すだけで、何も書かない。
-        その場合CADは今まで通りブラウザ側(File System Access API)で保存するので、
-        この機能を入れる前と同じ動きになる(回帰を作らない)。
+        場所が未設定なら ok:false / reason:'unset' を返すだけで、何も書かない。
+        (2026-09-03以降、CADは部品DBを書かない。ブラウザ側で書く経路も無い)
 
-        件数が激減しているときは書かずに reason:'drop' を返す。CADが人に確認して
+        件数が激減しているときは書かずに reason:'drop' を返す。画面が人に確認して
         force:true で再送してきたときだけ、退避を取ってから書く。
         """
         if parts_db is None:
