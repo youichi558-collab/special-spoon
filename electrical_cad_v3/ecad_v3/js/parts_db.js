@@ -24,23 +24,22 @@ const partsDb = (() => {
   }
   function setBanner(msg) { showTopBanner('parts-db-banner', msg); }
 
-  // 図面ファイルに古い形式(Stage 1以前)でcustomPartsが埋め込まれている場合の救済。
-  // サーバーから読めた内容を基本にしつつ、そこに無いref(埋め込みにしか無い分)は
-  // 捨てずに残す。CADはもう書かないので、ここでの「復帰」は表示上のものだけ
-  // ——保存したい場合は部品DB単独画面(parts.html)で保存し直してもらう。
+  // 図面に入っている部品の写し(2026-10-03〜 使った型式の分だけ。それ以前の図面は部品DB丸ごとのこともある)と、
+  // ライブラリ(部品DB)を重ねる。**ライブラリが正**で、写しはライブラリに無い型式だけ残す
+  // (ライブラリが無いPC・ライブラリから消した型式でも、図面の型式で引く処理が効くように)。
+  // CADは部品DBを書かないので、写しをライブラリへ登録したいときは部品DB単独画面(parts.html)で。
   function mergeEmbedded(data) {
     const extra = (state.customParts || [])
       .filter(p => !data.customParts.some(q => q.ref === p.ref));
     state.customParts = data.customParts.concat(extra);
-    state.hiddenBuiltinRefs = data.hiddenBuiltinRefs;
+    state.hiddenBuiltinRefs = data.hiddenBuiltinRefs;   // 標準部品の非表示機能の名残(2026-10-03廃止)。読んだまま持つだけ
     if (typeof renderPartsAll === 'function') renderPartsAll();
     // 部品DBは起動の後から読み込まれる。クロスリファレンスの空き接点の枠(js/xref.js)は部品DBの端子欄から作るので、
     // 読み込めた時点で描き直す。しないと、何か操作して再描画されるまで空きの枠が出ない(2026-09-29)。
     if (typeof draw === 'function') { try { draw(); } catch (e) { console.error('[parts_db] 再描画でエラー:', e); } }
     if (extra.length) {
-      setBanner(`部品DBのファイルに入っていなかった ${extra.length} 件があります`
-        + '（古い図面ファイルに残っていた分の可能性があります）。'
-        + '内容は部品DB単独画面(parts.html)で確認・保存してください');
+      setBanner(`図面に入っている部品のうち ${extra.length} 件は部品DBにありません（図面に入っている写しを使っています）。`
+        + '部品DBに登録するなら部品DB単独画面(parts.html)で');
     }
     return extra.length;
   }

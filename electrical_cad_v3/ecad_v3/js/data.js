@@ -22,10 +22,8 @@ const LAYERS = [
   { name: '図面枠',color: '#222',   visible: true, locked: false, active: false, lineWidth: 0.5, lineDash: 'solid', fontSize: null, attr: '' },
 ];
 
-const BUILTIN_PARTS = [
-  { maker:'三菱電機', ref:'S-T10',    type:'coil',    volt:'AC200V', amp:'10A',    terminals:'A1,A2,1,3,5,2,4,6', contacts:'a3b1' },
-  { maker:'三菱電機', ref:'NF63-CV',  type:'breaker', volt:'',       amp:'40-63A', terminals:'1,2,3,4,5,6',       contacts:''     },
-];
+// 【2026-10-03】標準部品2件(BUILTIN_PARTS: S-T10・NF63-CV)はやめた(再設計の段階1)。部品はすべて部品DB(ライブラリ)から。
+// 型式を引く処理(端子番号の候補・接点Ref・部品表等)は元々 customParts しか見ておらず、一覧に出るだけで引けなかった。
 
 // 要素の種別定義。w/h は当たり判定・選択枠・ラベル位置の基準寸法。
 //

@@ -452,9 +452,8 @@ function pickSym(el, type) {
 // 部品DB
 // ----------------------------------------------------------------
 function allParts() {
-  const hidden = new Set(state.hiddenBuiltinRefs || []);
+  // 【2026-10-03】標準部品2件(BUILTIN_PARTS)はやめた。部品はすべて部品DBから
   return [
-    ...BUILTIN_PARTS.filter(p => !hidden.has(p.ref)),
     ...state.customParts.map(p => ({ ...p, custom:true })),
   ];
 }
@@ -474,14 +473,10 @@ function renderPartsDbCount() {
   const connected = !(typeof partsDb !== 'undefined' && partsDb.hasFile && !partsDb.hasFile());
   el.textContent = connected ? `${n}件` : `${n}件・未接続`;
   el.style.color = connected ? 'var(--fg3)' : 'var(--red)';
-  el.title = connected ? '登録済みのカスタム部品の件数（標準部品は含みません）'
+  el.title = connected ? '部品DBに登録されている部品の件数'
     : '部品DBを読み込めていません。ローカルサーバー(start.bat)が動いているか確認してください';
 }
 // filterParts は下で定義
-// 標準部品(BUILTIN_PARTS)を一覧から非表示にする機能は部品DB単独画面
-// (parts.html)へ移した。CADは state.hiddenBuiltinRefs をサーバーから読んで
-// 一覧から除くだけ(下の allParts() 参照)——非表示・再表示の操作自体はしない。
-//
 // 部品DBの部品をクリックしたときの動作（2026-08-21に変更）。
 //
 // 以前は種別(p.type)をそのままシンボル種別として配置モードに入っていたが、

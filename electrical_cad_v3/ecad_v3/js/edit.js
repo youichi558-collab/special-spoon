@@ -66,26 +66,32 @@ function _syncCurrentPage() {
   p.frameObj = state.frameObj;
 }
 
-// 図面ファイルに埋め込まれたcustomParts読込時の扱い。
-// 外部部品DBファイルが設定済みの場合、d.customPartsが空/未定義なら現状(外部DB由来)を維持し、
-// データがある場合はref重複を避けてマージする（読込のたびに外部DBを上書きしない）。
+// 【2026-10-03 再設計の段階1】図面には「図面で使っている型式の部品だけ」を、いつも写しとして入れる。
+// CADは開いた後も型式で部品DBを引く(コイル電圧・極数/電流の選択肢、端子番号の候補、部品表のメーカー/名称、
+// クロスリファレンスの空き接点の枠、端子台表で装置端子を除く判定)。ライブラリが無いPCで図面を開いても
+// これらが効くよう、使った分の写しを持たせる(EPLANのプロジェクトと同じ考え方)。
+// 外形図DXF(1件で数百KBある)は入れない(引く処理はどれも使わない。配置はライブラリから)。
+// 以前は「サーバーに繋がらないときだけ部品DBを丸ごと」入れていた。
+function usedPartsForSave(pages) {
+  const refs = new Set();
+  const add = m => { if (m) { refs.add(String(m)); refs.add(String(m).trim()); } };
+  (pages || []).forEach(pg => {
+    (pg.elements || []).forEach(e => add(e.partModel));
+    (pg.groups || []).forEach(g => add(g.partModel));
+  });
+  return (state.customParts || []).filter(p => p && refs.has(p.ref))
+    .map(({ outlineDxf, outlineDxfName, ...rest }) => rest);
+}
+
+// 図面ファイルに入っていた部品(写し)を読み込むときの扱い。
+// ライブラリ(部品DB)が読めていれば、ライブラリに無い型式だけ足す(ライブラリが正。読込のたびに上書きしない)。
+// 読めていなければ写しを使う(後でライブラリが読めたら js/parts_db.js の mergeEmbedded がライブラリを正にして重ねる)。
 function _mergeOrSetCustomParts(dParts) {
   if (!dParts || !dParts.length) return; // 何もしない＝現状維持
   if (typeof partsDb !== 'undefined' && partsDb.hasFile()) {
     dParts.forEach(p => { if (!state.customParts.find(cp => cp.ref === p.ref)) state.customParts.push(p); });
   } else {
     state.customParts = dParts;
-  }
-}
-
-// hiddenBuiltinRefs版（customPartsと同じ考え方: 外部DB使用時はマージ、未使用時は上書き）
-function _mergeOrSetHiddenBuiltinRefs(dRefs) {
-  if (!dRefs || !dRefs.length) return;
-  if (typeof partsDb !== 'undefined' && partsDb.hasFile()) {
-    state.hiddenBuiltinRefs = state.hiddenBuiltinRefs || [];
-    dRefs.forEach(ref => { if (!state.hiddenBuiltinRefs.includes(ref)) state.hiddenBuiltinRefs.push(ref); });
-  } else {
-    state.hiddenBuiltinRefs = dRefs;
   }
 }
 
@@ -245,9 +251,7 @@ function saveProject() {
       version: 2,
       saveFileName: state.saveFileName,
       customSymbols: state.customSymbols,
-      // 部品DBが外部ファイルで管理されている場合は図面ファイルに埋め込まない（シンボルライブラリと同様、分離管理）
-      customParts:   (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.customParts,
-      hiddenBuiltinRefs: (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.hiddenBuiltinRefs,
+      customParts:   usedPartsForSave([pg]),   // 使った型式の写しだけ(2026-10-03)
       wireNoRule:    state.wireNoRule,
       layers:        LAYERS,
       pages: [pg],
@@ -277,8 +281,7 @@ function saveAllProject() {
       version: 2,
       saveFileName: state.saveFileName,
       customSymbols: state.customSymbols,
-      customParts:   (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.customParts,
-      hiddenBuiltinRefs: (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.hiddenBuiltinRefs,
+      customParts:   usedPartsForSave(state.pages),   // 使った型式の写しだけ(2026-10-03)
       wireNoRule:    state.wireNoRule,
       layers:        LAYERS,
       pages: state.pages,
@@ -318,7 +321,6 @@ function applyProjectData(d) {
         state.wireNoRule   = d.wireNoRule || state.wireNoRule;
         state.customSymbols= d.customSymbols || [];
         _mergeOrSetCustomParts(d.customParts);
-        _mergeOrSetHiddenBuiltinRefs(d.hiddenBuiltinRefs);
         // 旧フォーマット互換：トップレベルのguides → page[0].guides に移行
         if (d.guides && d.guides.length) state.pages[0].guides = d.guides;
         // 各ページにguidesがなければ初期化
@@ -329,7 +331,6 @@ function applyProjectData(d) {
         state.pages = _legacyProjectPages(d);
         state.customSymbols = d.customSymbols || [];
         _mergeOrSetCustomParts(d.customParts);
-        _mergeOrSetHiddenBuiltinRefs(d.hiddenBuiltinRefs);
       }
 
       state.currentPage = 0;
@@ -357,7 +358,7 @@ function applyProjectData(d) {
 //   ・レイヤー: 今のレイヤーはそのまま(色・表示も)。ファイルにあって今に無い名前だけ足す
 //     (足さないと、追加したページの要素が「レイヤー不明」で最初のレイヤーに戻される)
 //   ・カスタムシンボル: type が今に無いものだけ足す。同じ type が既にあれば**今のものを使う**
-//   ・部品DB(customParts)・非表示の内蔵部品: 今に無い ref だけ足す(外部の部品DBの有無に関わらず足すだけ)
+//   ・部品(customParts。図面に入っている写し): 今に無い ref だけ足す(外部の部品DBの有無に関わらず足すだけ)
 //   ・ページ名が今のページと同じなら、末尾に (2) (3)… を付ける(出力のファイル名がぶつからないように)
 //   ・図形・配線のIDが今のものと重複したら、追加した側のIDを付け替える(dedupeIds は先に出てきた方=今のものを残す)
 //   ・追加したページは未保存マーク(●)にする。取り消し(Ctrl+Z)で元に戻せる(呼び出し側の pushH)
@@ -380,14 +381,12 @@ function appendProjectData(d) {
     if (state.customSymbols.some(x => x.type === sym.type)) { symKept++; return; }
     state.customSymbols.push(sym); DEFS[sym.type] = sym; symAdded++;
   });
-  // 部品DB・非表示の内蔵部品: 無い ref だけ足す
+  // 部品(図面に入っている写し): 無い ref だけ足す
   let partsAdded = 0;
   state.customParts = state.customParts || [];
   (d.customParts || []).forEach(pt => {
     if (!state.customParts.some(x => x.ref === pt.ref)) { state.customParts.push(pt); partsAdded++; }
   });
-  state.hiddenBuiltinRefs = state.hiddenBuiltinRefs || [];
-  (d.hiddenBuiltinRefs || []).forEach(ref => { if (!state.hiddenBuiltinRefs.includes(ref)) state.hiddenBuiltinRefs.push(ref); });
 
   // ページ名: 今と同じなら (2)(3)… を付ける
   const used = new Set(state.pages.map(pg => pg.name));

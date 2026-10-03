@@ -52,7 +52,7 @@ console.log('【今の図面はそのまま、ファイルのページが最後�
   ok(sb.state.customSymbols.length === 2 && sb.state.customSymbols[0].name === '今のsym1' && sb.state.customSymbols[1].type === 'sym2', 'シンボル: 新しいtypeだけ足し、同じtypeは今のものを使う');
   ok(r.symAdded === 1 && r.symKept === 1 && sb.DEFS.sym2 && !sb.DEFS.sym1, 'シンボルの件数と DEFS への登録');
   ok(sb.state.customParts.length === 2 && sb.state.customParts[0].maker === undefined && r.partsAdded === 1, '部品DB: 無い ref だけ足す(今のものは上書きしない)');
-  ok(sb.state.hiddenBuiltinRefs.join() === 'H1,H2', '非表示の内蔵部品: 無いものだけ足す');
+  ok(sb.state.hiddenBuiltinRefs.join() === 'H1', '非表示の内蔵部品(2026-10-03に機能ごと廃止): 図面からは足さない');
 }
 
 console.log('\n【古い形式(v1)のファイル・ページが無いファイル】');

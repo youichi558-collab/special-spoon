@@ -23,7 +23,6 @@
   #pp-filters{width:200px;flex-shrink:0;border-right:1px solid var(--bd);padding:10px;overflow-y:auto;background:var(--bg2)}
   #pp-filters h4{font-size:10px;color:var(--fg4);text-transform:uppercase;margin:10px 0 4px}
   #pp-filters h4:first-child{margin-top:0}
-  #pp-hidden{margin-bottom:8px;padding:6px;background:var(--bg3);border-radius:4px}
   .pp-chk{display:flex;align-items:center;gap:5px;font-size:11px;padding:2px 0;cursor:pointer}
   #pp-list-main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
   #pp-list-bar{display:flex;align-items:center;gap:8px;padding:8px;border-bottom:1px solid var(--bd)}
@@ -66,7 +65,6 @@
     <!-- ==== 一覧・編集タブ ==== -->
     <div id="pp-panel-list">
       <div id="pp-filters">
-        <div id="pp-hidden"></div>
         <h4>検索</h4>
         <div class="fr"><input type="text" id="pp-f-text" placeholder="型番・メーカー・備考" oninput="setFilter('text', this.value)"></div>
         <h4>メーカー</h4>
@@ -92,7 +90,6 @@
               <th onclick="sortBy('volt')">電圧</th>
               <th onclick="sortBy('amp')">電流</th>
               <th>外形図</th>
-              <th></th>
             </tr></thead>
             <tbody id="pp-tbody"></tbody>
           </table>

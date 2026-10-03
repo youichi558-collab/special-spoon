@@ -92,6 +92,13 @@ const read = p => fs.readFileSync(path.join(root, p), 'utf8').replace(/\r\n/g, '
     ok(!/'search'|'get'/.test(get), '他ソフト向けの search/get は無い');
 
     // --------------------------------------------------------------
+    // --------------------------------------------------------------
+    console.log('\n【標準部品2件と非表示機能は無い(2026-10-03)】');
+    ok(!/const BUILTIN_PARTS/.test(read('js/data.js')), '標準部品(BUILTIN_PARTS)の定義が無い');
+    const page = read('js/parts_page.js'), ui = read('js/ui.js');
+    ok(!/BUILTIN_PARTS\./.test(page + ui), 'CAD・部品DB画面とも標準部品を一覧に混ぜない');
+    ok(!/function (hideBuiltin|unhideBuiltin|renderHiddenList)/.test(page), '非表示・再表示の機能が無い');
+
     console.log(ng ? `\n失敗 ${ng} 件` : '\nすべて通過');
     process.exit(ng ? 1 : 0);
 })();

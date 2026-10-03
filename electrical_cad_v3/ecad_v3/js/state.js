@@ -12,7 +12,7 @@ const state = {
   saveFileName: '',
   customSymbols: [],
   customParts:   [],
-  hiddenBuiltinRefs: [], // 非表示にした標準部品(BUILTIN_PARTS)のref一覧
+  hiddenBuiltinRefs: [], // 【2026-10-03】標準部品の非表示機能はやめた。parts_db.json に残っている値を消さないよう読んだまま持つだけ
   wireNoRule: {
     mode: 'sequence',   // 'sequence' | 'position' | 'prefix'
     prefix: '',

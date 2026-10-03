@@ -142,9 +142,8 @@ function doAutosave() {
       savedAt: Date.now(),
       saveFileName: state.saveFileName,
       customSymbols: state.customSymbols,
-      // 部品DBが外部ファイルで管理されている場合は埋め込まない（容量節約・二重管理防止）
-      customParts:   (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.customParts,
-      hiddenBuiltinRefs: (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.hiddenBuiltinRefs,
+      // 使った型式の部品の写しだけ(2026-10-03。外形図DXFは入れないので容量は小さい。edit.js usedPartsForSave)
+      customParts:   (typeof usedPartsForSave === 'function') ? usedPartsForSave(state.pages) : undefined,
       wireNoRule:    state.wireNoRule,
       layers:        LAYERS,
       pages:         state.pages,
@@ -273,8 +272,7 @@ function restoreAutosave() {
     state.saveFileName = d.saveFileName || '';
     state.wireNoRule   = d.wireNoRule || state.wireNoRule;
     state.customSymbols= d.customSymbols || [];
-    state.customParts  = d.customParts   || [];
-    state.hiddenBuiltinRefs = d.hiddenBuiltinRefs || [];
+    state.customParts  = d.customParts   || [];   // 図面の写し。後でライブラリが読めたら mergeEmbedded がライブラリを正にして重ねる
     state.customSymbols.forEach(s => { DEFS[s.type] = s; });
     if (d.layers && d.layers.length) { LAYERS.length = 0; d.layers.forEach(l => LAYERS.push(l)); }
     if (typeof d.zoom === 'number' && d.zoom > 0) state.zoom = d.zoom;

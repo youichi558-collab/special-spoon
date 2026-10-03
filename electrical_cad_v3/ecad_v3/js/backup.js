@@ -91,8 +91,7 @@ function bkBuildData() {
     savedAt: Date.now(),
     saveFileName: state.saveFileName,
     customSymbols: state.customSymbols,
-    customParts:   (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.customParts,
-    hiddenBuiltinRefs: (typeof partsDb !== 'undefined' && partsDb.hasFile()) ? undefined : state.hiddenBuiltinRefs,
+    customParts:   (typeof usedPartsForSave === 'function') ? usedPartsForSave(state.pages) : undefined,   // 使った型式の写しだけ(2026-10-03)
     wireNoRule: state.wireNoRule,
     layers: LAYERS,
     pages:  state.pages,

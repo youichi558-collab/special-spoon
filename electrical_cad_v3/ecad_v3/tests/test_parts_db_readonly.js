@@ -162,7 +162,7 @@ console.log('\n【図面ファイルに古い形式で埋め込まれていたcu
   eq(s.state.customParts.length, 4, 'サーバーの3件＋埋め込み1件(重複するP0は除く)');
   ok(s.state.customParts.some(p => p.ref === 'ONLY_EMBEDDED'), '★埋め込み分が残っている');
   eq(s.state.customParts.filter(p => p.ref === 'P0').length, 1, 'P0は重複しない');
-  ok(s._banner && /1 件があります/.test(s._banner.textContent), '古い図面ファイル分があることを知らせる');
+  ok(s._banner && /1 件は部品DBにありません/.test(s._banner.textContent), '部品DBに無い型式を図面の写しで使っていることを知らせる');
 }
 
 console.log(ng ? `\n失敗 ${ng} 件` : '\nすべて通過');

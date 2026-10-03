@@ -41,7 +41,6 @@ function load({ routes = {}, initialParts = [], confirmAnswer = true } = {}) {
     _banners: [],
     showTopBanner: (id, msg) => { sandbox._banners.push(msg); },
     confirm: () => confirmAnswer !== false,
-    BUILTIN_PARTS: [],
     PART_TYPE_ORDER: [], PART_TYPE_LABELS: {}, PART_TYPE_CODES: [], LEGACY_PART_TYPES: {},
     fetch: async (url, opts) => {
       const body = opts && opts.body ? JSON.parse(opts.body) : null;

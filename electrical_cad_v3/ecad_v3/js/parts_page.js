@@ -8,8 +8,9 @@
 // js/parts_db.js(CAD用・読み取り専用)は使わない。
 // 単独画面は常にサーバー経由で、部品DBの場所の設定が必要(画面上の「部品DBの場所」)。
 //
-// state.customParts / state.hiddenBuiltinRefs は js/state.js の定義をそのまま使う。
-// BUILTIN_PARTS は js/data.js、種別コードは js/part_types.js(CADと共有)。
+// state.customParts は js/state.js の定義をそのまま使う。種別コードは js/part_types.js(CADと共有)。
+// 【2026-10-03】標準部品2件(BUILTIN_PARTS)と、それを隠す機能(hiddenBuiltinRefs)はやめた(再設計の段階1)。
+// state.hiddenBuiltinRefs は parts_db.json に残っている値を消さないよう、読んだまま送り返すだけ。
 // ================================================================
 
 let saveLocked = false;
@@ -30,11 +31,7 @@ function setStatus(msg, isError) {
 function setBanner(msg) { showTopBanner('pp-banner', msg); }
 
 function allParts() {
-  const hidden = new Set(state.hiddenBuiltinRefs || []);
-  return [
-    ...BUILTIN_PARTS.filter(p => !hidden.has(p.ref)),
-    ...state.customParts.map(p => ({ ...p, custom: true })),
-  ];
+  return state.customParts;
 }
 
 // ---- 読み込み --------------------------------------------------------
@@ -189,28 +186,14 @@ function renderTable() {
       <td>${escH(p.volt || '')}</td>
       <td>${escH(p.amp || '')}</td>
       <td style="text-align:center">${p.outlineDxf ? '✓' : ''}</td>
-      <td>${p.custom ? '' : '<span style="color:var(--fg3)">標準</span>'}</td>
     </tr>`;
   }).join('');
-}
-
-function renderHiddenList() {
-  const el = $('pp-hidden');
-  if (!el) return;
-  const refs = state.hiddenBuiltinRefs || [];
-  if (!refs.length) { el.innerHTML = ''; return; }
-  el.innerHTML = `<div style="font-size:11px;color:var(--fg3);margin-bottom:4px">非表示にした標準部品（${refs.length}）</div>`
-    + refs.map(ref => `<div style="display:flex;justify-content:space-between;gap:8px;padding:2px 0;border-bottom:1px solid var(--bg4)">
-        <span style="font-size:11px">${escH(ref)}</span>
-        <span onclick="unhideBuiltin('${_escAttr(ref)}')" style="font-size:10px;color:var(--acc);cursor:pointer;text-decoration:underline">再表示する</span>
-      </div>`).join('');
 }
 
 function renderAll() {
   renderMakerOptions();
   renderTypeOptions();
   renderTable();
-  renderHiddenList();
 }
 
 function setFilter(k, v) {
@@ -252,14 +235,7 @@ function newPart() {
 }
 function selectPart(ref) {
   const p = state.customParts.find(x => x.ref === ref);
-  if (!p) {
-    // 標準部品はCADのコードに埋め込まれていて編集できない。非表示にする案内だけ出す。
-    newPart();
-    $('pp-form-title').textContent = `${ref}（標準部品・編集不可）`;
-    $('pp-ref').value = ref;
-    $('pp-ref').disabled = true;
-    return;
-  }
+  if (!p) { newPart(); return; }
   editingRef = ref;
   _pendingOutlineDxf = null;
   $('pp-maker').value = p.maker || '';
@@ -303,18 +279,6 @@ async function deleteCurrent() {
   renderAll();
   await saveAll();
   newPart();
-}
-async function hideBuiltin(ref) {
-  if (!confirm(`標準部品「${ref}」を一覧から非表示にしますか？（先頭の「非表示にした標準部品」からいつでも戻せます）`)) return;
-  state.hiddenBuiltinRefs = state.hiddenBuiltinRefs || [];
-  if (!state.hiddenBuiltinRefs.includes(ref)) state.hiddenBuiltinRefs.push(ref);
-  renderAll();
-  await saveAll();
-}
-async function unhideBuiltin(ref) {
-  state.hiddenBuiltinRefs = (state.hiddenBuiltinRefs || []).filter(r => r !== ref);
-  renderAll();
-  await saveAll();
 }
 
 // ---- 外形図DXF --------------------------------------------------

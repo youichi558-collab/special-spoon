@@ -30,7 +30,6 @@ function load(statsResponse) {
     window: { addEventListener: () => {} },
     escH: s => String(s == null ? '' : s),
     showTopBanner: () => {},
-    BUILTIN_PARTS: [],
     PART_TYPE_ORDER: [], PART_TYPE_LABELS: {}, PART_TYPE_CODES: [], LEGACY_PART_TYPES: {},
     fetch: async url => {
       if (url === '/api/parts/stats') return { json: async () => statsResponse };
