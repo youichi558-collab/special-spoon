@@ -45,6 +45,40 @@ const partsDb = (() => {
     return extra.length;
   }
 
+  // 【2026-10-03】部品DBの場所(ライブラリフォルダ)が未設定・見つからないとき、起動時に案内の窓を出す
+  // (再設計の段階1。新しいPC・別のPCで、どこで設定するのか探さずに済むように)。
+  // 中身は設定タブと同じ部品(js/parts_db_place.js)。「あとで」で閉じれば、帯と設定タブからいつでも設定できる。
+  // 1回のページ表示で1度だけ出す(読み直すたびに出ると邪魔)。
+  let firstRunShown = false;
+  function showFirstRun(source, err) {
+    if (firstRunShown || typeof document === 'undefined' || typeof pdbPlaceRender !== 'function') return;
+    firstRunShown = true;
+    const ov = document.createElement('div');
+    ov.id = 'pdb-first';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100001;display:flex;align-items:center;justify-content:center';
+    const lead = source === 'unset'
+      ? 'このPCでは、部品DBを置くフォルダ(ライブラリフォルダ)がまだ決まっていません。<br>'
+        + '<b>既にある部品DB</b>を使うなら、そのフォルダを「フォルダを選ぶ」か「探す」で選んでください。<br>'
+        + '<b>初めて使う</b>なら、部品DBを置きたいフォルダ(空でよい)を「フォルダを選ぶ」で選ぶと、空の部品DBを作れます。'
+      : escH(err);
+    ov.innerHTML = '<div style="background:var(--bg2,#2a2a2a);color:var(--fg,#ddd);border:1px solid var(--bd2,#444);border-radius:6px;'
+      + 'box-shadow:0 4px 20px rgba(0,0,0,.5);padding:14px 16px;max-width:640px;font-size:12px;line-height:1.6">'
+      + '<div style="font-size:14px;font-weight:600;margin-bottom:6px">部品DBの場所</div>'
+      + `<div style="margin-bottom:8px">${lead}</div>`
+      + '<div id="pdb-first-place"></div>'
+      + '<div style="text-align:right;margin-top:10px"><button class="fp-btn" id="pdb-first-later">あとで</button></div>'
+      + '<div style="font-size:10px;color:var(--fg3,#999);margin-top:4px">あとで設定するときは、設定タブの「部品DB」から。部品DBが無くても図面は描けます(部品の割り当てができないだけ)。</div>'
+      + '</div>';
+    document.body.appendChild(ov);
+    const close = () => ov.remove();
+    document.getElementById('pdb-first-later').onclick = close;
+    pdbPlaceRender('pdb-first-place', async () => {
+      await autoRestore(0);
+      if (connected) close();        // 「もう一度確かめる」でまだ見つからなければ、窓は開いたまま
+      pdbPlaceRender('pdb-place');   // 設定タブの表示も新しい場所に
+    });
+  }
+
   // 【2026-09-21】1回失敗したら数秒あけて数回やり直す。
   //
   // (当時)server.py はシングルスレッド・HTTP/1.0・待ち行列5で、起動直後は
@@ -93,9 +127,10 @@ const partsDb = (() => {
       setStatus(`部品DBを読み込めませんでした(${err})`);
       // サーバーの文言(tools/parts_db/parts_db.py の load)が既に設定のしかたを案内していれば重ねない
       setBanner(`⚠ 部品DBを読み込めませんでした(${err})。`
-        + (/「部品DBの場所」/.test(err) ? ''
-           : '設定タブの「部品DB」で「ファイルを選ぶ」「探す」、まだ部品DBが無ければ「新規作成」で設定してください。')
+        + (/「部品DBの場所」|「フォルダを選ぶ」/.test(err) ? ''
+           : '設定タブの「部品DB」で「フォルダを選ぶ」「探す」で設定してください。')
         + '部品の登録・編集は「部品DBを開く.bat」（部品DB単独画面）で行います。');
+      if (data.source === 'unset' || data.source === 'path_missing') showFirstRun(data.source, err);
       return;
     }
     if (!data) {

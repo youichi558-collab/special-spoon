@@ -118,7 +118,7 @@ console.log('\n【/api/parts/all が失敗する(部品DBの場所が壊れて�
   ok(s._banner && /部品DBの場所が未設定です/.test(s._banner.textContent), '理由が画面に出る');
   // 2026-10-03: 場所が未設定なのは何度やっても同じ。新規・別PCで「やり直しています…」が約10秒続いていた
   eq(s.calls.filter(u => u === '/api/parts/all').length, 1, '★サーバーが ok:false を返したらやり直さない');
-  ok(/新規作成/.test(s._banner.textContent), '★部品DBがまだ無いときのために「新規作成」も案内する');
+  ok(/フォルダを選ぶ/.test(s._banner.textContent), '★設定のしかた(「フォルダを選ぶ」)を案内する');
 }
 
 // ------------------------------------------------------------------

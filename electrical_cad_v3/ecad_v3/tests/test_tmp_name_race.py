@@ -118,11 +118,10 @@ shutil.rmtree(d, ignore_errors=True)
 ok(fixed > 0, '固定名なら壊れる (40回中 %d回)  ← 対策が要る根拠' % fixed)
 ok(uniq == 0, '★別名なら壊れない (40回中 %d回)' % uniq)
 
-print('\n【全走査の共有変数に鍵がかかっている】')
+print('\n【起動時の全走査は無い(2026-10-03にやめた。共有変数の鍵も要らなくなった)】')
 src = open(os.path.join(ROOT, 'tools', 'parts_db', 'parts_db.py'),
            encoding='utf-8').read()
-ok('_scan_lock' in src, '_scan_lock がある')
-ok('with _scan_lock:' in src, '判定と実行をまとめて鍵の中で行っている')
+ok('_scan_done' not in src and '_recover_by_scan' not in src, '自動の全走査が残っていない')
 
 print('\n%d件失敗' % ng if ng else '\n全て成功')
 sys.exit(1 if ng else 0)

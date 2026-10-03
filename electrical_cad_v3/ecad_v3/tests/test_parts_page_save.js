@@ -97,6 +97,32 @@ console.log('\n【件数が激減したら、確認せずに書かない】');
 }
 
 // ------------------------------------------------------------------
+console.log('\n【読んだ時点の版を送り、保存できたら新しい版に替える(2026-10-03)】');
+{
+  let n = 0;
+  const s = load({ routes: { '/api/parts/save': () => ({ ...SAVED, version: 'v' + (++n + 1) }) },
+                   initialParts: mkParts(3) });
+  vm.runInContext("loadedVersion = 'v1'", s);
+  await s.saveAll();
+  eq(s.calls[0].body.version, 'v1', '★読んだ時点の版を送る');
+  await s.saveAll();
+  eq(s.calls[1].body.version, 'v2', '★2回目は1回目の保存で返った版を送る(自分の保存を「他の保存」と取り違えない)');
+}
+
+// ------------------------------------------------------------------
+console.log('\n【他で保存されていた(conflict)ら、上書きせずに止めて知らせる】');
+{
+  const conflict = { available: true, ok: false, reason: 'conflict',
+                     error: '部品DBが、読み込んだ後に別の画面か別のPCで保存されています。' };
+  const s = load({ routes: { '/api/parts/save': conflict }, initialParts: mkParts(3) });
+  eq(await s.saveAll(), false, 'false を返す');
+  ok(/別の画面か別のPC/.test(s._banners[s._banners.length - 1]) && /再読み込み/.test(s._banners[s._banners.length - 1]),
+     '★理由と、再読み込みで最新を読み直せることを帯で知らせる');
+  eq(await s.saveAll(), false, '以後の保存はロック');
+  eq(s.calls.length, 1, '★ロック中はサーバーへ送らない(force で押し切らない)');
+}
+
+// ------------------------------------------------------------------
 console.log('\n【保存に失敗したら、以後の保存をロックする】');
 {
   const s = load({ routes: { '/api/parts/save': { available: true, ok: false, error: '書けません' } },

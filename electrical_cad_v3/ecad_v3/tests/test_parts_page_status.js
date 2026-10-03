@@ -61,30 +61,19 @@ console.log('【source=unset: 一度も設定していない】');
   await s.loadAll();
   const msg = s._statusHistory[s._statusHistory.length - 1];
   ok(/未設定/.test(msg), '「未設定」と案内する');
-  ok(/ファイルを選ぶ/.test(msg) && /新規作成/.test(msg), '画面の「部品DBの場所」で設定するよう案内する(2026-10-02、以前はsetpathコマンド)');
+  ok(/フォルダを選ぶ/.test(msg) && /作れます/.test(msg), '画面の「部品DBの場所」の「フォルダを選ぶ」で設定・作成するよう案内する(2026-10-03 ライブラリフォルダ)');
 }
 
-console.log('\n【source=path_missing: 設定されているのに見つからない(ドライブ文字が変わった等)】');
+console.log('\n【source=path_missing: 設定されているのに見つからない(同期ソフトの準備待ち・ドライブ文字が変わった等)】');
 {
-  const staleError = '設定された部品DBが見つかりません: I:\\マイドライブ\\claude\\部品カタログ\\parts_db.json';
+  // 文言はサーバー(tools/parts_db/parts_db.py の missing_message)が作る。画面はそのまま出す
+  const staleError = 'ライブラリフォルダが見つかりません: I:\\マイドライブ\\lib。同期ソフト(Googleドライブ等)やネットワークの準備がまだかもしれません。準備ができたら「もう一度確かめる」を押すか、「フォルダを選ぶ」で選び直してください';
   const s = load({ available: true, ok: false, writable: false, source: 'path_missing',
                    count: 0, path: '', error: staleError });
   await s.loadAll();
   const msg = s._statusHistory[s._statusHistory.length - 1];
-  ok(!/^部品DBの場所が未設定です/.test(msg),
-     '★「未設定」から始まらない(実際には設定済みなので誤解を招く)');
-  ok(msg.includes(staleError), '★元のパス(I:\\...)を含む具体的な案内が出る');
-  ok(/ドライブの文字/.test(msg), 'ドライブ文字が変わった可能性を案内する');
-  ok(/ファイルを選ぶ/.test(msg), '画面の「部品DBの場所」で選び直す案内がある(2026-10-02、以前はsetpathコマンド)');
-}
-
-console.log('\n【source=mirror: setpathしていないが控えは読める(書けない)】');
-{
-  const s = load({ available: true, ok: true, writable: false, source: 'mirror',
-                   count: 5, path: '/tmp/.../parts_db_mirror.json', error: '' });
-  await s.loadAll();
-  const msg = s._statusHistory[s._statusHistory.length - 1];
-  ok(/未設定/.test(msg), '控えしか無いときはsetpathを促す(単独画面は書けないと動かないため)');
+  ok(!/未設定/.test(msg), '★「未設定」と言わない(実際には設定済みなので誤解を招く)');
+  ok(msg.includes(staleError), '★サーバーの具体的な案内(元のフォルダ・準備待ち・もう一度確かめる)がそのまま出る');
 }
 
 console.log('\n【場所が未設定のまま「カタログ全件で作り直す」を押した(2026-10-03)】');
@@ -100,7 +89,7 @@ console.log('\n【場所が未設定のまま「カタログ全件で作り直�
   await vm.runInContext('catalogResetPartsDb', s)();
   const msg = s._statusHistory[s._statusHistory.length - 1];
   ok(!asked && fetched.length === 0, '★確認も通信もせずに止める(以前は確認→最後の保存で失敗し、画面だけ入れ替わっていた)');
-  ok(/未設定/.test(msg) && /新規作成/.test(msg), '場所を設定してから押すよう案内する');
+  ok(/未設定/.test(msg) && /フォルダを選ぶ/.test(msg), '場所を設定してから押すよう案内する');
 }
 
 console.log(ng ? `\n失敗 ${ng} 件` : '\nすべて通過');

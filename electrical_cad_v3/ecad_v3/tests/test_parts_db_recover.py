@@ -1,30 +1,26 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""部品DBの場所が外れたときの自動復帰のテスト
+"""部品DBの場所(ライブラリフォルダ)が外れたときのテスト
 
     py tests\\test_parts_db_recover.py
     python3 tests/test_parts_db_recover.py
 
-【背景・2026-09-21】
-部品DBはリポジトリの外(Drive上)に置く決まりで、場所は設定ファイルの絶対パスで
-持っている。2026-09-21、その設定が外れて「部品DBの場所が未設定です」で止まった。
+【背景】
+2026-09-21 盛田さん「なぜ固定パスを使っている、環境が変わったら動かんぞ」。設定の絶対パスは
+前に選んだ場所の控えで、同期ソフト(Drive for Desktop等)のドライブ文字は環境で変わる(G: / I:)。
+そこで ①ドライブ文字の付け替え ②ディスク全走査 の2段で自動復帰していた。
 
-盛田さん「なぜ固定パスを使っている、環境が変わったら動かんぞ」。そのとおりで、
-設定の絶対パスは**前に見つけた場所の控え**であって正ではない。Drive for Desktop の
-ドライブ文字は環境で変わる(G: / I:)し、PCを変えれば当然違う。
-探す道具(find_candidates)は前からあったのに、**人が打つ前提**だった。
-
-復帰は速い方から2段:
-  ① 末尾パスを手がかりに、実在するドライブへ当てる … 一瞬
-  ② それでも駄目なら全走査                        … 数十秒・1プロセス1回だけ
+2026-10-03(再設計の段階1)で②の全走査をやめた。同期ソフトやネットワークの準備前に起動すると
+見つからないのは当たり前で、そのときに勝手に探して別の部品DBに繋いだり、数十秒待たせたりするより、
+「見つかりません(準備待ちかも)」+「もう一度確かめる」の方がよい(HANDOFF.md「ライブラリの置き場所の再設計」)。
+ディスクを探すのは、画面の「探す」を押したときだけ。
 
 このテストが守るもの:
-  1. 設定どおり読めるときは何も探さない(毎回走査したら使い物にならない)
-  2. ドライブ文字が変わっただけなら、走査せずに復帰する
-  3. 復帰したら設定を書き換える(次から一発で読める)
-  4. 全走査は1プロセスで1回だけ
-  5. 候補が複数あるときは**自動で決めない**(古い部品DBに繋ぐ方が危険)
-  6. 古い設定(末尾パスを持たない)にも、読めたときに後から足す
+  1. 設定どおり読めるときは何も探さない
+  2. ドライブ文字が変わっただけなら付け替えて読み、設定を書き換える(次から一発で読める)
+  3. 付け替えでも見つからなければ path_missing を返し、**ディスクを探さない・勝手に設定しない**
+  4. 旧形式の設定(path / path_tail)からも付け替えられる
+  5. 「探す」(find_candidates)は件数の多い順に返す(押したときだけ使う)
 """
 import json
 import os
@@ -50,99 +46,81 @@ def ok(cond, msg):
         ng += 1
 
 
-def make_db(path, refs):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    json.dump({'customParts': [{'ref': r} for r in refs], 'hiddenBuiltinRefs': []},
-              open(path, 'w', encoding='utf-8'))
-    return path
-
-
-def reset_scan():
-    parts_db._scan_done = False
-    parts_db._scan_found = []
-    parts_db._scan_backups = []
+def make_db(folder, refs):
+    os.makedirs(folder, exist_ok=True)
+    with open(os.path.join(folder, 'parts_db.json'), 'w', encoding='utf-8') as f:
+        json.dump({'customParts': [{'ref': r} for r in refs], 'hiddenBuiltinRefs': []}, f)
+    return folder
 
 
 try:
-    # 「ドライブ」を2つ作る。I: が消えて G: に変わった、を模す
-    drv_old = os.path.join(tmp, 'I')
-    drv_new = os.path.join(tmp, 'G')
-    tail = os.path.join('マイドライブ', 'カタログDB', 'parts_db.json')
-    old_path = make_db(os.path.join(drv_old, tail), ['A', 'B', 'C'])
-    parts_db.DRIVE_ROOTS = [drv_old, drv_new]
-    parts_db.SCAN_ROOTS = [tmp]
-
+    # 2つの「ドライブ」を作る。G: に置いた部品DBが、別のPCでは I: に見える状況。
+    G = os.path.join(tmp, 'G')
+    I = os.path.join(tmp, 'I')
+    os.makedirs(G)
+    os.makedirs(I)
+    parts_db.DRIVE_ROOTS = [G, I]
+    scanned = []
+    real_find = parts_db.find_candidates
+    parts_db.find_candidates = lambda *a, **k: scanned.append(1) or real_find(*a, **k)
     db = parts_db.PartsDB()
-    db.set_path(old_path)
 
-    print('【設定どおり読めるときは探さない】')
-    reset_scan()
+    print('【設定どおり読めるときは何も探さない】')
+    make_db(os.path.join(G, 'マイドライブ', 'lib'), ['A', 'B'])
+    db.set_library(os.path.join(G, 'マイドライブ', 'lib'))
     p, src = db.resolve()
-    ok(p == old_path and src == 'path', f'そのまま読める ({src})')
-    ok(parts_db._scan_done is False, '全走査を走らせない')
-    ok(parts_db.load_config().get('path_tail') == parts_db.path_tail(old_path),
-       '末尾パスが保存されている')
+    ok(src == 'path', f'由来は path ({src})')
+    ok(parts_db.load_config().get('library_tail') == os.path.join('マイドライブ', 'lib'),
+       '設定に末尾(ドライブから下)も入る')
+    ok(not scanned, 'ディスクは探さない')
 
-    print('【ドライブ文字が変わっただけなら、走査せずに戻る】')
-    print('  ← Drive for Desktop の I: / G: は環境で変わる')
-    new_path = make_db(os.path.join(drv_new, tail), ['A', 'B', 'C'])
-    shutil.rmtree(drv_old)          # 前のドライブが消えた
-    reset_scan()
+    print('\n【ドライブ文字が変わった(G:→I:)だけなら付け替えて読む】')
+    shutil.move(os.path.join(G, 'マイドライブ'), os.path.join(I, 'マイドライブ'))
     p, src = db.resolve()
-    ok(p == new_path, f'新しいドライブの同じ場所を見つける ({p})')
-    ok(src == 'path_recovered', f'由来が path_recovered ({src})')
-    ok(parts_db._scan_done is False, '全走査は走らせない(一瞬で戻る)')
-    ok(parts_db.load_config().get('path') == new_path, '設定を書き換える(次から一発)')
+    ok(src == 'path_recovered', f'由来は path_recovered ({src})')
+    ok(p == os.path.join(I, 'マイドライブ', 'lib', 'parts_db.json'), 'I: 側を読む')
+    ok(parts_db.load_config().get('library_dir') == os.path.join(I, 'マイドライブ', 'lib'),
+       '★設定も書き換わる(次から一発で読める)')
+    ok(db.resolve()[1] == 'path', '次は path で読める')
+    ok(not scanned, 'ディスクは探していない')
 
-    print('【末尾パスを持たない古い設定にも、後から足す】')
-    parts_db.save_config({'path': new_path})     # path_tail 無しの古い形
-    reset_scan()
+    print('\n【付け替えても見つからなければ、探さずに「見つかりません」を返す】')
+    shutil.rmtree(os.path.join(I, 'マイドライブ'))
+    make_db(os.path.join(G, '別の場所'), ['Z'])   # 探せば見つかる別の部品DB
     p, src = db.resolve()
-    ok(src == 'path', '読めること自体は変わらない')
-    ok(parts_db.load_config().get('path_tail'), '末尾パスが足される(次に外れたとき効く)')
-
-    print('【全滅なら全走査。候補が1つなら自動で設定する】')
-    moved = make_db(os.path.join(tmp, 'どこか', 'べつの場所', 'parts_db.json'), ['X', 'Y'])
-    shutil.rmtree(drv_new)
-    parts_db.save_config({'path': new_path, 'path_tail': parts_db.path_tail(new_path)})
-    reset_scan()
-    p, src = db.resolve()
-    ok(p == moved, f'走査で見つける ({p})')
-    ok(src == 'path_found', f'由来が path_found ({src})')
-    ok(parts_db._scan_done is True, '全走査が走った')
-    ok(parts_db.load_config().get('path') == moved, '設定を書き換える')
-
-    print('【全走査は1プロセスで1回だけ】')
-    print('  ← 数十秒かかる。ページを開くたびに走らせたら使い物にならない')
-    parts_db.save_config({})
-    calls = []
-    real = parts_db.find_candidates
-    parts_db.find_candidates = lambda roots=None: (calls.append(1), real(roots))[1]
-    try:
-        reset_scan()
-        parts_db.PartsDB().resolve()
-        parts_db.PartsDB().resolve()
-        parts_db.PartsDB().resolve()
-        ok(len(calls) == 1, f'3回呼んでも走査は1回 (実際 {len(calls)}回)')
-    finally:
-        parts_db.find_candidates = real
-
-    print('【候補が複数あるときは自動で決めない】')
-    print('  ← 古い部品DBに黙って繋ぐ方が危険。件数付きで出して選んでもらう')
-    make_db(os.path.join(tmp, 'もうひとつ', 'parts_db.json'), ['Z'])
-    parts_db.save_config({})
-    reset_scan()
-    p, src = db.resolve()
-    ok(p is None, '自動では決めない')
-    ok(src == 'unset', f'由来は unset のまま ({src})')
-    found, _bk = parts_db.PartsDB.scan_candidates()
-    ok(len(found) >= 2, f'候補は覚えている ({len(found)}件)')
+    ok(p is None and src == 'path_missing', f'path_missing ({src})')
+    ok(not scanned, '★ディスクを探さない(数十秒待たせない・別の部品DBに勝手に繋がない)')
+    ok(parts_db.load_config().get('library_dir') == os.path.join(I, 'マイドライブ', 'lib'),
+       '★設定は書き換えない(準備ができたら元の場所で読める)')
     err = db.load()['error']
-    ok('候補' in err and '探す' in err, '画面に出す文言に候補と「探す」の案内が入る(2026-10-03、以前はsetpathコマンド)')
+    ok('準備' in err and 'もう一度確かめる' in err, '同期ソフトやネットワークの準備待ちの可能性と「もう一度確かめる」を案内する')
+
+    print('\n【旧形式の設定(path / path_tail)からも付け替えられる】')
+    make_db(os.path.join(I, 'old', 'lib'), ['X'])
+    parts_db.save_config({'path': os.path.join(G, 'old', 'lib', 'parts_db.json'),
+                          'path_tail': os.path.join('old', 'lib', 'parts_db.json')})
+    p, src = db.resolve()
+    ok(src == 'path_recovered' and p == os.path.join(I, 'old', 'lib', 'parts_db.json'),
+       f'旧形式の末尾からも付け替える ({src})')
+    cfg = parts_db.load_config()
+    ok('path' not in cfg and cfg.get('library_dir') == os.path.join(I, 'old', 'lib'),
+       '付け替えたら新形式の設定に書き換わる')
+
+    print('\n【未設定なら探さない】')
+    parts_db.save_config({})
+    p, src = db.resolve()
+    ok(src == 'unset', f'unset ({src})')
+    ok(not scanned, '★未設定でもディスクは探さない(以前は起動時に全走査していた)')
+
+    print('\n【「探す」は押したときだけ。件数の多い順】')
+    make_db(os.path.join(G, '空'), [])
+    found = real_find([tmp])
+    ok(len(found) >= 3, f'候補が見つかる ({len(found)}件)')
     ok(found[0][1] >= found[-1][1], '件数が多い順に並ぶ(空ファイルを先頭に出さない)')
+    ok(all(os.path.basename(f[0]) == 'parts_db.json' for f in found), 'parts_db.json だけを拾う')
 
 finally:
     shutil.rmtree(tmp, ignore_errors=True)
 
-print('\n失敗 %d 件' % ng if ng else '\nすべて通過')
+print('\n' + (f'失敗 {ng} 件' if ng else 'すべて通過'))
 sys.exit(1 if ng else 0)

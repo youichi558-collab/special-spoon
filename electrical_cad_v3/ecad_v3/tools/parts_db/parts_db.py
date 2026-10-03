@@ -1,118 +1,77 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-parts_db.py — 部品DB(parts_db.json)を他ソフトからも読めるようにするライブラリ。
+parts_db.py — 部品DB(parts_db.json)の読み書き。ライブラリフォルダの中に置く。
 
-catalog_db.py と同じ発想を部品DBに適用したもの。
-**このファイル自体はサーバーではない。** HTTPが要るときだけ parts_db_server.py が
-これをimportして薄く包む。ecad_v3 の server.py も同じくこれをimportして使うので、
-普段はサーバーが増えない。
+**このファイル自体はサーバーではない。** ecad_v3 の server.py がこれをimportして使う。
 
-■ カタログDBとの違い(混同しやすいので明記する)
-    カタログDB : カタログ全型番。数万件。原本はDrive上のメーカー別CSV。
-                 SQLiteに構築して検索する。更新するのは Claude/Cowork。
-    部品DB     : 図面で実際に使う部品。数千件。原本は parts_db.json 1ファイル。
-                 **更新するのは盛田さんだけ。**
+■ ライブラリフォルダ(2026-10-03・再設計の段階1)
+    PC間で共有するもの(部品DB。後の段階で図面枠・表題欄様式・登録シンボルも)は、
+    **盛田さんが選んだ1つのフォルダ**に置く。場所は固定しない(ローカル・同期フォルダ・
+    社内の共有フォルダのどれでもよい)。設計は HANDOFF.md「ライブラリの置き場所の再設計」。
+
+        <ライブラリフォルダ>/
+            parts_db.json      部品DB本体
+            backup/            保存のたびに溜まる世代バックアップ(古いものから消す)
+
+    フォルダの場所はPCごとの設定 %LOCALAPPDATA%\\ecad\\parts_db_config.json に入る
+    (キーは library_dir)。画面(CADの設定タブ/部品DB画面の「部品DBの場所」)で
+    「フォルダを選ぶ」「探す」から設定する。コマンドなら `py parts_db.py setlib <フォルダ>`。
+
+    旧形式の設定(キー path = parts_db.json のフルパス)は、そのファイルのあるフォルダを
+    ライブラリフォルダとして読み替える(ファイル名が parts_db.json のときだけ)。
+
+■ 見つからないとき
+    設定のフォルダが無ければ、ドライブ文字だけ付け替えて探す(一瞬で済む)。それでも無ければ
+    「見つかりません」を返す。**ディスク全体を勝手に探したり、古い控えを読んだりはしない**
+    (同期ソフトやネットワークの準備待ちのことがあり、古い内容で動くのが一番困る)。
+    以前あった控え(parts_db_mirror.json)と起動時の全走査は 2026-10-03 にやめた。
 
 ■ 【最重要】parts_db.json の書き手は「常に1つだけ」
     2つ以上が書くと、どちらかの書き込みが黙って失われるか、書きかけのJSONが
     残って次の起動で読めなくなる。2026-09-01に「保存できていないことに誰も
-    気づけない」事故を起こしたばかりのファイルなので、ここは崩さない。
-
-    【2026-09-02】その「1つ」を、CAD(ブラウザのFile System Access API)から
-    このライブラリに移した(ブラウザの許可が下りずに保存が空振りしたのが9-01の事故の根本。
-    サーバーなら tmp に書いて os.replace で置き換えられ、バックアップも同じフォルダに置ける)。
-    【2026-09-03】CADは部品DBを読むだけになり、書くのは部品DB単独画面(parts.html)だけ。
-    ブラウザ側で書く経路(File System Access API)はもう無い。
-
-    今の守り方:
-      1. 書けるのは場所を設定したときだけ(save() が resolve ではなく
-         configured_path() だけを見る)。控え(mirror)には保存しない。
-      2. 書き込み口は server.py の POST /api/parts/save と /api/parts/backup だけで、
-         呼ぶのは parts.html だけ。他ソフト向けの parts_db_server.py は読み取り専用(405)。
-      3. 場所が未設定なら save() は失敗を返す(どこにも書かない)。
-
-■ 部品DBの実体をどうやって見つけるか
-    上から順に試す(resolve())。
-
-    1. 設定した場所(正)
-       CADの設定タブ／部品DB画面の「部品DBの場所」(ファイルを選ぶ・探す・新規作成。2026-10-02〜)、
-       またはコマンド `py parts_db.py setpath <パス>` で設定する。
-       設定は %LOCALAPPDATA%\\ecad\\parts_db_config.json に入る(PCごと)。
-       外れていたら、ドライブ文字の付け替え→ディスク全走査(1プロセス1回)で探し直す。
-
-    2. 控え(mirror)
-       保存が成功するたびに %LOCALAPPDATA%\\ecad\\parts_db_mirror.json へ写している。
-       場所が未設定のときだけこちらを読む(書けない)。**最後に保存した時点の内容**。
-
-    どちらも読めない場合、search() 等は空を返し、stats() が理由を返す。
-    呼び出し側が「部品DBが無い」と「部品が0件」を区別できるようにするため、
-    例外ではなく status で返す。
-
-    (2026-10-03の再設計案で、控え・全走査はやめる予定。HANDOFF.md「ライブラリの置き場所の再設計」)
-
-■ 他ツールからの使い方
-    import parts_db
-    db = parts_db.PartsDB()
-    db.stats()                      # {'ok':True,'count':605,'source':'path',...}
-    db.search('S-T21')              # 型番・メーカー・備考の部分一致
-    db.get('S-T21')                 # 1件
-    db.outline('S-T21')             # 外形図DXFの中身(無ければNone)
-
-    HTTPで使いたいなら parts_db_server.py を起動する(既定 http://127.0.0.1:8091)。
-    **他ツールからは読むだけにすること。** 書き込み(save/backup)は部品DB単独画面のための
-    もので、server.py の /api/parts/save・/api/parts/backup 以外からは呼ばない。
+    気づけない」事故を起こしたファイルなので、ここは崩さない。
+      1. 書き込み口は server.py の POST /api/parts/save と /api/parts/backup だけで、
+         呼ぶのは部品DB画面(parts.html)だけ。CADは読むだけ。
+      2. 場所が未設定・見つからないなら save() は失敗を返す(どこにも書かない)。
+      3. **読んだ時点の版**(中身のハッシュ)を受け取り、ファイルがその後に変わっていたら
+         書かない(別のPC・別の画面で保存された内容を黙って上書きしない)。
+      4. 書く前に、今の中身を backup/ へ世代として残す。
+      5. tmp に書いてから os.replace で置き換える(書きかけが本体にならない)。
 """
+import datetime
+import hashlib
 import json
 import os
 import itertools
-import threading
+import re
 import sys
 
 APP_NAME = 'ecad'
 CONFIG_NAME = 'parts_db_config.json'
-MIRROR_NAME = 'parts_db_mirror.json'
-
-# 検索対象にする文字列カラム。outlineDxf(DXFの全文)は入れない ——
-# 数百KBの図形データが「備考に一致した」形でヒットしても意味が無いため。
-SEARCH_FIELDS = ('ref', 'maker', 'type', 'volt', 'amp', 'terminals',
-                 'contacts', 'note', 'source')
-
-# 一覧・検索で返すカラム。outlineDxf は本文が巨大なので既定では返さず、
-# 「あるか無いか」だけを has_outline で伝える。中身が要るときは outline() を呼ぶ。
-PUBLIC_FIELDS = SEARCH_FIELDS + ('outlineDxfName', 'voltOpts')
-
+PARTS_NAME = 'parts_db.json'
+BACKUP_DIR_NAME = 'backup'
+BACKUP_KEEP = 30            # 世代バックアップを何個まで残すか
+# 世代バックアップの名前。消してよいのはこの形に一致するものだけ(人が置いたファイルは消さない)
+_BACKUP_RE = re.compile(r'^parts_db_\d{8}_\d{6}(_\d+)?\.json$')
 
 
 # ----------------------------------------------------------------
 # 同時に書いても混ざらない一時ファイル名
 # ----------------------------------------------------------------
-# 【2026-09-21】server.py をスレッド化した(起動時にJSが落ちる問題への対処)。
-# それまでは1度に1リクエストしか動かなかったので、書き込みが同時に走ることが
-# 無く、固定名の `xxx.tmp` に書いて os.replace で置き換える形で足りていた。
-#
-# スレッド化すると、同じ固定名に2つの書き込みが同時に入りうる。そうなると
-# **1つのファイルに両方のバイトが混ざり、その壊れたものが os.replace で
-# 本体になる**。os.replace 自体は不可分でも、書いている途中が混ざるので
-# 「書きかけを本体にしない」という元の狙いが破れる。
-#
-# プロセスIDとスレッドIDを足して、書き手ごとに別の名前にする。
+# 【2026-09-21】server.py をスレッド化したので、同じ固定名の tmp に2つの書き込みが
+# 同時に入ると、混ざったものが os.replace で本体になる。書き手ごとに別の名前にする。
+# 連番を足すのは、スレッドIDが終わったスレッドの間で再利用されるため。
 _tmp_seq = itertools.count()
 
 
 def _tmp_name(path):
-    # 連番を足すのは threading.get_ident() だけでは足りないため。
-    # スレッドIDは**生きているスレッドの間でしか一意でなく**、スレッドが
-    # 終わると再利用される(テストで20個中19個が重複して気付いた)。
-    # 実際に同時に書く場面では両方が生きているので衝突しないが、
-    # 条件付きの保証にしておく理由が無い。
-    # itertools.count() の next は CPython では不可分。
     return '%s.%d.%d.tmp' % (path, os.getpid(), next(_tmp_seq))
 
-def default_data_dir():
-    """設定と控えを置くローカルフォルダ。catalog_db.py と同じ場所を使う。
 
-    ecad_v3のフォルダ内には置かない(CADを消しても設定が残るように)。
+def default_data_dir():
+    """設定を置くローカルフォルダ(PCごと)。catalog_db.py と同じ場所を使う。
+
     Windows: %LOCALAPPDATA%\\ecad  / それ以外: ~/.local/share/ecad
     """
     if os.name == 'nt':
@@ -127,35 +86,16 @@ def config_path(data_dir=None):
     return os.path.join(data_dir or default_data_dir(), CONFIG_NAME)
 
 
-def mirror_path(data_dir=None):
-    return os.path.join(data_dir or default_data_dir(), MIRROR_NAME)
-
-
 # ----------------------------------------------------------------------------
-# 場所が外れたときの自動復帰(2026-09-21)
+# ドライブ文字が変わったときの付け替え(2026-09-21)
 #
-# 盛田さん「なぜ固定パスを使っている、環境が変わったら動かんぞ」。そのとおりで、
-# 設定に入っている絶対パスは**前に見つけた場所の控え**であって正ではない。
-# Drive for Desktop のドライブ文字は環境で変わる(G: / I:)し、PCを変えれば当然違う。
-# それなのに、控えが外れた瞬間に「未設定です」と言って止まる作りだった。
-#
-# 復帰は2段。**速い方から試す。**
-#   ① 末尾パス(ドライブから下)を手がかりに、実在するドライブへ当てる … 一瞬
-#   ② それでも駄目なら find_candidates() で全走査            … 数十秒
-#
-# ②はページを開くたびに走らせるわけにいかないので、**1プロセスで1回だけ**。
-_scan_done = False
-_scan_found = []
-_scan_backups = []
-# 【2026-09-21】server.py をスレッド化したので、この3つを同時に2つのスレッドが
-# 触りうる。鍵をかけないと、どちらも「まだ走査していない」と判断して
-# 数十秒の全走査を二重に始める(壊れはしないが、その間ページが余計に待つ)。
-_scan_lock = threading.Lock()
-
+# 盛田さん「なぜ固定パスを使っている、環境が変わったら動かんぞ」。設定に入っている絶対パスは
+# 前に選んだ場所の控えであって、同期ソフト(Drive for Desktop等)のドライブ文字は環境で変わる
+# (G: / I:)。末尾(ドライブから下)を手がかりに、実在するドライブへ当てる。一瞬で済む。
+# ----------------------------------------------------------------------------
 # テストから差し替えるための口。既定(None)は本番の挙動。
-# Windowsのドライブ文字や本物のホームを前提にすると、テストが環境依存になるため。
-DRIVE_ROOTS = None   # _recover_by_tail が当てにいく根
-SCAN_ROOTS = None    # find_candidates に渡す根
+DRIVE_ROOTS = None   # 付け替えで当てにいく根
+SCAN_ROOTS = None    # 「探す」(find_candidates)で探す根
 
 
 def drive_roots():
@@ -166,14 +106,9 @@ def drive_roots():
         return []
     return [f'{d}:\\' for d in 'CDEFGHIJKLMNOPQRSTUVWXYZ' if os.path.isdir(f'{d}:\\')]
 
+
 def path_tail(path):
-    """ドライブ(根)から下の部分。ドライブが変わっても効く手がかり。
-
-    `I:\\マイドライブ\\...\\parts_db.json` → `マイドライブ\\...\\parts_db.json`
-
-    根は drive_roots() を先に当てる(splitdrive だけだと、テストや
-    ネットワークドライブのマウント形が違うときに剥がせないため)。
-    """
+    """ドライブ(根)から下の部分。`I:\\マイドライブ\\lib` → `マイドライブ\\lib`"""
     full = os.path.abspath(path)
     for root in sorted(drive_roots(), key=len, reverse=True):
         r = root.rstrip('\\/')
@@ -181,8 +116,6 @@ def path_tail(path):
             return full[len(r):].lstrip('\\/')
     _drive, rest = os.path.splitdrive(full)
     return rest.lstrip('\\/')
-
-
 
 
 def load_config(data_dir=None):
@@ -204,8 +137,8 @@ def save_config(cfg, data_dir=None):
 def normalize(data):
     """parts_db.json の中身を {'customParts': [...], 'hiddenBuiltinRefs': [...]} に揃える。
 
-    古い版のファイルは配列そのものだった(以前CADが File System Access API で読んでいた頃の形)。
-    ここを合わせておかないと、古いファイルを読んだときだけ0件になる。
+    古い版のファイルは配列そのものだった。hiddenBuiltinRefs は標準部品の非表示機能
+    (2026-10-03に廃止)の名残で、読めるように残してあるだけ。
     """
     if isinstance(data, list):
         return {'customParts': data, 'hiddenBuiltinRefs': []}
@@ -216,14 +149,7 @@ def normalize(data):
 
 
 def is_suspicious_drop(prev, now):
-    """件数が大きく減った上書きを疑う。
-
-    【2026-09-29】以前はブラウザ側(js/parts_db.js)にも同じ規則があったが、2026-09-03に
-    CADが部品DBを書かなくなり(読み取り専用化)、書き込み経路はここだけになった。
-    tests/test_parts_db_save.py が動きを見ている。
-
-    1件ずつの削除は普通の操作なので通し、「全部消えた」「半分以下になった」だけ止める。
-    """
+    """件数が大きく減った上書きを疑う。1件ずつの削除は通し、「全部消えた」「半分以下になった」だけ止める。"""
     if prev is None or prev <= 0:
         return False
     if now == 0:
@@ -231,33 +157,35 @@ def is_suspicious_drop(prev, now):
     return prev >= 10 and now < prev / 2
 
 
-def write_mirror(text, data_dir=None):
-    """CADが保存した部品DBの中身を控えとして写す。server.py から呼ばれる。
+def file_version(path):
+    """ファイルの版(中身のハッシュ)。保存のときに「読んだ後に変わっていないか」を見る。無ければ ''。
 
-    書き先は %LOCALAPPDATA%\\ecad\\parts_db_mirror.json であって、
-    盛田さんの parts_db.json ではない。控えが壊れても原本は無傷。
-
-    中身が parts_db.json として読める形かをここで検証してから置く。
-    壊れたものを黙って控えに残すと、原本が読めないときに
-    「控えはあるのに空」という分かりにくい状態になるため。
+    更新日時ではなく中身で見る。同期ソフトが中身を変えずに更新日時だけ触ることがあり、
+    そのたびに「他で更新されています」と出ると使えないため。
     """
-    info = normalize(json.loads(text))
-    d = data_dir or default_data_dir()
-    os.makedirs(d, exist_ok=True)
-    p = mirror_path(d)
-    # 書きかけの控えを他のツールが読まないよう、別名に書いてから置き換える。
-    tmp = _tmp_name(p)
+    try:
+        with open(path, 'rb') as f:
+            return hashlib.sha1(f.read()).hexdigest()
+    except OSError:
+        return ''
+
+
+def _write_json(path, obj):
+    """tmp に書いてから置き換える(書きかけが本体にならない)。"""
+    text = json.dumps(obj, ensure_ascii=False, indent=2)
+    tmp = _tmp_name(path)
     with open(tmp, 'w', encoding='utf-8') as f:
-        json.dump(info, f, ensure_ascii=False)
-    os.replace(tmp, p)
-    return {'path': p, 'count': len(info['customParts'])}
+        f.write(text)
+        f.flush()
+        os.fsync(f.fileno())   # 電源断で空のファイルが本体にならないよう、置換の前に書き切る
+    os.replace(tmp, path)
 
 
 class PartsDB:
-    """部品DBの読み取り専用ビュー。
+    """部品DBの読み書き。
 
-    毎回ファイルを読み直す(mtimeが変わっていなければ前回の内容を使い回す)ので、
-    CAD側で保存された内容がそのまま次の検索に出る。
+    毎回ファイルを読み直す(版が変わっていなければ前回の内容を使い回す)ので、
+    別の画面・別のPCで保存された内容がそのまま次の読み込みに出る。
     """
 
     def __init__(self, data_dir=None):
@@ -265,188 +193,132 @@ class PartsDB:
         self._cache = None
         self._cache_key = None
 
-    # ---- 置き場所の解決 ------------------------------------------------
-    def configured_path(self):
-        return (load_config(self.data_dir).get('path') or '').strip()
-
-    def set_path(self, path):
-        """parts_db.json の場所を設定する。
-
-        **HTTPから任意のパスを受け取って呼ばない**(catalog_db の setdir を撤去したのと同じ理由 ——
-        画面から送ったパスでサーバーに任意のファイルを読ませられるため)。
-        2026-10-02 から画面(server.py の /api/parts/pick・new・use)でも設定できるが、パスは
-        **盛田さんがWindowsの窓で選んだもの**か**サーバー自身が探した候補**だけで、画面から送られたパスは使わない。
-        """
-        path = os.path.abspath(os.path.expanduser(path))
-        if not os.path.isfile(path):
-            raise FileNotFoundError(f'ファイルが見つかりません: {path}')
-        normalize(json.loads(open(path, encoding='utf-8').read()))  # 読める形か確認
+    # ---- ライブラリフォルダ --------------------------------------------
+    def configured_dir(self):
+        """設定されているライブラリフォルダ。旧形式(path)なら読み替える。未設定は ''。"""
         cfg = load_config(self.data_dir)
-        cfg['path'] = path
-        # ドライブ文字が変わったときの手がかり。正は 'path' で、こちらは保険。
-        cfg['path_tail'] = path_tail(path)
+        d = (cfg.get('library_dir') or '').strip()
+        if d:
+            return d
+        old = (cfg.get('path') or '').strip()
+        if old and os.path.basename(old) == PARTS_NAME:
+            return os.path.dirname(old)
+        return ''
+
+    def _configured_tail(self):
+        cfg = load_config(self.data_dir)
+        t = (cfg.get('library_tail') or '').strip()
+        if t:
+            return t
+        old = (cfg.get('path_tail') or '').strip()
+        if old and old.replace('/', '\\').split('\\')[-1] == PARTS_NAME:
+            return old[:-len(PARTS_NAME)].rstrip('\\/')
+        return ''
+
+    def set_library(self, folder, create=False):
+        """ライブラリフォルダを設定する。
+
+        **HTTPから任意のパスを受け取って呼ばない**(画面から送ったパスでサーバーに任意の
+        ファイルを読ませられるため)。画面からは、盛田さんがWindowsの窓で選んだフォルダか、
+        サーバー自身が探した候補だけを渡す(server.py の handle_parts_place)。
+
+        フォルダに parts_db.json が無いとき: create=True なら空の部品DBを作る。
+        False なら FileNotFoundError(画面で「作りますか？」と聞くため)。
+        **既にある parts_db.json には書かない**(中身を作り直すのは部品DB画面の「カタログ全件で作り直す」)。
+        """
+        folder = os.path.abspath(os.path.expanduser(folder))
+        if not os.path.isdir(folder):
+            raise FileNotFoundError(f'フォルダが見つかりません: {folder}')
+        p = os.path.join(folder, PARTS_NAME)
+        if os.path.isfile(p):
+            with open(p, encoding='utf-8') as f:
+                normalize(json.load(f))   # 読める形か確認(壊れたファイルを設定しない)
+        elif create:
+            _write_json(p, {'customParts': [], 'hiddenBuiltinRefs': []})
+        else:
+            raise FileNotFoundError(f'このフォルダには部品DB({PARTS_NAME})がありません: {folder}')
+        cfg = load_config(self.data_dir)
+        cfg.pop('path', None)
+        cfg.pop('path_tail', None)
+        cfg['library_dir'] = folder
+        # ドライブ文字が変わったときの手がかり。正は library_dir で、こちらは保険。
+        cfg['library_tail'] = path_tail(folder)
         save_config(cfg, self.data_dir)
-        return path
-
-    def create_new(self, path):
-        """空の部品DB(登録0件)を新しく作り、読み込み先に設定する(2026-10-02、画面の「新規作成」)。
-
-        **既にあるファイルには書かない**(今の部品DBを空で上書きする事故を防ぐ)。
-        アプリに最初から入っている部品は、部品DBが空でも今までどおり使える。
-        """
-        path = os.path.abspath(os.path.expanduser(path))
-        if os.path.exists(path):
-            raise FileExistsError(f'既にあるファイルには作りません(上書きしません): {path}')
-        d = os.path.dirname(path)
-        if d and not os.path.isdir(d):
-            raise FileNotFoundError(f'フォルダが見つかりません: {d}')
-        tmp = _tmp_name(path)
-        with open(tmp, 'w', encoding='utf-8') as f:
-            json.dump({'customParts': [], 'hiddenBuiltinRefs': []}, f, ensure_ascii=False, indent=2)
-        os.replace(tmp, path)
-        return self.set_path(path)
-
-    def resolve(self):
-        """(実ファイルのパス, 由来) を返す。見つからなければ (None, 理由)。
-
-        設定のパスが外れていたら、その場で探し直す(上の「自動復帰」参照)。
-        見つけたら設定も書き換えるので、次からは一発で読める。
-        """
-        p = self.configured_path()
-        if p and os.path.isfile(p):
-            self._remember_tail(p)
-            return p, 'path'
-        r = self._recover_by_tail()
-        if r:
-            return r, 'path_recovered'
-        r = self._recover_by_scan()
-        if r:
-            return r, 'path_found'
-        if p:
-            return None, 'path_missing'
-        m = mirror_path(self.data_dir)
-        if os.path.isfile(m):
-            return m, 'mirror'
-        return None, 'unset'
-
-    def _remember_tail(self, path):
-        """末尾パスを持っていない古い設定に、後から足す(次に外れたとき効くように)。"""
-        cfg = load_config(self.data_dir)
-        if cfg.get('path_tail'):
-            return
-        cfg['path_tail'] = path_tail(path)
-        try:
-            save_config(cfg, self.data_dir)
-        except Exception:
-            pass   # 書けなくても読み込みは続けられる
+        return folder
 
     def _recover_by_tail(self):
-        """ドライブ文字だけ変わった場合の復帰。実在するドライブに末尾を当てる。"""
-        tail = (load_config(self.data_dir).get('path_tail') or '').strip()
+        """ドライブ文字だけ変わった場合の付け替え。見つけたら設定も書き換える。"""
+        tail = self._configured_tail()
         if not tail:
             return None
         for root in drive_roots():
             cand = os.path.join(root, tail)
-            if os.path.isfile(cand):
+            if os.path.isfile(os.path.join(cand, PARTS_NAME)):
                 try:
-                    self.set_path(cand)
+                    self.set_library(cand)
                 except Exception:
                     pass
                 return cand
         return None
 
-    def _recover_by_scan(self):
-        """全走査での復帰。**1プロセスで1回だけ**(数十秒かかるため)。
+    def resolve(self):
+        """(parts_db.json のパス, 由来) を返す。見つからなければ (None, 理由)。
 
-        候補が1つに決まるときだけ自動で設定する。複数あるときは選び間違えると
-        古い部品DBに繋がってしまうので、**決めずに候補を残す**(画面に出して選ばせる)。
+        由来: path(設定どおり) / path_recovered(ドライブ文字を付け替えて見つけた)
+        理由: unset(未設定) / path_missing(設定のフォルダかファイルが無い)
         """
-        global _scan_done, _scan_found, _scan_backups
-        # 鍵の中で判定と実行をまとめて行う。判定だけ外に出すと、2つのスレッドが
-        # 同時に「まだ」と見てしまい、二重に走査する。
-        # 2つ目のスレッドはここで待たされるが、待った先では1つ目の結果を使える。
-        with _scan_lock:
-            if not _scan_done:
-                _scan_done = True
-                # 数十秒かかる。server.py 経由だとその間ページが待つので、
-                # 黒い窓に「今これをやっている」と出す(無言で固まるのが一番困る)。
-                print('部品DBが設定の場所に見つかりません。ディスクから探しています'
-                      '(数十秒かかることがあります)...', flush=True)
-                try:
-                    _scan_found, _scan_backups = find_candidates(SCAN_ROOTS)
-                except Exception as e:
-                    print(f'  探索に失敗しました: {e}', flush=True)
-                    _scan_found, _scan_backups = [], []
-                else:
-                    print(f'  候補 {len(_scan_found)}件', flush=True)
-        if len(_scan_found) == 1:
-            try:
-                return self.set_path(_scan_found[0][0])
-            except Exception:
-                return None
-        return None
+        d = self.configured_dir()
+        if not d:
+            return None, 'unset'
+        p = os.path.join(d, PARTS_NAME)
+        if os.path.isfile(p):
+            return p, 'path'
+        r = self._recover_by_tail()
+        if r:
+            return os.path.join(r, PARTS_NAME), 'path_recovered'
+        return None, 'path_missing'
 
-    @staticmethod
-    def scan_candidates():
-        """直近の全走査で見つかった候補(本体, バックアップ)。画面に出す用。"""
-        return _scan_found, _scan_backups
+    def missing_message(self):
+        d = self.configured_dir()
+        if os.path.isdir(d):
+            return (f'ライブラリフォルダに部品DB({PARTS_NAME})がありません: {d}。'
+                    '「部品DBの場所」の「フォルダを選ぶ」で選び直してください')
+        return (f'ライブラリフォルダが見つかりません: {d}。'
+                '同期ソフト(Googleドライブ等)やネットワークの準備がまだかもしれません。'
+                '準備ができたら「もう一度確かめる」を押すか、「フォルダを選ぶ」で選び直してください')
 
     # ---- 読み込み ------------------------------------------------------
     def load(self):
-        """{'ok':bool, 'parts':[...], 'hidden':[...], 'source':str, 'error':str}"""
+        """{'ok':bool, 'parts':[...], 'hidden':[...], 'source':str, 'error':str, 'version':str}"""
         path, source = self.resolve()
         if path is None:
-            base = {
-                'unset': '部品DBの場所が未設定です',
-                'path_missing': f'設定された部品DBが見つかりません: {self.configured_path()}',
-            }.get(source, '部品DBを読めません')
-            # 【2026-09-21】自動で探した結果をそのまま出す。
-            # 【2026-10-03】案内はコマンド(setpath/find)ではなく画面の「部品DBの場所」へ(2026-10-02〜)。
-            found, _bk = self.scan_candidates()
-            if len(found) > 1:
-                base += ('。自動で探したところ候補が%d個ありました: ' % len(found))
-                base += ' / '.join(f'{p}（{n}件）' for p, n, _m in found[:5])
-                base += '。「部品DBの場所」の「探す」から1つ選んでください'
-            elif _scan_done and not found:
-                base += ('。自動で探しましたが parts_db.json が見つかりませんでした。'
-                         '「部品DBの場所」の「新規作成」で作るか、「ファイルを選ぶ」で選んでください')
-            else:
-                base += '。「部品DBの場所」の「ファイルを選ぶ」「探す」「新規作成」で設定してください'
+            err = (self.missing_message() if source == 'path_missing' else
+                   '部品DBの場所(ライブラリフォルダ)が未設定です。'
+                   '「部品DBの場所」の「フォルダを選ぶ」「探す」で設定してください')
             return {'ok': False, 'parts': [], 'hidden': [], 'source': source,
-                    'error': base}
+                    'error': err, 'version': ''}
         try:
-            st = os.stat(path)
-            key = (path, st.st_mtime, st.st_size)
+            ver = file_version(path)
+            key = (path, ver)
             if self._cache_key != key:
                 with open(path, encoding='utf-8') as f:
                     self._cache = normalize(json.load(f))
                 self._cache_key = key
         except Exception as e:
-            # 読めなかったときに前回のキャッシュを返さない。
-            # 「壊れているのに古い内容で動き続ける」のは、今年ここで起きた
-            # 事故と同じ形(気づけないまま作業が進む)なので、はっきり失敗させる。
+            # 読めなかったときに前回のキャッシュを返さない(壊れているのに古い内容で動き続けない)
             self._cache = None
             self._cache_key = None
             return {'ok': False, 'parts': [], 'hidden': [], 'source': source,
-                    'error': f'部品DBを読めませんでした({path}): {e}'}
+                    'error': f'部品DBを読めませんでした({path}): {e}', 'version': ''}
         return {'ok': True, 'parts': self._cache['customParts'],
                 'hidden': self._cache['hiddenBuiltinRefs'],
-                'source': source, 'error': ''}
+                'source': source, 'error': '', 'version': ver}
 
-    # ---- 書き込み(CADの保存経路・2026-09-02) ---------------------------
-    #
-    # ここから書けるのは setpath で設定された parts_db.json だけ。
-    # 控え(mirror)には保存しない —— 控えは「CADが最後に保存した中身の写し」で
-    # あって原本ではなく、そこへ保存すると原本が更新されないまま
-    # 他ツールだけが新しい内容を見る、という一番分かりにくい形になる。
+    # ---- 書き込み(部品DB画面の保存経路) -------------------------------
     def writable_path(self):
         """保存先の parts_db.json。書けないときは (None, 理由)。"""
-        p = self.configured_path()
-        if not p:
-            return None, 'unset'
-        if not os.path.isfile(p):
-            return None, 'path_missing'
-        return p, 'path'
+        p, source = self.resolve()
+        return (p, source) if p else (None, source)
 
     def _count_on_disk(self, path):
         """今ファイルに入っている件数。読めなければ None(=比較しない)。"""
@@ -456,61 +328,67 @@ class PartsDB:
         except Exception:
             return None
 
-    def backup(self):
-        """現在のファイルの中身を、同じフォルダへ退避する。
+    def _backup_file(self, path):
+        """今の parts_db.json を <ライブラリ>/backup/ に世代として残し、古いものから消す。
 
-        parts_db_backup_YYYY-MM-DD_HHMM.json という名前は、CAD側(js/parts_db.js)が
-        FSAで書いていたものと同じ。find の「バックアップ」表示もこの名前で拾う。
-
-        中身は「今ディスクにあるもの」であって、これから書こうとしている内容では
-        ない。戻したいのは常に上書きされる前の方なので、必ずコピー元は原本にする。
+        中身は「今ディスクにあるもの」(これから書く内容ではない)。戻したいのは上書きされる前の方。
+        消すのは _BACKUP_RE に一致する自分の作った名前だけ。
         """
-        path, why = self.writable_path()
-        if path is None:
-            return {'ok': False, 'reason': why, 'name': '',
-                    'error': '部品DBの場所が未設定です'}
-        import datetime
-        base = 'parts_db_backup_' + datetime.datetime.now().strftime('%Y-%m-%d_%H%M')
-        folder = os.path.dirname(path)
-        # 名前は分までしか持たないので、同じ分に2回退避すると衝突する。
-        # 上書きすると「1回目の退避(=一番戻したい内容)」が消えるので、必ず別名にする。
-        # 作り直しの直前など、短い間に2回退避が走る流れが実際にある。
+        folder = os.path.join(os.path.dirname(path), BACKUP_DIR_NAME)
+        os.makedirs(folder, exist_ok=True)
+        base = 'parts_db_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
         name = base + '.json'
-        for i in range(2, 100):
+        for i in range(2, 100):   # 同じ秒に2回でも上書きしない
             if not os.path.exists(os.path.join(folder, name)):
                 break
             name = f'{base}_{i}.json'
         dst = os.path.join(folder, name)
+        with open(path, encoding='utf-8') as f:
+            body = f.read()
+        tmp = _tmp_name(dst)
+        with open(tmp, 'w', encoding='utf-8') as f:
+            f.write(body)
+        os.replace(tmp, dst)
+        olds = sorted(n for n in os.listdir(folder) if _BACKUP_RE.match(n))
+        for n in olds[:-BACKUP_KEEP] if len(olds) > BACKUP_KEEP else []:
+            try:
+                os.remove(os.path.join(folder, n))
+            except OSError:
+                pass   # 消せなくても保存は続ける
+        return name
+
+    def backup(self):
+        """破壊的な操作の前の退避(部品DB画面の「カタログ全件で作り直す」)。"""
+        path, why = self.writable_path()
+        if path is None:
+            return {'ok': False, 'reason': why, 'name': '',
+                    'error': '部品DBの場所が未設定か、見つかりません'}
         try:
-            with open(path, encoding='utf-8') as f:
-                body = f.read()
-            tmp = _tmp_name(dst)
-            with open(tmp, 'w', encoding='utf-8') as f:
-                f.write(body)
-            os.replace(tmp, dst)
+            name = self._backup_file(path)
         except Exception as e:
             return {'ok': False, 'reason': 'error', 'name': '', 'error': str(e)}
-        return {'ok': True, 'name': name, 'path': dst, 'error': ''}
+        return {'ok': True, 'name': f'{BACKUP_DIR_NAME}/{name}', 'error': ''}
 
-    def save(self, data, force=False):
-        """部品DBを保存する。**CADの保存経路。他ツールからは呼ばない。**
+    def save(self, data, force=False, base_version=None):
+        """部品DBを保存する。**部品DB画面の保存経路。他からは呼ばない。**
 
-        戻り値は必ず ok を含む dict。例外にしないのは、呼び出し側(server.py →
-        js/parts_db.js)が「保存できなかった」を画面に出さなければならないため。
-        2026-09-01の事故は、保存の失敗が誰にも届かなかったことで起きている。
-
-        force=False のときに件数が激減していたら、書かずに reason='drop' を返す。
-        判断材料は**今ファイルに入っている件数**で、ブラウザ側の記憶ではない。
+        戻り値は必ず ok を含む dict(例外にしない。保存できなかったことを画面に出すため)。
+          reason='conflict' … 読んだ後に別の画面・別のPCで保存されていた(書かない。force でも通さない)
+          reason='drop'     … 件数が激減(書かない。人が確かめて force=True で送り直したときだけ書く)
         """
         path, why = self.writable_path()
         if path is None:
             return {'ok': False, 'reason': why, 'count': 0, 'path': '',
-                    'error': {
-                        'unset': '部品DBの場所が未設定です'
-                                 '(「部品DBの場所」の「ファイルを選ぶ」「探す」「新規作成」で設定してください)',
-                        'path_missing': '設定された部品DBが見つかりません: '
-                                        + self.configured_path(),
-                    }.get(why, '部品DBに保存できません')}
+                    'error': (self.missing_message() if why == 'path_missing' else
+                              '部品DBの場所(ライブラリフォルダ)が未設定です'
+                              '(「部品DBの場所」の「フォルダを選ぶ」「探す」で設定してください)')}
+        cur = file_version(path)
+        if not base_version or base_version != cur:
+            return {'ok': False, 'reason': 'conflict', 'count': 0, 'path': path, 'version': cur,
+                    'error': ('部品DBが、読み込んだ後に別の画面か別のPCで保存されています。'
+                              '上書きしないよう保存を止めました。読み直してから、もう一度変更してください')
+                             if base_version else
+                             '画面が古い版です。部品DB画面を再読み込み(Ctrl+Shift+R)してください'}
         try:
             info = normalize(data)
         except Exception as e:
@@ -518,121 +396,40 @@ class PartsDB:
                     'error': f'保存する中身の形が違います: {e}'}
         now = len(info['customParts'])
         prev = self._count_on_disk(path)
-        dropping = is_suspicious_drop(prev, now)
-        if dropping and not force:
+        if is_suspicious_drop(prev, now) and not force:
             return {'ok': False, 'reason': 'drop', 'prev': prev, 'now': now,
                     'count': prev or 0, 'path': path,
                     'error': f'部品DBの件数が {prev} 件から {now} 件に減っています'}
-        backup = ''
-        if dropping:
-            # 人が「それでも書く」と答えた激減。戻せるようにしてから書く。
-            backup = self.backup().get('name', '')
         try:
-            # 書きかけのJSONが parts_db.json として残らないよう、別名に書いてから
-            # 置き換える。FSAのcreateWritableは開いた瞬間に中身を捨てるので、
-            # 途中で落ちるとファイルが空になった —— それが起きない形にする。
-            text = json.dumps(info, ensure_ascii=False, indent=2)
-            tmp = _tmp_name(path)
-            with open(tmp, 'w', encoding='utf-8') as f:
-                f.write(text)
-                f.flush()
-                os.fsync(f.fileno())   # 電源断で空のファイルが本体にならないよう、置換の前に書き切る
-            os.replace(tmp, path)
+            backup = self._backup_file(path)
+        except Exception as e:
+            return {'ok': False, 'reason': 'error', 'count': 0, 'path': path,
+                    'error': f'保存の前のバックアップを書けなかったので、保存を止めました({e})'}
+        try:
+            _write_json(path, info)
         except Exception as e:
             return {'ok': False, 'reason': 'error', 'count': 0, 'path': path,
                     'error': f'部品DBを保存できませんでした({path}): {e}'}
         self._cache = None
         self._cache_key = None
-        # 控えも合わせて更新する。失敗しても保存は成功のまま返す ——
-        # 控えが古いことと部品DBが保存できていないことは別の話で、
-        # ここを混ぜると「正常なのに保存失敗の赤い帯が出る」ようになる。
-        mirror_error = ''
-        try:
-            write_mirror(text, self.data_dir)
-        except Exception as e:
-            mirror_error = str(e)
-        return {'ok': True, 'count': now, 'path': path, 'backup': backup,
-                'mirror_error': mirror_error, 'error': ''}
-
-    # ---- 公開API -------------------------------------------------------
-    @staticmethod
-    def _public(p):
-        row = {k: p.get(k, '') for k in PUBLIC_FIELDS}
-        row['has_outline'] = bool(p.get('outlineDxf'))
-        return row
+        return {'ok': True, 'count': now, 'path': path, 'version': file_version(path),
+                'backup': f'{BACKUP_DIR_NAME}/{backup}', 'error': ''}
 
     def stats(self):
         d = self.load()
         path, _ = self.resolve()
-        # writable は「このライブラリから保存できるか」。
-        # 場所を設定済みで実在するときだけ真になり、控え(mirror)しか
-        # 無いときは偽。部品DB単独画面(parts_page.js)はこれが偽だと保存しない。
-        wpath, _ = self.writable_path()
         s = {'ok': d['ok'], 'count': len(d['parts']), 'source': d['source'],
-             'path': path or '', 'error': d['error'],
-             'writable': wpath is not None}
+             'path': path or '', 'library_dir': self.configured_dir(),
+             'error': d['error'], 'writable': path is not None}
         if d['ok']:
-            s['makers'] = sorted({(p.get('maker') or '') for p in d['parts']} - {''})
-            s['types'] = sorted({(p.get('type') or '') for p in d['parts']} - {''})
             s['outline_count'] = sum(1 for p in d['parts'] if p.get('outlineDxf'))
         return s
 
-    def search(self, q='', maker='', type_='', limit=100):
-        """型番・メーカー・備考等の部分一致(大文字小文字を区別しない)。
-
-        件数が数千なので、SQLiteを作らず素直に総当たりする。
-        カタログDB(数万件)と違い、構築の手間とズレの原因を増やす価値が無い。
-        """
-        d = self.load()
-        if not d['ok']:
-            return []
-        q = (q or '').strip().lower()
-        maker = (maker or '').strip().lower()
-        type_ = (type_ or '').strip().lower()
-        out = []
-        for p in d['parts']:
-            if maker and maker not in (p.get('maker') or '').lower():
-                continue
-            if type_ and type_ != (p.get('type') or '').lower():
-                continue
-            if q and not any(q in str(p.get(f) or '').lower() for f in SEARCH_FIELDS):
-                continue
-            out.append(self._public(p))
-            if limit and len(out) >= limit:
-                break
-        return out
-
-    def get(self, ref):
-        """型番の完全一致で1件。無ければ None。"""
-        d = self.load()
-        ref = (ref or '').strip()
-        for p in d['parts']:
-            if (p.get('ref') or '') == ref:
-                return self._public(p)
-        return None
-
-    def outline(self, ref):
-        """外形図DXFの中身。無ければ None。
-
-        本文が大きいので search/get には含めず、明示的に取りに来たときだけ返す。
-        """
-        d = self.load()
-        ref = (ref or '').strip()
-        for p in d['parts']:
-            if (p.get('ref') or '') == ref:
-                return p.get('outlineDxf') or None
-        return None
-
 
 def find_candidates(roots=None, max_depth=6):
-    """parts_db.json をディスクから探す。
+    """parts_db.json をディスクから探す。画面の「探す」とコマンド find が使う(自動では走らせない)。
 
-    以前は部品DBの場所をブラウザしか知らなかった(File System Access API は絶対パスを
-    JSに渡さない)ので、こちらで探す仕組みを作った。今は画面の「探す」(server.py の
-    /api/parts/find)とコマンド `find`、場所が外れたときの自動復帰が使う。
-
-    バックアップ(parts_db_backup_*.json)も拾う —— 本体が見つからないときの
-    手がかりになるため。ただし本体と区別して返す。
+    戻り値: [(parts_db.jsonのパス, 件数(読めなければ-1), 更新日時), ...] 件数の多い順。
     """
     if roots is None:
         roots = []
@@ -640,8 +437,7 @@ def find_candidates(roots=None, max_depth=6):
         if os.path.isdir(home):
             roots.append(home)
         if os.name == 'nt':
-            # Drive for Desktop は G: や I: に来ることが多い(環境で変わる)。
-            # 実在するドライブだけを見る。
+            # 同期ソフト(Drive for Desktop等)は G: や I: に来ることが多い(環境で変わる)
             for d in 'DEFGHIJKLMNOPQRSTUVWXYZ':
                 if os.path.isdir(f'{d}:\\'):
                     roots.append(f'{d}:\\')
@@ -649,8 +445,8 @@ def find_candidates(roots=None, max_depth=6):
     # 入って意味が無い場所。ここを刈らないと何分もかかる。
     SKIP = {'node_modules', '.git', '__pycache__', 'AppData', 'Windows',
             'Program Files', 'Program Files (x86)', '$Recycle.Bin',
-            'System Volume Information', '.cache', 'venv', '.venv'}
-    found, backups, seen = [], [], set()
+            'System Volume Information', '.cache', 'venv', '.venv', BACKUP_DIR_NAME}
+    found, seen = [], set()
     for root in roots:
         root = os.path.abspath(root)
         base_depth = root.rstrip(os.sep).count(os.sep)
@@ -659,27 +455,21 @@ def find_candidates(roots=None, max_depth=6):
                 dirnames[:] = []
                 continue
             dirnames[:] = [d for d in dirnames if d not in SKIP and not d.startswith('.')]
-            for fn in filenames:
-                if fn == 'parts_db.json':
-                    target = found
-                elif fn.startswith('parts_db_backup_') and fn.endswith('.json'):
-                    target = backups
-                else:
-                    continue
-                full = os.path.join(dirpath, fn)
-                if full in seen:
-                    continue
-                seen.add(full)
-                try:
-                    info = normalize(json.load(open(full, encoding='utf-8')))
-                    target.append((full, len(info['customParts']),
-                                   os.path.getmtime(full)))
-                except Exception:
-                    target.append((full, -1, os.path.getmtime(full)))
+            if PARTS_NAME not in filenames:
+                continue
+            full = os.path.join(dirpath, PARTS_NAME)
+            if full in seen:
+                continue
+            seen.add(full)
+            try:
+                with open(full, encoding='utf-8') as f:
+                    n = len(normalize(json.load(f))['customParts'])
+            except Exception:
+                n = -1
+            found.append((full, n, os.path.getmtime(full)))
     # 件数が多い順。中身が空のファイルを先頭に出すと選び間違えるため。
     found.sort(key=lambda t: -t[1])
-    backups.sort(key=lambda t: -t[2])
-    return found, backups
+    return found
 
 
 # ----------------------------------------------------------------------------
@@ -688,34 +478,24 @@ def find_candidates(roots=None, max_depth=6):
 def main(argv):
     cmd = argv[1] if len(argv) > 1 else 'stats'
     db = PartsDB()
-    if cmd == 'setpath':
+    if cmd == 'setlib':
         if len(argv) < 3:
-            print('使い方: py parts_db.py setpath <parts_db.jsonのパス>', file=sys.stderr)
+            print('使い方: py parts_db.py setlib <ライブラリフォルダ>', file=sys.stderr)
             return 2
-        print('設定しました:', db.set_path(argv[2]))
+        print('設定しました:', db.set_library(argv[2]))
     elif cmd == 'find':
-        import datetime
-        print('parts_db.json を探しています(数十秒かかることがあります)...',
-              flush=True)
-        found, backups = find_candidates()
-        if not found and not backups:
-            print('見つかりませんでした。', file=sys.stderr)
-            print('  部品DB画面(部品DBを開く.bat)の「部品DBの場所」→「新規作成」で作れます。',
-                  file=sys.stderr)
+        print('parts_db.json を探しています(数十秒かかることがあります)...', flush=True)
+        found = find_candidates()
+        if not found:
+            print('見つかりませんでした。部品DB画面(部品DBを開く.bat)の「部品DBの場所」→'
+                  '「フォルダを選ぶ」で、空のフォルダを選ぶと作れます。', file=sys.stderr)
             return 1
-        def show(rows, label):
-            if not rows:
-                return
-            print(f'\n{label}:')
-            for path, count, mtime in rows:
-                t = datetime.datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M')
-                n = f'{count}件' if count >= 0 else '(読めません)'
-                print(f'  {n:>10}  {t}  {path}')
-        show(found, '部品DB本体')
-        show(backups, 'バックアップ(参考。setpathには使わない)')
-        if found:
-            print(f'\n件数が一番多いものを設定するなら:')
-            print(f'  py parts_db.py setpath "{found[0][0]}"')
+        for path, count, mtime in found:
+            t = datetime.datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M')
+            n = f'{count}件' if count >= 0 else '(読めません)'
+            print(f'  {n:>10}  {t}  {os.path.dirname(path)}')
+        print(f'\n件数が一番多いものを設定するなら:')
+        print(f'  py parts_db.py setlib "{os.path.dirname(found[0][0])}"')
     elif cmd == 'path':
         p, src = db.resolve()
         print(f'{p or "(未設定)"}  [{src}]')
@@ -724,17 +504,8 @@ def main(argv):
         if not s['ok']:
             print('エラー:', s['error'], file=sys.stderr)
             return 1
-        print(f"{s['count']}件  外形図{s['outline_count']}件  "
-              f"メーカー{len(s['makers'])}社  種別{len(s['types'])}種")
+        print(f"{s['count']}件  外形図{s['outline_count']}件")
         print(f"読み元: {s['path']}  [{s['source']}]")
-    elif cmd == 'search':
-        rows = db.search(argv[2] if len(argv) > 2 else '')
-        for r in rows:
-            print(f"{r['ref']}\t{r['maker']}\t{r['type']}\t{r['note']}")
-        print(f'-- {len(rows)}件', file=sys.stderr)
-    elif cmd == 'get':
-        print(json.dumps(db.get(argv[2] if len(argv) > 2 else ''),
-                         ensure_ascii=False, indent=2))
     else:
         print(__doc__)
         return 2

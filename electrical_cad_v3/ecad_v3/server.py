@@ -129,8 +129,8 @@ except Exception as _e:  # ImportError/構文エラー等、何が起きてもCA
 # ブラウザの許可が下りずに保存できない、という9-01の事故の根本を無くすため。
 # 【2026-09-03】CADは読むだけになり、書くのは部品DB画面(parts.html)だけ。
 # ブラウザ側で書く経路(File System Access API)は廃止した。
-# 保存のたびに控えを %LOCALAPPDATA%\ecad\parts_db_mirror.json へ写す(parts_db.save の中)。
-# 【2026-10-03】CADから控えを受け取る口(/api/parts/mirror)は、呼ぶ側が無くなっていたので消した。
+# 【2026-10-03】部品DBはライブラリフォルダに置く形にした。控え(mirror)・起動時の全走査・
+# 他ソフト向けの口はやめた(HANDOFF.md「ライブラリの置き場所の再設計」段階1)。
 # 詳しくは tools/parts_db/parts_db.py の冒頭を参照。
 # ----------------------------------------------------------------------------
 parts_db = None
@@ -224,7 +224,7 @@ class Handler(SimpleHTTPRequestHandler):
         if parsed.path == '/api/parts/backup':
             self.handle_parts_backup()
             return
-        if parsed.path in ('/api/parts/pick', '/api/parts/new', '/api/parts/find', '/api/parts/use'):
+        if parsed.path in ('/api/parts/pick', '/api/parts/create', '/api/parts/find', '/api/parts/use'):
             self.handle_parts_place(parsed.path[len('/api/parts/'):])
             return
         if parsed.path == '/api/backup/save':
@@ -319,58 +319,51 @@ class Handler(SimpleHTTPRequestHandler):
         except Exception as e:
             self._send_json({'ok': False, 'available': True, 'error': str(e)})
 
-    # ---- 部品DBの外部公開(任意機能) ---------------------------------------
+    # ---- 部品DB(読み取り) ------------------------------------------------
     def handle_parts(self, action, q):
         """部品DBの読み取りAPI(GET)。保存は do_POST 側にある。
 
-        stats/search/get は他ソフトからも使う形(parts_db_server.py と同じ)。
-        all はCAD専用で、外形図DXFまで含めた中身をそのまま返す
-        —— CADは部品DBを全件メモリに持つので、間引かれた形では起動できない。
+        all は外形図DXFまで含めた中身をそのまま返す(CADは部品DBを全件メモリに持つので、
+        間引かれた形では起動できない)。version は部品DB画面が保存のときに送り返す版
+        (読んだ後に他で保存されていないかの確認)。
+        【2026-10-03】他ソフト向けの search/get と parts_db_server.py は、使っていないので消した。
         """
         if parts_db is None:
             self._send_json({'ok': False, 'available': False,
-                             'error': '部品DBの外部公開機能が導入されていません'})
+                             'error': '部品DBの機能(tools/parts_db)が導入されていません'})
             return
         try:
             db = parts_db.PartsDB()
             if action == 'stats':
                 self._send_json({'available': True, **db.stats()})
-            elif action == 'search':
-                rows = db.search(q.get('q', ''), q.get('maker', ''),
-                                 q.get('type', ''), int(q.get('limit', 100)))
-                st = db.stats()
-                self._send_json({'ok': st['ok'], 'available': True, 'results': rows,
-                                 'count': len(rows), 'error': st['error']})
-            elif action == 'get':
-                row = db.get(q.get('ref', ''))
-                self._send_json({'ok': True, 'available': True, 'result': row,
-                                 'found': row is not None})
             elif action == 'all':
-                # CADの起動時読み込み用。search/get と違い outlineDxf も含めた
-                # 生の中身を返す(間引くとCADが外形図を失う)。
                 d = db.load()
                 self._send_json({'ok': d['ok'], 'available': True,
                                  'customParts': d['parts'],
                                  'hiddenBuiltinRefs': d['hidden'],
-                                 'source': d['source'], 'error': d['error']})
+                                 'source': d['source'], 'error': d['error'],
+                                 'version': d['version']})
             else:
                 self._send_json({'ok': False, 'available': True,
                                  'error': 'unknown action'}, 404)
         except Exception as e:
             self._send_json({'ok': False, 'available': True, 'error': str(e)})
 
-    # ---- 部品DBの場所を画面から設定する(2026-10-02、盛田さん「parts_db.jsonの場所を設定できるようにしないといかんな」) ----
-    # 以前は `py tools\parts_db\parts_db.py setpath ...` のコマンドだけだった。
-    #   pick: Windowsの「ファイルを開く」窓(このPCのサーバーが出す)で parts_db.json を選ぶ
-    #   new : Windowsの「名前を付けて保存」窓で置き場所を選び、空の部品DBを作って設定する(既にあるファイルには作らない)
-    #   find: ディスクから parts_db.json を探して候補を返す(数十秒かかることがある)
-    #   use : find で返した候補の番号を選んで設定する
-    # **画面から送られたパスは使わない**(set_path の説明)。パスは窓で人が選んだものか、サーバー自身が探した候補だけ。
+    # ---- 部品DBの場所(ライブラリフォルダ)を画面から設定する ----------------------
+    # 2026-10-02 に画面から設定できるようにし(以前はコマンドだけ)、2026-10-03 にファイルではなく
+    # **ライブラリフォルダ**を選ぶ形に変えた(HANDOFF.md「ライブラリの置き場所の再設計」段階1)。
+    #   pick  : Windowsの「フォルダの選択」窓(このPCのサーバーが出す)でフォルダを選ぶ。
+    #           parts_db.json があればそれを使う。無ければ need_create を返し、画面が「作りますか？」と聞く
+    #   create: pick で選んだフォルダ(サーバーが覚えている)に空の部品DBを作って使う
+    #   find  : ディスクから parts_db.json を探して候補を返す(押したときだけ。数十秒かかることがある)
+    #   use   : find で返した候補の番号を選んで、そのフォルダを使う
+    # **画面から送られたパスは使わない**(set_library の説明)。パスは窓で人が選んだものか、サーバー自身が探した候補だけ。
     # さらにこのPC自身(127.0.0.1)からの要求だけ受ける(LANに広げた ECAD_HOST のときに、他のPCから場所を変えられないように)。
     _place_lock = threading.Lock()
     _place_found = []
+    _place_pending = ''
 
-    def _tk_dialog(self, save, initial):
+    def _tk_pick_folder(self, initial):
         import tkinter as tk
         from tkinter import filedialog
         root = tk.Tk()
@@ -380,13 +373,10 @@ class Handler(SimpleHTTPRequestHandler):
         except Exception:
             pass
         try:
-            kw = {'parent': root, 'filetypes': [('部品DB', '*.json'), ('すべて', '*.*')]}
+            kw = {'parent': root, 'title': '部品DBを置くフォルダ(ライブラリフォルダ)を選ぶ', 'mustexist': True}
             if initial and os.path.isdir(initial):
                 kw['initialdir'] = initial
-            if save:
-                return filedialog.asksaveasfilename(title='新しい部品DBの置き場所', defaultextension='.json',
-                                                    initialfile='parts_db.json', confirmoverwrite=False, **kw) or ''
-            return filedialog.askopenfilename(title='部品DB(parts_db.json)を選ぶ', **kw) or ''
+            return filedialog.askdirectory(**kw) or ''
         finally:
             root.destroy()
 
@@ -404,35 +394,47 @@ class Handler(SimpleHTTPRequestHandler):
             body = {}
         db = parts_db.PartsDB()
         try:
-            if action in ('pick', 'new'):
-                cur = db.configured_path()
+            if action == 'pick':
                 with Handler._place_lock:   # 窓は1つずつ
                     try:
-                        path = self._tk_dialog(action == 'new', os.path.dirname(cur) if cur else '')
+                        folder = self._tk_pick_folder(db.configured_dir())
                     except Exception as e:
-                        self._send_json({'ok': False, 'error': f'ファイルを選ぶ窓を出せませんでした({e})'})
+                        self._send_json({'ok': False, 'error': f'フォルダを選ぶ窓を出せませんでした({e})'})
                         return
-                if not path:
+                if not folder:
                     self._send_json({'ok': False, 'cancelled': True})
                     return
-                path = db.create_new(path) if action == 'new' else db.set_path(path)
+                folder = os.path.abspath(folder)
+                if not os.path.isfile(os.path.join(folder, parts_db.PARTS_NAME)):
+                    Handler._place_pending = folder
+                    self._send_json({'ok': False, 'need_create': True, 'folder': folder})
+                    return
+                folder = db.set_library(folder)
+            elif action == 'create':
+                folder = Handler._place_pending
+                if not folder:
+                    self._send_json({'ok': False, 'error': '「フォルダを選ぶ」からやり直してください'})
+                    return
+                Handler._place_pending = ''
+                folder = db.set_library(folder, create=True)
             elif action == 'find':
-                found, _backups = parts_db.find_candidates(parts_db.SCAN_ROOTS)
-                Handler._place_found = [f[0] for f in found]
+                found = parts_db.find_candidates(parts_db.SCAN_ROOTS)
+                Handler._place_found = [os.path.dirname(f[0]) for f in found]
                 self._send_json({'ok': True, 'candidates': [
-                    {'i': i, 'path': f[0], 'count': f[1], 'mtime': f[2]} for i, f in enumerate(found)]})
+                    {'i': i, 'path': os.path.dirname(f[0]), 'count': f[1], 'mtime': f[2]}
+                    for i, f in enumerate(found)]})
                 return
             elif action == 'use':
                 i = int(body.get('i', -1))
                 if not (0 <= i < len(Handler._place_found)):
                     self._send_json({'ok': False, 'error': '候補が古くなっています。「探す」からやり直してください'})
                     return
-                path = db.set_path(Handler._place_found[i])
+                folder = db.set_library(Handler._place_found[i])
             else:
                 self.send_error(404)
                 return
             st = db.stats()
-            self._send_json({'ok': True, 'path': path, 'count': st.get('count', 0)})
+            self._send_json({'ok': True, 'path': folder, 'count': st.get('count', 0)})
         except Exception as e:
             self._send_json({'ok': False, 'error': str(e)})
 
@@ -456,7 +458,7 @@ class Handler(SimpleHTTPRequestHandler):
                 return
             payload = json.loads(self.rfile.read(n).decode('utf-8'))
             force = bool(payload.get('force'))
-            res = parts_db.PartsDB().save(payload, force=force)
+            res = parts_db.PartsDB().save(payload, force=force, base_version=payload.get('version'))
             self._send_json({'available': True, **res})
         except Exception as e:
             self._send_json({'ok': False, 'available': True, 'error': str(e)})
@@ -658,7 +660,7 @@ def main():
         # 【同時に入れた対策・外さないこと】スレッド化すると書き込みが同時に
         # 走りうる。固定名の `xxx.tmp` に書いていた6箇所を、書き手ごとに別名に
         # した(tools/*/_tmp_name)。混ざった中身が os.replace で本体になるのを
-        # 防ぐため。parts_db.py の全走査の共有変数にも鍵をかけてある。
+        # 防ぐため。(parts_db.py の全走査の共有変数の鍵は、2026-10-03に全走査ごとやめた)
         # ----------------------------------------------------------------
         ThreadingHTTPServer.request_queue_size = 128   # 既定5では起動時の一斉接続で溢れる
         ThreadingHTTPServer.daemon_threads = True      # Ctrl+Cで残らないように

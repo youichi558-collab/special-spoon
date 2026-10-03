@@ -14,6 +14,8 @@
 
 let saveLocked = false;
 let serverPath = '';
+// 読み込んだ時点の部品DBの版(中身のハッシュ)。保存のときに送り、サーバーが「その後に他で保存されていないか」を見る(2026-10-03)
+let loadedVersion = '';
 let editingRef = null;   // 編集中のカスタム部品のref(nullは新規)
 let _pendingOutlineDxf = null;
 
@@ -58,11 +60,10 @@ async function loadAll() {
     // 「未設定です」と表示すると「一度も設定していない」ように読めて紛らわしい。
     // parts_db.py はこの2つを source で区別して返しているので、そのまま使う。
     if (stats.source === 'path_missing') {
-      setStatus(`${stats.error}\n`
-        + 'ドライブの文字が変わっていないか確認し、上の「部品DBの場所」の「ファイルを選ぶ」か「探す」で選び直してください', true);
+      setStatus(stats.error, true);   // サーバーの文言に「もう一度確かめる」「フォルダを選ぶ」の案内まで入っている
     } else {
-      setStatus('部品DBの場所が未設定です。'
-        + '上の「部品DBの場所」の「ファイルを選ぶ」「探す」「新規作成」で設定してください', true);
+      setStatus('部品DBの場所(ライブラリフォルダ)が未設定です。'
+        + '上の「部品DBの場所」の「フォルダを選ぶ」「探す」で設定してください(部品DBが無いフォルダを選ぶと、空の部品DBを作れます)', true);
     }
     saveLocked = true;
     return;
@@ -77,6 +78,7 @@ async function loadAll() {
   state.customParts = all.customParts || [];
   state.hiddenBuiltinRefs = all.hiddenBuiltinRefs || [];
   serverPath = stats.path || '';
+  loadedVersion = all.version || '';
   saveLocked = false;
   setStatus(`部品DB: ${serverPath.split(/[\\/]/).pop()} (${state.customParts.length}件・サーバー経由)`);
   renderAll();
@@ -95,7 +97,7 @@ async function saveAll(force) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ customParts: state.customParts,
                              hiddenBuiltinRefs: state.hiddenBuiltinRefs,
-                             force: !!force }),
+                             force: !!force, version: loadedVersion }),
     });
     j = await res.json();
   } catch (e) {
@@ -112,15 +114,22 @@ async function saveAll(force) {
     if (!ok) { setStatus(`件数が ${j.prev} → ${j.now} に減ったため保存しませんでした`, true); return false; }
     return await saveAll(true);
   }
+  if (!j.ok && j.reason === 'conflict') {
+    // 読んだ後に別の画面・別のPCで保存されていた。上書きせずに止め、読み直してもらう(2026-10-03)
+    setBanner(`⚠ ${j.error}（部品DB画面を再読み込みすると、最新の内容を読み直します）`);
+    saveLocked = true;
+    return false;
+  }
   if (!j.ok) {
     setBanner(`⚠ 保存できませんでした(${j.error || '原因不明'})。ファイルの中身は無傷です`);
     saveLocked = true;
     return false;
   }
+  loadedVersion = j.version || loadedVersion;
   setBanner('');
   setStatus(`部品DB: ${(j.path || serverPath).split(/[\\/]/).pop()} `
     + `(${state.customParts.length}件・保存済み)`
-    + (j.backup ? `／直前の内容を ${j.backup} に退避しました` : ''));
+    + (j.backup ? `／直前の内容は ${j.backup} に残っています` : ''));
   return true;
 }
 
@@ -482,7 +491,7 @@ async function catalogResetPartsDb() {
   // 以前は「バックアップを書き出します」と確認したうえで最後の保存で失敗し、画面だけ入れ替わっていた
   // (盛田さん「parts_db.json が無い状態で作り直すは効かない」)。
   if (!serverPath) {   // loadAll が書ける部品DBを読めたときだけ入る
-    setStatus('部品DBの場所が未設定のため作り直せません。上の「部品DBの場所」で「新規作成」するか「ファイルを選ぶ」で設定してから、もう一度押してください', true);
+    setStatus('部品DBの場所が未設定のため作り直せません。上の「部品DBの場所」の「フォルダを選ぶ」で設定してから(部品DBが無いフォルダなら作れます)、もう一度押してください', true);
     return;
   }
   try {
