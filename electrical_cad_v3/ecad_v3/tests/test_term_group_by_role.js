@@ -105,6 +105,12 @@ console.log('  ← 総合カタログp.203 表6-3: 11=共通/12=b接点/14=a接�
   ok(pick('contact_a') === '11,14', '★a接点のシンボル → 11,14');
   ok(pick('contact_b') === '11,12', '★b接点のシンボル → 11,12');
   ok(pick('contact_main') === '1,3,5,2,4,6', '主接点のシンボル → 主接点');
+  // 警報スイッチ(AL)も足した: a接点のシンボルでは AX と AL の a接点の2つが当たる(選択パネルで選ぶ)
+  const g5 = parseTerminalGroups('主接点:1,3,5,2,4,6 / 補助(a接点):11,14 / 補助(b接点):11,12 / 警報(a接点):95,98 / 警報(b接点):95,96');
+  const names = r => matchGroupsByRole(g5, r).map(g => g.list.join(',')).join(' | ');
+  ok(names('contact_a') === '11,14 | 95,98', '★a接点 → AX(11,14) と AL(95,98) の2つ(選択パネルで選ぶ)');
+  ok(names('contact_b') === '11,12 | 95,96', '★b接点 → AX(11,12) と AL(95,96) の2つ');
+  ok(names('contact_main') === '1,3,5,2,4,6', '主接点には警報を混ぜない');
   // 既存の「補助:13,14」(a/bの区別なし)は今まで通り両方に当たる
   ok(pickGroupByRole(groups, 'contact_b').list.join(',') === '13,14', '区別の無い「補助」は今まで通り');
 }

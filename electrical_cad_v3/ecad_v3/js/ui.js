@@ -823,8 +823,9 @@ function symTermRole(el) {
 const TERM_GROUP_PATTERNS = {
   coil:         [/コイル/, /操作/],
   contact_main: [/主接点/, /主回路/, /^\s*主/],
-  contact_a:    [/補助/i, /^aux/i],
-  contact_b:    [/補助/i, /^aux/i],
+  // 【2026-10-03】三菱ブレーカの警報スイッチ(AL)も接点(「警報(a接点)」等)。AXと両方当たるので選択パネルで選ぶ
+  contact_a:    [/補助/i, /^aux/i, /警報/],
+  contact_b:    [/補助/i, /^aux/i, /警報/],
 };
 
 // 上のパターンに当たってしまうが、その種別ではないもの。
