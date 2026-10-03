@@ -16,19 +16,25 @@ function pdbPlaceRender(boxId, onChanged) {
   box._onChanged = onChanged || box._onChanged;
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const btn = (act, label, title) => `<button class="fp-btn" style="font-size:11px;padding:2px 8px" onclick="pdbPlaceAct('${boxId}','${act}')" title="${esc(title)}">${label}</button>`;
-  const draw = (stText, color, extra) => {
-    box.innerHTML = `<div style="font-size:11px;line-height:1.5"><span style="color:var(--fg3)">部品DBの場所:</span> <span style="${color ? 'color:' + color + ';' : ''}font-family:monospace;word-break:break-all">${stText}</span></div>`
-      + `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">`
+  // 【2026-10-03】1段に並べる(場所・ボタン3つ)。CADのリボンは中身を全部同じ高さ(--rb-h)に揃える決まりで
+  // (css/style.css の .rg-btns>*)、3段(場所/ボタン/空のメッセージ欄)にしたら設定タブだけリボンが伸びて
+  // 図面が下にずれた(盛田さん「設定リボンがおかしくなってるな」)。長いパスは省略して、マウスを当てると全部出す。
+  // メッセージ欄は中身があるときだけ出す(探すの候補一覧のときだけ一時的に伸びる)。
+  box.style.display = 'flex'; box.style.flexDirection = 'row'; box.style.flexWrap = 'wrap';
+  box.style.alignItems = 'center'; box.style.gap = '4px';
+  const draw = (stText, color, title) => {
+    box.innerHTML = `<div style="font-size:11px;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:${'var(--rb-h,23px)'}" title="${esc(title || '')}"><span style="color:var(--fg3)">部品DBの場所:</span> <span style="${color ? 'color:' + color + ';' : ''}font-family:monospace">${stText}</span></div>`
       + btn('pick', 'ファイルを選ぶ', 'このPCの「ファイルを開く」窓で parts_db.json を選びます(窓がブラウザの裏に出たら、タスクバーから前に出してください)')
       + btn('find', '探す', 'ディスクから parts_db.json を探して候補を並べます(数十秒かかることがあります)')
       + btn('new', '新規作成', '「名前を付けて保存」窓で置き場所を選び、空の部品DB(登録0件)を作ります。既にあるファイルには作りません(上書きしません)')
-      + `</div><div class="pdb-place-msg" style="font-size:11px;margin-top:3px">${extra || ''}</div>`;
+      + `<div class="pdb-place-msg" style="display:none;flex-basis:100%;height:auto;white-space:normal;font-size:11px"></div>`;
+    if (!title) box.firstElementChild.title = box.firstElementChild.textContent;   // 省略された文も、マウスを当てれば全部読める
     if (typeof syncRibbonHeight === 'function') syncRibbonHeight();
   };
   draw('確認中…');
   fetch('/api/parts/stats').then(r => r.json()).then(st => {
     if (!st || !st.available) { draw('部品DBの機能が導入されていません', 'var(--red)'); return; }
-    if (st.source === 'path' || st.source === 'path_recovered' || st.source === 'path_found') draw(`${esc(st.path)}（${st.count}件）`);
+    if (st.source === 'path' || st.source === 'path_recovered' || st.source === 'path_found') draw(`${esc(st.path)}（${st.count}件）`, '', `${st.path}（${st.count}件）`);
     else if (st.source === 'path_missing') draw(`設定の場所に見つかりません（${esc(st.error || '')}）`, 'var(--red)');
     else if (st.source === 'mirror') draw(`未設定（前回の控えを読んでいます・${st.count}件。書き込みはできません）`, 'var(--org,#c77b00)');
     else draw('未設定', 'var(--red)');
@@ -37,7 +43,7 @@ function pdbPlaceRender(boxId, onChanged) {
 
 async function pdbPlaceAct(boxId, act, arg) {
   const box = document.getElementById(boxId);
-  const msg = t => { const m = box && box.querySelector('.pdb-place-msg'); if (m) m.innerHTML = t; };
+  const msg = t => { const m = box && box.querySelector('.pdb-place-msg'); if (m) { m.innerHTML = t; m.style.display = t ? '' : 'none'; } if (typeof syncRibbonHeight === 'function') syncRibbonHeight(); };
   const post = (path, body) => fetch('/api/parts/' + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) }).then(r => r.json());
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   try {
