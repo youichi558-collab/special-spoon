@@ -620,6 +620,54 @@ const symLib = (() => {
     t._tm = setTimeout(() => { t.style.opacity = '0'; }, 1800);
   }
 
+  // 図記号の端子 = 外枠の辺にある線の開いた端(図記号の内側の線の端=接点の可動部などは含めない)。端子がグリッドに乗るよう平行移動した図形と端子を返す。
+  // dir: JIS のファイル名の末尾 'V'=縦(端子は上下の辺) / 'H'=横(端子は左右の辺)。分からなければ、向かい合う2辺の両方に線の端がある方
+  function libAlignToGrid(shapes, dir){
+    const E=0.75, G=state.G||10;
+    const cand=(typeof peCollectCandidatePoints==='function')?peCollectCandidatePoints(shapes):[];
+    let mnX=Infinity,mnY=Infinity,mxX=-Infinity,mxY=-Infinity;
+    shapes.forEach(s=>{
+      const pts=s.t==='L'?[[s.x1,s.y1],[s.x2,s.y2]]:s.t==='P'?(s.pts||[]):s.t==='C'||s.t==='A'?[[s.cx-s.r,s.cy-s.r],[s.cx+s.r,s.cy+s.r]]:[];
+      pts.forEach(([x,y])=>{mnX=Math.min(mnX,x);mxX=Math.max(mxX,x);mnY=Math.min(mnY,y);mxY=Math.max(mxY,y);});
+    });
+    const tb=cand.filter(p=>Math.abs(p.y-mnY)<E||Math.abs(p.y-mxY)<E), lr=cand.filter(p=>Math.abs(p.x-mnX)<E||Math.abs(p.x-mxX)<E);
+    const both=(arr,k,mn,mx)=>arr.some(p=>Math.abs(p[k]-mn)<E)&&arr.some(p=>Math.abs(p[k]-mx)<E);
+    const pick=dir==='V'?tb:dir==='H'?lr:(both(tb,'y',mnY,mxY)?tb:both(lr,'x',mnX,mxX)?lr:[]);
+    const terms=pick.slice().sort((p,q)=>(p.y-q.y)||(p.x-q.x));
+    if(!terms.length) return {shapes, terms:[], dx:0, dy:0};
+    // 軸ごとに、いちばん多くの端子がグリッドに乗るずらし量(同じなら小さい方)
+    const best=vals=>{
+      let bd=0,bc=-1;
+      vals.forEach(v=>{
+        const d=Math.round((Math.round(v/G)*G-v)*1e6)/1e6;
+        const c=vals.filter(u=>{const q=(u+d)/G;return Math.abs(q-Math.round(q))<1e-6;}).length;
+        if(c>bc||(c===bc&&Math.abs(d)<Math.abs(bd))){bc=c;bd=d;}
+      });
+      return bd;
+    };
+    const dx=best(terms.map(t=>t.x)), dy=best(terms.map(t=>t.y));
+    const mv=s=>{
+      if(s.t==='L') return Object.assign({},s,{x1:s.x1+dx,y1:s.y1+dy,x2:s.x2+dx,y2:s.y2+dy});
+      if(s.t==='C'||s.t==='A') return Object.assign({},s,{cx:s.cx+dx,cy:s.cy+dy});
+      if(s.t==='P') return Object.assign({},s,{pts:(s.pts||[]).map(p=>[p[0]+dx,p[1]+dy])});
+      if(s.t==='R'||s.t==='T') return Object.assign({},s,{x:s.x+dx,y:s.y+dy});
+      return s;
+    };
+    const r=v=>Math.round(v*1e6)/1e6;
+    return {shapes:shapes.map(mv), terms:terms.map(t=>({x:r(t.x+dx), y:r(t.y+dy), label:''})), dx, dy};
+  }
+  // 図形を (dx,dy) ずらした定義に変えたとき、図面に置いてあるその図記号が画面上で動かないよう基準点を逆にずらす(回転・反転・倍率を考える)
+  function libCompensatePlaced(type, dx, dy){
+    if(!dx&&!dy) return;
+    (state.pages||[]).forEach(pg=>{ if(pg._file) return; (pg.elements||[]).forEach(el=>{
+      if(el.type!==type) return;
+      const sc=el.scale||1, a=(el.rot||0)*Math.PI/180;
+      const lx=(el.flipH?-dx:dx)*sc, ly=(el.flipV?-dy:dy)*sc;
+      el.x-=lx*Math.cos(a)-ly*Math.sin(a);
+      el.y-=lx*Math.sin(a)+ly*Math.cos(a);
+    }); });
+  }
+
   async function addEntry(entry) {
     if (!entry) return;
     let shapes = (previewEntry && entry.path === previewEntry.path && previewShapes.length) ? previewShapes : [];
@@ -667,22 +715,40 @@ const symLib = (() => {
       preview=pv.toDataURL('image/png');
     } catch(e) {}
 
-    const symDef={type:symType, name:entry.label, label:entry.label,
-      cat:entry.type3||'ライブラリ', w:dxfW*SCALE, h:dxfH*SCALE,
-      shapes:canvasShapes, terminals:[], preview};
-    const existing=state.customSymbols.findIndex(s=>s.type===symType);
-    if(existing>=0) state.customSymbols[existing]=symDef;
-    else state.customSymbols.push(symDef);
-
-    if(typeof DEFS!=='undefined')
-      DEFS[symType]={w:dxfW*SCALE,h:dxfH*SCALE,cat:symDef.cat,name:entry.label,label:entry.label,terminals:[]};
-
+    // 【2026-10-04】端子を自動で付け、端子がグリッドに乗るよう図形を平行移動する(盛田さん「ライブラリーから直接おく機能は使えないという事か？」→「はい」)。
+    // 以前は端子が必ず空(terminals:[])で、図形の外枠の中心を基準にしていたため線の端がグリッドから 2〜8 ずれ(3極の MC は x=-32・8・48)、
+    // 配線の吸着・接続チェック・端子番号が効かず、置いてから大きさを変えて登録し直す手作業が要った。
+    // JIS の図記号は上下の端子が ±40・極の間隔が 40(DXF の 5mm×8)で、平行移動だけで全部グリッドに乗る(倍率は変えない=形・大きさは同じ)。
+    // また、同じ図記号をもう一度置くと定義を上書きして端子(端子編集で付けたものも)を空に戻していた → 既にあれば上書きしない
     pushH();
+    const existing=state.customSymbols.findIndex(s=>s.type===symType);
+    let symDef;
+    if(existing>=0 && (state.customSymbols[existing].terminals||[]).length){
+      symDef=state.customSymbols[existing];   // 端子のある定義はそのまま使う(端子編集で付けた端子を消さない)
+    } else if(existing>=0){
+      // 既にあって端子が無い(以前この機能で置いたもの等): 端子を付けて揃え、図面に置いてあるものは画面上の位置が変わらないよう基準点を合わせる
+      symDef=state.customSymbols[existing];
+      const al=libAlignToGrid(symDef.shapes||[], (symType.match(/([VH])$/)||[])[1]);
+      if(al.terms.length){
+        symDef.shapes=al.shapes; symDef.terminals=al.terms;
+        libCompensatePlaced(symType, al.dx, al.dy);
+        if(typeof symStorePut==='function' && typeof _symLibObj==='function' && _symLibObj()[symType]) symStorePut([symDef]);   // ライブラリにある図記号ならライブラリにも(端子編集と同じ)
+      }
+    } else {
+      const al=libAlignToGrid(canvasShapes, (String(entry.fname||entry.path||'').match(/([VH])$/)||[])[1]);
+      symDef={type:symType, name:entry.label, label:entry.label,
+        cat:entry.type3||'ライブラリ', w:dxfW*SCALE, h:dxfH*SCALE,
+        shapes:al.shapes, terminals:al.terms, preview};
+      state.customSymbols.push(symDef);
+    }
+    if(typeof DEFS!=='undefined') DEFS[symType]=symDef;
+
     const cx=(window.innerWidth/2-state.pan.x)/state.zoom;
     const cy=(window.innerHeight/2-state.pan.y)/state.zoom;
+    const g=state.G||10;
     state.elements.push({
       id:genId('el'), type:symType,
-      x:cx, y:cy, rot:0, flipH:false, flipV:false,
+      x:Math.round(cx/g)*g, y:Math.round(cy/g)*g, rot:0, flipH:false, flipV:false,   // 置く位置もグリッドに乗せる
       label:entry.label,
       layer: activeLayer(),
       source: 'library', sourcePath: entry.path,
@@ -691,6 +757,7 @@ const symLib = (() => {
       w:dxfW*SCALE, h:dxfH*SCALE
     });
 
+    if((symDef.terminals||[]).length===0) toast(`「${entry.label}」を追加しました(端子が見つからないので付けていません。端子(ピン)編集で付けてください)`);
     pushRecent(entry);
     if(typeof renderSymFloat==='function') renderSymFloat();
     draw();
