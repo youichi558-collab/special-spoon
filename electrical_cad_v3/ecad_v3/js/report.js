@@ -3,7 +3,7 @@
 // 端子台表・接点Refを1つのパネル内タブとして切替表示する）
 // ================================================================
 const REPORT_TABS = [
-  { key:'bom',     label:'部品表',       call:'showBOM()' },
+  { key:'bom',     label:'部品表',       call:'openBOM()' },
   { key:'wire',    label:'線番表',       call:'wireNoTable()' },
   { key:'conntbl', label:'接続チェック', call:'showConnTable()' },
   { key:'tbtbl',   label:'端子台表',     call:'showTBTable()' },
@@ -775,11 +775,17 @@ function normalizeRef(s){
 // 計上されていた(コイル1+接点4 → 5個)。発注上は1台なのでデバイスで束ねる。
 // デバイス名は normalizeRef() で表記ゆれを吸収してから束ねる。
 // デバイス未設定の要素は従来どおり 種別×型番 でまとめ、別枠として出す。
-function collectBOMRows(){
+// 【2026-10-04】部品表は**参照図面(プロジェクト)まで含めた盤全体**で集計する(盛田さん「部品表は確実に全体見ないと使い物にならん」)。
+// 以前は開いているファイルだけで、1ページ1ファイルに分けて描くと、そのページの部品しか出なかった。
+// 別ファイルの記号は読むだけ(xprojWith の写し)なので、打った値の書き戻しは開いているファイルの記号にだけ効く(devSetField)。
+// 行には r.local(開いているファイルに記号がある)・r.extFiles(別ファイルの名前)を付け、別ファイルだけの行は打てなくする(showBOM)。
+function collectBOMRows(){ return (typeof xprojWith === 'function') ? xprojWith(_collectBOMRows) : _collectBOMRows(); }
+function _collectBOMRows(){
   const skip=['text','rect','circle','fline','dim','leader','angle_dim','wire'];
   const devices={};   // 正規化キー -> { spellings:Map(表記->出現数), models:Set, types:Set, parts:0 }
   const noRef={};
   state.pages.forEach((pg,pi)=>{
+    const ext=pg._file||'';   // 別ファイル(参照図面)のページ
     (pg.elements||[]).forEach(el=>{
       if(skip.includes(el.type))return;
       if(isSigArrowRole(symRole(el)))return;   // ページ跨ぎの矢印は部品ではない
@@ -795,9 +801,11 @@ function collectBOMRows(){
         dv.spellings.set(raw,(dv.spellings.get(raw)||0)+1);
         dv.parts++;
         dv.types.add(el.type);
-        dv.els.push(el);
-        // 帳票の⚠を押したときの飛び先: そのデバイスのコイル(無ければ最初の要素)
-        if(!dv.jump||(!dv.jump.coil&&symRole(el)==='coil'))dv.jump={pi,id:el.id,coil:symRole(el)==='coil'};
+        if(ext){ (dv.extFiles=dv.extFiles||new Set()).add(ext); }
+        else { dv.els.push(el); dv.local=true;
+          // 帳票の⚠を押したときの飛び先: そのデバイスのコイル(無ければ最初の要素)。飛べるのは開いているファイルの記号だけ
+          if(!dv.jump||(!dv.jump.coil&&symRole(el)==='coil'))dv.jump={pi,id:el.id,coil:symRole(el)==='coil'};
+        }
         const m=(el.partModel||'').trim();
         if(m){
           dv.models.add(m);
@@ -837,7 +845,8 @@ function collectBOMRows(){
                                pname:(el.partName||'').trim(),pnote:(el.partNote||'').trim(),
                                refs:[],count:0,parts:0,noRef:true,warn:'',locs:[]};
         noRef[k].count++; noRef[k].parts++;
-        noRef[k].locs.push({pi,id:el.id});   // 図面へ飛ぶための位置(デバイス未設定の行を押したとき)
+        if(ext) (noRef[k].extFiles=noRef[k].extFiles||new Set()).add(ext);
+        else noRef[k].locs.push({pi,id:el.id});   // 図面へ飛ぶための位置(デバイス未設定の行を押したとき。開いているファイルだけ)
       }
     });
     // グループが持つデバイス(部品外形図など)も集計する。
@@ -851,6 +860,7 @@ function collectBOMRows(){
                                      volts:new Set(),makers:new Set(),names:new Set(),notes:new Set(),zones:new Set(),els:[],parts:0};
       const dv=devices[key];
       dv.spellings.set(raw,(dv.spellings.get(raw)||0)+1);
+      if(pg._file)(dv.extFiles=dv.extFiles||new Set()).add(pg._file); else dv.local=true;
       const m=(g.partModel||'').trim();
       if(m){dv.models.add(m);dv.modelCnt.set(m,(dv.modelCnt.get(m)||0)+1);}
       dv.zones.add(g.panelZone||'');
@@ -909,7 +919,7 @@ function collectBOMRows(){
     const zone=zones[0]||'';
     const k=devKey;   // 1デバイス=1行(上のコメント参照)
     if(!byModel[k])byModel[k]={type:primary,model,spec,volt,maker,pname,pnote,zone,label:model||'(型番未設定)',jump:dv.jump||null,
-                               refs:[],els:[],count:0,parts:0,noRef:false,warn:''};
+                               refs:[],els:[],count:0,parts:0,noRef:false,warn:'',local:!!dv.local,extFiles:[...(dv.extFiles||[])]};
     const row=byModel[k];
     row.refs.push(ref);
     row.els.push(...dv.els);
@@ -928,6 +938,7 @@ function collectBOMRows(){
     if(ws.length)row.warn=row.warn?`${row.warn}｜${ws.join('｜')}`:ws.join('｜');
   });
 
+  Object.values(noRef).forEach(r=>{ r.extFiles=[...(r.extFiles||[])]; r.local=r.locs.length>0; });
   return [...Object.values(byModel),...Object.values(noRef)];
 }
 // 旧仕様(要素を1個ずつ数える)の集計。比較用に残す。
@@ -980,6 +991,15 @@ function _bomFilterRows(rows) {
   });
 }
 
+// 部品表を開く(リボン・帳票のタブ): 今読んでいる参照図面ですぐ出し、参照図面を読み直したら出し直す(クロスリファレンスの「更新」と同じ)。
+// 値を打ったあと等の出し直しは showBOM(読み直さない)
+async function openBOM(){
+  showBOM();
+  if (typeof xprojReload !== 'function') return;
+  let reloaded = false;
+  try { reloaded = await xprojReload(); } catch (e) { console.warn('参照図面の読み直しに失敗', e); }
+  if (reloaded && document.getElementById('report-p')?.classList.contains('open') && _lastReportTab === 'bom') showBOM();
+}
 function showBOM(){
   const allRows=collectBOMRows();
   const rows=_bomFilterRows(allRows);
@@ -991,10 +1011,14 @@ function showBOM(){
     +`<input type="checkbox"${_bomZone[key]?' checked':''} `
     +`onchange="setBOMZone('${key}',this.checked)" style="vertical-align:-1px;margin-right:3px">`
     +`${label}</label>`;
-  const head=`<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">全${state.pages.length}ページ集計・${devTotal} 台`
+  const extN=(typeof xprojPages==='function')?xprojPages().length:0;
+  const scope=extN?`このファイル${state.pages.length}ページ＋参照図面${extN}ページを集計`:`このファイル${state.pages.length}ページを集計`
+    +(typeof xprojState!=='undefined'&&!xprojState.files.length?`(参照図面を設定すると盤全体の部品表になります。データタブの「参照図面」)`:'');
+  const head=`<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">${scope}・${devTotal} 台`
     +(noRefTotal?`　<span style="color:var(--red)">デバイス未設定 ${noRefTotal} 個</span>`:'')
     +`<br>数量はデバイス単位の台数です。構成数は接点・端子を含む図形の個数です。`
-    +`プロパティで「部品表の対象外」にした部品は既定では集計されません。</p>`
+    +`プロパティで「部品表の対象外」にした部品は既定では集計されません。`
+    +(extN?`<br>別ファイル(参照図面)の分は表示だけです。打った値は開いているファイルの記号に入ります(別ファイルの分はそのファイルを開いて直してください)。`:'')+`</p>`
     +`<p style="margin-bottom:6px;padding:5px 6px;background:var(--bg2);border-radius:3px">`
     +cb('excluded','対象外の部品も含める')+cb('noRef','デバイス未設定を含める')
     +(hidden?`<span style="font-size:11px;color:var(--red)">（${hidden}台を非表示中・CSVにも出ません）</span>`:'')
@@ -1008,6 +1032,7 @@ function showBOM(){
   window._bomRows = rows;
   const voltCell = (r, i) => {
     if (r.noRef) return '<td style="color:var(--fg3)">-</td>';
+    if (r.local === false) return `<td style="color:var(--fg2)">${escH(r.volt || '')}</td>`;   // 別ファイルだけの行は表示だけ
     const opts = (r.model && typeof partVoltOptions === 'function') ? partVoltOptions(r.model) : [];
     if (!opts.length) {
       // 【2026-09-29】部品DBに無い型番(・型番が未入力)でも、コイルのあるデバイスには電圧を打てるようにする(盛田さん「電圧の修正が効かない」)。
@@ -1036,7 +1061,7 @@ function showBOM(){
   // 部品DBに登録済みの型番は値が既に入っているので打ち直さなくてよい。
   // 手打ちできるセルを作る共通部分(メーカー・名称・備考)。
   const typedCell = (r, i, val, fn, w) => {
-    if (r.noRef) return `<td style="color:var(--fg3)">${escH(val||'')}</td>`;
+    if (r.noRef || r.local === false) return `<td style="color:${r.noRef ? 'var(--fg3)' : 'var(--fg2)'}">${escH(val||'')}</td>`;   // 別ファイルだけの行は表示だけ
     return `<td><input type="text" value="${escH(val||'')}" placeholder="—"`
       + ` onchange="${fn}(${i}, this.value)"`
       + ` style="width:${w}px;font-size:11px;background:var(--bg3);color:var(--fg);`
@@ -1085,13 +1110,17 @@ function showBOM(){
       ? `<div style="color:var(--red);font-size:10px;cursor:pointer;text-decoration:underline dotted" title="クリックで図面のこのデバイスへ飛ぶ" onclick="jumpToRefEl(${r.jump.pi},${_jsArg(r.jump.id)})">⚠${escH(r.warn)}</div>`
       : `<div style="color:var(--red);font-size:10px">⚠${escH(r.warn)}</div>`) : '';
     if (r.noRef) return `<td>${noRefJump(r, i, escH(r.label))}${warn}</td>`;
+    if (r.local === false) return `<td>${escH(r.model || '(型番未設定)')}${warn}</td>`;   // 別ファイルだけの行は表示だけ
     return `<td><input type="text" value="${escH(r.model||'')}" placeholder="(型番未設定)"`
       + ` onchange="setBOMModel(${i}, this.value)" title="このデバイスの全要素(コイル・接点・端子)に同じ型番を入れます"`
       + ` style="width:170px;font-size:11px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:3px;padding:1px 3px">${warn}</td>`;
   };
   const rowHtml = ({r,i}) =>
     `<tr${r.noRef?' style="background:var(--rbg)"':''}>`
-    +`<td style="font-weight:600">${r.noRef?noRefJump(r,i,'<span style="color:var(--red)">未設定</span>'):(escH(r.refs.join(', '))||'-')}</td>`
+    +`<td style="font-weight:600">${r.noRef?noRefJump(r,i,'<span style="color:var(--red)">未設定</span>'):(escH(r.refs.join(', '))||'-')}`
+    // 別ファイル(参照図面)にある分: どのファイルか。開いているファイルにもあるなら、打った値は別ファイルの分には入らないことを添える
+    +((r.extFiles||[]).length?`<div style="font-weight:400;font-size:10px;color:var(--fg3)" title="${r.local?'打った値は開いているファイルの記号にだけ入ります。別ファイルの分はそのファイルを開いて直してください':'別ファイルだけにある部品です。直すときはそのファイルを開いてください'}">${r.local?'＋':''}別ファイル: ${escH(r.extFiles.join(', '))}</div>`:'')
+    +`</td>`
     +nameCell(r,i)
     +modelCell(r,i)
     +specCell(r,i)
