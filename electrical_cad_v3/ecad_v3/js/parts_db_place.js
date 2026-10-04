@@ -24,7 +24,8 @@ function pdbPlaceRender(boxId, onChanged) {
   box.style.display = 'flex'; box.style.flexDirection = 'row'; box.style.flexWrap = 'wrap';
   box.style.alignItems = 'center'; box.style.gap = '4px';
   const draw = (stText, color, title, missing) => {
-    box.innerHTML = `<div style="font-size:11px;max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:${'var(--rb-h,23px)'}" title="${esc(title || '')}"><span style="color:var(--fg3)">部品DBの場所(ライブラリフォルダ):</span> <span style="${color ? 'color:' + color + ';' : ''}font-family:monospace">${stText}</span></div>`
+    // 【2026-10-04】CADでは設定タブのフロートパネルに移した(リボンの1段の制約が無くなった)ので、場所は1行全部を使って折り返す
+    box.innerHTML = `<div style="font-size:11px;flex-basis:100%;white-space:normal;word-break:break-all;line-height:1.5" title="${esc(title || '')}"><span style="color:var(--fg3)">部品DBの場所(ライブラリフォルダ):</span> <span style="${color ? 'color:' + color + ';' : ''}font-family:monospace">${stText}</span></div>`
       + btn('pick', 'フォルダを選ぶ', 'このPCの「フォルダの選択」窓で、部品DB(parts_db.json)を置くフォルダを選びます。部品DBが無いフォルダなら、空の部品DBを作るか聞きます(窓がブラウザの裏に出たら、タスクバーから前に出してください)')
       + btn('find', '探す', 'ディスクから parts_db.json を探して候補を並べます(数十秒かかることがあります)')
       + (missing ? btn('recheck', 'もう一度確かめる', '同期ソフト(Googleドライブ等)やネットワークの準備ができたら押してください') : '')

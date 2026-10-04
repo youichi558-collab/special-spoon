@@ -481,7 +481,7 @@ function wireNoTable(msg){
   html += `<br>行を押すと、この一覧を閉じて図面のその配線へ移動し、選択します(線番はプロパティ欄でも打てます)。`;
   // 【2026-10-04】「欠番を詰める」(ファイル全体・末尾が数字なら何でも対象)をやめ、書式に合う番号だけを位置の順に振り直す「このページを振り直す」にした
   const bst = 'margin-top:4px;font-size:10px;padding:2px 8px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)';
-  html += `<br><button onclick="wireNoSettings()" title="線番の書式(ページ番号の桁数・連番の桁数)と割付" style="${bst}">線番の設定・割付</button> `;
+  html += `<br><button onclick="wireNoSettings()" title="線番の書式(ページ番号の桁数・連番の桁数)と主回路の付け方" style="${bst}">線番の設定</button> `;
   html += `<button onclick="wireNoRenumberPage()" title="今のページの線番(未採番と、書式に合う番号)を、左の列から・列の中は上からの順に振り直します。手で付けた名前(R・S・T、L1 など)は変えません。実行前に変わる番号を確かめられます" style="${bst}">このページを振り直す</button>`;
   html += `</p>`;
   const hasExt = rows.some(r => r.ext && r.ext.length);

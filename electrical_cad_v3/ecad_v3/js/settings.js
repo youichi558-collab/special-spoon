@@ -192,7 +192,7 @@ async function stRenderRibbon() {
     status = `<span style="font-family:monospace;font-weight:600">${esc(handle.name)}</span>`;
   }
   const supported = !!window.showDirectoryPicker;
-  const btn = (fn, label, title) => `<div class="rb rb-sm" onclick="${fn}" title="${title}">${label}</div>`;
+  const btn = (fn, label, title) => `<button class="fp-btn" style="font-size:11px;padding:2px 8px" onclick="${fn}" title="${title}">${label}</button>`;
   box.innerHTML =
       `<div style="font-size:11px;padding:0 6px;white-space:nowrap"><span style="color:var(--fg3)">前回の保存先:</span> ${status}</div>`
     + (supported
@@ -202,6 +202,13 @@ async function stRenderRibbon() {
   // 部品DBの場所(2026-10-02、js/parts_db_place.js)。設定したらCADの部品DBを読み直す
   if (typeof pdbPlaceRender === 'function') pdbPlaceRender('pdb-place', () => { if (typeof partsDb !== 'undefined') partsDb.reload(); });
   if (typeof syncRibbonHeight === 'function') syncRibbonHeight();
+}
+
+// 【2026-10-04】設定タブの中身をフロートパネルに移した(盛田さん「設定リボンを使って、今の設定全部をフロートパネルに移動」)
+function openOutDirPanel() { stRenderRibbon(); openFP('st-outdir-p'); }
+function openPdbPlacePanel() {
+  if (typeof pdbPlaceRender === 'function') pdbPlaceRender('pdb-place', () => { if (typeof partsDb !== 'undefined') partsDb.reload(); });
+  openFP('pdb-place-p');
 }
 
 async function stPickOutDir() {

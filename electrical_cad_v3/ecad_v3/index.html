@@ -34,7 +34,7 @@
     <div class="rtab" onclick="switchRibbon('view',this)">表示</div>
     <!-- 【2026-09-24】CAD全体の設定。盛田さん「リボンに大項目で入れること」
          (最初はデータタブの右端にボタンで置いたがNG)。中身は js/settings.js -->
-    <div class="rtab" onclick="switchRibbon('settings',this);stRenderRibbon()">設定</div>
+    <div class="rtab" onclick="switchRibbon('settings',this)">設定</div>
   </div>
   <div id="ribbon-content">
     <!-- 【2026-09-19】「操作」グループ(選択/配線)を削除した。
@@ -171,7 +171,10 @@
           </div>
           <div class="rb rb-sm" id="rb-guide_h" onclick="setMode('guide_h')"><svg viewBox="0 0 14 14"><path d="M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2,1.5"/></svg>水平補助</div>
           <div class="rb rb-sm" id="rb-guide_v" onclick="setMode('guide_v')"><svg viewBox="0 0 14 14"><path d="M7 1v12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2,1.5"/></svg>垂直補助</div>
-          <div class="rb rb-sm" onclick="wireNoSettings()" title="線番の設定(書式)と割付・振り直し"><svg viewBox="0 0 14 14"><path d="M2 4h10M2 7h7M2 10h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><text x="10" y="11" font-size="6" fill="currentColor">#</text></svg>線番の設定</div>
+          <!-- 【2026-10-04】線番の操作。書式は設定タブの「線番」、1本ずつはクイックバーの「線番クリック」 -->
+          <div class="rb rb-sm" onclick="autoWireNumber('page')" title="このページの番号の無い線にだけ、線番の書式(設定タブの「線番」)で振ります。既に番号のある線は変えません"><svg viewBox="0 0 14 14"><path d="M2 4h10M2 7h7M2 10h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><text x="10" y="11" font-size="6" fill="currentColor">#</text></svg>線番割付</div>
+          <div class="rb rb-sm" onclick="wireNoRenumberPage()" title="このページの線番(未採番と、書式に合う番号)を、左の列から・列の中は上からの順に振り直します。手で付けた名前(R・S・T、L1 など)は変えません。実行前に変わる番号を確かめられます"><svg viewBox="0 0 14 14"><path d="M11.5 5A4.5 4.5 0 1 0 12 8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12 2.5V5H9.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>線番振り直し</div>
+          <div class="rb rb-sm" onclick="wireNoMainCircuit()" title="このページの主回路に、手で入れた起点(R・S・T、L・N など)から主接点を通るたびに段を上げた名前を入れます(仮の決まり。入れる前に一覧で確かめます)"><svg viewBox="0 0 14 14"><path d="M2 3h10M2 7h10M2 11h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>主回路線番</div>
         </div>
         <div class="rg-label">配線</div>
       </div>
@@ -247,18 +250,7 @@
         </div>
         <div class="rg-label">縮尺</div>
       </div>
-      <!-- 【2026-09-20】バックアップ。
-           最初は「プロジェクト」群の中、保存・全頁保存・読込の並びに置いていたが、
-           盛田さん「保存とバックアップが同じ場所にあるとどっちだか分らんかもな」。
-           押しても図面は保存されず設定画面が開くだけなので、保存操作の列から
-           外して独立したグループにし、ボタン名にも「設定」を付けた。
-           (4案を実際に組んでスクリーンショットで見てもらって決定) -->
-      <div class="rg">
-        <div class="rg-btns">
-          <div class="rb rb-sm" onclick="openBackupPanel()" title="図面の控えをファイルで残す設定です（ecad_v3\backup\）。押すと設定画面が開きます（この操作では図面は保存されません）。間隔と残す件数をここで決めます。ブラウザ内の「自動保存」とは別の仕組みで、start.bat が動いているときだけ取れます"><svg viewBox="0 0 14 14"><path d="M2 4.5V11a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="1" y="2" width="12" height="2.5" rx=".5" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 7h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>バックアップ設定</div>
-        </div>
-        <div class="rg-label">控え</div>
-      </div>
+      <!-- 【2026-10-04】バックアップ設定(「控え」グループ)は設定タブへ移した(盛田さん「バックアップも移して」) -->
     </div>
     <div id="rp-report" class="rg-wrap" style="display:none;gap:0">
       <div class="rg">
@@ -303,14 +295,16 @@
     <!-- 設定タブ(2026-09-24): CAD全体の設定。今は保存先だけ。中身は js/settings.js の
          stRenderRibbon() が描く。「決めたら滅多に変えない設定」をここへ順に足していく -->
     <div id="rp-settings" class="rg-wrap" style="display:none;gap:0">
+      <!-- 【2026-10-04】盛田さん「設定リボンを使って、今の設定全部をフロートパネルに移動」。リボンにはパネルを開くボタンだけを並べる
+           (以前は保存先・部品DBの場所の中身をリボンに直接並べていた)。バックアップ設定もデータタブからここへ移した -->
       <div class="rg">
-        <div class="rg-btns" id="st-outdir" style="align-items:center"></div>
-        <div class="rg-label">保存先（保存・出力のたびに選びます）</div>
-      </div>
-      <!-- 【2026-10-02】部品DB(parts_db.json)の場所(js/parts_db_place.js)。以前はコマンド(setpath)でしか設定できなかった -->
-      <div class="rg">
-        <div class="rg-btns" id="pdb-place"></div>
-        <div class="rg-label">部品DB</div>
+        <div class="rg-btns">
+          <div class="rb rb-sm" onclick="openOutDirPanel()" title="保存・出力の窓を開く場所(前回の保存先)"><svg viewBox="0 0 14 14"><path d="M1.5 4h4l1.2 1.5h5.8v6h-11z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>保存先</div>
+          <div class="rb rb-sm" onclick="openPdbPlacePanel()" title="部品DB(parts_db.json)を置くライブラリフォルダ"><svg viewBox="0 0 14 14"><ellipse cx="7" cy="3.5" rx="4.5" ry="1.8" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M2.5 3.5v7c0 1 2 1.8 4.5 1.8s4.5-.8 4.5-1.8v-7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>部品DBの場所</div>
+          <div class="rb rb-sm" onclick="wireNoSettings()" title="線番の書式(表題欄のページ番号の桁数・連番の桁数)と主回路の付け方"><svg viewBox="0 0 14 14"><path d="M2 4h10M2 7h7M2 10h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><text x="10" y="11" font-size="6" fill="currentColor">#</text></svg>線番</div>
+          <div class="rb rb-sm" onclick="openBackupPanel()" title="図面の控えをファイルで残す設定です（ecad_v3\backup\）。押すと設定画面が開きます（この操作では図面は保存されません）"><svg viewBox="0 0 14 14"><path d="M7 2.5a4.5 4.5 0 1 1-4.3 3.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M1.8 3v2.9h2.9" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>バックアップ</div>
+        </div>
+        <div class="rg-label">設定</div>
       </div>
     </div>
     <!-- 表示タブ: 画面の見え方をここに集約した(2026-09-19)。 -->
@@ -750,6 +744,19 @@
       </div>
     </div>
 
+    <!-- 設定タブのパネル(2026-10-04 盛田さん「今の設定全部をフロートパネルに移動」)。中身は js/settings.js stRenderRibbon・js/parts_db_place.js pdbPlaceRender が描く -->
+    <div class="fp" id="st-outdir-p" style="width:420px">
+      <h3>保存先</h3>
+      <div style="font-size:10px;color:var(--fg3);line-height:1.5;margin-bottom:6px">保存・出力のたびに「名前を付けて保存」の窓が開きます。ここで選ぶと、その窓がこのフォルダから開きます(先に選んでおく必要はありません。前回保存した場所から開きます)。</div>
+      <div id="st-outdir" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px"></div>
+      <div style="display:flex;gap:6px;margin-top:8px"><button class="fp-btn" onclick="closeFP('st-outdir-p')">閉じる</button></div>
+    </div>
+    <div class="fp" id="pdb-place-p" style="width:460px">
+      <h3>部品DBの場所</h3>
+      <div id="pdb-place"></div>
+      <div style="display:flex;gap:6px;margin-top:8px"><button class="fp-btn" onclick="closeFP('pdb-place-p')">閉じる</button></div>
+    </div>
+
     <!-- 線番の設定(2026-10-04。書式=表題欄のページ番号+連番。js/report.js wireNoSettings) -->
     <div class="fp" id="wireno-p" style="width:380px">
       <h3>線番の設定</h3>
@@ -767,12 +774,7 @@
       <div style="font-size:10px;color:var(--fg3);line-height:1.5;margin-bottom:6px">
         ページ番号は表題欄のページ番号(図面枠の「ページ」欄)から取ります。割付・振り直しで変わるのは、この書式に合う番号だけです(R・S・T、L1 などの手で付けた名前は変えません)。
         順番は左の列から、列の中は上から。ページ跨ぎの線は送り側のページの番号です。設定は図面ファイルに保存されます。
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="fp-btn" onclick="closeFP('wireno-p');autoWireNumber('page')" title="このページの番号の無い線にだけ振ります">未採番に割付(このページ)</button>
-        <button class="fp-btn" onclick="closeFP('wireno-p');wireNoRenumberPage()" title="変わる番号を確かめてから振り直します">このページを振り直す</button>
-        <button class="fp-btn" onclick="closeFP('wireno-p');startWireNoSeq()" title="配線をクリックするたびに、このページの空いている番号を順に入れます(クイックバーの「線番クリック」・Nキーと同じ)">クリックで1本ずつ振る</button>
-        <button class="fp-btn" onclick="closeFP('wireno-p')">閉じる</button>
+        割付・振り直し・主回路の線番は配線タブのボタン、1本ずつはクイックバーの「線番クリック」(Nキー)。
       </div>
       <div style="border-top:1px solid var(--bd2);padding-top:6px;margin-top:8px;font-size:11px">
         <div style="font-weight:600;margin-bottom:4px">主回路(仮の決まり)</div>
@@ -790,7 +792,9 @@
           起点(R・S・T、L・N など)は手で入れます。主接点のシンボルを通るたびに段を上げます(R → R1 → R2)。分岐は段＋枝番(R21・R22)、その先は R31。
           U・V・W の端子(インバータの出口・モータ)に乗る線は U1・V1・W1。相は主接点の端子番号の組(1-2、3-4、5-6)で決めます。手で入れた名前は変えません。
         </div>
-        <button class="fp-btn" onclick="closeFP('wireno-p');wireNoMainCircuit()" title="このページの主回路に、起点の名前から段を上げた名前を入れます(入れる前に一覧で確かめます)">主回路の線番を振る(このページ)</button>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button class="fp-btn" onclick="closeFP('wireno-p')">閉じる</button>
       </div>
     </div>
 
