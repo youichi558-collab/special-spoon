@@ -132,11 +132,11 @@ console.log('\n【書式を変えたら、前の書式の番号を書き換え�
   sb.setWireNoFmt();
   eq(nos(w), ['301', '303', 'L1'], '★01→301・03→303(連番はそのまま、ページ番号を付ける)。L1 は変えない');
   ok(/01 → 301/.test(log.confirm[0] || ''), '書き換える前に確かめる');
-  eq(sb.wnFmt(), { pageDigits: 1, seqDigits: 2 }, '書式が変わる');
+  eq(sb.wnFmt(), { pageDigits: 1, seqDigits: 2, mainBranch: 'pos', mainMotor: 'pos' }, '書式が変わる');
   const w2 = setup([V('a', 0, 0, '01')], { pageDigits: 0, seqDigits: 2 }, '');
   domEls['wn-page-digits'].value = '1';
   sb.setWireNoFmt();
-  eq([nos(w2), sb.wnFmt(), domEls['wn-page-digits'].value], [['01'], { pageDigits: 0, seqDigits: 2 }, '0'], '★表題欄のページ番号が空で書き換えられないなら、書式を変えない(後から書き換える手段が無くなるため)');
+  eq([nos(w2), sb.wnFmt(), domEls['wn-page-digits'].value], [['01'], { pageDigits: 0, seqDigits: 2, mainBranch: 'pos', mainMotor: 'pos' }, '0'], '★表題欄のページ番号が空で書き換えられないなら、書式を変えない(後から書き換える手段が無くなるため)');
   ok(/書式は変えていません/.test(log.alert[0] || ''), 'そのことを知らせる');
 }
 

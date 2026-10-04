@@ -55,7 +55,9 @@ const WN_SEQ_DIGITS  = [2, 3, 4];
 function wnFmt() {
   const f = state.wireNoFmt || {};
   const p = Number(f.pageDigits), s = Number(f.seqDigits);
-  return { pageDigits: WN_PAGE_DIGITS.includes(p) ? p : 0, seqDigits: WN_SEQ_DIGITS.includes(s) ? s : 2 };
+  return { pageDigits: WN_PAGE_DIGITS.includes(p) ? p : 0, seqDigits: WN_SEQ_DIGITS.includes(s) ? s : 2,
+    // 主回路の段送り(仮案。js/wire_no_main.js): 分岐の枝番・モータ/インバータ出口の番号を 'pos'=図面の位置順 / 'dev'=デバイス名の番号
+    mainBranch: f.mainBranch === 'dev' ? 'dev' : 'pos', mainMotor: f.mainMotor === 'dev' ? 'dev' : 'pos' };
 }
 // ページ番号の部分(表題欄のページ番号を桁にそろえた文字列)。書式がページ番号なしなら ''。使えなければ { err }
 function wnPagePart(pi) {
@@ -301,6 +303,8 @@ function groupWiresByNet(wires, tol, elements) {
 // ネットに線番を書く。既に番号のある線(=文字が出ている所)だけを書き換え、
 // どこにも無ければ一番長い線1本に入れる(文字が読みやすい所)。空文字なら番号を消す。
 function _setNetWireNo(wires, idxs, v) {
+  // 【2026-10-04】主回路の段送りで自動で入れた目印(wireNoMain。js/wire_no_main.js)は、書き換えたら外す(手で直した名前は次の段送りで上書きしない)
+  idxs.forEach(i => { if (wires[i] && wires[i].wireNoMain) wires[i].wireNoMain = false; });
   const has = idxs.filter(i => wires[i] && wires[i].wireNo);
   if (!v) { has.forEach(i => { wires[i].wireNo = ''; }); return; }
   if (has.length) { has.forEach(i => { wires[i].wireNo = v; }); return; }
@@ -1683,6 +1687,9 @@ function wireNoSettings() {
   const pd = document.getElementById('wn-page-digits'), sd = document.getElementById('wn-seq-digits');
   if (pd) pd.value = String(f.pageDigits);
   if (sd) sd.value = String(f.seqDigits);
+  const mb = document.getElementById('wn-main-branch'), mm = document.getElementById('wn-main-motor');
+  if (mb) mb.value = f.mainBranch;
+  if (mm) mm.value = f.mainMotor;
   wireNoSettingsInfo();
   openFP('wireno-p');
 }
@@ -1694,12 +1701,15 @@ function setWireNoFmt() {
   const oldFmt = wnFmt();
   const units = wnUnits();
   const olds = units.map(u => ({ u, no: wnUnitNos(u)[0] || '', many: wnUnitNos(u).length > 1 })).map(x => Object.assign(x, { p: x.no && !x.many ? wnParse(x.no) : null }));
-  state.wireNoFmt = { pageDigits: Number(pd ? pd.value : 0), seqDigits: Number(sd ? sd.value : 2) };
+  const mb = document.getElementById('wn-main-branch'), mm = document.getElementById('wn-main-motor');
+  state.wireNoFmt = { pageDigits: Number(pd ? pd.value : 0), seqDigits: Number(sd ? sd.value : 2),
+    mainBranch: mb ? mb.value : oldFmt.mainBranch, mainMotor: mm ? mm.value : oldFmt.mainMotor };
   const conv = olds.filter(x => x.p);
   const pg = state.pages[state.currentPage || 0];
   if (pg) pg.dirty = true;
   if (typeof renderPageTabs === 'function') renderPageTabs();
-  if (conv.length && JSON.stringify(oldFmt) !== JSON.stringify(wnFmt())) {
+  const nf = wnFmt();
+  if (conv.length && (oldFmt.pageDigits !== nf.pageDigits || oldFmt.seqDigits !== nf.seqDigits)) {
     const plan = [], errs = new Set();
     let tooBig = 0;
     conv.forEach(x => {
@@ -1714,7 +1724,7 @@ function setWireNoFmt() {
     const dup = [...after.values()].some(n => n > 1);
     // 書き換えられない(ページ番号が空など・同じ番号ができる)なら書式を変えない。変えてしまうと前の書式の番号を後から書き換える手段が無くなる
     if (errs.size || dup) {
-      state.wireNoFmt = oldFmt;
+      state.wireNoFmt = Object.assign({}, oldFmt, { mainBranch: nf.mainBranch, mainMotor: nf.mainMotor });
       if (pd) pd.value = String(oldFmt.pageDigits);
       if (sd) sd.value = String(oldFmt.seqDigits);
       alert(`前の書式の線番が${conv.length}本あり、新しい書式に書き換えられないため、書式は変えていません。\n`

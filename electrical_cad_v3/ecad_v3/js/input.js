@@ -215,7 +215,7 @@ function doPointerLeftDown(cx, cy, e, wxOverride, wyOverride) {
       const wires = state.wires || (pg && pg.wires) || [];
       const wi = wires.indexOf(w);
       const net = groupWiresByNet(wires, null, state.elements || (pg && pg.elements)).find(g => g.includes(wi));
-      if (net) _setNetWireNo(wires, net, assigned); else w.wireNo = assigned;
+      if (net) _setNetWireNo(wires, net, assigned); else { w.wireNo = assigned; w.wireNoMain = false; }
       const pp = wnPagePart(state.currentPage || 0);
       state.wireNoNext = pp.err ? '' : wnNextFree(pp.part, wnUsedNos());
       document.getElementById('s-hint').textContent = `「${assigned}」を割当 → 次:「${state.wireNoNext}」をクリック  [ESC] 終了`;

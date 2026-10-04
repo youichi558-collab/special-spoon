@@ -3091,6 +3091,7 @@ function applyRightPanel() {
     el.leaderTy   = parseInt(v('pp-ldrty')) || 0;
     el.layer      = vLayer(el.layer);
   } else if (wire) {
+    if (wire.wireNo !== v('pp-wireno')) wire.wireNoMain = false;   // 手で直したら主回路の自動の目印を外す(js/wire_no_main.js)
     wire.wireNo    = v('pp-wireno'); wire.layer = vLayer(wire.layer);
     wire.wireNoFs  = parseInt(v('pp-wno-fs')) || 10;
     wire.wireNoOffX = parseFloat(v('pp-wno-ox'))||0;

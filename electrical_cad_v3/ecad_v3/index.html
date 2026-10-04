@@ -775,6 +775,24 @@
         <button class="fp-btn" onclick="closeFP('wireno-p');startWireNoSeq()" title="配線をクリックするたびに、このページの空いている番号を順に入れます(クイックバーの「線番クリック」・Nキーと同じ)">クリックで1本ずつ振る</button>
         <button class="fp-btn" onclick="closeFP('wireno-p')">閉じる</button>
       </div>
+      <div style="border-top:1px solid var(--bd2);padding-top:6px;margin-top:8px;font-size:11px">
+        <div style="font-weight:600;margin-bottom:4px">主回路(仮の決まり)</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+          <label>分岐の枝番
+            <select id="wn-main-branch" onchange="setWireNoFmt()" style="font-size:11px">
+              <option value="pos">図面の位置順</option><option value="dev">デバイス名の番号</option>
+            </select></label>
+          <label>モータ・インバータ出口の番号
+            <select id="wn-main-motor" onchange="setWireNoFmt()" style="font-size:11px">
+              <option value="pos">図面の位置順</option><option value="dev">デバイス名の番号</option>
+            </select></label>
+        </div>
+        <div style="font-size:10px;color:var(--fg3);line-height:1.5;margin-bottom:4px">
+          起点(R・S・T、L・N など)は手で入れます。主接点のシンボルを通るたびに段を上げます(R → R1 → R2)。分岐は段＋枝番(R21・R22)、その先は R31。
+          U・V・W の端子(インバータの出口・モータ)に乗る線は U1・V1・W1。相は主接点の端子番号の組(1-2、3-4、5-6)で決めます。手で入れた名前は変えません。
+        </div>
+        <button class="fp-btn" onclick="closeFP('wireno-p');wireNoMainCircuit()" title="このページの主回路に、起点の名前から段を上げた名前を入れます(入れる前に一覧で確かめます)">主回路の線番を振る(このページ)</button>
+      </div>
     </div>
 
     <!-- 登録済みシンボルの端子(ピン)編集パネル -->
@@ -887,6 +905,7 @@
 <script src="js/pin_editor.js"></script>
 <script src="js/conn_check.js"></script>
 <script src="js/conn_table.js"></script>
+<script src="js/wire_no_main.js"></script>
 <script src="js/devices.js"></script>
 <script src="js/xref.js"></script>
 <script src="js/xref_project.js"></script>
