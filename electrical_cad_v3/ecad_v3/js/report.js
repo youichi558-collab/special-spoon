@@ -66,7 +66,12 @@ function wnPagePart(pi) {
   const pg = state.pages[pi];
   const raw = (pg && pg.frameObj && pg.frameObj.page != null) ? String(pg.frameObj.page).split('/')[0].trim() : '';
   const name = pg ? (pg.name || ('Sheet' + (pi + 1))) : '';
-  if (!raw) return { err: `「${name}」の表題欄のページ番号が空です(図面枠の「ページ」欄に入れてください)` };
+  // 【2026-10-04】欄が空のとき表題欄に出る自動の「n / 総数」(ファイルの中の並び)は使わない(盛田さん「表題欄ページ自動で入ってる場合は？」→ 案A)。
+  // 分割した図面(1ページ1ファイル)ではどれも「1 / 1」で、全部のファイルが1ページ扱いになり線番が重複するため。知らせにその理由を書く
+  if (!raw) {
+    const auto = `${pi + 1} / ${state.pages.length}`;
+    return { err: `「${name}」の表題欄のページ番号は自動(${auto})になっています。分割した図面ではどれも同じ番号になるため、線番には使いません。図面枠の「ページ」欄にページ番号を入れてください` };
+  }
   if (!/^\d+$/.test(raw)) return { err: `「${name}」の表題欄のページ番号「${raw}」が数字ではありません` };
   const n = String(parseInt(raw, 10));
   if (n.length > f.pageDigits) return { err: `「${name}」の表題欄のページ番号「${raw}」がページ番号の桁数(${f.pageDigits}桁)に収まりません` };

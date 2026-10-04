@@ -63,7 +63,7 @@ console.log('\n【ページ番号は表題欄から】');
   setup([], { pageDigits: 2, seqDigits: 2 }, '3 / 12');
   eq(sb.wnPagePart(0), { part: '03' }, '「3 / 12」→ 03(2桁にそろえる)');
   setup([], { pageDigits: 1, seqDigits: 2 }, '');
-  ok(/空です/.test(sb.wnPagePart(0).err), '空なら知らせる');
+  ok(/自動\(1 \/ 1\)になっています/.test(sb.wnPagePart(0).err) && /線番には使いません/.test(sb.wnPagePart(0).err), '★空(表題欄は自動の「1 / 1」)なら使わず、その理由を知らせる');
   setup([], { pageDigits: 1, seqDigits: 2 }, 'A');
   ok(/数字ではありません/.test(sb.wnPagePart(0).err), '数字でなければ知らせる');
   setup([], { pageDigits: 1, seqDigits: 2 }, '12');
@@ -82,7 +82,7 @@ console.log('\n【割付: 番号の無い線だけ・位置の順・空いてい
   const w2 = setup([V('a', 0, 0)], { pageDigits: 1, seqDigits: 2 }, '');
   sb.autoWireNumber('page');
   eq(nos(w2), [''], '★表題欄のページ番号が空なら振らない');
-  ok(/ページ番号が空/.test(log.table), 'そのことを線番表で知らせる');
+  ok(/自動\(1 \/ 1\)/.test(log.table), 'そのことを線番表で知らせる');
 }
 
 console.log('\n【このページを振り直す】');
