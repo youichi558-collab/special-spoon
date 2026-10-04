@@ -54,7 +54,7 @@ sb.toggleLpDock();
 eq([cw.style.marginLeft, saved.lpDocked], ['0', ''], 'OFFに戻すとキャンバスは元どおり・覚えた値も消す');
 
 console.log('【つながり】');
-ok(/body\.lp-docked #sym-float, body\.lp-docked #prt-float, body\.lp-docked #lay-float\{/.test(R('css/style.css')), '3つの窓を固定の位置に置くCSS');
+ok(/body\.lp-docked #sym-float, body\.lp-docked #prt-float, body\.lp-docked #lay-float, body\.lp-docked #prj-float\{/.test(R('css/style.css')), '4つの窓(シンボル・レイヤー・部品DB・プロジェクト)を固定の位置に置くCSS');
 ok(/id="lt-dock" onclick="toggleLpDock\(\)"/.test(R('index.html')) && /id="lpd-resizer" onmousedown="lpdStartResize\(event\)"/.test(R('index.html')), '固定ボタンと幅の取っ手');
 ok(/_lpdRelayout\(\);   \/\/ 固定\(ドッキング\)のときは/.test(ui), 'タブの切替でキャンバスを合わせる');
 ok(/if \(document\.body\.classList\.contains\('lp-docked'\)\) return;   \/\/ 固定\(ドッキング\)中は動かさない/.test(ui), '固定中は窓をドラッグで動かさない');

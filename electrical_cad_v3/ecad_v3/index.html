@@ -393,9 +393,10 @@
       <div class="lt on" onclick="switchLTab('sym',this)">シンボル</div>
       <div class="lt" onclick="switchLTab('lay',this)">レイヤー</div>
       <div class="lt" onclick="switchLTab('prt',this)">部品DB</div>
+      <div class="lt" onclick="switchLTab('prj',this)">プロジェクト</div>
     </div>
     <!-- 【2026-10-02】固定(ドッキング)の切替。ONでシンボル一覧などを縦タブの右に並べて置く(ui.js toggleLpDock) -->
-    <div class="lt-dock" id="lt-dock" onclick="toggleLpDock()" title="ONにすると、シンボル一覧・レイヤー・部品DBを左に固定して並べます(キャンバスはその右から)。タブで切替、開いているタブをもう一度押すと畳みます。右端のドラッグで幅を変えられます。OFFは浮いた窓">📌固定</div>
+    <div class="lt-dock" id="lt-dock" onclick="toggleLpDock()" title="ONにすると、シンボル一覧・レイヤー・部品DB・プロジェクトを左に固定して並べます(キャンバスはその右から)。タブで切替、開いているタブをもう一度押すと畳みます。右端のドラッグで幅を変えられます。OFFは浮いた窓">📌固定</div>
     <!-- #lp-tabsのボタンはswitchLTab()経由でsym-float/lay-float/prt-float(浮動パネル)を開閉する。
          以前ここにあった#lp-body(旧インライン一覧)は常時display:noneで実際には表示されておらず、
          完全に未使用だったため削除した。カスタムシンボル一覧・レイヤー一覧・部品DB一覧は
@@ -912,6 +913,7 @@
 <script src="js/xref.js"></script>
 <script src="js/xref_project.js"></script>
 <script src="js/proj_index.js"></script>
+<script src="js/proj_tree.js"></script>
 <script src="js/parts_db.js"></script>
 <script src="js/parts_db_place.js"></script>
 <script src="js/library.js"></script>
@@ -960,6 +962,20 @@
   <div style="overflow-y:auto;padding:0 6px 6px" id="parts-table2"></div>
 
   <div onpointerdown="prtFloatDown(event)" style="height:10px;background:var(--bg3);border-top:1px solid var(--bd2);border-radius:0 0 6px 6px;cursor:move;display:flex;align-items:center;justify-content:center;user-select:none"><span style="color:var(--fg3);font-size:10px;letter-spacing:3px">⠿⠿⠿</span></div>
+</div>
+<!-- 【2026-10-04】プロジェクト(フォルダのツリー。js/proj_tree.js) -->
+<div id="prj-float" style="display:none;position:fixed;top:60px;left:60px;width:280px;max-height:70vh;background:var(--bg2,#2a2a2a);border:1px solid var(--bd2,#444);border-radius:6px;box-shadow:0 4px 20px rgba(0,0,0,0.5);z-index:9999;flex-direction:column">
+  <div id="prj-float-title" onpointerdown="prjFloatDown(event)" style="display:flex;align-items:center;padding:6px 10px;background:var(--bg3);border-bottom:1px solid var(--bd2);border-radius:6px 6px 0 0;cursor:move;user-select:none;flex-shrink:0">
+    <span style="font-size:12px;font-weight:600;color:var(--fg)">プロジェクト</span>
+    <span id="prj-float-root" style="flex:1;font-size:10px;color:var(--fg3);margin:0 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+    <span onclick="closePrj()" style="cursor:pointer;font-size:14px;color:var(--fg3);padding:0 4px">×</span>
+  </div>
+  <div style="padding:6px;flex-shrink:0;display:flex;gap:4px">
+    <button onclick="ptreeChooseRoot()" title="プロジェクトのフォルダを選びます(次回も同じフォルダを開きます)" style="font-size:11px;padding:2px 8px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)">フォルダを開く</button>
+    <button onclick="ptreeRender()" title="フォルダの中身を読み直します" style="font-size:11px;padding:2px 8px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)">↻ 更新</button>
+  </div>
+  <div id="prj-float-body" style="overflow-y:auto;padding:0 0 6px;font-size:12px"></div>
+  <div onpointerdown="prjFloatDown(event)" style="height:10px;background:var(--bg3);border-top:1px solid var(--bd2);border-radius:0 0 6px 6px;cursor:move;display:flex;align-items:center;justify-content:center;user-select:none;flex-shrink:0"><span style="color:var(--fg3);font-size:10px;letter-spacing:3px">⠿⠿⠿</span></div>
 </div>
 <!-- フローティングレイヤーパネル -->
 <div id="lay-float" style="display:none;position:fixed;top:80px;left:200px;background:var(--bg2,#2a2a2a);border:1px solid var(--bd2,#444);border-radius:6px;box-shadow:0 4px 20px rgba(0,0,0,0.5);z-index:9999;min-width:400px;width:fit-content;flex-direction:column;">

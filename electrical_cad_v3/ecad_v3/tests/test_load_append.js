@@ -86,7 +86,7 @@ console.log('\n【読込方法のダイアログ】');
 
 console.log('\n【呼び出し側】');
 {
-  ok(/_askLoadMode\(\{ name: f\.name/.test(edit) && /mode === 'append'/.test(edit) && /appendProjectData\(d\)/.test(edit), 'loadProject が、選ばれた方法で置き換え／追加を呼び分ける');
+  ok(/_askLoadMode\(\{ name, filePages/.test(edit) && /mode === 'append'/.test(edit) && /appendProjectData\(d\)/.test(edit), 'loadProject が、選ばれた方法で置き換え／追加を呼び分ける');
   ok(/const \{ fixedIds, zeroWires \} = applyProjectData\(d\)/.test(edit), '置き換えは従来どおり applyProjectData');
   ok(/const cur = state\.page, wasDirty = cur\.dirty;\s*pushH\(\);\s*cur\.dirty = wasDirty;/.test(edit), '追加では今のページに未保存マークを付けない');
   const backup = fs.readFileSync(__dirname + '/../js/backup.js', 'utf8');

@@ -86,7 +86,7 @@ window.addEventListener('resize', syncRibbonHeight);
 const LPD_W_DEF = 280, LPD_W_MIN = 180, LPD_W_MAX = 600;
 let _lpdW = LPD_W_DEF;
 function _lpdOpenPanel() {
-  return ['sym-float', 'lay-float', 'prt-float'].map(id => document.getElementById(id))
+  return ['sym-float', 'lay-float', 'prt-float', 'prj-float'].map(id => document.getElementById(id))
     .find(p => p && p.style.display && p.style.display !== 'none') || null;
 }
 function applyLpLayout() {
@@ -138,7 +138,7 @@ function lpdStartResize(e) {
 }
 
 function switchLTab(name, el) {
-  const panelMap = { sym:'sym-float', lay:'lay-float', prt:'prt-float' };
+  const panelMap = { sym:'sym-float', lay:'lay-float', prt:'prt-float', prj:'prj-float' };
   const fp = document.getElementById(panelMap[name]);
   if (!fp) return;
   const hidden = fp.style.display === 'none' || fp.style.display === '';
@@ -158,6 +158,7 @@ function switchLTab(name, el) {
     if (name === 'sym') renderSymFloat();
     if (name === 'lay') { renderLayers(); }
     if (name === 'prt') renderPartsFloat();
+    if (name === 'prj' && typeof ptreeRender === 'function') ptreeRender();
   } else {
     // 既に開いていたタブを再クリック → 閉じる
     fp.style.display = 'none';
@@ -173,6 +174,11 @@ function closeSym() {
 }
 function closePrt() {
   document.getElementById('prt-float').style.display = 'none';
+  document.querySelectorAll('.lt').forEach(e => e.classList.remove('on'));
+  _lpdRelayout();
+}
+function closePrj() {
+  document.getElementById('prj-float').style.display = 'none';
   document.querySelectorAll('.lt').forEach(e => e.classList.remove('on'));
   _lpdRelayout();
 }
@@ -4211,6 +4217,7 @@ function _makeFloatDrag(panelId) {
 }
 function symFloatDown(e) { _makeFloatDrag('sym-float')(e); }
 function prtFloatDown(e) { _makeFloatDrag('prt-float')(e); }
+function prjFloatDown(e) { _makeFloatDrag('prj-float')(e); }
 
 // ----------------------------------------------------------------
 // 標準シンボルの表示/非表示管理

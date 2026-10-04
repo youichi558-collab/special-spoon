@@ -481,12 +481,19 @@ function _askLoadMode(info, cb) {
 function loadProject(input) {
   const f = input.files[0]; if (!f) return;
   const rd = new FileReader();
-  rd.onload = e => {
+  rd.onload = e => loadProjectText(e.target.result, f.name);
+  rd.readAsText(f);
+  input.value = '';
+}
+
+// 図面ファイルの中身(文字列)を読み込む。mode0 を渡せば方法を聞かずにそれで読む
+// (左パネルのプロジェクトのツリー js/proj_tree.js から。2026-10-04)。渡さなければ置き換え/追加を聞く
+function loadProjectText(text, name, mode0) {
     let d;
-    try { d = JSON.parse(e.target.result); }
+    try { d = JSON.parse(text); }
     catch(err) { alert('読込失敗: ' + err.message); return; }
     const filePages = d.version === 2 ? (d.pages || []).length : (d.pages ? d.pages.length : 1);
-    _askLoadMode({ name: f.name, filePages, curPages: state.pages.length }, mode => {
+    const run = mode => {
       try {
         if (mode === 'append') {
           // pushH は今のページに未保存マーク(●)を付けるが、追加読込は今のページを変えないので、付けない
@@ -517,10 +524,8 @@ function loadProject(input) {
       } catch(err) {
         alert('読込失敗: ' + err.message);
       }
-    });
-  };
-  rd.readAsText(f);
-  input.value = '';
+    };
+    if (mode0) run(mode0); else _askLoadMode({ name, filePages, curPages: state.pages.length }, run);
 }
 
 function dl(text, fname, mime, onDone) { dlMake(() => text, fname, mime, onDone); }
