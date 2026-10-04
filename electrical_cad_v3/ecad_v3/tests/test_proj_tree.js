@@ -32,6 +32,7 @@ const sb = { console, window: {}, document: { getElementById: id => ({ 'prj-floa
   loadProjectText: (text, name, mode) => loads.push([text, name, mode]) };
 vm.createContext(sb);
 vm.runInContext(R('js/proj_tree.js') + '\nthis.ptreeState = ptreeState;', sb);
+sb.stToast = () => {};
 sb.state = { pages: [{ name: 'P', dirty: false }] };
 
 const rows = () => [...body.innerHTML.matchAll(/class="pt-row ([^"]*)"[^>]*data-path="([^"]*)"[^>]*>([^<]*)</g)].map(m => [m[1], m[2], m[3].trim()]);
@@ -70,6 +71,55 @@ const rows = () => [...body.innerHTML.matchAll(/class="pt-row ([^"]*)"[^>]*data-
   confirmAns = true;
   await sb.ptreeOpenFile('/Sheet10.seqzu');
   eq(loads.map(l => l[1]), ['Sheet10.seqzu'], '確認で「OK」なら開く');
+
+  console.log('\n【＋でページとして足す・開いたファイルを覚える】');
+  sb.state.pages = [{ name: 'P', dirty: false }]; loads.length = 0;
+  sb.loadProjectText = (text, name, mode) => { loads.push([name, mode]); if (mode === 'append') sb.state.pages.push({ name: 'S2' }); else sb.state.pages = [{ name: 'S' }]; return true; };
+  await sb.ptreeAddFile('/Sheet2.seqzu');
+  eq(loads, [['Sheet2.seqzu', 'append']], '★「＋」は後ろにページとして足す');
+  eq(sb.state.pages.map(p => p._src || ''), ['', '/Sheet2.seqzu'], '★足したページだけが開いたファイルを覚える');
+  ok(sb.ptreeSrcHandle('/Sheet2.seqzu') && !sb.ptreeSrcHandle('/x'), 'ファイルの鍵を引ける');
+  let switched = -1; sb.switchPage = i => { switched = i; }; sb.stToast = () => {};
+  await sb.ptreeAddFile('/Sheet2.seqzu');
+  eq([loads.length, switched], [1, 1], '★同じファイルは2回足さない(そのページへ移る)');
+  await sb.ptreeOpenFile('/Sheet10.seqzu');
+  eq(sb.state.pages.map(p => p._src), ['/Sheet10.seqzu'], '置き換えで開いたページも開いたファイルを覚える');
+
+  console.log('\n【保存は開いたファイルへ上書き(js/edit.js)】');
+  {
+    const edit = R('js/edit.js');
+    const pick = re => { const m = edit.match(re); if (!m) throw new Error('見つからない ' + re); return m[0]; };
+    const written = {};
+    const H = name => ({ name, async createWritable() { let b = ''; return { async write(t) { b += t; }, async close() { written[name] = b; } }; } });
+    const handles = { '/A.seqzu': H('A.seqzu'), '/B_all.seqzu': H('B_all.seqzu') };
+    const toasts = [], alerts = [];
+    const e = { console, LAYERS: [], renderPageTabs() {}, _syncCurrentPage() {}, usedSymbolsForSave: () => [], usedPartsForSave: () => [], usedTitleBlockTplsForSave: () => [],
+      ptreeSrcHandle: s => handles[s] || null, stToast: (m, k) => toasts.push(k), alert: m => alerts.push(m), window: { showSaveFilePicker() {} }, dlMake: () => { e.dialog = true; } };
+    vm.createContext(e);
+    vm.runInContext([pick(/function _saveJSON[\s\S]*?\n\}/), pick(/function _saveData\([\s\S]*?\n\}/), pick(/async function saveToSrcFile\([\s\S]*?\n\}/),
+      pick(/function _pageFileName\([\s\S]*?\n\}/), pick(/function saveProject\(\)[\s\S]*?\n\}/), pick(/function saveAllProject\(\)[\s\S]*?\n\}/)].join('\n'), e);
+    e.state = { currentPage: 0, wireNoRule: '', saveFileName: 'x', pages: [
+      { name: 'A1', _src: '/A.seqzu', dirty: true }, { name: 'B1', _src: '/B_all.seqzu', dirty: true }, { name: 'B2', _src: '/B_all.seqzu', dirty: true }, { name: '新', dirty: true }] };
+    e.saveProject();
+    await new Promise(r => setTimeout(r, 10));
+    const a = JSON.parse(written['A.seqzu'] || '{}');
+    eq((a.pages || []).map(p => p.name), ['A1'], '★「保存」は窓を出さずに開いたファイルへ上書き');
+    ok(!e.dialog && !/_src/.test(written['A.seqzu']) && a.pages[0].dirty === false, '★ファイルには _src を書かない・未保存マークを落とす');
+    e.state.currentPage = 1; e.saveProject();
+    await new Promise(r => setTimeout(r, 10));
+    eq(JSON.parse(written['B_all.seqzu']).pages.map(p => p.name), ['B1', 'B2'], '★同じファイルから開いたページはまとめて書く(全ページ保存のファイル)');
+    e.state.currentPage = 3; e.saveProject();
+    ok(e.dialog, '開いたファイルの無いページは今までどおり「名前を付けて保存」');
+    e.dialog = false; delete written['A.seqzu']; delete written['B_all.seqzu'];
+    e.saveAllProject();
+    await new Promise(r => setTimeout(r, 20));
+    ok(written['A.seqzu'] && written['B_all.seqzu'] && !e.dialog, '★全ページ保存は、ページごとに開いたファイルへ上書き(1つにまとめない)');
+    ok(alerts.length === 1 && /新/.test(alerts[0]), 'ファイルの無いページは保存せずに知らせる');
+    handles['/A.seqzu'].createWritable = async () => { throw new Error('ロック中'); };
+    e.state.pages[0].dirty = true; e.state.currentPage = 0; e.saveProject();
+    await new Promise(r => setTimeout(r, 10));
+    ok(e.state.pages[0].dirty === true && toasts.includes('ng'), '書けなかったら未保存マークを戻して知らせる');
+  }
 
   console.log('\n【フォルダ未設定】');
   sb.ptreeState.root = null;

@@ -87,8 +87,8 @@ console.log('\n【図面に入れるのは使っているシンボルだけ】')
   sb.rebuildSymbolPalette();
   eq(sb.usedSymbolsForSave(sb.state.pages).map(s => s.type), ['A'], '★使っている A だけ(以前はパレット丸ごと)');
   const saves = [
-    ['js/edit.js(1ページ保存)', /customSymbols:\s*usedSymbolsForSave\(\[pg\]\)/.test(read('js/edit.js'))],
-    ['js/edit.js(全ページ保存)', /customSymbols:\s*usedSymbolsForSave\(state\.pages\)/.test(read('js/edit.js'))],
+    ['js/edit.js(1ページ保存)', /customSymbols:\s*usedSymbolsForSave\(pages\)/.test(read('js/edit.js')) && /_saveData\(\[pg\]/.test(read('js/edit.js'))],
+    ['js/edit.js(全ページ保存)', /customSymbols:\s*usedSymbolsForSave\(pages\)/.test(read('js/edit.js')) && /_saveData\(state\.pages/.test(read('js/edit.js'))],
     ['js/autosave.js(自動保存)', /customSymbols:[^\n]*usedSymbolsForSave\(state\.pages\)/.test(read('js/autosave.js'))],
     ['js/backup.js(バックアップ)', /customSymbols:[^\n]*usedSymbolsForSave\(state\.pages\)/.test(read('js/backup.js'))],
   ];

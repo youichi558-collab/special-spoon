@@ -247,10 +247,54 @@ function _pageFileName(pg, idx) {
 
 // 【2026-10-04】図面の拡張子は .seqzu(このCADの名前 Sequenzu(仮)から。盛田さん)。中身は今までどおりの JSON。
 // 図面かどうかを拡張子で見分けるため(プロジェクトのツリーで図面だけを出す)。以前の .json の図面も読込で開ける(保存し直すと .seqzu)
+// 【2026-10-04】プロジェクトのツリー(js/proj_tree.js)から開いたページは、開いたファイルを覚えている(pg._src=ツリーの道筋)。
+// 盛田さん「開いたファイル全部書き換え出来ていい、普通そうだろ」→ そのページの「保存」は窓を出さずに開いたファイルへ上書きする。
+// 同じファイルから開いたページ(全ページ保存のファイル等)はまとめて書く。_src はファイルには書かない(_saveJSON)
+function _saveJSON(data) { return JSON.stringify(data, (k, v) => k === '_src' ? undefined : v, 2); }
+function _saveData(pages, saveFileName) {
+  return {
+    version: 2,
+    saveFileName,
+    customSymbols: usedSymbolsForSave(pages),   // 使ったシンボルだけ(2026-10-03 段階3。以前はパレット丸ごと)
+    customParts:   usedPartsForSave(pages),   // 使った型式の写しだけ(2026-10-03)
+    titleBlockTpls: usedTitleBlockTplsForSave(pages),   // 使った表題欄様式の写し(2026-10-03 段階2)
+    wireNoRule:    state.wireNoRule,
+    wireNoFmt:    state.wireNoFmt,   // 線番の書式(2026-10-04 js/report.js wnFmt)
+    layers:        LAYERS,
+    pages,
+  };
+}
+// 開いたファイルへ上書き。戻り値: 書けたら true
+async function saveToSrcFile(src) {
+  const h = (typeof ptreeSrcHandle === 'function') ? ptreeSrcHandle(src) : null;
+  if (!h) return false;
+  const pages = state.pages.filter(p => p._src === src);
+  const was = pages.map(p => p.dirty);
+  pages.forEach(p => { p.dirty = false; });   // 書き出す「前」に落とす(saveProject のコメント参照)
+  const base = h.name.replace(/\.(seqzu|json)$/i, '');
+  const text = _saveJSON(_saveData(pages, pages.length > 1 ? base.replace(/_all$/, '') : base.replace(/_[^_]+$/, '')));
+  try {
+    const w = await h.createWritable();
+    await w.write(text);
+    await w.close();
+  } catch (e) {
+    pages.forEach((p, i) => { p.dirty = was[i]; });
+    renderPageTabs();
+    if (typeof stToast === 'function') stToast(`「${h.name}」に書けませんでした（${e && e.message || e}）`, 'ng'); else alert(`「${h.name}」に書けませんでした`);
+    return false;
+  }
+  renderPageTabs();
+  if (typeof stToast === 'function') stToast(`上書き保存しました: ${h.name}`, 'ok');
+  if (typeof pidxAfterSave === 'function') pidxAfterSave();
+  if (typeof ptreeRender === 'function') ptreeRender();
+  return true;
+}
+
 function saveProject() {
   // 現在ページのみ保存
   _syncCurrentPage();
   const pg = state.pages[state.currentPage];
+  if (pg._src && typeof ptreeSrcHandle === 'function' && ptreeSrcHandle(pg._src)) { saveToSrcFile(pg._src); return; }   // 開いたファイルへ上書き
   const defaultName = _pageFileName(pg, state.currentPage);
   // 【2026-10-01】「名前を付けて保存」の窓が使えるときは、ファイル名はその窓で決める(先に名前の入力窓を出すと、
   // 入力中に「押した直後」が過ぎて窓が開けなかった=盛田さん「保存押しても、選択はでない」)。使えないときは従来どおり入力窓
@@ -264,28 +308,30 @@ function saveProject() {
     const fname = String(fileName).replace(/\.(seqzu|json)$/i, '');
     // saveFileNameを更新
     state.saveFileName = fname.replace(/_[^_]+$/, ''); // ページ名部分を除いた部分を保存
-    const data = {
-      version: 2,
-      saveFileName: state.saveFileName,
-      customSymbols: usedSymbolsForSave([pg]),   // 使ったシンボルだけ(2026-10-03 段階3。以前はパレット丸ごと)
-      customParts:   usedPartsForSave([pg]),   // 使った型式の写しだけ(2026-10-03)
-      titleBlockTpls: usedTitleBlockTplsForSave([pg]),   // 使った表題欄様式の写し(2026-10-03 段階2)
-      wireNoRule:    state.wireNoRule,
-      wireNoFmt:    state.wireNoFmt,   // 線番の書式(2026-10-04 js/report.js wnFmt)
-      layers:        LAYERS,
-      pages: [pg],
-    };
+    const data = _saveData([pg], state.saveFileName);
     // 書き出す「前」にdirtyを落とすこと。あとで落とすと data.pages が同じオブジェクトを
     // 参照しているため、保存ファイルに dirty:true が焼き込まれてしまう。
     // その状態で読み込むと、開いた直後なのにシートタブへ未保存マーク(●)が出る。
     pg.dirty = false;
-    return JSON.stringify(data, null, 2);
+    return _saveJSON(data);
   }, fname0 + '.seqzu', 'application/x-seqzu', () => { renderPageTabs(); if (typeof pidxAfterSave === 'function') pidxAfterSave(); });   // 参照図面のフォルダならプロジェクト台帳も更新
 }
 
 function saveAllProject() {
   // 全ページまとめて保存
   _syncCurrentPage();
+  // 【2026-10-04】ツリーから開いたページがあれば、ページごとに開いたファイルへ上書きする(1つのファイルにまとめない)。
+  // 開いたファイルの無いページ(新しく作った等)は書かずに知らせる(そのページで「保存」=名前を付けて保存)
+  const srcs = [...new Set(state.pages.filter(p => p._src && typeof ptreeSrcHandle === 'function' && ptreeSrcHandle(p._src)).map(p => p._src))];
+  if (srcs.length) {
+    const rest = state.pages.filter(p => !srcs.includes(p._src)).map(p => p.name);
+    (async () => {
+      let n = 0;
+      for (const src of srcs) if (await saveToSrcFile(src)) n++;
+      if (rest.length) alert(`開いたファイルへ ${n} 件上書き保存しました。\n\nファイルの無いページは保存していません: ${rest.join('、')}\nそのページで「保存」を押して名前を付けてください。`);
+    })();
+    return;
+  }
   const defaultBase = (state.saveFileName || '図面').replace(/[\\/:*?"<>|]/g, '_');
   // 【2026-10-01】saveProject と同じく、名前は「名前を付けて保存」の窓で決める(使えないときだけ入力窓)
   let base0 = defaultBase;
@@ -296,20 +342,10 @@ function saveAllProject() {
   }
   dlMake(fileName => {
     state.saveFileName = String(fileName).replace(/\.(seqzu|json)$/i, '').replace(/_all$/, '');
-    const data = {
-      version: 2,
-      saveFileName: state.saveFileName,
-      customSymbols: usedSymbolsForSave(state.pages),   // 使ったシンボルだけ(段階3)
-      customParts:   usedPartsForSave(state.pages),   // 使った型式の写しだけ(2026-10-03)
-      titleBlockTpls: usedTitleBlockTplsForSave(state.pages),   // 使った表題欄様式の写し(2026-10-03 段階2)
-      wireNoRule:    state.wireNoRule,
-      wireNoFmt:    state.wireNoFmt,   // 線番の書式(2026-10-04 js/report.js wnFmt)
-      layers:        LAYERS,
-      pages: state.pages,
-    };
+    const data = _saveData(state.pages, state.saveFileName);
     // 書き出す「前」にdirtyを落とす（理由はsaveProject()のコメント参照）
     state.pages.forEach(p => p.dirty = false);
-    return JSON.stringify(data, null, 2);
+    return _saveJSON(data);
   }, base0 + '_all.seqzu', 'application/x-seqzu', () => { renderPageTabs(); if (typeof pidxAfterSave === 'function') pidxAfterSave(); });
 }
 
@@ -491,7 +527,7 @@ function loadProject(input) {
 function loadProjectText(text, name, mode0) {
     let d;
     try { d = JSON.parse(text); }
-    catch(err) { alert('読込失敗: ' + err.message); return; }
+    catch(err) { alert('読込失敗: ' + err.message); return false; }
     const filePages = d.version === 2 ? (d.pages || []).length : (d.pages ? d.pages.length : 1);
     const run = mode => {
       try {
@@ -502,18 +538,22 @@ function loadProjectText(text, name, mode0) {
           cur.dirty = wasDirty;
           const r = appendProjectData(d);
           const dm = (typeof devAfterLoad === 'function') ? devAfterLoad({ defer: true }) : { filled: 0, conflicts: [] };
-          alert(`追加しました（${r.added}ページ）\n${r.names.join('、')}\n\n今の図面は変わっていません。`
-            + _devLoadMsg(dm)
+          const warn = _devLoadMsg(dm)
             + (r.fixedIds > 0 ? `\n重複していた図形IDを ${r.fixedIds} 件付け替えました。` : '')
-            + (r.zeroWires > 0 ? `\n長さ0の配線(見えない配線)を ${r.zeroWires} 本削除しました。` : '')
+            + (r.zeroWires > 0 ? `\n長さ0の配線(見えない配線)を ${r.zeroWires} 本削除しました。` : '');
+          // ツリーから(mode0)で知らせることが無ければ、窓を出さずに小さく知らせる
+          if (mode0 && !warn && typeof stToast === 'function') stToast(`ページとして足しました: ${r.names.join('、')}(取り消し Ctrl+Z で戻せます)`, 'ok');
+          else alert(`追加しました（${r.added}ページ）\n${r.names.join('、')}\n\n今の図面は変わっていません。`
+            + warn
             + (r.symAdded || r.symKept ? `\nシンボル：追加 ${r.symAdded} 件` + (r.symKept ? `、同じ種類が既にあったので今のものを使用 ${r.symKept} 件` : '') : '')
             + (r.layersAdded ? `\nレイヤー：追加 ${r.layersAdded} 件` : '')
             + `\n取り消し(Ctrl+Z)で元に戻せます。`);
-          return;
+          return true;
         }
         pushH();
         const { fixedIds, zeroWires } = applyProjectData(d);
         const dm = (typeof devAfterLoad === 'function') ? devAfterLoad({ defer: true }) : { filled: 0, conflicts: [] };
+        if (mode0 && !(fixedIds > 0 || zeroWires > 0) && !_devLoadMsg(dm) && typeof stToast === 'function') { stToast(`開きました: ${name}`, 'ok'); return true; }
         alert((fixedIds > 0 || zeroWires > 0
           ? `読込完了\n`
             + (fixedIds > 0 ? `\n重複していた図形IDを ${fixedIds} 件修復しました。\n`
@@ -521,11 +561,13 @@ function loadProjectText(text, name, mode0) {
             + (zeroWires > 0 ? `\n長さ0の配線(見えない配線)を ${zeroWires} 本削除しました。\n` : '')
             + `上書き保存すると修復後の状態になります。`
           : '読込完了') + _devLoadMsg(dm));
+        return true;
       } catch(err) {
         alert('読込失敗: ' + err.message);
+        return false;
       }
     };
-    if (mode0) run(mode0); else _askLoadMode({ name, filePages, curPages: state.pages.length }, run);
+    if (mode0) return run(mode0); else _askLoadMode({ name, filePages, curPages: state.pages.length }, run);
 }
 
 function dl(text, fname, mime, onDone) { dlMake(() => text, fname, mime, onDone); }
