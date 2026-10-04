@@ -497,7 +497,7 @@ function wireNoTable(msg){
     const delBtn = r.merged
       ? `<button disabled title="ページ跨ぎの矢印でつながった行は、ここから削除できません(各ページで消してください)" style="${btnStyle};opacity:.3">×</button>`
       : `<button title="このネットの配線ごと削除します(ほかの線番は動かしません)" onclick="deleteNetFromList(${r.pageIdx},[${r.idxs.join(',')}])" style="${btnStyle};color:var(--red)">×</button>`;
-    const chk = `<input type="checkbox" ${r.autoNum?'checked':''} title="チェックを外すと「線番割付」ボタンでの自動採番の対象外になります" onchange="toggleNetAutoNumParts(${partsArg(r)},this.checked)">`;
+    const chk = `<input type="checkbox" ${r.autoNum?'checked':''} title="チェックを外すと、割付・振り直しの対象外になります" onchange="toggleNetAutoNumParts(${partsArg(r)},this.checked)">`;
     // 【2026-09-25】行を押すと図面のそのネットへ飛ぶ(盛田さん「線番が無いことはわかるが
     // それがどれなのかは不明」)。欄・ボタン・チェックを押したときは飛ばない。
     const jump = `onclick="if(!/^(INPUT|BUTTON|SELECT)$/.test(event.target.tagName))jumpToNet(${r.pageIdx},[${r.idxs.join(',')}])"`;

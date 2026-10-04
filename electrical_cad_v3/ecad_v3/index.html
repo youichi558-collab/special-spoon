@@ -171,7 +171,7 @@
           </div>
           <div class="rb rb-sm" id="rb-guide_h" onclick="setMode('guide_h')"><svg viewBox="0 0 14 14"><path d="M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2,1.5"/></svg>水平補助</div>
           <div class="rb rb-sm" id="rb-guide_v" onclick="setMode('guide_v')"><svg viewBox="0 0 14 14"><path d="M7 1v12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2,1.5"/></svg>垂直補助</div>
-          <div class="rb rb-sm" onclick="wireNoSettings()" title="線番の設定(書式)と割付・振り直し"><svg viewBox="0 0 14 14"><path d="M2 4h10M2 7h7M2 10h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><text x="10" y="11" font-size="6" fill="currentColor">#</text></svg>線番割付</div>
+          <div class="rb rb-sm" onclick="wireNoSettings()" title="線番の設定(書式)と割付・振り直し"><svg viewBox="0 0 14 14"><path d="M2 4h10M2 7h7M2 10h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><text x="10" y="11" font-size="6" fill="currentColor">#</text></svg>線番の設定</div>
         </div>
         <div class="rg-label">配線</div>
       </div>
@@ -383,8 +383,8 @@
   <span style="width:1px;height:18px;background:var(--bd2);margin:0 2px"></span>
   <div onclick="startPartRefSeq()" title="デバイスを連続採番：シンボルをクリックで順番に割り当て（Pキー）"
     style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;border:1px solid var(--bd2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--fg);white-space:nowrap;">№採番</div>
-  <div onclick="startWireNoSeq()" title="線番を連続採番：配線をクリックで順番に割り当て（Nキー）"
-    style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;border:1px solid var(--bd2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--fg);white-space:nowrap;">線番採番</div>
+  <div onclick="startWireNoSeq()" title="線番クリック：配線をクリックするたびに、このページの空いている番号を順に入れます（Nキー）。書式は配線タブの「線番の設定」"
+    style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;border:1px solid var(--bd2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--fg);white-space:nowrap;">線番クリック</div>
   <div onclick="toggleSearchPanel()" title="検索（Ctrl+F）：デバイス・線番・テキストを全ページ横断検索"
     style="display:flex;align-items:center;gap:3px;padding:2px 8px;border-radius:3px;border:1px solid var(--bd2);cursor:pointer;font-size:11px;background:var(--bg);color:var(--fg);white-space:nowrap;">🔍検索</div>
   <div onclick="toggleSymPinsDisp()" id="qb-pins" title="【検証用/仮】シンボル端子(ピン)位置を赤丸で表示。設計中のフェーズ0データ確認用（PDF出力には出ません）"
@@ -772,6 +772,7 @@
         <button class="fp-btn" onclick="closeFP('wireno-p');autoWireNumber('page')" title="このページの番号の無い線にだけ振ります">未採番に割付(このページ)</button>
         <button class="fp-btn" onclick="closeFP('wireno-p');autoWireNumber('all')" title="全ページの番号の無い線にだけ振ります">未採番に割付(全ページ)</button>
         <button class="fp-btn" onclick="closeFP('wireno-p');wireNoRenumberPage()" title="変わる番号を確かめてから振り直します">このページを振り直す</button>
+        <button class="fp-btn" onclick="closeFP('wireno-p');startWireNoSeq()" title="配線をクリックするたびに、このページの空いている番号を順に入れます(クイックバーの「線番クリック」・Nキーと同じ)">クリックで1本ずつ振る</button>
         <button class="fp-btn" onclick="closeFP('wireno-p')">閉じる</button>
       </div>
     </div>
