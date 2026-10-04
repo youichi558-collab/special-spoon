@@ -204,12 +204,18 @@ async function stRenderRibbon() {
   if (typeof syncRibbonHeight === 'function') syncRibbonHeight();
 }
 
-// 【2026-10-04】設定タブの中身をフロートパネルに移した(盛田さん「設定リボンを使って、今の設定全部をフロートパネルに移動」)
-function openOutDirPanel() { stRenderRibbon(); openFP('st-outdir-p'); }
-function openPdbPlacePanel() {
-  if (typeof pdbPlaceRender === 'function') pdbPlaceRender('pdb-place', () => { if (typeof partsDb !== 'undefined') partsDb.reload(); });
-  openFP('pdb-place-p');
+// 【2026-10-04】設定タブを押すと「設定」パネル(#settings-p)を開き、全部の項目(保存先・部品DBの場所・線番・バックアップ)を出す
+// (盛田さん「設定のリボンを押したらフロートパネル開いてそこに全部の項目を出すイメージ」)。sectionId を渡すとその項目まで送る
+function openSettingsPanel(sectionId) {
+  stRenderRibbon();   // 保存先と部品DBの場所
+  if (typeof wireNoSettingsFill === 'function') wireNoSettingsFill();
+  if (typeof bkRenderPanel === 'function') { bkRenderPanel(); if (typeof bkRefreshList === 'function') bkRefreshList(); }
+  openFP('settings-p');
+  const sec = sectionId && document.getElementById(sectionId);
+  if (sec && sec.scrollIntoView) sec.scrollIntoView({ block: 'start' });
 }
+function openOutDirPanel() { openSettingsPanel('set-sec-outdir'); }
+function openPdbPlacePanel() { openSettingsPanel('set-sec-pdb'); }
 
 async function stPickOutDir() {
   try {

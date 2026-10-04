@@ -1681,7 +1681,12 @@ if (typeof window !== 'undefined') (window.__ecadLoaded = window.__ecadLoaded ||
 // 線番の設定(フロートパネル。2026-10-04 盛田さん「設定にページ+番号の桁数を持たせたら」「設定はフロートパネルに出す」)
 // 書式は図面ファイルに保存する(state.wireNoFmt)。割付・振り直しもここから押せる
 // ----------------------------------------------------------------
+// 線番表の「線番の設定」から: 設定パネル(js/settings.js openSettingsPanel)の線番の項目を開く
 function wireNoSettings() {
+  if (typeof openSettingsPanel === 'function') { openSettingsPanel('set-sec-wn'); return; }
+  wireNoSettingsFill();
+}
+function wireNoSettingsFill() {
   if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
   const f = wnFmt();
   const pd = document.getElementById('wn-page-digits'), sd = document.getElementById('wn-seq-digits');
@@ -1691,7 +1696,6 @@ function wireNoSettings() {
   if (mb) mb.value = f.mainBranch;
   if (mm) mm.value = f.mainMotor;
   wireNoSettingsInfo();
-  openFP('wireno-p');
 }
 // 書式を変えたら、**変える前の書式に合っていた番号**を新しい書式に書き換えるか聞く(連番はそのまま、ページ番号の部分だけ付け替える)。
 // 書き換えないと、それらは新しい書式に合わず「手で付けた名前」扱いになり、割付・振り直しで動かなくなるため(Sheet3の 01〜16 → 301〜316)

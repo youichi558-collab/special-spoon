@@ -162,9 +162,10 @@ function bkStart() {
 // ================================================================
 // 設定パネル
 // ================================================================
+// 【2026-10-04】バックアップは設定パネル(js/settings.js openSettingsPanel)の1項目になった
 function openBackupPanel() {
+  if (typeof openSettingsPanel === 'function') { openSettingsPanel('set-sec-bk'); return; }
   bkRenderPanel();
-  openFP('backup-p');
   bkRefreshList();
 }
 
@@ -262,7 +263,7 @@ async function bkRestore(name) {
     pushH();
     const { fixedIds, zeroWires } = applyProjectData(j.data);
     const dm = (typeof devAfterLoad === 'function') ? devAfterLoad({ defer: true }) : null;   // デバイスの点検(js/devices.js)
-    closeFP('backup-p');
+    closeFP('settings-p');   // バックアップは設定パネルの中(2026-10-04)
     alert(`「${name}」を開きました。`
       + (fixedIds > 0 ? `\n\n重複していた図形IDを ${fixedIds} 件修復しました。` : '')
       + (zeroWires > 0 ? `\n\n長さ0の配線(見えない配線)を ${zeroWires} 本削除しました。` : '')
