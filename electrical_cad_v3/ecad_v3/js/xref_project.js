@@ -89,9 +89,11 @@ async function xprojReadFiles(dir, names) {
   for (const name of names) {
     try {
       const fh = await dir.getFileHandle(name);
-      const d = JSON.parse(await (await fh.getFile()).text());
+      const file = await fh.getFile();
+      const d = JSON.parse(await file.text());
       if (!d || !Array.isArray(d.pages)) throw new Error('図面ファイルではありません');
-      files.push({ name, pages: d.pages, symbols: d.customSymbols || [] });
+      // lastModified・size・data はプロジェクト台帳(js/proj_index.js)が読み直さずに使う
+      files.push({ name, pages: d.pages, symbols: d.customSymbols || [], lastModified: file.lastModified, size: file.size, data: d });
     } catch (e) { problems.push(`${name}: ${e && e.message || e}`); }
   }
   return { files, problems };
@@ -103,7 +105,13 @@ async function xprojReload() {
   const names = await xprojReadList(dir);
   if (!names) return false;
   const r = await xprojReadFiles(dir, names);
-  xprojState.files = r.files; xprojState.problems = r.problems; xprojState.dirName = dir.name;
+  xprojState.files = r.files.map(f => { const o = Object.assign({}, f); delete o.data; return o; });
+  xprojState.problems = r.problems; xprojState.dirName = dir.name;
+  // プロジェクト台帳を最新にする(変わったファイルだけ。いま読んだ中身を使う)。失敗しても参照図面の計算は続ける
+  if (typeof pidxUpdate === 'function') {
+    try { await pidxUpdate(dir, names, new Map(r.files.map(f => [f.name, f]))); }
+    catch (e) { console.warn('プロジェクト台帳の更新に失敗', e); }
+  }
   if (r.problems.length && typeof stToast === 'function') stToast('読めなかった図面があります:\n' + r.problems.join('\n'), 'warn');
   return true;
 }
@@ -135,7 +143,7 @@ async function xprojSetup() {
   } catch (e) { return; }
   const all = [];
   for await (const [name, h] of dir.entries()) {
-    if (h.kind === 'file' && /\.json$/i.test(name) && name !== XPROJ_FILE) all.push(name);
+    if (h.kind === 'file' && /\.json$/i.test(name) && name !== XPROJ_FILE && name !== (typeof PIDX_FILE === 'string' ? PIDX_FILE : '')) all.push(name);   // 一覧と台帳は図面ではない
   }
   all.sort();
   const saved = new Set((await xprojReadList(dir)) || []);

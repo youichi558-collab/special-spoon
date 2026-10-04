@@ -387,10 +387,11 @@ function _wireThroughCircle(pts, t) {
 }
 
 // 端子に繋がっている線番を集める
-function _tbConnsOf(el, pg) {
+// netNo: 配線ごとのネットの線番(省略時は netWireNoOf)。プロジェクト台帳(js/proj_index.js)は別ファイルを読むとき自分で数えて渡す
+function _tbConnsOf(el, pg, netNo) {
   const conns = new Set();
   // 【2026-09-25】線番は1ネット1か所なので、ネットの番号を出す(report.js netWireNoOf)
-  const netNo = netWireNoOf(pg);
+  netNo = netNo || netWireNoOf(pg);
   // 【2026-10-01】線番表(groupWiresByNet)と同じ判定にした: 線の端が「半径+許容誤差」以内で、**一番近い端子**がこの端子のとき。
   // 以前は「中心から5以内」で、端子の円を5より大きくすると円周で止めた線を拾えず、線番表とも食い違っていた
   const terms = (pg.elements || []).filter(e => e.type === 'junction' && (e.style === 'circle' || e.style === 'dbl'));

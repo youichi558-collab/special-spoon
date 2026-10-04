@@ -278,7 +278,7 @@ function saveProject() {
     // その状態で読み込むと、開いた直後なのにシートタブへ未保存マーク(●)が出る。
     pg.dirty = false;
     return JSON.stringify(data, null, 2);
-  }, fname0 + '.json', 'application/json', () => renderPageTabs());
+  }, fname0 + '.json', 'application/json', () => { renderPageTabs(); if (typeof pidxAfterSave === 'function') pidxAfterSave(); });   // 参照図面のフォルダならプロジェクト台帳も更新
 }
 
 function saveAllProject() {
@@ -308,7 +308,7 @@ function saveAllProject() {
     // 書き出す「前」にdirtyを落とす（理由はsaveProject()のコメント参照）
     state.pages.forEach(p => p.dirty = false);
     return JSON.stringify(data, null, 2);
-  }, base0 + '_all.json', 'application/json', () => renderPageTabs());
+  }, base0 + '_all.json', 'application/json', () => { renderPageTabs(); if (typeof pidxAfterSave === 'function') pidxAfterSave(); });
 }
 
 // v1以前(旧形式)のファイルのページを、今の形に直す(groupsをpages内に移動・idを付与)。
