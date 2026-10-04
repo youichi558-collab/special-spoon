@@ -23,16 +23,14 @@ function run(el, o) {
   vm.createContext(sb); vm.runInContext(src, sb); sb.openFP('p'); return sb;
 }
 
-console.log('【動かしていないパネル: 従来どおり中央寄せ】');
-{ const el = panel({ left: 230, top: 105, w: 1040, h: 675 }); run(el);
-  // 領域は 108(#quickbar下端)〜860(#page-bar上端)。高さ675 → 中心=484、上端=146.5 ≥ 108+12
-  ok(el.style.top === '484px' && el.classList.contains('open'), `キャンバス領域の中央に開く(実際 ${el.style.top})`); }
-{ // 1366x768相当: 領域 108〜728、高さ576(75vh)。中心418 → 上端130 ≥ 120(リボン・上の行に被らない)
-  const el = panel({ left: 0, top: 0, w: 1040, h: 576 }); run(el, { _pb: 728 });
-  const c = parseFloat(el.style.top); ok(c - 288 >= 108 + 12 - 1e-9 && c + 288 <= 728 - 8 + 1e-9, `小さい画面でも上端が上の行に被らず、下のバーにも被らない(中心 ${c})`); }
-{ // 高さが領域より大きいときは上を優先(上の行に被らない)
-  const el = panel({ left: 0, top: 0, w: 1040, h: 700 }); run(el, { _pb: 728 });
-  ok(parseFloat(el.style.top) - 350 >= 108 + 12 - 1e-9, '高さが足りなくても、上端は上の行に被らない'); }
+console.log('【動かしていないパネル: 上端はどのパネルも同じ位置(2026-10-04)】');
+// 盛田さん「フロートパネルの出る高さがタブごとに変わるのはやめてくれ、外面に出すとき上部の位置は同じにしろ」。
+// 以前は高さの真ん中で合わせていたので、タブで中身の高さが変わると上端が上下した
+{ const tops = [675, 300, 120].map(h => { const el = panel({ left: 230, top: 105, w: 1040, h }); run(el); return el.style.top; });
+  ok(tops.every(t => t === '120px'), `★高さが違っても上端は同じ(#quickbar下端108+12=120。実際 ${tops.join(',')})`); }
+{ const el = panel({ left: 0, top: 0, w: 1040, h: 576 }); run(el, { _pb: 728 });
+  ok(el.style.top === '120px' && el.style.maxHeight === '600px', `下は下のバーから8px空けた所まで(超えたら中でスクロール。実際 max ${el.style.maxHeight})`);
+  ok(el.classList.contains('open'), '開く'); }
 
 console.log('【動かした後: 位置を保つ(タブ切替・開き直し)】');
 { const el = panel({ left: 330, top: 137, w: 1040, h: 675 }); el.style.transform = 'none'; el.style.left = '330px'; el.style.top = '137px'; run(el);

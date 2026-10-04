@@ -3589,17 +3589,16 @@ function openFP(id) {
     el.style.top  = Math.max(0, Math.min(r.top,  window.innerHeight - r.height)) + 'px';
     return;
   }
-  // 【2026-09-29】動かしていない最初の位置: リボンと、その下の「選択・配線」の行(#quickbar)に被らないよう、
-  // その下(キャンバスの領域)の中央に置く。以前は画面の中央(50%)基準だったため、画面が小さいと上端がリボンの直下・
-  // 「選択・配線」の行に食い込み、リボンの続きのように見えた(盛田さん指摘。1366x768で上端y=88、リボンの下端は80)。
-  // 上端はキャンバス領域の上端から12px空ける。下は下のバー(#page-bar)から8px空ける。高さが足りなければ上を優先する。
+  // 【2026-09-29】動かしていない最初の位置: リボンと、その下の「選択・配線」の行(#quickbar)に被らないよう、その下(キャンバスの領域)に置く
+  // (盛田さん指摘。1366x768で上端がリボンの直下に食い込んでいた)。
+  // 【2026-10-04】**上端はどのパネルも同じ位置**(キャンバス領域の上端から12px)。盛田さん「フロートパネルの出る高さがタブごとに変わるのはやめてくれ、
+  // 外面に出すとき上部の位置は同じにしろ」。以前は高さの真ん中で合わせていた(translate(-50%,-50%))ので、帳票のタブや設定のタブで中身の高さが
+  // 変わるたびに上端が上下した。今は横だけ中央(css .fp の translate(-50%,0))で、中身が増えると下に伸びる。下は下のバー(#page-bar)から8px空けた所まで(超えたら中でスクロール)
   const areaTop = document.getElementById('quickbar')?.getBoundingClientRect().bottom || 0;
   const barTop  = document.getElementById('page-bar')?.getBoundingClientRect().top || window.innerHeight;
-  const h = el.getBoundingClientRect().height;
-  let center = (areaTop + barTop) / 2;
-  center = Math.min(center, barTop - 8 - h / 2);
-  center = Math.max(center, areaTop + 12 + h / 2);
-  el.style.top = center + 'px';   // transform: translate(-50%,-50%) で中心を合わせる(css .fp)
+  const top = areaTop + 12;
+  el.style.top = top + 'px';
+  el.style.maxHeight = Math.max(160, barTop - 8 - top) + 'px';
 }
 function closeFP(id) { document.getElementById(id)?.classList.remove('open'); }
 

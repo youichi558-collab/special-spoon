@@ -170,7 +170,7 @@ body{font-family:'Segoe UI',sans-serif;font-size:12px;background:var(--bg);color
 .sb-sep{opacity:.4;}
 
 /* ========= フローティングパネル ========= */
-.fp{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--bg2);border:1px solid var(--bd);border-radius:6px;padding:12px;z-index:300;box-shadow:0 4px 24px var(--sh);max-height:75vh;overflow-y:auto;}
+.fp{display:none;position:fixed;top:120px;left:50%;transform:translate(-50%,0);background:var(--bg2);border:1px solid var(--bd);border-radius:6px;padding:12px;z-index:300;box-shadow:0 4px 24px var(--sh);max-height:75vh;overflow-y:auto;}
 .fp.open{display:block;}
 /* 【2026-10-04】どのパネルにも右上に「×」(js/ui.js fpEnsureClose)。中をスクロールしても上に残る。高さ0の帯に置いて中身を押し下げない */
 .fp-x-wrap{position:sticky;top:-6px;height:0;z-index:20;display:flex;justify-content:flex-end;margin:-6px -6px 0 0;pointer-events:none;}
@@ -240,9 +240,9 @@ button:not(.rep-tab):active{filter:brightness(.85);transform:scale(0.96);}      
 #wire-p{top:8px;right:212px;width:360px;}
 #term-p{top:8px;right:212px;width:400px;}
 #dxf-log-p{top:8px;right:212px;width:360px;}
-#frame-p{top:50%;left:50%;transform:translate(-50%,-50%);width:520px;}
-#sym-reg-p{top:50%;left:50%;transform:translate(-50%,-50%);width:440px;}
-#part-reg-p{top:50%;left:50%;transform:translate(-50%,-50%);width:440px;}
+#frame-p{left:50%;transform:translate(-50%,0);width:520px;}
+#sym-reg-p{left:50%;transform:translate(-50%,0);width:440px;}
+#part-reg-p{left:50%;transform:translate(-50%,0);width:440px;}
 
 .resize-handle{position:absolute;width:8px;height:8px;background:#0067c0;border:1px solid #fff;border-radius:2px;cursor:pointer;z-index:10;}
 .grp-resize-handle{width:10px;height:10px;background:#e07000;border:1.5px solid #fff;border-radius:2px;z-index:11;}
