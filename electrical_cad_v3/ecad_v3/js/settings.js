@@ -210,9 +210,16 @@ function openSettingsPanel(sectionId) {
   stRenderRibbon();   // 保存先と部品DBの場所
   if (typeof wireNoSettingsFill === 'function') wireNoSettingsFill();
   if (typeof bkRenderPanel === 'function') { bkRenderPanel(); if (typeof bkRefreshList === 'function') bkRefreshList(); }
+  stSetTab(sectionId || _stTab);
   openFP('settings-p');
-  const sec = sectionId && document.getElementById(sectionId);
-  if (sec && sec.scrollIntoView) sec.scrollIntoView({ block: 'start' });
+}
+// 設定パネルのタブ(2026-10-04 盛田さん「フロートパネル内タブ分けする事」)。最後に見たタブを開き直す(この画面を開いている間だけ)
+let _stTab = 'set-sec-outdir';
+function stSetTab(id) {
+  if (!document.getElementById(id)) id = 'set-sec-outdir';
+  _stTab = id;
+  document.querySelectorAll('#settings-p section[id^="set-sec-"]').forEach(s => { s.style.display = s.id === id ? '' : 'none'; });
+  document.querySelectorAll('#settings-tabs .rep-tab').forEach(b => b.classList.toggle('on', b.dataset.sec === id));
 }
 function openOutDirPanel() { openSettingsPanel('set-sec-outdir'); }
 function openPdbPlacePanel() { openSettingsPanel('set-sec-pdb'); }

@@ -716,17 +716,22 @@
          設定タブを押すとこの1枚が開き、保存先・部品DBの場所・線番・バックアップを全部出す。js/settings.js openSettingsPanel -->
     <div class="fp" id="settings-p" style="width:560px;max-width:95vw;max-height:85vh;overflow-y:auto">
       <h3>設定</h3>
-      <section id="set-sec-outdir" style="margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--bd2)">
-        <h4 style="margin:0 0 6px;font-size:12px">保存先</h4>
+      <!-- 【2026-10-04】項目はタブで分ける(盛田さん「フロートパネル内タブ分けする事」)。js/settings.js stSetTab -->
+      <div id="settings-tabs" style="display:flex;gap:3px;flex-wrap:wrap;border-bottom:1px solid var(--bd2);margin-bottom:8px">
+        <button class="rep-tab" data-sec="set-sec-outdir" onclick="stSetTab('set-sec-outdir')">保存先</button>
+        <button class="rep-tab" data-sec="set-sec-pdb" onclick="stSetTab('set-sec-pdb')">部品DBの場所</button>
+        <button class="rep-tab" data-sec="set-sec-wn" onclick="stSetTab('set-sec-wn')">線番</button>
+        <button class="rep-tab" data-sec="set-sec-bk" onclick="stSetTab('set-sec-bk')">バックアップ</button>
+      </div>
+      <section id="set-sec-outdir" style="display:none;margin-bottom:8px">
       <div style="font-size:10px;color:var(--fg3);line-height:1.5;margin-bottom:6px">保存・出力のたびに「名前を付けて保存」の窓が開きます。ここで選ぶと、その窓がこのフォルダから開きます(先に選んでおく必要はありません。前回保存した場所から開きます)。</div>
       <div id="st-outdir" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px"></div>
       </section>
-      <section id="set-sec-pdb" style="margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--bd2)">
-        <h4 style="margin:0 0 6px;font-size:12px">部品DBの場所</h4>
+      <section id="set-sec-pdb" style="display:none;margin-bottom:8px">
       <div id="pdb-place"></div>
       </section>
-      <section id="set-sec-wn" style="margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--bd2)">
-        <h4 style="margin:0 0 6px;font-size:12px">線番(この図面の設定。図面ファイルに保存)</h4>
+      <section id="set-sec-wn" style="display:none;margin-bottom:8px">
+        <h4 style="margin:0 0 6px;font-size:11px;font-weight:400;color:var(--fg3)">この図面の設定です(図面ファイルに保存)</h4>
       <div style="display:flex;gap:10px;font-size:11px;margin-bottom:6px">
         <label>ページ番号の桁数
           <select id="wn-page-digits" onchange="setWireNoFmt()" style="font-size:11px">
@@ -761,8 +766,7 @@
         </div>
       </div>
       </section>
-      <section id="set-sec-bk" style="margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--bd2)">
-        <h4 style="margin:0 0 6px;font-size:12px">バックアップ</h4>
+      <section id="set-sec-bk" style="display:none;margin-bottom:8px">
       <div id="bk-conf"></div>
       <div style="display:flex;gap:6px;margin:10px 0 6px;align-items:center;flex-wrap:wrap">
         <button class="fp-btn primary" onclick="bkSaveNow()">今すぐ取る</button>
