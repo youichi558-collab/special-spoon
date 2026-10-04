@@ -20,7 +20,7 @@ vm.createContext(sb);
 vm.runInContext(R('js/report.js'), sb);
 vm.runInContext(R('js/conn_table.js'), sb);
 vm.runInContext(R('js/devices.js'), sb);
-vm.runInContext(R('js/xref_project.js') + '\nthis.xprojState = xprojState;', sb);
+vm.runInContext(R('js/xref_project.js') + '\nthis.xprojState = xprojState; this.xprojBase = xprojBase;', sb);
 vm.runInContext(R('js/proj_index.js') + '\nthis.pidxState = pidxState;', sb);
 
 const sheet3Text = R('drawings/仕様２1002_Sheet3.json');
@@ -88,7 +88,7 @@ function fakeDir(files) {
       if (!(name in files)) { if (opt && opt.create) files[name] = { text: '', lastModified: 0 }; else throw new Error('NotFound'); }
       return {
         name,
-        async getFile() { const f = files[name]; return { lastModified: f.lastModified, size: Buffer.byteLength(f.text), async text() { if (name !== 'ecad_project_index.json') reads.push(name); return f.text; } }; },
+        async getFile() { const f = files[name]; return { lastModified: f.lastModified, size: Buffer.byteLength(f.text), async text() { if (name !== 'project.seqzuidx') reads.push(name); return f.text; } }; },
         async createWritable() { let buf = ''; return { async write(s) { buf += s; }, async close() { files[name] = { text: buf, lastModified: Date.now() }; } }; },
       };
     },
@@ -102,14 +102,14 @@ console.log('\n【変わったファイルだけ読み直す】');
   const dir = fakeDir({ 'Sheet3.json': { text: sheet3Text, lastModified: 1000 }, 'P2.json': { text: small, lastModified: 1000 }, 'bad.json': { text: '{壊れ', lastModified: 1000 } });
   let r = await sb.pidxUpdate(dir, ['Sheet3.json', 'P2.json', 'bad.json']);
   eq(r.read, 3, '最初は全部読む');
-  ok('ecad_project_index.json' in dir.files, '★台帳ファイルをフォルダに書く');
-  const saved = JSON.parse(dir.files['ecad_project_index.json'].text);
+  ok('project.seqzuidx' in dir.files, '★台帳ファイルをフォルダに書く');
+  const saved = JSON.parse(dir.files['project.seqzuidx'].text);
   eq(Object.keys(saved.files).sort(), ['P2.json', 'Sheet3.json', 'bad.json'], '台帳にファイルごとの記録');
   ok(saved.files['bad.json'].error && r.problems.length === 1, '読めないファイルは印を付けて、ほかは続ける');
   eq(saved.files['P2.json'].pages[0].devs.map(x => x.ref), ['CR5'], 'P2 のデバイス');
 
   dir.reads.length = 0;
-  const before = dir.files['ecad_project_index.json'].text;
+  const before = dir.files['project.seqzuidx'].text;
   r = await sb.pidxUpdate(dir, ['Sheet3.json', 'P2.json', 'bad.json']);
   eq([r.read - 1, dir.reads], [0, ['bad.json']], '★変わっていなければ読まない(読めなかったファイルだけ読み直す)');
 
@@ -117,7 +117,7 @@ console.log('\n【変わったファイルだけ読み直す】');
   dir.reads.length = 0;
   r = await sb.pidxUpdate(dir, ['Sheet3.json', 'P2.json']);
   eq(dir.reads, ['P2.json'], '★変わったファイル(更新日時)だけ読み直す');
-  const s2 = JSON.parse(dir.files['ecad_project_index.json'].text);
+  const s2 = JSON.parse(dir.files['project.seqzuidx'].text);
   eq(s2.files['P2.json'].pages[0].devs.map(x => x.ref), ['CR6'], '読み直した中身になる');
   eq(Object.keys(s2.files).sort(), ['P2.json', 'Sheet3.json'], '★一覧から外れたファイルは台帳から消す');
   eq(JSON.stringify(s2.files['Sheet3.json']), JSON.stringify(JSON.parse(before).files['Sheet3.json']), '読み直さなかったファイルの記録はそのまま');
@@ -129,7 +129,7 @@ console.log('\n【変わったファイルだけ読み直す】');
   eq(dir.reads, [], '★参照図面で読んだ中身を使い、もう一度読まない');
 
   // 抜き出し方が古い台帳・壊れた台帳は作り直す
-  dir.files['ecad_project_index.json'] = { text: JSON.stringify({ version: 0, files: {} }), lastModified: 1 };
+  dir.files['project.seqzuidx'] = { text: JSON.stringify({ version: 0, files: {} }), lastModified: 1 };
   dir.reads.length = 0;
   await sb.pidxUpdate(dir, ['Sheet3.json', 'P2.json']);
   eq(dir.reads.sort(), ['P2.json', 'Sheet3.json'], '★版の違う台帳は全部読み直す');
@@ -138,10 +138,19 @@ console.log('\n【変わったファイルだけ読み直す】');
   const dir2 = fakeDir({ 'ecad_project.json': { text: JSON.stringify({ files: ['P2.json'] }), lastModified: 1 }, 'P2.json': { text: small, lastModified: 5 } });
   sb.xprojDirHandle = async () => dir2;
   await sb.xprojReload();
-  ok('ecad_project_index.json' in dir2.files, '★「更新」(xprojReload)で台帳を作る');
+  ok('project.seqzuidx' in dir2.files, '★「更新」(xprojReload)で台帳を作る');
   eq(dir2.reads.filter(n => n === 'P2.json').length, 1, '図面は1回だけ読む(参照図面と台帳で読んだ中身を共用)');
   ok(!('data' in sb.xprojState.files[0]), '参照図面の状態に読んだ中身の丸ごとを残さない');
-  ok(/name !== \(typeof PIDX_FILE === 'string' \? PIDX_FILE : ''\)/.test(R('js/xref_project.js')), '★参照図面を選ぶ一覧に台帳ファイルを出さない');
+  ok(/\/\\\.\(seqzu\|json\)\$\/i\.test\(name\)/.test(R('js/xref_project.js')), '★参照図面を選ぶ一覧は図面(.seqzu・以前の .json)だけ=台帳(.seqzuidx)は出ない');
+  eq(sb.xprojBase('A.seqzu') + '|' + sb.xprojBase('B.json'), 'A|B', 'ファイル名から拡張子(.seqzu・.json)を外す');
+  eq(sb.pidxExtractFile('C.seqzu', { pages: [{ name: 'X', elements: [{ id: 'q', type: 'x', partRef: 'K1', x: 0, y: 0 }], wires: [] }] })[0].devs[0].loc, 'C/1', '.seqzu の図面も位置はファイル名(拡張子なし)');
+
+  console.log('\n【図面の拡張子 .seqzu(2026-10-04)】');
+  const E = R('js/edit.js');
+  ok(/fname0 \+ '\.seqzu'/.test(E) && /base0 \+ '_all\.seqzu'/.test(E), '★保存・全ページ保存は .seqzu');
+  ok(/replace\(\/\\\.\(seqzu\|json\)\$\/i, ''\)/.test(E), '保存の窓で選んだ名前から .seqzu(.json)を外す');
+  ok(/id="load-in" accept="\.seqzu,\.json"/.test(R('index.html')), '★読込は .seqzu と以前の .json');
+  ok(/seqzu: \['図面データ', 'application\/x-seqzu'\]/.test(R('js/settings.js')), '保存の窓のファイルの種類は「図面データ(.seqzu)」');
   ok(/pidxAfterSave\(\)/.test(R('js/edit.js')), '保存のあとに台帳を更新する');
   ok(/<script src="js\/proj_index.js"><\/script>/.test(R('index.html')), 'index.html で読み込む');
 

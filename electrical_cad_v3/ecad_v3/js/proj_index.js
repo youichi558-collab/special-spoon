@@ -3,7 +3,7 @@
 //
 // 【なぜ】図面は1ページ1ファイルで、数百〜数千ページありうる(盛田さん)。部品表・端子台表など盤全体の帳票のたびに
 // 全ファイルを丸ごと読むのは重い。そこで参照図面のフォルダに、ページごとの「帳票に要る情報だけ」を抜き出した
-// 台帳 ecad_project_index.json を1つ置く。
+// 台帳 project.seqzuidx を1つ置く。
 //
 // 【性質】**正はページのファイル、台帳はその写し(キャッシュ)**。消えても作り直せる。
 //   ・ファイルごとに更新日時・サイズを覚え、比べて**変わったファイルだけ読み直す**(受け取って差し替えたファイルも拾う)
@@ -15,7 +15,7 @@
 // 作る順の1では、まだ帳票は台帳を読まない(2で部品表を台帳読みにする)。
 // ================================================================
 
-const PIDX_FILE = 'ecad_project_index.json';
+const PIDX_FILE = 'project.seqzuidx';   // 2026-10-04 拡張子を図面(.seqzu)と分けた(ツリーに出さない)。以前の ecad_project_index.json は使わない(消してよい)
 const PIDX_VER  = 1;
 const pidxState = { index: null, dirName: '' };   // 最後に読んだ/作った台帳
 
@@ -26,7 +26,7 @@ const _pidxStr = v => (v == null ? '' : String(v).trim());
 // 位置(loc)は参照図面の計算(xprojWith)と同じ書き方にするため、仮のページに _file・_pno を付けて elLocation で求める。
 // 記号の種別(コイル・接点・矢印)はそのファイルのシンボル定義を優先する(台帳が開いている図面に左右されないように)。
 function pidxExtractFile(fileName, data) {
-  const base = String(fileName || '').replace(/\.json$/i, '');
+  const base = String(fileName || '').replace(/\.(seqzu|json)$/i, '');
   const syms = (data && data.customSymbols) || [];
   const pages = ((data && data.pages) || []).map((pg, i) => Object.assign({}, pg, { _file: base, _pno: i + 1 }));
   const savedPages = state.pages, savedSyms = state.customSymbols;

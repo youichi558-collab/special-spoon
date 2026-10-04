@@ -18,7 +18,7 @@ const XPROJ_FILE = 'ecad_project.json';
 const XPROJ_KEY  = 'proj';                 // IndexedDB(settings.js の _stGet/_stPut)に覚えるフォルダの鍵
 const xprojState = { files: [], dirName: '', problems: [] };   // files: [{name, pages, symbols}]
 
-const xprojBase = name => String(name || '').replace(/\.json$/i, '');
+const xprojBase = name => String(name || '').replace(/\.(seqzu|json)$/i, '');
 
 // 別ファイルの1ページを、計算用の仮のページにする(要素は写しを作り、IDに接頭辞を付けて今の図面と衝突させない)
 function xprojVirtualPage(file, pg, idx, fi) {
@@ -143,7 +143,7 @@ async function xprojSetup() {
   } catch (e) { return; }
   const all = [];
   for await (const [name, h] of dir.entries()) {
-    if (h.kind === 'file' && /\.json$/i.test(name) && name !== XPROJ_FILE && name !== (typeof PIDX_FILE === 'string' ? PIDX_FILE : '')) all.push(name);   // 一覧と台帳は図面ではない
+    if (h.kind === 'file' && /\.(seqzu|json)$/i.test(name) && name !== XPROJ_FILE) all.push(name);   // 図面は .seqzu(2026-10-04)。左パネルのツリーができるまでは以前の .json も選べる。一覧は図面ではない
   }
   all.sort();
   const saved = new Set((await xprojReadList(dir)) || []);
@@ -168,7 +168,7 @@ function xprojPickDialog(dirName, names, saved, _mine) {
     const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     box.innerHTML = `<div style="font-weight:600;margin-bottom:6px">参照図面(${esc(dirName)})</div>
       <div style="font-size:11px;opacity:.8;margin-bottom:8px">クロスリファレンス・ページ跨ぎの矢印で相手を探す図面を選びます。開いている図面と同じページ名のファイルは、開いている方を使います。</div>
-      ${names.map((n, i) => `<label style="display:block"><input type="checkbox" data-i="${i}" ${saved.has(n) ? 'checked' : ''}> ${esc(n)}</label>`).join('') || '<div>図面(.json)がありません</div>'}
+      ${names.map((n, i) => `<label style="display:block"><input type="checkbox" data-i="${i}" ${saved.has(n) ? 'checked' : ''}> ${esc(n)}</label>`).join('') || '<div>図面(.seqzu)がありません</div>'}
       <div style="margin-top:10px;text-align:right"><button id="xp-ng">やめる</button> <button id="xp-ok">保存</button></div>`;
     bg.appendChild(box); document.body.appendChild(bg);
     const done = v => { bg.remove(); resolve(v); };

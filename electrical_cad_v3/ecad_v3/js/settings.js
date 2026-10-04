@@ -117,7 +117,7 @@ async function _stExists(dir, fname) {
 // make: Blob か、(選んだ名前) => Blob の関数。fallback(名前): ダウンロード。onDone(名前): 書けたあと(ダウンロードに落ちたときも)
 let _stLastHandle = null;   // 前回保存した場所(ファイルかフォルダの鍵)。startIn に渡す
 if (typeof indexedDB !== 'undefined') _stGet(ST_OUT_KEY).then(h => { if (h && !_stLastHandle) _stLastHandle = h; });
-const ST_TYPES = { json: ['図面データ', 'application/json'], dxf: ['DXF', 'application/dxf'], pdf: ['PDF', 'application/pdf'],
+const ST_TYPES = { seqzu: ['図面データ', 'application/x-seqzu'], json: ['JSON', 'application/json'], dxf: ['DXF', 'application/dxf'], pdf: ['PDF', 'application/pdf'],
                    svg: ['SVG', 'image/svg+xml'], csv: ['CSV', 'text/csv'] };
 async function stWriteOut(fname, make, fallback, onDone) {
   const build = name => (typeof make === 'function' ? make(name) : make);

@@ -245,6 +245,8 @@ function _pageFileName(pg, idx) {
   return `${base}_${name}`;
 }
 
+// 【2026-10-04】図面の拡張子は .seqzu(このCADの名前 Sequenzu(仮)から。盛田さん)。中身は今までどおりの JSON。
+// 図面かどうかを拡張子で見分けるため(プロジェクトのツリーで図面だけを出す)。以前の .json の図面も読込で開ける(保存し直すと .seqzu)
 function saveProject() {
   // 現在ページのみ保存
   _syncCurrentPage();
@@ -259,7 +261,7 @@ function saveProject() {
     fname0 = (name.trim() || defaultName).replace(/[\\/:*?"<>|]/g, '_');
   }
   dlMake(fileName => {
-    const fname = String(fileName).replace(/\.json$/i, '');
+    const fname = String(fileName).replace(/\.(seqzu|json)$/i, '');
     // saveFileNameを更新
     state.saveFileName = fname.replace(/_[^_]+$/, ''); // ページ名部分を除いた部分を保存
     const data = {
@@ -278,7 +280,7 @@ function saveProject() {
     // その状態で読み込むと、開いた直後なのにシートタブへ未保存マーク(●)が出る。
     pg.dirty = false;
     return JSON.stringify(data, null, 2);
-  }, fname0 + '.json', 'application/json', () => { renderPageTabs(); if (typeof pidxAfterSave === 'function') pidxAfterSave(); });   // 参照図面のフォルダならプロジェクト台帳も更新
+  }, fname0 + '.seqzu', 'application/x-seqzu', () => { renderPageTabs(); if (typeof pidxAfterSave === 'function') pidxAfterSave(); });   // 参照図面のフォルダならプロジェクト台帳も更新
 }
 
 function saveAllProject() {
@@ -293,7 +295,7 @@ function saveAllProject() {
     base0 = (name.trim() || defaultBase).replace(/[\\/:*?"<>|]/g, '_');
   }
   dlMake(fileName => {
-    state.saveFileName = String(fileName).replace(/\.json$/i, '').replace(/_all$/, '');
+    state.saveFileName = String(fileName).replace(/\.(seqzu|json)$/i, '').replace(/_all$/, '');
     const data = {
       version: 2,
       saveFileName: state.saveFileName,
@@ -308,7 +310,7 @@ function saveAllProject() {
     // 書き出す「前」にdirtyを落とす（理由はsaveProject()のコメント参照）
     state.pages.forEach(p => p.dirty = false);
     return JSON.stringify(data, null, 2);
-  }, base0 + '_all.json', 'application/json', () => { renderPageTabs(); if (typeof pidxAfterSave === 'function') pidxAfterSave(); });
+  }, base0 + '_all.seqzu', 'application/x-seqzu', () => { renderPageTabs(); if (typeof pidxAfterSave === 'function') pidxAfterSave(); });
 }
 
 // v1以前(旧形式)のファイルのページを、今の形に直す(groupsをpages内に移動・idを付与)。
