@@ -95,6 +95,15 @@ console.log('\n【このページを振り直す】');
   const w2 = setup([V('a', 0, 0, '01'), V('b', 0, 50, '03'), V('c', 0, 100, 'L2')], { pageDigits: 0, seqDigits: 2 });
   sb.wireNoRenumberPage(0);
   eq(nos(w2), ['01', '02', 'L2'], '★飛んだ番号を詰める(ページ番号なしの書式)。L2 は変えない');
+  // 1ファイルに複数シート(ページ番号なしの書式)でも、振り直しはそのシートだけ。他のシートの番号は変えずに避ける(2026-10-04)
+  {
+    log.confirm = [];
+    sb.state = { wireNoFmt: { pageDigits: 0, seqDigits: 2 }, customSymbols: [], currentPage: 0, pages: [
+      { name: 'P1', elements: [], wires: [V('a', 0, 0, '05'), V('b', 0, 50, '')], frameObj: null },
+      { name: 'P2', elements: [], wires: [V('c', 0, 0, '01'), V('d', 0, 50, '09')], frameObj: null } ] };
+    sb.wireNoRenumberPage(0);
+    eq([nos(sb.state.pages[0].wires), nos(sb.state.pages[1].wires)], [['02', '03'], ['01', '09']], '★複数シートのファイルでも振り直しはそのシートだけ(P2 の 01・09 は変えず、01 は避ける)');
+  }
   setup([V('a', 0, 0, '01'), V('b', 0, 50, '02')], { pageDigits: 0, seqDigits: 2 });
   sb.wireNoRenumberPage(0);
   ok(log.confirm.length === 0 && /今のままで揃っています/.test(log.table), '変わらなければ確かめずに知らせるだけ');

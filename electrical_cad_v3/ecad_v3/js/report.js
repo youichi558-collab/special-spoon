@@ -194,7 +194,9 @@ function wireNoRenumberPage(pi) {
     wireNoTable(`⚠混在${mixed.length}件のため振り直しませんでした(橙色の欄をそろえてください)`);
     return;
   }
-  const mine = u => !u.extOwned && (f.pageDigits ? u.owner === pi : true);
+  // 【2026-10-04】ページ番号なしの書式でも、このページの線だけ(盛田さん「1ファイルに複数シートある場合も全体じゃなくてページ単位にした方が良い」)。
+  // 他のシートの番号は変えず、その番号は避ける(keep)。以前はページ番号なしの書式だとファイルの全シートを通しで振り直していた
+  const mine = u => !u.extOwned && u.owner === pi;
   const targets = [], keep = new Set();
   units.forEach(u => {
     const no = wnUnitNos(u)[0] || '';
@@ -216,7 +218,7 @@ function wireNoRenumberPage(pi) {
   if (over) { alert(`連番が${f.seqDigits}桁に収まりません(${order.length}本)。線番の設定で連番の桁数を増やしてください。\n振り直しませんでした。`); return; }
   if (!changes.length) { wireNoTable('番号は今のままで揃っています(変わる線番はありません)'); return; }
   const lines = changes.slice(0, 30).map(c => `  ${c.old || '(未採番)'} → ${c.v}`).join('\n');
-  if (!confirm(`${f.pageDigits ? 'このページ' : '全ページ(ページ番号なしの書式なので通し)'}の線番を振り直します(左の列から、列の中は上から)。変わる線番 ${changes.length}件:\n${lines}${changes.length > 30 ? `\n  …ほか${changes.length - 30}件` : ''}\n\n手で付けた名前(R・S・T、L1 など)と、チェックを外した線は変えません。元に戻すときは Ctrl+Z。実行しますか？`)) return;
+  if (!confirm(`このページの線番を振り直します(左の列から、列の中は上から)。変わる線番 ${changes.length}件:\n${lines}${changes.length > 30 ? `\n  …ほか${changes.length - 30}件` : ''}\n\n手で付けた名前(R・S・T、L1 など)と、チェックを外した線は変えません。元に戻すときは Ctrl+Z。実行しますか？`)) return;
   pushH();
   changes.forEach(c => wnUnitSet(c.u, c.v));
   draw();
@@ -1811,7 +1813,7 @@ function wireNoSettingsInfo() {
   const ex = f.pageDigits ? (pp.err ? wnMake('3'.padStart(f.pageDigits, '0'), 1) + '(3ページ目の1本目)' : `${wnMake(pp.part, 1)}、${wnMake(pp.part, 2)}…`) : `${wnMake('', 1)}、${wnMake('', 2)}…`;
   el.innerHTML = (f.pageDigits
       ? (pp.err ? `<span style="color:var(--red)">⚠${escH(pp.err)}</span>` : `このページのページ番号(表題欄): <b>${escH(pp.part)}</b>`)
-      : 'ページ番号を付けません(1ページの図面向け。ファイルの全ページで通しの番号)')
+      : 'ページ番号を付けません(1ページの図面向け。ファイルに複数のシートがあっても割付・振り直しはシートごとで、他のシートの番号とは重ならないようにします)')
     + `<br>このページの線番: ${escH(ex)}`
     + `<br>使える本数: 1ページ ${wnSeqMax()}本まで`;
 }
