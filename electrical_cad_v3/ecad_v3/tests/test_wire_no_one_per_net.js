@@ -12,6 +12,7 @@ const fs = require('fs');
 const vm = require('vm');
 
 let ng = 0;
+const ok = (c, m) => { if (!c) { ng++; console.log('  NG', m); } else console.log('  OK', m); };
 const eq = (a, b, m) => {
   if (JSON.stringify(a) !== JSON.stringify(b)) { ng++; console.log('  NG', m, '期待', JSON.stringify(b), '実際', JSON.stringify(a)); }
   else console.log('  OK', m);
@@ -87,8 +88,13 @@ console.log('\n【読む側はネットの番号を出す】');
   eq(sb._tbConnsOf(sb.state.pages[0].elements[1], sb.state.pages[0]), ['W030'],
      '端子台表: 端子の上下とも同じ線番(片側が未採番と出ない)');
   sb.exportWireCSV();
-  eq(lastCsv.split('\n').slice(1).map(l => l.split(',')[0]), ['W010', 'W010', 'W030', 'W030'],
-     '配線番号CSVもネットの番号');
+  eq(lastCsv.split('\n').slice(1).map(l => l.split(',')[0]), ['"W010"', '"W010"', '"W030"', '"W030"'],
+     '配線番号CSVもネットの番号(2026-10-04 から全項目を引用符で囲む)');
+  sb.state.pages[0].name = 'P,1';
+  sb.applyNetWireNo(0, [0, 1], 'A"1');
+  sb.exportWireCSV();
+  eq(lastCsv.split('\n')[1].split('","').length, 7, '★線番やページ名に「,」「"」があっても列がずれない(以前は引用符で囲んでいなかった)');
+  ok(lastCsv.split('\n')[1].startsWith('"A""1","P,1"'), '「"」は「""」にする');
 }
 
 console.log(ng ? `\n失敗 ${ng} 件` : '\nすべて通過');

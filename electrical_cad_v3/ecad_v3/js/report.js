@@ -137,6 +137,42 @@ function wnNextFree(part, used) {
   return '';
 }
 
+// 線番のチェック(2026-10-04 線番の再設計③。線番表の上に一覧を出し、押すと図面のその線へ飛ぶ)
+//   ・同じ線番が別の線にある(同じ番号は出てはいけない=盛田さんの決定) ・1つのつながった線に違う線番が混ざっている
+//   ・未採番の本数 ・表題欄のページ番号が無い/数字でない(書式にページ番号を使うとき)
+//   ・主回路の段送りで入れられなかった所(そのページで「主回路線番」を使ったとき=自動の目印があるときだけ。使っていない図面で知らせが並ばないように)
+// 戻り値: [{ kind:'dup'|'mixed'|'none'|'page'|'main', text, pi?, idxs? }]
+function wireNoChecks() {
+  const out = [];
+  const units = wnUnits();
+  const byNo = new Map();
+  units.forEach(u => {
+    const nos = wnUnitNos(u);
+    if (nos.length > 1) out.push({ kind: 'mixed', text: `1つのつながった線に違う線番が混ざっています(${nos.join('・')})`, pi: u.parts[0].pi, idxs: u.parts[0].idxs });
+    nos.forEach(no => { if (!byNo.has(no)) byNo.set(no, []); byNo.get(no).push(u); });
+  });
+  byNo.forEach((us, no) => {
+    if (us.length < 2) return;
+    us.forEach((u, k) => out.push({ kind: 'dup', text: `線番「${no}」が${us.length}か所にあります(${k + 1}/${us.length}: ${state.pages[u.parts[0].pi].name || ('Sheet' + (u.parts[0].pi + 1))})`, pi: u.parts[0].pi, idxs: u.parts[0].idxs }));
+  });
+  const none = units.filter(u => !wnUnitNos(u).length && !u.extNo);
+  if (none.length) out.push({ kind: 'none', text: `未採番の線が${none.length}か所あります(表の上にまとめて出ています。「線番割付」で振れます)` });
+  if (wnFmt().pageDigits) {
+    state.pages.forEach((pg, pi) => {
+      if (pg._file || !(pg.wires || []).length) return;
+      const pp = wnPagePart(pi);
+      if (pp.err) out.push({ kind: 'page', text: pp.err });
+    });
+  }
+  if (typeof wnmPlan === 'function') {
+    state.pages.forEach((pg, pi) => {
+      if (pg._file || !(pg.wires || []).some(w => w.wireNoMain)) return;
+      try { wnmPlan(pi).issues.forEach(t => out.push({ kind: 'main', text: `主回路: ${t}` })); } catch (e) {}
+    });
+  }
+  return out;
+}
+
 // 「このページを振り直す」: このページが持ち主の線(未採番と、このページの書式の番号)を、位置の順に 1 から振り直す。
 // 手で付けた名前・別のページの番号・チェックを外した線は触らない(その番号は避ける)。変わる番号を見せて確かめてから。
 function wireNoRenumberPage(pi) {
@@ -484,6 +520,19 @@ function wireNoTable(msg){
   html += `<br><button onclick="wireNoSettings()" title="線番の書式(ページ番号の桁数・連番の桁数)と主回路の付け方" style="${bst}">線番の設定</button> `;
   html += `<button onclick="wireNoRenumberPage()" title="今のページの線番(未採番と、書式に合う番号)を、左の列から・列の中は上からの順に振り直します。手で付けた名前(R・S・T、L1 など)は変えません。実行前に変わる番号を確かめられます" style="${bst}">このページを振り直す</button>`;
   html += `</p>`;
+  // 【2026-10-04】チェックの一覧(wireNoChecks)。押すと図面のその線へ飛ぶ
+  {
+    const checks = wireNoChecks();
+    const order = { dup: 0, mixed: 1, page: 2, main: 3, none: 4 };
+    checks.sort((a, b) => order[a.kind] - order[b.kind]);
+    html += `<div id="wn-checks" style="font-size:11px;margin:0 0 8px;padding:6px 8px;border:1px solid ${checks.length ? '#f59e0b' : 'var(--bd2)'};border-radius:4px">`;
+    html += checks.length ? `<div style="font-weight:600;margin-bottom:2px">チェック ${checks.length}件</div>` : `<span style="color:var(--fg3)">チェック: 問題はありません(重複・混在・未採番なし)</span>`;
+    checks.forEach(c => {
+      const go = c.idxs ? ` style="cursor:pointer;text-decoration:underline dotted" title="押すと図面のその線へ飛びます" onclick="jumpToNet(${c.pi},[${c.idxs.join(',')}])"` : '';
+      html += `<div${go}><span style="color:${c.kind === 'none' ? 'var(--fg3)' : 'var(--red)'}">⚠</span> ${escH(c.text)}</div>`;
+    });
+    html += `</div>`;
+  }
   const hasExt = rows.some(r => r.ext && r.ext.length);
   html += `<table class="tbl"><tr><th></th><th></th><th>線番</th><th>ページ</th><th>本数</th>${hasExt ? '<th>別ファイルの相手</th>' : ''}<th></th></tr>`;
   rows.forEach((r, ri) => {
@@ -687,14 +736,16 @@ function toggleNetAutoNumParts(parts, checked) {
 function exportWireCSV(){ return (typeof sigMemoRun === 'function') ? sigMemoRun(_exportWireCSV) : _exportWireCSV(); }
 function _exportWireCSV(){
   if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
-  const rows = ['線番,ページ,始点X,始点Y,終点X,終点Y,レイヤー'];
+  // 【2026-10-04】全部の項目を引用符で囲む(接続チェック・端子台表のCSVと同じ。conn_table.js)。以前は囲んでおらず、線番やページ名に「,」があると列がずれた
+  const q = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+  const rows = ['線番,ページ,始点X,始点Y,終点X,終点Y,レイヤー'].map(h => h.split(',').map(q).join(','));
   state.pages.forEach((pg, pi) => {
     const pname = pg.name || ('Sheet'+(pi+1));
     const netNo = netWireNoOf(pg);   // 番号は1ネット1か所なので、ネットの番号を出す
     (pg.wires||[]).forEach((w, wi) => {
       const pts = w.pts || [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}];
       const p0 = pts[0], p1 = pts[pts.length-1];
-      rows.push(`${netNo[wi]||''},${pname},${Math.round(p0.x)},${Math.round(p0.y)},${Math.round(p1.x)},${Math.round(p1.y)},${w.layer||''}`);
+      rows.push([netNo[wi] || '', pname, Math.round(p0.x), Math.round(p0.y), Math.round(p1.x), Math.round(p1.y), w.layer || ''].map(q).join(','));
     });
   });
   dl(rows.join('\n'), _csvName('配線番号'), 'text/csv');

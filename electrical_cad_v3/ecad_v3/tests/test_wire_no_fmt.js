@@ -140,6 +140,24 @@ console.log('\n【書式を変えたら、前の書式の番号を書き換え�
   ok(/書式は変えていません/.test(log.alert[0] || ''), 'そのことを知らせる');
 }
 
+console.log('\n【チェックの一覧(線番の再設計③)】');
+{
+  setup([V('a', 0, 0, '301'), V('b', 100, 0, '301'), V('c', 200, 0, ''), V('d', 300, 0, 'L1')], { pageDigits: 1, seqDigits: 2 }, '');
+  const k = sb.wireNoChecks();
+  const kinds = k.map(c => c.kind).sort();
+  eq(kinds, ['dup', 'dup', 'none', 'page'], '★重複(2か所とも)・未採番・表題欄のページ番号なし');
+  ok(k.filter(c => c.kind === 'dup').every(c => c.idxs && c.idxs.length), '重複は押すとその線へ飛べる');
+  setup([V('a', 0, 0, '01'), V('b', 100, 0, '02')], { pageDigits: 0, seqDigits: 2 });
+  eq(sb.wireNoChecks(), [], '問題が無ければ空');
+  sb.wireNoTable = realTable;
+  sb.wireNoTable();
+  ok(/問題はありません/.test(domEls['report-body'].innerHTML), '線番表に「問題はありません」');
+  setup([V('a', 0, 0, '01'), V('b', 100, 0, '01')], { pageDigits: 0, seqDigits: 2 });
+  sb.wireNoTable();
+  ok(/チェック 2件/.test(domEls['report-body'].innerHTML) && /onclick="jumpToNet\(0,\[/.test(domEls['report-body'].innerHTML), '★線番表の上に一覧、押すと飛ぶ');
+  sb.wireNoTable = m => { log.table = m || ''; };
+}
+
 console.log('\n【線番表の案内】');
 {
   sb.wireNoTable = realTable;
