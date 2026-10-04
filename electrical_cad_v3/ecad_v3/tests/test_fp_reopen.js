@@ -16,7 +16,7 @@ function panel(rect) {
     getBoundingClientRect: () => ({ left: parseFloat(rect.left), top: parseFloat(rect.top), width: rect.w, height: rect.h }) };
 }
 function run(el, o) {
-  const sb = { window: { innerWidth: 1500, innerHeight: 900 }, document: { getElementById: id => (id === 'p' ? el
+  const sb = { _fpStack: [], fpEnsureClose() {}, window: { innerWidth: 1500, innerHeight: 900 }, document: { getElementById: id => (id === 'p' ? el
     : id === 'quickbar' ? { getBoundingClientRect: () => ({ bottom: sb._qb || 108 }) }
     : id === 'page-bar' ? { getBoundingClientRect: () => ({ top: sb._pb || 860 }) } : null) } };
   if (o) Object.assign(sb, o);

@@ -1511,6 +1511,8 @@ document.addEventListener('keydown', e => {
       }
       break;
     case 'Escape':
+      // 【2026-10-04】フロートパネルが開いていれば、まず一番手前のパネルを閉じる(js/ui.js fpCloseTop)
+      if (typeof fpCloseTop === 'function' && fpCloseTop()) { e.preventDefault(); break; }
       if (state.mode === 'partref') {
         exitPartRefSeq(); break;
       }

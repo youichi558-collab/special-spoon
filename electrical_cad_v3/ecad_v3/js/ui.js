@@ -3523,8 +3523,61 @@ document.addEventListener('click', e => { if (e.button === 0) hideCtx(); });
 // ----------------------------------------------------------------
 // ユーティリティ
 // ----------------------------------------------------------------
+// ----------------------------------------------------------------
+// フロートパネルの「×」とEsc(2026-10-04 盛田さん「全般閉じるが使いづらい」→ 案A「×は必ず出るように設計」)
+//   ・どのパネルも openFP で開くときに右上へ「×」を差し込む(fpEnsureClose)。パネルの HTML に書かなくても必ず出る=新しく作ったパネルにも出る
+//   ・「×」は中をスクロールしても上に残る(css .fp-x-wrap の sticky)
+//   ・「×」とEscは、そのパネルの一番下の「閉じる」「キャンセル」ボタンを押したのと同じにする(部品の割り当ての取り消し等、ボタンの処理をそのまま通す)。
+//     そのボタンが無いパネルは閉じるだけ
+//   ・Escは一番手前(最後に開いた)パネルを閉じる。作図中の Esc(モードの取り消し)より先(js/edit.js の Escape)
+// ----------------------------------------------------------------
+const _fpStack = [];
+function fpEnsureClose(el) {
+  if (!el || el.querySelector(':scope > .fp-x-wrap')) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'fp-x-wrap';
+  const x = document.createElement('button');
+  x.className = 'fp-x'; x.type = 'button'; x.title = '閉じる (Esc)'; x.textContent = '×';
+  x.addEventListener('pointerdown', e => e.stopPropagation());   // タイトルのドラッグ移動を始めない
+  x.addEventListener('click', e => { e.stopPropagation(); fpClose(el.id); });
+  wrap.appendChild(x);
+  el.insertBefore(wrap, el.firstChild);
+}
+// パネルの「閉じる」「キャンセル」ボタン(一番下にあるもの)。無ければ null
+function fpCloseButton(el) {
+  const bs = [...el.querySelectorAll('button:not(.fp-x)')].filter(b => /^(閉じる|キャンセル)$/.test((b.textContent || '').trim()));
+  return bs.length ? bs[bs.length - 1] : null;
+}
+function fpClose(id) {
+  const el = document.getElementById(id);
+  if (!el || !el.classList.contains('open')) return false;
+  const b = fpCloseButton(el);
+  if (b) b.click(); else closeFP(id);
+  if (el.classList.contains('open')) closeFP(id);   // ボタンが閉じなかったときも閉じる(×を押して閉じないことが無いように)
+  return true;
+}
+// 一番手前のパネルを閉じる。閉じたら true
+function fpCloseTop() {
+  for (let i = _fpStack.length - 1; i >= 0; i--) {
+    const el = document.getElementById(_fpStack[i]);
+    if (el && el.classList.contains('open')) return fpClose(_fpStack[i]);
+    _fpStack.splice(i, 1);
+  }
+  const any = [...document.querySelectorAll('.fp.open')].pop();
+  return any ? fpClose(any.id) : false;
+}
+// 入力欄にカーソルがあると js/edit.js のキー処理は動かないので、パネルの中の入力欄からの Esc はここで閉じる
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || e.defaultPrevented) return;
+  const ae = document.activeElement;
+  if (ae && ae.closest && ae.closest('.fp.open') && ['INPUT','TEXTAREA','SELECT'].includes(ae.tagName)) { if (fpCloseTop()) e.preventDefault(); }
+});
+
 function openFP(id) {
   const el = document.getElementById(id); if (!el) return;
+  fpEnsureClose(el);
+  const k = _fpStack.indexOf(id); if (k >= 0) _fpStack.splice(k, 1);
+  _fpStack.push(id);
   el.classList.add('open');
   // 【2026-09-29】タイトルをドラッグして動かした後(makeFpDraggable が transform:none・left/top を px で固定する)は、
   // 開き直しやタブ切替(帳票は切替のたびに openFP を呼ぶ)で top を中央寄せに戻さない。
