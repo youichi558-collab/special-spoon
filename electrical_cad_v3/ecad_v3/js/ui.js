@@ -2731,7 +2731,7 @@ function updateRightPanel() {
     html += rpPaneClose() + rpPaneOpen('shape');
     html += `<div class="pp-row"><label>回転(°)</label><input type="number" id="pp-rot" value="${escH(el.rot||0)}" step="90"></div>`;
     html += `<div class="pp-row"><label>文字の回転角度(°)</label><input type="number" id="pp-trot" value="${escH(el.textRot||0)}" step="90" title="このシンボルのデバイス名・型式・仕様すべてに共通で効きます。シンボル自体の回転(上の「回転(°)」)とは連動しません。位置は各項目のオフセット(X/Y補正)で個別に指定してください"></div>`;
-    html += `<div class="pp-row"><label>スケール</label><input type="number" id="pp-scale" value="${escH(el.scale||1)}" step="0.1" min="0.1" max="5" oninput="previewScale()"></div>`;
+    html += `<div class="pp-row"><label>スケール</label><input type="number" id="pp-scale" value="${escH(el.scale||1)}" data-orig="${escH(el.scale||1)}" step="0.1" min="0.1" max="5" oninput="previewScale()"></div>`;
     // シンボル色ピッカーは撤去（2026-08-16）。62c94f0で完全BYLAYER化した際に
     // 描画側(draw.js)の el.color 参照を消したがUIだけ残っており、押しても画面に
     // 何も反映されない状態だった。さらに初期値が el.color||'#1d6fb5' だったため、
@@ -3195,7 +3195,21 @@ function applyRightPanel() {
     el.rot = norm360(parseInt(v('pp-rot')) || 0);
     const rotInput = document.getElementById('pp-rot');
     if (rotInput) rotInput.value = el.rot;
-    el.scale      = Math.max(0.1, Math.min(5, parseFloat(v('pp-scale'))||1));
+    // 【2026-10-04】倍率欄の値を実際に変えたときだけ、端子の間隔がグリッドの倍数になる倍率にそろえる(js/resize.js symScaleSnap)。
+    // 他の欄を直して適用しただけなら、今の倍率をそのまま書き戻す(今の図面の倍率を勝手に変えない)
+    {
+      const scIn = document.getElementById('pp-scale');
+      const want = Math.max(0.1, Math.min(5, parseFloat(v('pp-scale'))||1));
+      const orig = scIn ? parseFloat(scIn.dataset.orig) : NaN;
+      if (Number.isFinite(orig) && Math.abs(want - orig) < 1e-9) el.scale = orig;
+      else {
+        const sn = (typeof symScaleSnap === 'function') ? symScaleSnap(el, want) : null;
+        el.scale = sn ? sn.scale : want;
+        if (scIn) { scIn.value = el.scale; scIn.dataset.orig = el.scale; }
+        const hint = document.getElementById('s-hint');
+        if (hint && sn && Math.abs(sn.scale - want) > 1e-9) hint.textContent = `倍率を ${want} → ${sn.scale} にそろえました(端子の間隔 ${sn.pitch}。グリッドの倍数)。端子をグリッドに乗せるときは「基準点合わせ」`;
+      }
+    }
     delete el.color;  // 個別色は廃止（完全BYLAYER）。旧データの残骸をここで掃除する
     el.lineStyle  = v('pp-symls') || undefined;
     el.lineWidth  = v('pp-symlw') ? parseFloat(v('pp-symlw')) : undefined;

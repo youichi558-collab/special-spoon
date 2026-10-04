@@ -203,8 +203,48 @@ function applyElResize(wx, wy) {
   } else {
     // ハンドル開始距離とマウス現在距離の比でscaleを計算
     const currentDist = Math.hypot(wx - orig.x, wy - orig.y);
-    el.scale = Math.max(0.1, Math.min(5, state.resize.startScale * currentDist / Math.max(state.resize.startHandleDist, 1)));
+    const raw = Math.max(0.1, Math.min(5, state.resize.startScale * currentDist / Math.max(state.resize.startHandleDist, 1)));
+    // 【2026-10-04】端子の間隔がグリッドの倍数になる倍率に止める(symScaleSnap)
+    const sn = symScaleSnap(el, raw);
+    el.scale = sn ? sn.scale : raw;
+    const hint = document.getElementById('s-hint');
+    if (hint) hint.textContent = sn ? `倍率 ${sn.scale}(端子の間隔 ${sn.pitch}。グリッドの倍数)` + '  端子をグリッドに乗せるときは「基準点合わせ」'
+      : `倍率 ${Math.round(raw * 1000) / 1000}` + ((state.customSymbols || []).some(s => s.type === el.type && (s.terminals || []).length >= 2) ? '(この倍率では端子がグリッドに乗りません)' : '');
   }
+}
+
+// ----------------------------------------------------------------
+// 【2026-10-04】シンボルの倍率を「端子の間隔がグリッドの倍数になる値」にそろえる(盛田さん「倍率変えるときにどうするかだ」→「はい」)。
+// 半端な倍率(例 0.344)だと端子の位置が半端になり(PB1 なら ±13.78)、配線と端子がぴったり合わず、グリッドにも乗らない。
+// DXF 由来の図形は端子間隔がこのCADのグリッドの倍数とは限らないので、**今の端子間隔から**止まる倍率を決める
+// (端子間隔 80 なら 0.25・0.375・0.5… → 間隔 20・30・40)。縦横同じ比率なので絵の形は変わらない。
+//   ・そろえるのは、1つのシンボルのハンドルを動かしたときと、プロパティの倍率欄の値を実際に変えたときだけ
+//     (グループでのまとめての大きさ変更・適用の書き戻し・「形」タブのコピーは今のまま=今の図面の倍率が勝手に変わらない)
+//   ・位置は自動でずらさない。端子1つをグリッドに乗せるのは「基準点合わせ」で(端子間隔がグリッドの倍数なら全部乗る)
+//   ・端子が2つ未満・90度単位でない回転・どの倍率でも全部の間隔をグリッドの倍数にできない(近くに無い)ときは、そろえずにそのまま(null)
+// 戻り値: { scale, pitch } または null
+function symScaleSnap(el, want) {
+  const cS = (state.customSymbols || []).find(s => s.type === el.type);
+  const ts = cS && Array.isArray(cS.terminals) ? cS.terminals : [];
+  if (ts.length < 2) return null;
+  if ((((el.rot || 0) % 90) + 90) % 90 !== 0) return null;
+  const G = state.G || 10, EPS = 1e-6;
+  const ds = [];
+  ts.forEach(t => { ['x', 'y'].forEach(k => { const d = Math.abs((t[k] || 0) - (ts[0][k] || 0)); if (d > EPS && !ds.some(v => Math.abs(v - d) < EPS)) ds.push(d); }); });
+  if (!ds.length) return null;
+  const ok = s => ds.every(d => { const q = s * d / G; return Math.abs(q - Math.round(q)) < 1e-6; });
+  let best = null;
+  ds.forEach(d => {
+    const k0 = Math.round(want * d / G);
+    for (let k = Math.max(1, k0 - 3); k <= k0 + 3; k++) {
+      const s = k * G / d;
+      if (s < 0.1 - EPS || s > 5 + EPS || !ok(s)) continue;
+      if (!best || Math.abs(s - want) < Math.abs(best - want)) best = s;
+    }
+  });
+  if (best == null || Math.abs(best - want) > Math.max(0.25 * want, 0.05)) return null;
+  const s = Math.round(best * 1e6) / 1e6;
+  return { scale: s, pitch: Math.round(Math.min(...ds) * s * 1000) / 1000 };
 }
 
 function startGroupResize(h, e) {
