@@ -94,6 +94,7 @@ function bkBuildData() {
     customParts:   (typeof usedPartsForSave === 'function') ? usedPartsForSave(state.pages) : undefined,   // 使った型式の写しだけ(2026-10-03)
     titleBlockTpls: (typeof usedTitleBlockTplsForSave === 'function') ? usedTitleBlockTplsForSave(state.pages) : undefined,   // 使った表題欄様式の写し(段階2)
     wireNoRule: state.wireNoRule,
+    wireNoFmt: state.wireNoFmt,   // 線番の書式(2026-10-04 js/report.js wnFmt)
     layers: LAYERS,
     pages:  state.pages,
   };

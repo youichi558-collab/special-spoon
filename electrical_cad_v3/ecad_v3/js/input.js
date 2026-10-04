@@ -207,11 +207,17 @@ function doPointerLeftDown(cx, cy, e, wxOverride, wyOverride) {
   if (state.mode === 'wireno') {
     state.mouse.down = false; state.mouse.dragging = false;
     const w = hitTestWire(wx, wy);
-    if (w) {
+    if (w && state.wireNoNext) {
       pushH();
-      const assigned = state.wireNoNext || '';
-      w.wireNo = assigned;
-      state.wireNoNext = incRef(assigned);
+      // 【2026-10-04】クリックした線のネットに1か所だけ入れ(_setNetWireNo)、次はこのページの空いている番号
+      const assigned = state.wireNoNext;
+      const pg = state.pages[state.currentPage || 0];
+      const wires = state.wires || (pg && pg.wires) || [];
+      const wi = wires.indexOf(w);
+      const net = groupWiresByNet(wires, null, state.elements || (pg && pg.elements)).find(g => g.includes(wi));
+      if (net) _setNetWireNo(wires, net, assigned); else w.wireNo = assigned;
+      const pp = wnPagePart(state.currentPage || 0);
+      state.wireNoNext = pp.err ? '' : wnNextFree(pp.part, wnUsedNos());
       document.getElementById('s-hint').textContent = `「${assigned}」を割当 → 次:「${state.wireNoNext}」をクリック  [ESC] 終了`;
       draw();
     }

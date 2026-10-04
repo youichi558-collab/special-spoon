@@ -171,7 +171,7 @@
           </div>
           <div class="rb rb-sm" id="rb-guide_h" onclick="setMode('guide_h')"><svg viewBox="0 0 14 14"><path d="M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2,1.5"/></svg>水平補助</div>
           <div class="rb rb-sm" id="rb-guide_v" onclick="setMode('guide_v')"><svg viewBox="0 0 14 14"><path d="M7 1v12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2,1.5"/></svg>垂直補助</div>
-          <div class="rb rb-sm" onclick="autoWireNumber()"><svg viewBox="0 0 14 14"><path d="M2 4h10M2 7h7M2 10h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><text x="10" y="11" font-size="6" fill="currentColor">#</text></svg>線番割付</div>
+          <div class="rb rb-sm" onclick="wireNoSettings()" title="線番の設定(書式)と割付・振り直し"><svg viewBox="0 0 14 14"><path d="M2 4h10M2 7h7M2 10h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><text x="10" y="11" font-size="6" fill="currentColor">#</text></svg>線番割付</div>
         </div>
         <div class="rg-label">配線</div>
       </div>
@@ -747,6 +747,32 @@
       <div id="tg-list" style="font-size:11px"></div>
       <div style="display:flex;gap:6px;margin-top:8px">
         <button class="fp-btn" onclick="_pendingAssign=null;closeFP('term-group-p')">キャンセル</button>
+      </div>
+    </div>
+
+    <!-- 線番の設定(2026-10-04。書式=表題欄のページ番号+連番。js/report.js wireNoSettings) -->
+    <div class="fp" id="wireno-p" style="width:380px">
+      <h3>線番の設定</h3>
+      <div style="display:flex;gap:10px;font-size:11px;margin-bottom:6px">
+        <label>ページ番号の桁数
+          <select id="wn-page-digits" onchange="setWireNoFmt()" style="font-size:11px">
+            <option value="0">なし</option><option value="1">1桁</option><option value="2">2桁</option><option value="3">3桁</option>
+          </select></label>
+        <label>連番の桁数
+          <select id="wn-seq-digits" onchange="setWireNoFmt()" style="font-size:11px">
+            <option value="2">2桁</option><option value="3">3桁</option><option value="4">4桁</option>
+          </select></label>
+      </div>
+      <div id="wn-info" style="font-size:11px;line-height:1.6;margin-bottom:6px"></div>
+      <div style="font-size:10px;color:var(--fg3);line-height:1.5;margin-bottom:6px">
+        ページ番号は表題欄のページ番号(図面枠の「ページ」欄)から取ります。割付・振り直しで変わるのは、この書式に合う番号だけです(R・S・T、L1 などの手で付けた名前は変えません)。
+        順番は左の列から、列の中は上から。ページ跨ぎの線は送り側のページの番号です。設定は図面ファイルに保存されます。
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="fp-btn" onclick="closeFP('wireno-p');autoWireNumber('page')" title="このページの番号の無い線にだけ振ります">未採番に割付(このページ)</button>
+        <button class="fp-btn" onclick="closeFP('wireno-p');autoWireNumber('all')" title="全ページの番号の無い線にだけ振ります">未採番に割付(全ページ)</button>
+        <button class="fp-btn" onclick="closeFP('wireno-p');wireNoRenumberPage()" title="変わる番号を確かめてから振り直します">このページを振り直す</button>
+        <button class="fp-btn" onclick="closeFP('wireno-p')">閉じる</button>
       </div>
     </div>
 

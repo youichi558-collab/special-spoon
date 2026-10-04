@@ -115,7 +115,7 @@ console.log('【線番表: 矢印でつながるネットは1行・線番1つ】
   sb.prompt = () => 'W001';
   sb.autoWireNumber();
   eq(sb.state.pages[1].wires[0].wireNo, 'W007', '一括割付: 相手に番号があれば引き継ぐ(別の番号を振らない)');
-  eq(sb.state.pages[2].wires[0].wireNo, 'W001', '矢印と関係のないネットは普通に採番');
+  eq(sb.state.pages[2].wires[0].wireNo, '01', '矢印と関係のないネットは線番の書式(既定=ページ番号なし・連番2桁)で採番');
   // 別ファイルの相手
   mk();
   sb.state.pages.length = 1;
@@ -130,6 +130,21 @@ console.log('【線番表: 矢印でつながるネットは1行・線番1つ】
   sb.autoWireNumber();
   eq(sb.state.pages[0].wires.map(w => w.wireNo).filter(Boolean), ['W009'], '一括割付: 別ファイルの相手の番号も引き継ぐ');
   sb.xprojState.files = [];
+}
+console.log('【線番の書式(2026-10-04): ページ跨ぎの線は送り側のページの番号】');
+{
+  const W = (id, x1, y1, x2, y2, no) => ({ id, x1, y1, x2, y2, wireNo: no || '', layer: '回路' });
+  const o = E('sout', 100, 100, { label: '9' }), i = E('sin', 300, 200, { label: '9' });
+  sb.state = { wireNoFmt: { pageDigits: 1, seqDigits: 2 }, currentPage: 1, customSymbols: [], customParts: [], pages: [
+    { name: 'P1', elements: [o], wires: [W('w1', 115, 100, 200, 100)], frameObj: Object.assign({}, FRAME, { page: '1' }) },
+    { name: 'P2', elements: [i], wires: [W('w3', 285, 200, 250, 200), W('w5', 0, 0, 0, 50)], frameObj: Object.assign({}, FRAME, { page: '2' }) } ] };
+  sb.autoWireNumber('page');   // 今のページは受け側の P2
+  eq([sb.state.pages[0].wires[0].wireNo, sb.state.pages[1].wires[0].wireNo, sb.state.pages[1].wires[1].wireNo], ['101', '101', '201'],
+    '★矢印でつながる線は送り側(P1=1ページ)の番号 101 が両側に入る。P2だけの線は 201');
+  sb.state.pages[1].wires[1].wireNo = '205';
+  sb.confirm = () => true;
+  sb.wireNoRenumberPage(1);
+  eq([sb.state.pages[1].wires[0].wireNo, sb.state.pages[1].wires[1].wireNo], ['101', '201'], '★受け側のページを振り直しても、送り側の番号 101 は触らない');
 }
 console.log('【接続チェック: 矢印の問題】');
 {

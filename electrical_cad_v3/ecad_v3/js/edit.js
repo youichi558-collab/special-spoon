@@ -269,6 +269,7 @@ function saveProject() {
       customParts:   usedPartsForSave([pg]),   // 使った型式の写しだけ(2026-10-03)
       titleBlockTpls: usedTitleBlockTplsForSave([pg]),   // 使った表題欄様式の写し(2026-10-03 段階2)
       wireNoRule:    state.wireNoRule,
+      wireNoFmt:    state.wireNoFmt,   // 線番の書式(2026-10-04 js/report.js wnFmt)
       layers:        LAYERS,
       pages: [pg],
     };
@@ -300,6 +301,7 @@ function saveAllProject() {
       customParts:   usedPartsForSave(state.pages),   // 使った型式の写しだけ(2026-10-03)
       titleBlockTpls: usedTitleBlockTplsForSave(state.pages),   // 使った表題欄様式の写し(2026-10-03 段階2)
       wireNoRule:    state.wireNoRule,
+      wireNoFmt:    state.wireNoFmt,   // 線番の書式(2026-10-04 js/report.js wnFmt)
       layers:        LAYERS,
       pages: state.pages,
     };
@@ -336,6 +338,7 @@ function applyProjectData(d) {
       if (d.version === 2) {
         state.pages        = d.pages || [{ name:'Sheet1', elements:[], wires:[], groups:[], guides:[], frameObj:null }];
         state.wireNoRule   = d.wireNoRule || state.wireNoRule;
+        state.wireNoFmt   = d.wireNoFmt || { pageDigits: 0, seqDigits: 2 };   // 書式の無い図面は「ページ番号なし・連番2桁」(Sheet3の 01〜16 の形)
         state.customSymbols= d.customSymbols || [];
         _mergeOrSetCustomParts(d.customParts);
         // 旧フォーマット互換：トップレベルのguides → page[0].guides に移行
@@ -1445,11 +1448,13 @@ function exitPartRefSeq() {
 }
 
 // 線番 連続採番モード：開始線番を指定→配線をクリックするたびに自動採番
+// 【2026-10-04】開始番号の入力窓をやめ、線番の書式(js/report.js wnFmt)で、このページの空いている番号から順に入れる
 function startWireNoSeq() {
-  const start = prompt('開始線番を入力（例: W001）\nクリックした配線に順番に割り当てます', state.wireNoNext || state.wireNoRule || 'W001');
-  if (!start || !start.trim()) return;
-  state.wireNoNext = start.trim();
-  state.wireNoRule = start.trim(); // 採番書式として保存(一括割付のデフォルトにも使用)
+  if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
+  const pp = wnPagePart(state.currentPage || 0);
+  if (pp.err) { alert(pp.err); return; }
+  state.wireNoNext = wnNextFree(pp.part, wnUsedNos());
+  if (!state.wireNoNext) { alert(`このページの連番が${wnFmt().seqDigits}桁で使い切られています。線番の設定で連番の桁数を増やしてください。`); return; }
   state.mode = 'wireno'; state.symType = null;
   document.querySelectorAll('.sym-item').forEach(el => el.classList.remove('on'));
   syncModeButtons('wireno');

@@ -38,113 +38,146 @@ function _reportOpen(tabKey, title, bodyHtml, csvFn) {
 
 const WIRE_NET_TOL = 5; // 接続表・未接続チェックと同じ許容誤差
 
-// 線番文字列を「英字等のprefix」「数値部分」「桁数(0埋め幅)」に分解する。
-// 例: "W001" → {prefix:'W', num:1, digits:3}。数値末尾を持たない線番(手打ちの
-// 自由記述など)はnullを返し、詰め処理の対象外にする。
-function parseWireNo(no) {
-  const m = String(no||'').match(/^(.*?)(\d+)$/);
-  if (!m) return null;
-  return { prefix: m[1], num: parseInt(m[2],10), digits: m[2].length };
+// ================================================================
+// 線番の書式(2026-10-04 盛田さんの決定。HANDOFF.md「線番の再設計」)
+//
+// 以前は「番号のルール」の定義が無く、最後に入れた開始番号(wireNoRule)と「末尾の数字+1」だけで動いていた。
+// 「欠番を詰める」と×の自動詰めは末尾が数字なら何でも連番とみなし、Sheet3で L1 を消すと L2 が L1 になった。
+//   ・制御(コモン以外)は**表題欄のページ番号+連番**。桁数は設定(ページ番号の桁数・連番の桁数)。
+//     ページ番号の桁数「なし」= ページ番号の付かない連番(1ページの図面。Sheet3の 01〜16)
+//   ・自動で触る(割付・振り直し)のは**この書式に合う番号だけ**。R・S・T、L1、U・V・W、E などは手で付けた名前として一切触らない
+//   ・振る・直すは**そのページの中だけ**(ページ番号が入るので他のページと被らない)
+//   ・ページ跨ぎの線は**送り側のページの番号**。受け側のページを振り直しても触らない
+//   ・削除では番号を動かさない。直すときは「このページを振り直す」(変わる番号を見せて確かめてから)
+// ================================================================
+const WN_PAGE_DIGITS = [0, 1, 2, 3];
+const WN_SEQ_DIGITS  = [2, 3, 4];
+function wnFmt() {
+  const f = state.wireNoFmt || {};
+  const p = Number(f.pageDigits), s = Number(f.seqDigits);
+  return { pageDigits: WN_PAGE_DIGITS.includes(p) ? p : 0, seqDigits: WN_SEQ_DIGITS.includes(s) ? s : 2 };
 }
+// ページ番号の部分(表題欄のページ番号を桁にそろえた文字列)。書式がページ番号なしなら ''。使えなければ { err }
+function wnPagePart(pi) {
+  const f = wnFmt();
+  if (!f.pageDigits) return { part: '' };
+  const pg = state.pages[pi];
+  const raw = (pg && pg.frameObj && pg.frameObj.page != null) ? String(pg.frameObj.page).split('/')[0].trim() : '';
+  const name = pg ? (pg.name || ('Sheet' + (pi + 1))) : '';
+  if (!raw) return { err: `「${name}」の表題欄のページ番号が空です(図面枠の「ページ」欄に入れてください)` };
+  if (!/^\d+$/.test(raw)) return { err: `「${name}」の表題欄のページ番号「${raw}」が数字ではありません` };
+  const n = String(parseInt(raw, 10));
+  if (n.length > f.pageDigits) return { err: `「${name}」の表題欄のページ番号「${raw}」がページ番号の桁数(${f.pageDigits}桁)に収まりません` };
+  return { part: n.padStart(f.pageDigits, '0') };
+}
+// 書式に合う番号なら { part, seq }。合わない(手で付けた名前)なら null
+function wnParse(no) {
+  const f = wnFmt(), s = String(no || '');
+  if (!new RegExp('^\\d{' + (f.pageDigits + f.seqDigits) + '}$').test(s)) return null;
+  return { part: s.slice(0, f.pageDigits), seq: parseInt(s.slice(f.pageDigits), 10) };
+}
+function wnMake(part, seq) { return part + String(seq).padStart(wnFmt().seqDigits, '0'); }
+function wnSeqMax() { return Math.pow(10, wnFmt().seqDigits) - 1; }
 
-// 配線削除後、削除によって完全に無くなった線番があれば、同じprefixで
-// それより大きい番号を1つずつ繰り下げて欠番を詰める(配列のsplice相当)。
-// 【2026-08-14】当初delSel()から自動発動する形で実装したが、盛田さんより
-// 「編集中に勝手に番号が動くと訳が分からなくなる」との指摘を受け、自動発動は
-// 撤回。代わりに線番表(wireNoTable)に手動の「欠番を詰める」ボタンを設置し、
-// 盛田さんが確認しながら明示的に実行するcompactAllWireNumbers()に一本化した。
-// この関数自体は将来また使う可能性を考え残してあるが、現状どこからも自動では
-// 呼ばれない。
-function compactWireNumbersAfterRemoval(deletedNos) {
-  if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
-  const stillUsed = new Set();
-  state.pages.forEach(pg => (pg.wires||[]).forEach(w => { if (w.wireNo) stillUsed.add(w.wireNo); }));
-  const removedNos = [...new Set(deletedNos)].filter(no => no && !stillUsed.has(no));
-  if (!removedNos.length) return 0;
-
-  const byPrefix = new Map();
-  removedNos.forEach(no => {
-    const p = parseWireNo(no);
-    if (!p) return;
-    if (!byPrefix.has(p.prefix)) byPrefix.set(p.prefix, []);
-    byPrefix.get(p.prefix).push(p.num);
-  });
-
-  let shifted = 0;
-  byPrefix.forEach((nums, prefix) => {
-    nums.sort((a,b) => b - a); // 大きい番号から順に詰める(番号のズレを重複させないため)
-    nums.forEach(delNum => {
-      state.pages.forEach(pg => (pg.wires||[]).forEach(w => {
-        if (!w.wireNo) return;
-        const q = parseWireNo(w.wireNo);
-        if (!q || q.prefix !== prefix || q.num <= delNum) return;
-        w.wireNo = prefix + String(q.num - 1).padStart(q.digits, '0');
-        shifted++;
-      }));
+// 線番を振る単位(電気的に同じ線)。ネット1つ、またはページ跨ぎの矢印でつながったネットの組。
+//   parts:[{pi,idxs}]  owner=番号の持ち主のページ(送り側)  extOwned=送り側が別ファイル(番号はそちらのもの)
+function wnUnits() {
+  const units = [], byKey = new Map();
+  state.pages.forEach((pg, pi) => {
+    if (pg._file) return;
+    groupWiresByNet(pg.wires || [], null, pg.elements).forEach(idxs => {
+      const u = { parts: [{ pi, idxs }], owner: pi, extOwned: false, extNo: '' };
+      units.push(u); byKey.set(pi + ':' + idxs[0], u);
     });
   });
-  return shifted;
+  const dead = new Set();
+  const find = sd => { let u = sd.idxs && byKey.get(sd.pi + ':' + sd.idxs[0]); while (u && u.into) u = u.into; return u; };
+  (typeof sigNetLinks === 'function' ? sigNetLinks() : []).forEach(pr => {
+    const ua = pr.a.ext ? null : find(pr.a), ub = pr.b.ext ? null : find(pr.b);   // a=送り b=受け
+    if (ua && ub && ua !== ub) { ua.parts.push(...ub.parts); ub.into = ua; dead.add(ub); }
+    else if (ub && !ua && pr.a.ext) { ub.extOwned = true; ub.extNo = pr.a.no || ''; }
+    else if (ua && !ub && pr.b.ext && pr.b.no) ua.extNo = ua.extNo || pr.b.no;   // 受け側(別ファイル)に番号があれば、未採番の送り側はそれを引き継ぐ(食い違わせない)
+  });
+  return units.filter(u => !dead.has(u));
+}
+const wnUnitWires = u => u.parts.flatMap(pt => pt.idxs.map(i => state.pages[pt.pi].wires[i]).filter(Boolean));
+const wnUnitNos = u => [...new Set(wnUnitWires(u).map(w => w.wireNo).filter(Boolean))];
+const wnUnitExcluded = u => wnUnitWires(u).some(w => w.noAutoNum);
+function wnUnitSet(u, v) { u.parts.forEach(pt => _setNetWireNo(state.pages[pt.pi].wires, pt.idxs, v)); }
+// 並べる位置: 持ち主のページの、番号が出ている線(無ければ一番長い線)の左上の端。
+// 順番は**左の列から、列の中は上から**(盛田さんの Sheet3 の 01〜16 がこの順。展開接続図の縦書き)
+function wnUnitPos(u) {
+  const pt = u.parts.find(p => p.pi === u.owner) || u.parts[0];
+  const ws = pt.idxs.map(i => state.pages[pt.pi].wires[i]).filter(Boolean);
+  const len = w => { const ps = w.pts || [{ x: w.x1, y: w.y1 }, { x: w.x2, y: w.y2 }]; let s = 0; for (let k = 1; k < ps.length; k++) s += Math.hypot(ps[k].x - ps[k - 1].x, ps[k].y - ps[k - 1].y); return s; };
+  const w = ws.find(x => x.wireNo) || ws.slice().sort((a, b) => len(b) - len(a))[0];
+  if (!w) return { x: 0, y: 0 };
+  const ps = w.pts || [{ x: w.x1, y: w.y1 }, { x: w.x2, y: w.y2 }];
+  return { x: Math.min(...ps.map(p => p.x)), y: Math.min(...ps.map(p => p.y)) };
+}
+const WN_COL_TOL = 5;
+function wnSortByPos(units) {
+  const pos = new Map(units.map(u => [u, wnUnitPos(u)]));
+  return units.slice().sort((a, b) => {
+    const p = pos.get(a), q = pos.get(b);
+    return Math.abs(p.x - q.x) > WN_COL_TOL ? p.x - q.x : p.y - q.y;
+  });
+}
+// ファイルの中で使っている線番(混在しているネットの番号も全部)
+function wnUsedNos() {
+  const used = new Set();
+  state.pages.forEach(pg => { if (!pg._file) (pg.wires || []).forEach(w => { if (w.wireNo) used.add(w.wireNo); }); });
+  return used;
+}
+// そのページ(の番号の範囲)で次に空いている番号。無ければ ''
+function wnNextFree(part, used) {
+  for (let s = 1; s <= wnSeqMax(); s++) { const v = wnMake(part, s); if (!used.has(v)) return v; }
+  return '';
 }
 
-// 線番表の「欠番を詰める」ボタン: 現在使われている線番(ネット単位)の欠番を、
-// prefixごとに一括で詰める(例: W001,W003,W005 → W001,W002,W003)。
-// 削除のたびに自動発動すると「編集中に勝手に番号が変わって訳が分からなくなる」
-// ため自動化はせず、盛田さんが線番表を開いて任意のタイミングで押した時だけ
-// 動く手動操作とした。実行前に確認ダイアログを出す(Ctrl+Zで戻せる旨も表示)。
-//
-// 【2026-09-25】1つのネットに異なる線番が混在しているときは実行しない(盛田さんの決定A)。
-// 混在ネットは最初の番号しか「使用中」に数えないため、残りの番号が空き扱いになり、
-// 別の線がその番号へ詰められて重複していた(例: W01/W02混在+W03 → W03がW02になる)。
-// 分岐点(●)でつなぐようにした(同日)ため、分岐先に別番号が入っていた図面で起きやすい。
-// どちらの番号に揃えるかは人が決めることなので、線番表でそろえてもらう。
-function compactAllWireNumbers() {
+// 「このページを振り直す」: このページが持ち主の線(未採番と、このページの書式の番号)を、位置の順に 1 から振り直す。
+// 手で付けた名前・別のページの番号・チェックを外した線は触らない(その番号は避ける)。変わる番号を見せて確かめてから。
+function wireNoRenumberPage(pi) {
   if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
-  const netsByPage = state.pages.map(pg => groupWiresByNet(pg.wires||[], null, pg.elements));
-  let mixed = 0;
-  state.pages.forEach((pg,pi) => netsByPage[pi].forEach(idxs => {
-    if (new Set(idxs.map(i => pg.wires[i].wireNo).filter(Boolean)).size > 1) mixed++;
-  }));
-  if (mixed) {
-    alert(`つながっている配線(ネット)の中に異なる線番が混在している箇所が${mixed}件あります。\n`
-      + `このまま詰めると線番が重複するため、実行しません。\n`
-      + `線番表の橙色の欄で番号をそろえてから、もう一度押してください。`);
-    wireNoTable(`⚠混在${mixed}件のため欠番を詰めませんでした(橙色の欄をそろえてください)`);
+  if (pi == null) pi = state.currentPage || 0;
+  const pp = wnPagePart(pi);
+  if (pp.err) { alert(pp.err + '\n振り直しませんでした。'); return; }
+  const f = wnFmt();
+  const units = wnUnits();
+  const mixed = units.filter(u => u.parts.some(pt => pt.pi === pi) && wnUnitNos(u).length > 1);
+  if (mixed.length) {
+    // 【2026-09-25 決定A】1つのネットに違う番号が混ざっていたら、どちらに揃えるかは人が決める
+    alert(`つながっている配線(ネット)の中に違う線番が混ざっている所が${mixed.length}件あります。\n線番表の橙色の欄で番号をそろえてから、もう一度押してください。`);
+    wireNoTable(`⚠混在${mixed.length}件のため振り直しませんでした(橙色の欄をそろえてください)`);
     return;
   }
-  if (!confirm('現在使われている線番の欠番を詰めます(例: W001,W003,W005 → W001,W002,W003)。\n元に戻す場合はCtrl+Zで戻せます。実行しますか？')) return;
+  const mine = u => !u.extOwned && (f.pageDigits ? u.owner === pi : true);
+  const targets = [], keep = new Set();
+  units.forEach(u => {
+    const no = wnUnitNos(u)[0] || '';
+    const p = no ? wnParse(no) : null;
+    const ours = mine(u) && !wnUnitExcluded(u) && (!no || (p && p.part === pp.part));
+    if (ours) targets.push(u); else if (no) keep.add(no);
+  });
+  if (!targets.length) { wireNoTable('振り直す線がありません'); return; }
+  const order = wnSortByPos(targets);
+  const changes = [];
+  let s = 0, over = false;
+  order.forEach(u => {
+    let v = '';
+    do { s++; if (s > wnSeqMax()) { over = true; break; } v = wnMake(pp.part, s); } while (keep.has(v));
+    if (over) return;
+    const old = wnUnitNos(u)[0] || '';
+    if (old !== v) changes.push({ u, old, v });
+  });
+  if (over) { alert(`連番が${f.seqDigits}桁に収まりません(${order.length}本)。線番の設定で連番の桁数を増やしてください。\n振り直しませんでした。`); return; }
+  if (!changes.length) { wireNoTable('番号は今のままで揃っています(変わる線番はありません)'); return; }
+  const lines = changes.slice(0, 30).map(c => `  ${c.old || '(未採番)'} → ${c.v}`).join('\n');
+  if (!confirm(`${f.pageDigits ? 'このページ' : '全ページ(ページ番号なしの書式なので通し)'}の線番を振り直します(左の列から、列の中は上から)。変わる線番 ${changes.length}件:\n${lines}${changes.length > 30 ? `\n  …ほか${changes.length - 30}件` : ''}\n\n手で付けた名前(R・S・T、L1 など)と、チェックを外した線は変えません。元に戻すときは Ctrl+Z。実行しますか？`)) return;
   pushH();
-  const usedByPrefix = new Map(); // prefix -> Map(num -> digits)
-  state.pages.forEach((pg,pi) => {
-    netsByPage[pi].forEach(idxs => {
-      const wires = pg.wires;
-      const no = idxs.map(i=>wires[i].wireNo).find(Boolean);
-      if (!no) return;
-      const p = parseWireNo(no);
-      if (!p) return;
-      if (!usedByPrefix.has(p.prefix)) usedByPrefix.set(p.prefix, new Map());
-      usedByPrefix.get(p.prefix).set(p.num, p.digits);
-    });
-  });
-  const remap = new Map(); // prefix -> Map(oldNum -> newNum)
-  usedByPrefix.forEach((numMap, prefix) => {
-    const nums = [...numMap.keys()].sort((a,b)=>a-b);
-    const m = new Map();
-    nums.forEach((n,i) => m.set(n, nums[0] + i));
-    remap.set(prefix, m);
-  });
-  let changed = 0;
-  state.pages.forEach(pg => (pg.wires||[]).forEach(w => {
-    if (!w.wireNo) return;
-    const p = parseWireNo(w.wireNo);
-    if (!p) return;
-    const m = remap.get(p.prefix);
-    const newNum = m && m.get(p.num);
-    if (newNum === undefined || newNum === p.num) return;
-    w.wireNo = p.prefix + String(newNum).padStart(p.digits, '0');
-    changed++;
-  }));
+  changes.forEach(c => wnUnitSet(c.u, c.v));
   draw();
-  wireNoTable(changed ? `欠番を詰めました(${changed}本の線番を更新)` : '欠番はありませんでした');
+  wireNoTable(`このページの線番を振り直しました(${changes.length}件)`);
 }
 
 // ページ内の配線を、端点が重なっているもの同士(=同一ネット)でグループ化する。
@@ -319,62 +352,53 @@ function netWireNoOf(pg) {
 // この一括割付ボタンは「まだ何も番号が振られていない配線に初期値を素早く入れる」
 // 用途として残し、細かい調整・分断時の直しは編集可能な線番表(wireNoTable)側で行う
 // 想定(自動検知はしない・一覧を見て手で直す運用)。
-function autoWireNumber(){
-  const start = prompt('一括割付の開始線番（例: W001）\n線番がどこにも無いネット(繋がっている配線群)だけに、全ページ通しで割り付けます。\n番号は1ネットにつき1か所(一番長い線)に入ります。既に番号のあるネットには触りません。\n(線番表でチェックを外したネットは対象外になります)', state.wireNoRule || 'W001');
-  if (!start || !start.trim()) return;
-  state.wireNoRule = start.trim();
+//
+// 【2026-10-04】開始番号を聞く入力窓をやめ、線番の書式(wnFmt。設定パネル wireNoSettings)で振る。
+// scope: 'page'=今のページが持ち主の線だけ / 'all'=ファイルの全ページ。番号の無い線だけに、位置の順で空いている番号を入れる。
+// ページ跨ぎの受け側は送り側の番号を引き継ぐ(送り側が別ファイルで未採番なら入れない)。
+function autoWireNumber(scope){
   if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
-  pushH();
-  const used = new Set();
-  state.pages.forEach(pg => (pg.wires||[]).forEach(w => { if (w.wireNo) used.add(w.wireNo); }));
-  let next = start.trim(), wireCnt = 0, netCnt = 0, conflictCnt = 0, excludedCnt = 0;
-  // ページ跨ぎの矢印の相手(送り・受け)は同じ線なので、相手に番号があればそれを引き継ぐ(別の番号を振らない)
-  const netKey = (pi, idxs) => pi + ':' + Math.min(...idxs);
-  const partners = new Map(), noByKey = new Map(), assigned = new Map();
-  if (typeof sigNetLinks === 'function') {
-    state.pages.forEach((pg, pi) => groupWiresByNet(pg.wires || [], null, pg.elements).forEach(idxs => {
-      noByKey.set(netKey(pi, idxs), idxs.map(i => pg.wires[i].wireNo).find(Boolean) || '');
-    }));
-    const addP = (k, v) => { if (!partners.has(k)) partners.set(k, []); partners.get(k).push(v); };
-    sigNetLinks().forEach(pr => {
-      const ka = (!pr.a.ext && pr.a.idxs) ? netKey(pr.a.pi, pr.a.idxs) : null, kb = (!pr.b.ext && pr.b.idxs) ? netKey(pr.b.pi, pr.b.idxs) : null;
-      if (ka && kb) { addP(ka, { key: kb }); addP(kb, { key: ka }); }
-      else if (ka && pr.b.ext) addP(ka, { no: pr.b.no });
-      else if (kb && pr.a.ext) addP(kb, { no: pr.a.no });
-    });
-  }
-
-  state.pages.forEach(pg => {
-    const wires = pg.wires || [];
-    if (!wires.length) return;
-    const groups = groupWiresByNet(wires, null, pg.elements);
-    groups.forEach(idxs => {
-      // 線番表でチェックを外した(noAutoNum)ネットは自動割付の対象外
-      if (idxs.some(i => wires[i].noAutoNum)) { excludedCnt++; return; }
-      const existingNums = new Set(idxs.map(i => wires[i].wireNo).filter(Boolean));
-      if (existingNums.size > 1) conflictCnt++; // 同一ネット内に異なる既存線番が混在(上書きはしない)
-      // 【2026-09-25】番号のあるネットには触らない。以前はネット内の空の線すべてに
-      // 同じ番号を写していたため、図面に同じ線番の文字が何か所も並んだ(_setNetWireNo参照)。
-      if (existingNums.size) return;
-      const myKey = netKey(state.pages.indexOf(pg), idxs);
-      let inherit = '';
-      (partners.get(myKey) || []).forEach(pt => { if (!inherit) inherit = pt.no || (pt.key && (assigned.get(pt.key) || noByKey.get(pt.key))) || ''; });
-      if (inherit) {   // 矢印の相手の番号を引き継ぐ
-        assigned.set(myKey, inherit); netCnt++;
-        _setNetWireNo(wires, idxs, inherit);
-        wireCnt++;
-        return;
+  const cur = state.currentPage || 0;
+  const units = wnUnits();
+  const used = wnUsedNos();
+  const inScope = u => scope !== 'page' || u.parts.some(pt => pt.pi === cur);
+  let netCnt = 0, conflictCnt = 0, excludedCnt = 0, waitExt = 0, full = 0;
+  const errs = new Set();
+  const todo = [];
+  units.forEach(u => {
+    if (!inScope(u)) return;
+    const nos = wnUnitNos(u);
+    if (nos.length > 1) conflictCnt++;   // 同一ネット内に異なる既存線番が混在(上書きはしない)
+    // 【2026-09-25】番号のあるネットには触らない(1ネット1か所。_setNetWireNo参照)。
+    // ただしページ跨ぎの相手(同じ線)が未採番なら同じ番号を入れる
+    if (nos.length) {
+      if (nos.length === 1) {
+        const blank = u.parts.filter(pt => !pt.idxs.some(i => state.pages[pt.pi].wires[i].wireNo));
+        if (blank.length) { blank.forEach(pt => _setNetWireNo(state.pages[pt.pi].wires, pt.idxs, nos[0])); netCnt++; }
       }
-      while (used.has(next)) next = incRef(next);
-      const num = next; used.add(next); next = incRef(next);
-      assigned.set(myKey, num);
-      netCnt++;
-      _setNetWireNo(wires, idxs, num);   // 一番長い線1本に入れる
-      wireCnt++;
-    });
+      return;
+    }
+    if (wnUnitExcluded(u)) { excludedCnt++; return; }   // 線番表でチェックを外したネットは対象外
+    if (u.extNo) { wnUnitSet(u, u.extNo); netCnt++; return; }   // 別ファイルの相手の番号を引き継ぐ
+    if (u.extOwned) { waitExt++; return; }   // 送り側が別ファイルで未採番
+    todo.push(u);
   });
-
-  let msg = `未採番だった${netCnt}ネットに線番を割付しました（全ページ・1ネットにつき1か所。既に番号のあるネットには触りません）`;
+  const work = () => wnSortByPos(todo).forEach(u => {
+    const pp = wnPagePart(u.owner);
+    if (pp.err) { errs.add(pp.err); return; }
+    const v = wnNextFree(pp.part, used);
+    if (!v) { full++; return; }
+    used.add(v);
+    wnUnitSet(u, v);   // 一番長い線1本に入れる(矢印でつながった相手のページにも)
+    netCnt++;
+  });
+  pushH();
+  work();
+  const where = scope === 'page' ? 'このページ' : '全ページ';
+  let msg = `${where}の未採番だった${netCnt}ネットに線番を割付しました(既に番号のあるネットには触りません)`;
+  if (errs.size) msg += '\n⚠' + [...errs].join('\n⚠') + '\n(そのページは割付していません)';
+  if (full) msg += `\n⚠連番が${wnFmt().seqDigits}桁に収まらず、${full}ネットは割付できませんでした(線番の設定で連番の桁数を増やしてください)`;
+  if (waitExt) msg += `\n⚠ページ跨ぎの受け側で、送り側(別ファイル)が未採番のネットが${waitExt}件あります(送り側で振ってください)`;
   if (conflictCnt) msg += `\n⚠同一ネット内に異なる既存線番が混在している箇所が${conflictCnt}件ありました(上書きしていません。線番表で確認・修正してください)`;
   if (excludedCnt) msg += `\nチェックを外したネット${excludedCnt}件は対象外にしました`;
   wireNoTable(msg);
@@ -447,10 +471,14 @@ function wireNoTable(msg){
   html += `配線 全${total}本 / ネット ${rows.length}件`;
   if (unnumbered) html += ` / <span style="color:var(--red);font-weight:600">未採番 ${unnumbered}本</span>`;
   html += `<br>線番欄を直接編集すると、そのネット(繋がっている配線群)全体に即反映されます。`;
-  html += `<br>チェックを外すと「線番割付」ボタンでの自動採番の対象外になります(手入力は可能なまま)。`;
+  html += `<br>チェックを外すと、割付・振り直しの対象外になります(手入力は可能なまま)。`;
+  { const f = wnFmt(); html += `<br>線番の書式: ${f.pageDigits ? `表題欄のページ番号${f.pageDigits}桁＋連番${f.seqDigits}桁(例 ${wnMake('3'.padStart(f.pageDigits, '0'), 5)})` : `連番${f.seqDigits}桁(ページ番号なし。例 ${wnMake('', 5)})`}。割付・振り直しで変わるのはこの形の番号だけです`; }
   html += `<br>配線を追加/削除した後は、この一覧を開き直して未採番(赤)や分断(橙)がないか確認してください。`;
   html += `<br>行を押すと、この一覧を閉じて図面のその配線へ移動し、選択します(線番はプロパティ欄でも打てます)。`;
-  html += `<br><button onclick="compactAllWireNumbers()" title="削除等で欠番になった線番を詰めます(例: W001,W003,W005 → W001,W002,W003)。編集中に自動では動きません、このボタンを押した時だけ実行されます" style="margin-top:4px;font-size:10px;padding:2px 8px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)">欠番を詰める</button>`;
+  // 【2026-10-04】「欠番を詰める」(ファイル全体・末尾が数字なら何でも対象)をやめ、書式に合う番号だけを位置の順に振り直す「このページを振り直す」にした
+  const bst = 'margin-top:4px;font-size:10px;padding:2px 8px;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)';
+  html += `<br><button onclick="wireNoSettings()" title="線番の書式(ページ番号の桁数・連番の桁数)と割付" style="${bst}">線番の設定・割付</button> `;
+  html += `<button onclick="wireNoRenumberPage()" title="今のページの線番(未採番と、書式に合う番号)を、左の列から・列の中は上からの順に振り直します。手で付けた名前(R・S・T、L1 など)は変えません。実行前に変わる番号を確かめられます" style="${bst}">このページを振り直す</button>`;
   html += `</p>`;
   const hasExt = rows.some(r => r.ext && r.ext.length);
   html += `<table class="tbl"><tr><th></th><th></th><th>線番</th><th>ページ</th><th>本数</th>${hasExt ? '<th>別ファイルの相手</th>' : ''}<th></th></tr>`;
@@ -468,7 +496,7 @@ function wireNoTable(msg){
       : `<button disabled style="${btnStyle};opacity:.3">▼</button>`;
     const delBtn = r.merged
       ? `<button disabled title="ページ跨ぎの矢印でつながった行は、ここから削除できません(各ページで消してください)" style="${btnStyle};opacity:.3">×</button>`
-      : `<button title="このネットの配線ごと削除し、欠番を自動で詰めます" onclick="deleteNetFromList(${r.pageIdx},[${r.idxs.join(',')}])" style="${btnStyle};color:var(--red)">×</button>`;
+      : `<button title="このネットの配線ごと削除します(ほかの線番は動かしません)" onclick="deleteNetFromList(${r.pageIdx},[${r.idxs.join(',')}])" style="${btnStyle};color:var(--red)">×</button>`;
     const chk = `<input type="checkbox" ${r.autoNum?'checked':''} title="チェックを外すと「線番割付」ボタンでの自動採番の対象外になります" onchange="toggleNetAutoNumParts(${partsArg(r)},this.checked)">`;
     // 【2026-09-25】行を押すと図面のそのネットへ飛ぶ(盛田さん「線番が無いことはわかるが
     // それがどれなのかは不明」)。欄・ボタン・チェックを押したときは飛ばない。
@@ -538,7 +566,10 @@ function toggleNetAutoNum(pageIdx, idxs, checked) {
   draw();
 }
 
-// 線番表の×ボタン: そのネットの配線を実際に削除し、続けて欠番を自動で詰める。
+// 線番表の×ボタン: そのネットの配線を実際に削除する。
+// 【2026-10-04】削除に続けて欠番を自動で詰めるのをやめた(ほかの線番は動かさない)。後ろを全部1つ繰り下げていたので、
+// 飛ばして振った番号(10,20,30)が崩れ、手で付けた名前(L1 を消すと L2 が L1)まで変わった。直すときは「このページを振り直す」。
+// 以下は以前の記録:
 // 【設計方針】キャンバス上でのDelete削除は「編集中に勝手に番号が動くと訳が
 // 分からなくなる」ため自動詰めをやめて手動ボタン(compactAllWireNumbers)にしたが、
 // この一覧からの削除は盛田さんが線番表を見ながら意図して行う操作なので、
@@ -549,13 +580,12 @@ function deleteNetFromList(pageIdx, idxs) {
   const targetIds = idxs.map(i => pg.wires[i] && pg.wires[i].id).filter(Boolean);
   if (!targetIds.length) return;
   const delNo = idxs.map(i => pg.wires[i] && pg.wires[i].wireNo).find(Boolean);
-  if (!confirm(`このネット(配線${targetIds.length}本${delNo?'、線番'+delNo:'(未採番)'})を削除しますか？\n削除後、欠番があれば自動で詰めます。元に戻す場合はCtrl+Zで戻せます。`)) return;
+  if (!confirm(`このネット(配線${targetIds.length}本${delNo?'、線番'+delNo:'(未採番)'})を削除しますか？\nほかの線番は動かしません(番号を揃えるときは「このページを振り直す」)。元に戻す場合はCtrl+Zで戻せます。`)) return;
   pushH();
   const idSet = new Set(targetIds);
   pg.wires = pg.wires.filter(w => !idSet.has(w.id));
   // 消した配線がグループに入っていた場合の参照を掃除する
   if (typeof pruneGroups === 'function') pruneGroups(pg);
-  if (delNo) compactWireNumbersAfterRemoval([delNo]);
   draw();
   wireNoTable();
 }
@@ -591,11 +621,12 @@ function applyNetWireNo(pageIdx, wireIdxs, value) {
       if (w.wireNo === v && !idsInThisNet.has(w.id)) usedElsewhere = true;
     }));
     if (usedElsewhere) {
-      const p = parseWireNo(v);
+      // 【2026-10-04】繰り上げるのは書式に合う番号(同じページ番号)だけ。以前は末尾が数字なら何でも繰り上げ、L1 を打つと L1→L2・L2→L3 と名前まで変わった
+      const p = wnParse(v);
       const doShift = confirm(
         p
         ? `線番「${v}」は既に別の配線で使われています。\n[OK] ここに割り込ませて、「${v}」以降の番号を1つずつ繰り上げます(例: 1,2,3の間に割り込み→1,2,3,4)\n[キャンセル] 何もしません`
-        : `線番「${v}」は既に別の配線で使われています。同じ番号のまま登録しますか？\n(数字を含まない線番は自動繰り上げができないため、意図的な重複として扱われます)`
+        : `線番「${v}」は既に別の配線で使われています。同じ番号のまま登録しますか？\n(線番の書式に合わない番号(手で付けた名前)は繰り上げないため、重複のまま登録します)`
       );
       if (!doShift) return;
       pushH();
@@ -604,13 +635,13 @@ function applyNetWireNo(pageIdx, wireIdxs, value) {
         const toShift = [];
         state.pages.forEach(pg2 => (pg2.wires||[]).forEach(w => {
           if (!w.wireNo || idsInThisNet.has(w.id)) return;
-          const q = parseWireNo(w.wireNo);
-          if (q && q.prefix === p.prefix && q.num >= p.num) toShift.push(w);
+          const q = wnParse(w.wireNo);
+          if (q && q.part === p.part && q.seq >= p.seq) toShift.push(w);
         }));
-        toShift.sort((a,b) => parseWireNo(b.wireNo).num - parseWireNo(a.wireNo).num);
+        toShift.sort((a,b) => wnParse(b.wireNo).seq - wnParse(a.wireNo).seq);
         toShift.forEach(w => {
-          const q = parseWireNo(w.wireNo);
-          w.wireNo = q.prefix + String(q.num + 1).padStart(q.digits, '0');
+          const q = wnParse(w.wireNo);
+          w.wireNo = wnMake(q.part, q.seq + 1);
         });
       }
       _setNetWireNo(pg.wires, wireIdxs, v);   // 1ネット1か所(_setNetWireNo参照)
@@ -1641,3 +1672,76 @@ function renumberTerminals(dev) {
 // 目印はファイル末尾に置く(先頭だと、途中で落ちたファイルも「読めた」ことになる)。
 // ================================================================
 if (typeof window !== 'undefined') (window.__ecadLoaded = window.__ecadLoaded || {})['report.js'] = 1;
+
+// ----------------------------------------------------------------
+// 線番の設定(フロートパネル。2026-10-04 盛田さん「設定にページ+番号の桁数を持たせたら」「設定はフロートパネルに出す」)
+// 書式は図面ファイルに保存する(state.wireNoFmt)。割付・振り直しもここから押せる
+// ----------------------------------------------------------------
+function wireNoSettings() {
+  if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
+  const f = wnFmt();
+  const pd = document.getElementById('wn-page-digits'), sd = document.getElementById('wn-seq-digits');
+  if (pd) pd.value = String(f.pageDigits);
+  if (sd) sd.value = String(f.seqDigits);
+  wireNoSettingsInfo();
+  openFP('wireno-p');
+}
+// 書式を変えたら、**変える前の書式に合っていた番号**を新しい書式に書き換えるか聞く(連番はそのまま、ページ番号の部分だけ付け替える)。
+// 書き換えないと、それらは新しい書式に合わず「手で付けた名前」扱いになり、割付・振り直しで動かなくなるため(Sheet3の 01〜16 → 301〜316)
+function setWireNoFmt() {
+  if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
+  const pd = document.getElementById('wn-page-digits'), sd = document.getElementById('wn-seq-digits');
+  const oldFmt = wnFmt();
+  const units = wnUnits();
+  const olds = units.map(u => ({ u, no: wnUnitNos(u)[0] || '', many: wnUnitNos(u).length > 1 })).map(x => Object.assign(x, { p: x.no && !x.many ? wnParse(x.no) : null }));
+  state.wireNoFmt = { pageDigits: Number(pd ? pd.value : 0), seqDigits: Number(sd ? sd.value : 2) };
+  const conv = olds.filter(x => x.p);
+  const pg = state.pages[state.currentPage || 0];
+  if (pg) pg.dirty = true;
+  if (typeof renderPageTabs === 'function') renderPageTabs();
+  if (conv.length && JSON.stringify(oldFmt) !== JSON.stringify(wnFmt())) {
+    const plan = [], errs = new Set();
+    let tooBig = 0;
+    conv.forEach(x => {
+      if (x.u.extOwned) return;   // 送り側が別ファイルの番号は書き換えない
+      const pp = wnPagePart(x.u.owner);
+      if (pp.err) { errs.add(pp.err); return; }
+      if (x.p.seq > wnSeqMax()) { tooBig++; return; }
+      plan.push({ u: x.u, old: x.no, v: wnMake(pp.part, x.p.seq) });
+    });
+    const after = new Map();
+    plan.forEach(c => after.set(c.v, (after.get(c.v) || 0) + 1));
+    const dup = [...after.values()].some(n => n > 1);
+    // 書き換えられない(ページ番号が空など・同じ番号ができる)なら書式を変えない。変えてしまうと前の書式の番号を後から書き換える手段が無くなる
+    if (errs.size || dup) {
+      state.wireNoFmt = oldFmt;
+      if (pd) pd.value = String(oldFmt.pageDigits);
+      if (sd) sd.value = String(oldFmt.seqDigits);
+      alert(`前の書式の線番が${conv.length}本あり、新しい書式に書き換えられないため、書式は変えていません。\n`
+        + (errs.size ? '⚠' + [...errs].join('\n⚠') + '\n(表題欄のページ番号を入れてから、もう一度変えてください)' : '⚠書き換えると同じ番号ができます'));
+      wireNoSettingsInfo();
+      return;
+    }
+    const msg = `書式を変えました。前の書式の線番が${conv.length}本あります。`;
+    const lines = plan.slice(0, 20).map(c => `  ${c.old} → ${c.v}`).join('\n');
+    if (confirm(`${msg}\n新しい書式に書き換えますか？(連番はそのまま)\n${lines}${plan.length > 20 ? `\n  …ほか${plan.length - 20}件` : ''}`
+        + (tooBig ? `\n⚠連番の桁に収まらないもの${tooBig}本は書き換えません` : '')
+        + `\n\n[キャンセル] 書き換えない(前の書式の番号は手で付けた名前として扱われ、割付・振り直しで変わらなくなります)`)) {
+      pushH();
+      plan.forEach(c => wnUnitSet(c.u, c.v));
+      draw();
+    }
+  }
+  wireNoSettingsInfo();
+}
+function wireNoSettingsInfo() {
+  const el = document.getElementById('wn-info');
+  if (!el) return;
+  const f = wnFmt(), pp = wnPagePart(state.currentPage || 0);
+  const ex = f.pageDigits ? (pp.err ? wnMake('3'.padStart(f.pageDigits, '0'), 1) + '(3ページ目の1本目)' : `${wnMake(pp.part, 1)}、${wnMake(pp.part, 2)}…`) : `${wnMake('', 1)}、${wnMake('', 2)}…`;
+  el.innerHTML = (f.pageDigits
+      ? (pp.err ? `<span style="color:var(--red)">⚠${escH(pp.err)}</span>` : `このページのページ番号(表題欄): <b>${escH(pp.part)}</b>`)
+      : 'ページ番号を付けません(1ページの図面向け。ファイルの全ページで通しの番号)')
+    + `<br>このページの線番: ${escH(ex)}`
+    + `<br>使える本数: 1ページ ${wnSeqMax()}本まで`;
+}

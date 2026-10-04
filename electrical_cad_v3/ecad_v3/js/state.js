@@ -15,6 +15,9 @@ const state = {
   drawingTbTpls: {},
   drawingSymbols: {},  // 図面に入っているシンボル {type: 定義}(2026-10-03 段階3。js/sym_store.js)   // 図面に入っている表題欄様式の写し(2026-10-03 段階2。js/data.js userTitleBlockTpls)
   hiddenBuiltinRefs: [], // 【2026-10-03】標準部品の非表示機能はやめた。parts_db.json に残っている値を消さないよう読んだまま持つだけ
+  // 線番の書式(2026-10-04): 表題欄のページ番号の桁数(0=なし)と連番の桁数。図面ファイルに保存。js/report.js wnFmt・wireNoSettings
+  wireNoFmt: { pageDigits: 0, seqDigits: 2 },
+  // 【2026-10-04】wireNoRule は使っていない(線番の書式は wireNoFmt)。古い図面の値を読んだまま持つだけ
   wireNoRule: {
     mode: 'sequence',   // 'sequence' | 'position' | 'prefix'
     prefix: '',

@@ -146,6 +146,7 @@ function doAutosave() {
       customParts:   (typeof usedPartsForSave === 'function') ? usedPartsForSave(state.pages) : undefined,
       titleBlockTpls: (typeof usedTitleBlockTplsForSave === 'function') ? usedTitleBlockTplsForSave(state.pages) : undefined,   // 使った表題欄様式の写し(段階2)
       wireNoRule:    state.wireNoRule,
+      wireNoFmt:    state.wireNoFmt,   // 線番の書式(2026-10-04 js/report.js wnFmt)
       layers:        LAYERS,
       pages:         state.pages,
       currentPage:   state.currentPage,
@@ -272,6 +273,7 @@ function restoreAutosave() {
     state.currentPage  = Math.min(d.currentPage || 0, state.pages.length - 1);
     state.saveFileName = d.saveFileName || '';
     state.wireNoRule   = d.wireNoRule || state.wireNoRule;
+    state.wireNoFmt   = d.wireNoFmt || { pageDigits: 0, seqDigits: 2 };   // 書式の無い図面は「ページ番号なし・連番2桁」(Sheet3の 01〜16 の形)
     state.customSymbols= d.customSymbols || [];
     if (typeof setDrawingSymbols === 'function') setDrawingSymbols(state.customSymbols);   // パレットは起動処理の rebuildSymbolPalette で組む(段階3)
     state.drawingTbTpls = (d.titleBlockTpls && typeof d.titleBlockTpls === 'object') ? d.titleBlockTpls : {};   // 表題欄様式の写し(段階2)
