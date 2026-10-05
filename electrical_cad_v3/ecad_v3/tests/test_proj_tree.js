@@ -179,6 +179,27 @@ const rows = () => [...body.innerHTML.matchAll(/class="pt-row ([^"]*)"[^>]*data-
     ok(/oncontextmenu="ptreeMenu\(event,this\.dataset\.path,'file'\)"/.test(R('js/proj_tree.js')), '行の右クリックでメニュー');
   }
 
+  console.log('\n【名前を付けて保存したファイルを次から上書きの先に(2026-10-05)】');
+  {
+    const fhIn = { kind: 'file', name: 'N.seqzu', async isSameEntry(o) { return o === fhIn; } };
+    const fhOut = { kind: 'file', name: 'Out.seqzu', async isSameEntry(o) { return o === fhOut; } };
+    sb.ptreeState.root = { name: '案件', async resolve(h) { return h === fhIn ? ['盤外', 'N.seqzu'] : null; } };
+    sb.ptreeState.files = new Map();
+    const a = { name: 'A' }, b = { name: 'B', _src: '/盤外/N.seqzu' }, c = { name: 'C' };
+    sb.state.pages = [a, b, c];
+    await sb.ptreeAdopt(fhIn, [a]);
+    eq([a._src, sb.ptreeSrcHandle('/盤外/N.seqzu') === fhIn], ['/盤外/N.seqzu', true], '★プロジェクトのフォルダの中ならツリーの道筋で保存先にする');
+    eq([b._src, b.dirty], [undefined, true], '★同じファイルを保存先にしていた別のページは保存先を外して未保存に(上書きされたため)');
+    await sb.ptreeAdopt(fhOut, [c]);
+    ok(/^ext:\d+:Out\.seqzu$/.test(c._src) && sb.ptreeSrcHandle(c._src) === fhOut, '★フォルダの外のファイルも保存先にする(外用の印)');
+    const k = c._src; await sb.ptreeAdopt(fhOut, [c]);
+    eq(c._src, k, '同じ外のファイルにもう一度保存しても同じ印');
+    const E = R('js/edit.js');
+    ok(/\(n, fh\) => \{ renderPageTabs\(\); if \(fh && typeof ptreeAdopt === 'function'\) ptreeAdopt\(fh, \[pg\]\)/.test(E), '★「保存」(名前を付けて)のあと、そのページの保存先にする');
+    ok(/ptreeAdopt\(fh, state\.pages\.slice\(\)\)/.test(E), '全ページ保存(名前を付けて)のあと、全ページの保存先にする');
+    ok(/if \(onDone\) onDone\(fh\.name, fh\);/.test(R('js/settings.js')), '保存の窓で書いたファイルの鍵を渡す');
+  }
+
   console.log('\n【フォルダ未設定】');
   sb.ptreeState.root = null;
   await sb.ptreeRender();

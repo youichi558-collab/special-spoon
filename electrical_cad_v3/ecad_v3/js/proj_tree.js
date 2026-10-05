@@ -17,6 +17,24 @@ const PTREE_KEY = 'ptree';                       // IndexedDB(settings.js の _s
 const PTREE_EXT = /\.seqzu$/i;
 const ptreeState = { root: null, open: new Set(), files: new Map() };   // open: 開いているフォルダの道筋 / files: 開いた図面の道筋 → ファイルの鍵
 
+// 【2026-10-05】「名前を付けて保存」で書いたファイルも、次から窓を出さずに上書きする(盛田さん)。
+// pages の保存先をそのファイルにする。プロジェクトのフォルダの中ならツリーの道筋、外なら外用の印(ext:)を保存先の名前にする。
+// 同じファイルを保存先にしていた他のページは保存先を外して未保存にする(そのファイルは今回の中身で上書きされたため)
+let _ptExtSeq = 0;
+async function ptreeAdopt(fh, pages) {
+  let key = '';
+  try { const parts = ptreeState.root && await ptreeState.root.resolve(fh); if (parts && parts.length) key = '/' + parts.join('/'); } catch (e) {}
+  if (!key) {
+    for (const [k, h] of ptreeState.files) { try { if (k.startsWith('ext:') && await h.isSameEntry(fh)) { key = k; break; } } catch (e) {} }
+    if (!key) key = `ext:${++_ptExtSeq}:${fh.name}`;
+  }
+  (state.pages || []).forEach(p => { if (p._src === key && !pages.includes(p)) { delete p._src; p.dirty = true; } });
+  ptreeState.files.set(key, fh);
+  pages.forEach(p => { p._src = key; });
+  if (typeof renderPageTabs === 'function') renderPageTabs();
+  ptreeRender();
+}
+
 // ページが開いたファイルの鍵(保存で使う。js/edit.js)。ブラウザを開き直すと鍵は消える(そのときの保存は「名前を付けて保存」)
 function ptreeSrcHandle(src) { return (src && ptreeState.files.get(src)) || null; }
 

@@ -153,7 +153,7 @@ async function stWriteOut(fname, make, fallback, onDone) {
     await w.write(blob);
     await w.close();
     stToast(`保存しました: ${fh.name}`, 'ok');
-    if (onDone) onDone(fh.name);
+    if (onDone) onDone(fh.name, fh);   // fh: 書いたファイルの鍵(図面の保存は次から上書きの先にする。js/proj_tree.js ptreeAdopt)
   } catch (e) {
     fb(fh.name);
     stToast(`「${fh.name}」に書けませんでした（${e.message}）。\n今回はダウンロードフォルダに保存しました`, 'ng');
