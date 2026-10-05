@@ -2431,6 +2431,8 @@ function updateRightPanel() {
     // デバイス名・仕様を消し、表示チェックもOFFにしていた(盛田さん「貼り付けた後に
     // 別の数値が上書きされる」)。複数選択パネルの操作は rp._el を使わない。
     rp._el = null; rp._wire = null;
+    rp.oninput = rp.onchange = null;   // 2026-10-05 即適用の仕掛けも外す(選択なしの側の説明)
+    if (rp._focusoutHandler) { rp.removeEventListener('focusout', rp._focusoutHandler); rp._focusoutHandler = null; }
     const isGrouped = selGroups.length > 0;
     const label = isGrouped ? `グループ選択 (${selGroups.length}個)` : `複数選択 (${totalSel}個)`;
     const groupBtn = isGrouped
@@ -2473,6 +2475,14 @@ function updateRightPanel() {
         <div class="pp-row"><label>改訂番号</label><input type="text" id="fp-rev"    value="${escH(f.rev||'')}"></div>
         <button class="pp-apply" onclick="applyFrameProps()">適用</button>`;
     }
+    // 【2026-10-05】ここでも _el/_wire を空にし、即適用の仕掛けを外す(複数選択・単一選択の側と同じ対策)。
+    // 以前はここだけ空にしておらず、直前に選んでいた記号を指したまま「保存ファイル名」「図面枠プロパティ」の欄を出していた。
+    // その欄を打つと、残っていた即適用(rp.oninput/onchange・focusout)が applyRightPanel() を呼び、この画面に無い欄を空として読んで
+    // **直前に選んでいた記号のデバイス名・型番・仕様・端子番号を消していた**(盛田さん「型式仕様が消える」。バックアップで
+    // 保存ファイル名を変えた回に CP1 の4つが一度に空になっていたのを確認、実アプリで再現)
+    rp._el = null; rp._wire = null;
+    rp.oninput = rp.onchange = null;
+    if (rp._focusoutHandler) { rp.removeEventListener('focusout', rp._focusoutHandler); rp._focusoutHandler = null; }
     rp.innerHTML = html; return;
   }
 
