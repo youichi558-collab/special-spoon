@@ -97,7 +97,7 @@ const rows = () => [...body.innerHTML.matchAll(/class="pt-row ([^"]*)"[^>]*data-
       ptreeSrcHandle: s => handles[s] || null, stToast: (m, k) => toasts.push(k), alert: m => alerts.push(m), window: { showSaveFilePicker() {} }, dlMake: () => { e.dialog = true; } };
     vm.createContext(e);
     vm.runInContext([pick(/function _saveJSON[\s\S]*?\n\}/), pick(/function _saveData\([\s\S]*?\n\}/), pick(/async function saveToSrcFile\([\s\S]*?\n\}/),
-      pick(/function _pageFileName\([\s\S]*?\n\}/), pick(/function saveProject\(\)[\s\S]*?\n\}/), pick(/function saveAllProject\(\)[\s\S]*?\n\}/)].join('\n'), e);
+      pick(/function _pageFileName\([\s\S]*?\n\}/), pick(/function saveAsProject\(\)[^\n]*/), pick(/function saveProject\(asNew\)[\s\S]*?\n\}/), pick(/function saveAllProject\(\)[\s\S]*?\n\}/)].join('\n'), e);
     e.state = { currentPage: 0, wireNoRule: '', saveFileName: 'x', pages: [
       { name: 'A1', _src: '/A.seqzu', dirty: true }, { name: 'B1', _src: '/B_all.seqzu', dirty: true }, { name: 'B2', _src: '/B_all.seqzu', dirty: true }, { name: '新', dirty: true }] };
     e.saveProject();
@@ -110,6 +110,16 @@ const rows = () => [...body.innerHTML.matchAll(/class="pt-row ([^"]*)"[^>]*data-
     eq(JSON.parse(written['B_all.seqzu']).pages.map(p => p.name), ['B1', 'B2'], '★同じファイルから開いたページはまとめて書く(全ページ保存のファイル)');
     e.state.currentPage = 3; e.saveProject();
     ok(e.dialog, '開いたファイルの無いページは今までどおり「名前を付けて保存」');
+    e.dialog = false; let made = null, done = null;
+    e.dlMake = (mk, fname, mime, cb) => { e.dialog = fname; made = mk; done = cb; };
+    e.ptreeAdopt = (fh, pages) => { e.adopted = pages.map(p => p.name); };
+    e.state.currentPage = 1; e.saveAsProject();
+    eq(e.dialog, 'B_all.seqzu', '★「名前を付けて保存」は保存先があっても窓を出す(名前の初期値は今のファイル)');
+    eq(JSON.parse(made('B_copy.seqzu')).pages.map(p => p.name), ['B1', 'B2'], '★同じファイルのページをまとめて書く');
+    done('B_copy.seqzu', { name: 'B_copy.seqzu' });
+    eq(e.adopted, ['B1', 'B2'], '書いたファイルを次から保存先にする');
+    ok(/onclick="saveAsProject\(\)"[^>]*>.*名前を付けて保存<\/div>/.test(R('index.html')), '★データタブに「名前を付けて保存」ボタン');
+    e.dlMake = () => { e.dialog = true; };
     e.dialog = false; delete written['A.seqzu']; delete written['B_all.seqzu'];
     e.saveAllProject();
     await new Promise(r => setTimeout(r, 20));
@@ -195,7 +205,7 @@ const rows = () => [...body.innerHTML.matchAll(/class="pt-row ([^"]*)"[^>]*data-
     const k = c._src; await sb.ptreeAdopt(fhOut, [c]);
     eq(c._src, k, '同じ外のファイルにもう一度保存しても同じ印');
     const E = R('js/edit.js');
-    ok(/\(n, fh\) => \{ renderPageTabs\(\); if \(fh && typeof ptreeAdopt === 'function'\) ptreeAdopt\(fh, \[pg\]\)/.test(E), '★「保存」(名前を付けて)のあと、そのページの保存先にする');
+    ok(/\(n, fh\) => \{ renderPageTabs\(\); if \(fh && typeof ptreeAdopt === 'function'\) ptreeAdopt\(fh, pages\)/.test(E), '★「保存」(名前を付けて)のあと、そのページの保存先にする');
     ok(/ptreeAdopt\(fh, state\.pages\.slice\(\)\)/.test(E), '全ページ保存(名前を付けて)のあと、全ページの保存先にする');
     ok(/if \(onDone\) onDone\(fh\.name, fh\);/.test(R('js/settings.js')), '保存の窓で書いたファイルの鍵を渡す');
   }

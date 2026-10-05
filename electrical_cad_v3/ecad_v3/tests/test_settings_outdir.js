@@ -89,7 +89,7 @@ const abort = () => { const e = new Error('cancel'); e.name = 'AbortError'; thro
   { const body = SRC.slice(SRC.indexOf('async function stWriteOut('), SRC.indexOf('fh = await window.showSaveFilePicker(opt)'));
     eq((body.match(/await /g) || []).length, 0, 'stWriteOut は窓を開く前に await しない');
     const edit = fs.readFileSync(__dirname + '/../js/edit.js', 'utf8');
-    const sp = edit.slice(edit.indexOf('function saveProject()'), edit.indexOf('function saveAllProject()'));
+    const sp = edit.slice(edit.indexOf('function saveProject(asNew)'), edit.indexOf('function saveAllProject()'));
     ok(/if \(!window\.showSaveFilePicker\) \{\s*const name = prompt\(/.test(sp), '保存: 窓が使えるときは名前の入力窓を先に出さない');
     const pdf = fs.readFileSync(__dirname + '/../js/pdf_export.js', 'utf8');
     ok(/stWriteOut\(filename, \(\) => \{ const p = make\(\)/.test(pdf), 'PDF: 窓を先に開き、選んでから描く'); }

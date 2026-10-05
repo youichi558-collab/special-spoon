@@ -54,7 +54,7 @@ console.log('【使った型式だけを入れる】');
 
 console.log('\n【保存の4経路とも、使った分の写しを入れる】');
 const saves = [
-  ['js/edit.js(1ページ保存)', /customParts:\s*usedPartsForSave\(pages\)/.test(EDIT) && /_saveData\(\[pg\]/.test(EDIT)],
+  ['js/edit.js(1ページ保存)', /customParts:\s*usedPartsForSave\(pages\)/.test(EDIT) && /_saveData\(pages, state\.saveFileName\)/.test(EDIT)],
   ['js/edit.js(全ページ保存)', /customParts:\s*usedPartsForSave\(pages\)/.test(EDIT) && /_saveData\(state\.pages/.test(EDIT)],
   ['js/autosave.js(自動保存)', /customParts:[^\n]*usedPartsForSave\(state\.pages\)/.test(read('js/autosave.js'))],
   ['js/backup.js(バックアップ)', /customParts:[^\n]*usedPartsForSave\(state\.pages\)/.test(read('js/backup.js'))],

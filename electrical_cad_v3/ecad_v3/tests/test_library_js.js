@@ -156,7 +156,7 @@ console.log('\n【表題欄の様式の重ね方・図面に入れる写し】')
   eq(used.custA.label, 'ライブラリ', '入れるのは今使っている定義(ライブラリが正)');
 }
 const saves = [
-  ['js/edit.js(1ページ保存)', /titleBlockTpls:\s*usedTitleBlockTplsForSave\(pages\)/.test(read('js/edit.js')) && /_saveData\(\[pg\]/.test(read('js/edit.js'))],
+  ['js/edit.js(1ページ保存)', /titleBlockTpls:\s*usedTitleBlockTplsForSave\(pages\)/.test(read('js/edit.js')) && /_saveData\(pages, state\.saveFileName\)/.test(read('js/edit.js'))],
   ['js/edit.js(全ページ保存)', /titleBlockTpls:\s*usedTitleBlockTplsForSave\(pages\)/.test(read('js/edit.js')) && /_saveData\(state\.pages/.test(read('js/edit.js'))],
   ['js/autosave.js(自動保存)', /titleBlockTpls:[^\n]*usedTitleBlockTplsForSave\(state\.pages\)/.test(read('js/autosave.js'))],
   ['js/backup.js(バックアップ)', /titleBlockTpls:[^\n]*usedTitleBlockTplsForSave\(state\.pages\)/.test(read('js/backup.js'))],

@@ -290,12 +290,18 @@ async function saveToSrcFile(src) {
   return true;
 }
 
-function saveProject() {
+// 「名前を付けて保存」ボタン(2026-10-05 盛田さん。保存先が決まったページは「保存」が必ず上書きになるので、別の名前で保存する口)
+function saveAsProject() { saveProject(true); }
+
+// asNew: 名前を付けて保存(保存先が決まっていても窓を出す)。保存先が決まったページは、同じファイルのページ(全ページ保存のファイル等)をまとめて書く
+function saveProject(asNew) {
   // 現在ページのみ保存
   _syncCurrentPage();
   const pg = state.pages[state.currentPage];
-  if (pg._src && typeof ptreeSrcHandle === 'function' && ptreeSrcHandle(pg._src)) { saveToSrcFile(pg._src); return; }   // 開いたファイルへ上書き
-  const defaultName = _pageFileName(pg, state.currentPage);
+  const srcH = pg._src && typeof ptreeSrcHandle === 'function' ? ptreeSrcHandle(pg._src) : null;
+  if (srcH && asNew !== true) { saveToSrcFile(pg._src); return; }   // 開いたファイルへ上書き
+  const pages = srcH ? state.pages.filter(p => p._src === pg._src) : [pg];
+  const defaultName = srcH ? srcH.name.replace(/\.(seqzu|json)$/i, '') : _pageFileName(pg, state.currentPage);
   // 【2026-10-01】「名前を付けて保存」の窓が使えるときは、ファイル名はその窓で決める(先に名前の入力窓を出すと、
   // 入力中に「押した直後」が過ぎて窓が開けなかった=盛田さん「保存押しても、選択はでない」)。使えないときは従来どおり入力窓
   let fname0 = defaultName;
@@ -307,14 +313,14 @@ function saveProject() {
   dlMake(fileName => {
     const fname = String(fileName).replace(/\.(seqzu|json)$/i, '');
     // saveFileNameを更新
-    state.saveFileName = fname.replace(/_[^_]+$/, ''); // ページ名部分を除いた部分を保存
-    const data = _saveData([pg], state.saveFileName);
+    state.saveFileName = pages.length > 1 ? fname.replace(/_all$/, '') : fname.replace(/_[^_]+$/, ''); // ページ名部分を除いた部分を保存
+    const data = _saveData(pages, state.saveFileName);
     // 書き出す「前」にdirtyを落とすこと。あとで落とすと data.pages が同じオブジェクトを
     // 参照しているため、保存ファイルに dirty:true が焼き込まれてしまう。
     // その状態で読み込むと、開いた直後なのにシートタブへ未保存マーク(●)が出る。
-    pg.dirty = false;
+    pages.forEach(p => { p.dirty = false; });
     return _saveJSON(data);
-  }, fname0 + '.seqzu', 'application/x-seqzu', (n, fh) => { renderPageTabs(); if (fh && typeof ptreeAdopt === 'function') ptreeAdopt(fh, [pg]); if (typeof pidxAfterSave === 'function') pidxAfterSave(); });   // 名前を付けて保存したファイルを次から上書きの先に(2026-10-05)   // 参照図面のフォルダならプロジェクト台帳も更新
+  }, fname0 + '.seqzu', 'application/x-seqzu', (n, fh) => { renderPageTabs(); if (fh && typeof ptreeAdopt === 'function') ptreeAdopt(fh, pages); if (typeof pidxAfterSave === 'function') pidxAfterSave(); });   // 名前を付けて保存したファイルを次から上書きの先に(2026-10-05)   // 参照図面のフォルダならプロジェクト台帳も更新
 }
 
 function saveAllProject() {
