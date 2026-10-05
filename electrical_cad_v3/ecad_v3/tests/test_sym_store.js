@@ -4,7 +4,8 @@
 // 【背景・2026-10-03 再設計の段階3】
 // 登録シンボルはブラウザの中(localStorage)が正で、図面にはパレットが丸ごと入っていた。
 // ライブラリフォルダの symbols.json を正にし、図面には使ったシンボルだけを入れる形にした。
-// 図面とライブラリで違うときは**図面の中を使い**、知らせて「ライブラリへ反映／そのまま」を選ぶ(盛田さんの決定(3))。
+// 図面とライブラリで違うときは、2026-10-05 から**登録シンボル(ライブラリ)を使う=シンボルは1つ**(盛田さん「アじゃないか？」。10-03 の決定(3)「図面の中が正」を改めた)。
+// 登録シンボルが読めないときだけ図面の中を使う。
 //
 // このテストが守るもの:
 //   1. パレット = ライブラリ(ライブラリの順)＋図面の中＋まだ移していないブラウザの旧データ。同じ type は図面の中
@@ -66,7 +67,7 @@ const types = sb => sb.state.customSymbols.map(s => s.type);
 
 (async () => {
 
-console.log('【パレットの中身と並び・図面の中が正】');
+console.log('【パレットの中身と並び・登録シンボルが正(2026-10-05)】');
 {
   const sb = load({
     lib: { L1: sym('L1', 10), D1: sym('D1', 10) },
@@ -75,10 +76,15 @@ console.log('【パレットの中身と並び・図面の中が正】');
   });
   sb.rebuildSymbolPalette();
   eq(types(sb), ['L1', 'D1', 'D2', 'OLD'], '★ライブラリ(ライブラリの順)→図面にだけある→まだ移していない旧データ');
-  eq(sb.state.customSymbols.find(s => s.type === 'D1').w, 99, '★同じ type はライブラリではなく図面の中を使う(決定(3))');
+  eq(sb.state.customSymbols.find(s => s.type === 'D1').w, 10, '★同じ type は登録シンボルを使う(シンボルは1つ。2026-10-05)');
   eq(sb.state.customSymbols.find(s => s.type === 'L1').w, 10, 'ライブラリにあるものは旧データよりライブラリ');
   ok(!types(sb).includes('MOVED'), '★ライブラリへ移した旧データは出さない(ライブラリから消した後に復活しない)');
-  ok(sb.DEFS.D1 && sb.DEFS.D1.w === 99, '描くときの定義(DEFS)も図面の中のもの');
+  ok(sb.DEFS.D1 && sb.DEFS.D1.w === 10, '描くときの定義(DEFS)も登録シンボル');
+  {
+    const sb2 = load({ lib: { D1: sym('D1', 10) }, ready: false, drawing: { D1: sym('D1', 99) } });
+    sb2.rebuildSymbolPalette();
+    eq(sb2.state.customSymbols.find(s => s.type === 'D1').w, 99, '★登録シンボルが読めないときは図面の中を使う');
+  }
 }
 
 console.log('\n【図面に入れるのは使っているシンボルだけ】');
@@ -150,7 +156,18 @@ console.log('\n【図面と登録シンボルの違い(2026-10-05 開いたと�
   eq([sb.state.drawingSymbols.C.terminals[0].y, sb.state.pages[0].dirty], [0, true], '★「図面を登録シンボルに合わせる」は図面の中のシンボルを置き換え、未保存にする');
   ok(sb.state.drawingSymbols.C !== sb._lib.data.C, '図面には登録シンボルの写しを入れる(同じ物を共有しない)');
   eq(sb.symDiffList(), [], '合わせたあとは違いが無い');
+  // 端子の位置が変わる記号の確認(端子の編集・サイズ調整の前)
+  const cs = []; sb.confirm = m => { cs.push(m); return false; };
+  sb.state.pages = [{ name: 'P', elements: [{ id: 'e1', type: 'C' }, { id: 'e2', type: 'C' }] }];
+  sb.pidxState = { index: { files: { 'Q.seqzu': { pages: [{ devs: [{ type: 'C' }] }] }, 'R.seqzu': { pages: [{ devs: [{ type: 'Z' }] }] } } } };
+  const symConfirmTermMove = vm.runInContext('symConfirmTermMove', sb);
+  eq(symConfirmTermMove('C', C, [{ x: 0, y: 0 }]), true, '端子の位置が変わらなければ聞かない');
+  eq(symConfirmTermMove('C', C, [{ x: 0, y: 5 }]), false, '★端子の位置が変わるなら確かめる(やめたら変えない)');
+  ok(/開いている図面に 2 個、プロジェクトのほかの図面 1 枚/.test(cs[0] || ''), '★使っている数(開いている図面の記号・台帳のほかの図面)を見せる');
   const ed = read('js/edit.js'), lb = read('js/library.js'), html = read('index.html');
+  ok(/symMovedNotice\(state\.drawingSymbols\)/.test(ed) && /symMovedNotice\(state\.drawingSymbols\)/.test(lb), '★開いたとき・登録シンボルを読んだときに、端子の位置が変わった記号を知らせる');
+  ok(/symMovedNotice\(fileSyms, pg => newPages\.includes\(pg\)\)/.test(ed), 'ページとして足したときも、足したページの分を知らせる');
+  ok(/symConfirmTermMove\(_peType, cS, _peTerms\)/.test(read('js/pin_editor.js')) && /symConfirmTermMove\(type, sym,/.test(read('js/ui.js')), '端子の編集・サイズ調整の前に確かめる');
   ok(!/checkDrawingSymbolsVsLibrary/.test(ed + lb + read('js/sym_store.js')), '★図面を開いたとき・ライブラリを読んだときに比べて窓を出す処理は無い');
   ok(/onclick="symCompareDialog\(\)"[^>]*>🔍 登録シンボルと比べる/.test(html), 'シンボルパネルに「登録シンボルと比べる」');
 }

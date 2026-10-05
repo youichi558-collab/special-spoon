@@ -246,6 +246,8 @@ function savePinEdits() {
   if (!_peType) return;
   const cS = (state.customSymbols || []).find(s => s.type === _peType);
   if (!cS) { alert('保存対象のシンボルが見つかりません'); closeFP('pin-edit-p'); return; }
+  // 2026-10-05 シンボルは1つ: 端子の位置が変わるなら、使っている図面の数を見せて確かめる(js/sym_store.js)
+  if (typeof symConfirmTermMove === 'function' && !symConfirmTermMove(_peType, cS, _peTerms)) return;
   cS.terminals = JSON.parse(JSON.stringify(_peTerms));
   cS.role = document.getElementById('pe-role')?.value || '';
   if (typeof DEFS !== 'undefined' && DEFS[_peType]) {

@@ -16,7 +16,7 @@
 // ================================================================
 
 const PIDX_FILE = 'project.seqzuidx';   // 2026-10-04 拡張子を図面(.seqzu)と分けた(ツリーに出さない)。以前の ecad_project_index.json は使わない(消してよい)
-const PIDX_VER  = 1;
+const PIDX_VER  = 2;   // 2: 種別を登録シンボルから読む(2026-10-05)
 const pidxState = { index: null, dirName: '' };   // 最後に読んだ/作った台帳
 
 const _pidxSkip = ['text', 'rect', 'circle', 'fline', 'dim', 'leader', 'angle_dim', 'wire'];
@@ -24,7 +24,7 @@ const _pidxStr = v => (v == null ? '' : String(v).trim());
 
 // 1ファイル(読み込んだ JSON)を、ページごとの台帳の記録にする。fileName は .json 付きのファイル名。
 // 位置(loc)は参照図面の計算(xprojWith)と同じ書き方にするため、仮のページに _file・_pno を付けて elLocation で求める。
-// 記号の種別(コイル・接点・矢印)はそのファイルのシンボル定義を優先する(台帳が開いている図面に左右されないように)。
+// 記号の種別(コイル・接点・矢印)は登録シンボルを優先し、登録シンボルに無いものだけそのファイルのシンボル定義(2026-10-05 シンボルは1つ)。
 function pidxExtractFile(fileName, data) {
   const base = String(fileName || '').replace(/\.(seqzu|json)$/i, '');
   const syms = (data && data.customSymbols) || [];
@@ -32,13 +32,15 @@ function pidxExtractFile(fileName, data) {
   const savedPages = state.pages, savedSyms = state.customSymbols;
   const savedDefs = new Map();
   try {
+    const reg = (typeof _symLibReady === 'function' && _symLibReady()) ? _symLibObj() : {};
     if (typeof DEFS === 'object') syms.forEach(s => {
-      if (!s || !s.type || savedDefs.has(s.type)) return;
+      if (!s || !s.type || savedDefs.has(s.type) || reg[s.type]) return;
       savedDefs.set(s.type, Object.prototype.hasOwnProperty.call(DEFS, s.type) ? DEFS[s.type] : undefined);
       DEFS[s.type] = s;
     });
-    const mine = new Set(syms.map(s => s && s.type));
-    state.customSymbols = syms.concat((savedSyms || []).filter(s => s && !mine.has(s.type)));
+    const own = syms.filter(s => s && s.type && !reg[s.type]);
+    const mine = new Set(own.map(s => s.type));
+    state.customSymbols = own.concat((savedSyms || []).filter(s => s && !mine.has(s.type)));
     state.pages = pages;
     return pages.map((pg, pi) => _pidxPage(pg, pi));
   } finally {

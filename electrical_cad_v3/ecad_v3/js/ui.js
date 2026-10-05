@@ -2276,6 +2276,8 @@ function rescaleCustomSym(type) {
   if (!newW || newW <= 0) { alert('正の数値を入力してください'); return; }
   const factor = newW / sym.w;
   if (Math.abs(factor - 1) < 1e-6) return;
+  // 2026-10-05 シンボルは1つ: 端子の位置が変わるので、使っている図面の数を見せて確かめる(js/sym_store.js)
+  if (typeof symConfirmTermMove === 'function' && !symConfirmTermMove(type, sym, (sym.terminals || []).map(t => ({ x: t.x * factor, y: t.y * factor })))) return;
   sym.shapes.forEach(s => {
     if (s.t === 'L') { s.x1*=factor; s.y1*=factor; s.x2*=factor; s.y2*=factor; }
     else if (s.t === 'C' || s.t === 'A') { s.cx*=factor; s.cy*=factor; s.r*=factor; }

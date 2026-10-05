@@ -401,10 +401,12 @@ function applyProjectData(d) {
       state.currentPage = 0;
       state.customSymbols.forEach(s => { DEFS[s.type] = s; });
       // 図面のシンボル＋ライブラリでパレットを組み直す(段階3・決定(3)。js/sym_store.js)。
-      // 【2026-10-05】登録シンボルと違っても開いたときには聞かない(窓がループした)。比べるのはシンボルパネルの「登録シンボルと比べる」
+      // 【2026-10-05】登録シンボルと違っても開いたときには聞かない(窓がループした)。シンボルは1つ(登録シンボルが正)なので、
+      // 図面ファイルの写しと端子の位置が違う記号だけ画面の隅で知らせる(symMovedNotice)
       if (typeof setDrawingSymbols === 'function') {
         setDrawingSymbols(state.customSymbols);
         rebuildSymbolPalette();
+        setTimeout(() => { if (typeof symMovedNotice === 'function') symMovedNotice(state.drawingSymbols); }, 0);
       }
       state.saveFileName = d.saveFileName || '';
       state.sel.els.clear(); state.sel.wires.clear();
@@ -446,7 +448,10 @@ function appendProjectData(d) {
   (d.layers || []).forEach(l => {
     if (l && l.name && !LAYERS.some(x => x.name === l.name)) { LAYERS.push(l); layersAdded++; }
   });
-  // カスタムシンボル: type が無いものだけ足す
+  // カスタムシンボル: type が無いものだけ足す。2026-10-05 シンボルは1つ(登録シンボルが正)なので、足したページも登録シンボルで描く。
+  // 足したファイルの写しと登録シンボルで端子の位置が違う記号は知らせる(下の symMovedNotice)
+  const fileSyms = {};
+  (d.customSymbols || []).forEach(sym => { if (sym && sym.type) fileSyms[sym.type] = sym; });
   let symAdded = 0, symKept = 0;
   (d.customSymbols || []).forEach(sym => {
     if (state.customSymbols.some(x => x.type === sym.type)) { symKept++; return; }
@@ -483,6 +488,7 @@ function appendProjectData(d) {
   newPages.forEach(pg => pruneGroups(pg));
   newPages.forEach(pg => { pg.dirty = true; });
   renderSymFloat(); renderPartsAll(); renderPageTabs(); draw(); updateRightPanel();
+  if (typeof symMovedNotice === 'function') setTimeout(() => symMovedNotice(fileSyms, pg => newPages.includes(pg)), 0);
   return { added: newPages.length, names, fixedIds, zeroWires, symAdded, symKept, partsAdded, layersAdded };
 }
 

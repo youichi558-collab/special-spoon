@@ -7,8 +7,10 @@
 //
 // ■ パレット(state.customSymbols)の中身 = rebuildSymbolPalette()
 //     ライブラリ(並びはライブラリの順) ＋ 図面の中のシンボル ＋ ブラウザの中にだけ残っている旧データ
-//     同じ type が図面とライブラリの両方にあれば**図面の中を使う**(盛田さんの決定(3)・2026-10-03)。
-//     違っていても開いたときには聞かない(2026-10-05。窓がループしたため)。揃えたいときは symCompareDialog(シンボルパネルの「登録シンボルと比べる」)
+//     【2026-10-05 改め】**同じ type は登録シンボル(ライブラリ)を使う=シンボルは1つ**(盛田さん「アじゃないか？」)。
+//     図面の中の写しを使うのは、登録シンボルに無い type と、登録シンボルが読めないとき(ライブラリフォルダ未設定の PC 等)だけ。
+//     (10-03 の決定(3)「図面の中が正」は、図面ごとに写しが違うと窓がループし、別ファイルのページを足すと形が混ざったのでやめた)
+//     図面の写しと端子の位置が違う記号があれば、開いたときに知らせる(symMovedNotice。盛田さん「(1)で進めて」)
 // ■ 書き込み(登録・サイズ調整・端子の編集・削除・並べ替え・読込)= symStorePut / symStoreDelete / symStoreReorder
 //     ライブラリへ保存する。**ライブラリが読めていない間は、従来どおりブラウザの中に保存する**
 //     (登録したシンボルを閉じたら消える、を作らない)。ライブラリが読めたら「移しますか？」で移せる。
@@ -43,7 +45,8 @@ function rebuildSymbolPalette() {
   const lib = _symLibObj();
   const list = [], seen = new Set();
   const add = s => { if (s && s.type && !seen.has(s.type)) { seen.add(s.type); list.push(s); } };
-  Object.keys(lib).forEach(t => add(drawing[t] || lib[t]));   // 図面の中が正
+  const libOk = _symLibReady();
+  Object.keys(lib).forEach(t => add(libOk ? lib[t] : (drawing[t] || lib[t])));   // 登録シンボルが正(読めないときだけ図面の中)
   Object.keys(drawing).forEach(t => add(drawing[t]));
   // ブラウザの中の旧データは、まだライブラリへ移していないものだけ(移したものは、ライブラリから消したら出さない)
   const moved = (typeof ecadLib !== 'undefined') ? ecadLib.migrated('symbols') : new Set();
@@ -57,6 +60,7 @@ function rebuildSymbolPalette() {
 function setDrawingSymbols(arr) {
   state.drawingSymbols = {};
   (arr || []).forEach(s => { if (s && s.type) state.drawingSymbols[s.type] = s; });
+  _symMovedSig = '';
 }
 
 // ---- 書き込み ---------------------------------------------------------
@@ -124,13 +128,72 @@ async function symStoreReorder() {
   return _symLegacyWrite(arr => { const pos = t => { const i = order.indexOf(t); return i < 0 ? 1e9 : i; }; return arr.slice().sort((a, b) => pos(a.type) - pos(b.type)); });
 }
 
+// ---- 端子の位置が変わる記号の知らせ・確認(2026-10-05) ----------------------------
+const _symTermPos = d => JSON.stringify(((d && d.terminals) || []).map(t => [Math.round(t.x * 100) / 100, Math.round(t.y * 100) / 100]));
+
+// 図面の写し(copies: {type: 定義})と登録シンボルで端子の位置が違い、図面に置いてある記号を知らせる(窓ではなく画面の隅に。押すとその記号へ)。
+// pageOk(pg): 数えるページ(省略で全部)。同じ図面を開いている間、同じ内容は1度だけ
+let _symMovedSig = '';
+function symMovedNotice(copies, pageOk) {
+  if (!_symLibReady() || typeof document === 'undefined' || !document.body) return [];
+  const lib = _symLibObj();
+  const hits = [];
+  Object.keys(copies || {}).forEach(t => {
+    if (!lib[t] || _symTermPos(lib[t]) === _symTermPos(copies[t])) return;
+    const at = [];
+    (state.pages || []).forEach((pg, pi) => { if (!pageOk || pageOk(pg)) (pg.elements || []).forEach(e => { if (e.type === t) at.push({ pi, id: e.id }); }); });
+    if (at.length) hits.push({ type: t, name: lib[t].label || lib[t].name || t, at });
+  });
+  if (!hits.length) return hits;
+  const sig = hits.map(h => h.type + ':' + h.at.map(a => a.id).join(',')).join('|');
+  if (sig === _symMovedSig) return hits;
+  _symMovedSig = sig;
+  const old = document.getElementById('sym-moved'); if (old) old.remove();
+  const box = document.createElement('div');
+  box.id = 'sym-moved';
+  box.style.cssText = 'position:fixed;right:12px;bottom:40px;z-index:10001;max-width:380px;background:var(--bg2,#2a2a2a);color:var(--fg,#ddd);'
+    + 'border:1px solid var(--red,#e55);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.4);padding:10px 12px;font-size:12px;line-height:1.6';
+  window._symMovedHits = hits;
+  box.innerHTML = '<div style="display:flex;align-items:center"><b style="flex:1">登録シンボルで端子の位置が変わった記号</b>'
+    + '<span style="cursor:pointer;padding:0 4px;color:var(--fg3,#999)" onclick="this.closest(\'#sym-moved\').remove()">×</span></div>'
+    + '<div style="font-size:11px;color:var(--fg3,#999)">図面ファイルに入っていた形と端子の位置が違うので、配線が端子から外れていることがあります。押すとその記号へ移ります。保存すると図面ファイルも登録シンボルの形になります。</div>'
+    + hits.map((h, i) => `<div>・${escH(h.name)}(${h.at.length}個) `
+      + h.at.slice(0, 8).map((a, k) => `<a href="javascript:void(0)" style="color:var(--acc)" onclick="symMovedJump(${i},${k})">${k + 1}</a>`).join(' ')
+      + (h.at.length > 8 ? ' …' : '') + '</div>').join('');
+  document.body.appendChild(box);
+  return hits;
+}
+function symMovedJump(i, k) {
+  const a = ((window._symMovedHits || [])[i] || { at: [] }).at[k];
+  if (a && typeof jumpToRefEl === 'function') jumpToRefEl(a.pi, a.id);
+}
+
+// シンボルの端子の位置を変えてよいか(端子の編集・サイズ調整の前に呼ぶ)。位置が変わらなければ聞かずに true。
+// 使っている数: 今の画面の記号と、プロジェクトの台帳(js/proj_index.js)にある他のファイル
+function symConfirmTermMove(type, oldDef, newTerms) {
+  if (_symTermPos(oldDef) === _symTermPos({ terminals: newTerms })) return true;
+  let here = 0;
+  (state.pages || []).forEach(pg => (pg.elements || []).forEach(e => { if (e.type === type) here++; }));
+  const open = new Set((state.pages || []).map(p => p._src).filter(Boolean).map(x => x.replace(/^\//, '')));
+  let files = 0;
+  const idx = (typeof pidxState !== 'undefined' && pidxState.index) ? pidxState.index.files : {};
+  Object.entries(idx || {}).forEach(([name, f]) => {
+    if (open.has(name) || !f.pages) return;
+    if (f.pages.some(p => (p.devs || []).some(d => d.type === type) || (p.noRef || []).some(d => d.type === type))) files++;
+  });
+  if (!here && !files) return true;
+  const nm = (oldDef && (oldDef.label || oldDef.name)) || type;
+  return confirm(`「${nm}」の端子の位置が変わります。\n\n使っているところ: 開いている図面に ${here} 個`
+    + (files ? `、プロジェクトのほかの図面 ${files} 枚` : '') + `\n\nシンボルは1つなので、使っている図面は全部この形になり、配線が端子から外れることがあります(ほかの図面は次に開いたときに知らせます)。\n変えますか？`);
+}
+
 // ---- 図面と登録シンボルの違い ------------------------------------------------
 // 【2026-10-05 作り直し】以前(10-03 決定(3))は図面を開くたびに比べて「そのまま/ライブラリへ反映」の窓を出していた。
 // 図面ファイルごとにシンボルの写しを持つので、A を開いて反映→B を開くとまた違う→反映→A を開くとまた…と**窓が終わらなかった**
 // (盛田さん「違う図面を開くとループする」「ループ自体もなくせない」)。
-// 今は**開いたときには何も聞かない**(図面は自分の中のシンボルで描くだけ・何も書き換えない)。揃えたいときだけ、
-// シンボルパネルの「登録シンボルと比べる」(symCompareDialog)で違いの一覧を出し、シンボルごとに
-// 「図面を登録シンボルに合わせる/登録シンボルを図面に合わせる/何もしない」を選ぶ(盛田さん「その案で進めて」)。
+// 今は**開いたときには何も聞かない**。さらに同日、シンボルは1つ(登録シンボルが正)に改めたので、図面は登録シンボルで描かれる。
+// シンボルパネルの「登録シンボルと比べる」(symCompareDialog)は、図面ファイルに入っていた写しとの違いを出し、
+// 「登録シンボルを図面の写しに戻す」「登録シンボルに無いものを足す」を選ぶ(昔の形に戻したいとき・別の PC で作った図面から足すとき)。
 // 「登録シンボル」= ライブラリフォルダの symbols.json(シンボルライブラリ=JIS の DXF の画面とは別)
 function _symCanon(s) {
   const pick = { name: s.name, label: s.label, cat: s.cat, role: s.role || '', w: s.w, h: s.h, shapes: s.shapes || [], terminals: s.terminals || [] };
@@ -191,17 +254,17 @@ function symCompareDialog() {
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100001;display:flex;align-items:center;justify-content:center';
   const opt = r => r.missing
     ? `<option value="">何もしない</option><option value="lib">登録シンボルに足す</option>`
-    : `<option value="">何もしない</option><option value="drawing">図面を登録シンボルに合わせる</option><option value="lib">登録シンボルを図面に合わせる</option>`;
+    : `<option value="">何もしない</option><option value="lib">登録シンボルを図面の写しに戻す</option>`;
   ov.innerHTML = '<div style="background:var(--bg2,#2a2a2a);color:var(--fg,#ddd);border:1px solid var(--bd2,#444);border-radius:6px;'
     + 'box-shadow:0 4px 20px rgba(0,0,0,.5);padding:14px 16px;max-width:760px;max-height:80vh;overflow:auto;font-size:12px;line-height:1.6">'
-    + '<div style="font-size:14px;font-weight:600;margin-bottom:4px">この図面のシンボルと登録シンボルの違い</div>'
-    + '<div style="font-size:11px;color:var(--fg3,#999);margin-bottom:6px">登録シンボル = ライブラリフォルダの symbols.json。図面は今、図面の中のシンボルで描いています。合わせたいものだけ選んでください。</div>'
+    + '<div style="font-size:14px;font-weight:600;margin-bottom:4px">図面ファイルに入っていたシンボルと登録シンボルの違い</div>'
+    + '<div style="font-size:11px;color:var(--fg3,#999);margin-bottom:6px">登録シンボル = ライブラリフォルダの symbols.json。シンボルは1つで、図面は登録シンボルで描いています。図面ファイルに入っていた写し(前の形)に戻したいもの・登録シンボルに無くて足したいものだけ選んでください。</div>'
     + '<table class="tbl" style="width:100%"><tr><th>シンボル</th><th>違い</th><th>この図面に置いた数</th><th>どうするか</th></tr>'
     + list.map((r, i) => `<tr><td>${escH(r.name)}</td><td>${escH(r.what.join('・'))}${r.termsMoved ? ' <span style="color:var(--red,#e55)">⚠</span>' : ''}</td>`
       + `<td style="text-align:right">${r.placed}</td><td><select data-i="${i}">${opt(r)}</select></td></tr>`).join('')
     + '</table>'
-    + '<div style="font-size:11px;color:var(--fg3,#999);margin-top:6px">⚠ = 端子の位置が違う。「図面を登録シンボルに合わせる」と記号の端子が動き、<b>配線が端子から外れることがあります</b>。'
-    + '図面を合わせたものは、取り消し(Ctrl+Z)では戻りません(保存しなければファイルはそのまま)。「登録シンボルを図面に合わせる」は上書きする前の登録シンボルがバックアップに残ります。</div>'
+    + '<div style="font-size:11px;color:var(--fg3,#999);margin-top:6px">⚠ = 端子の位置が違う。「登録シンボルを図面の写しに戻す」と、<b>このシンボルを使っている図面は全部その形になり、配線が端子から外れることがあります</b>。'
+    + '上書きする前の登録シンボルはバックアップに残ります。</div>'
     + '<div style="text-align:right;margin-top:10px;display:flex;gap:6px;justify-content:flex-end">'
     + '<button class="fp-btn" id="sym-diff-close">閉じる</button>'
     + '<button class="fp-btn primary" id="sym-diff-apply">選んだとおりに合わせる</button></div></div>';
@@ -217,12 +280,14 @@ function symCompareDialog() {
       if (sel.value === 'drawing') toDrawing.push(r.type); else if (sel.value === 'lib') toLib.push(r.type);
     });
     if (!toDrawing.length && !toLib.length) { close(); return; }
-    const moved = list.filter(r => toDrawing.includes(r.type) && r.termsMoved && r.placed);
-    if (moved.length && !confirm(`端子の位置が変わる記号があります:\n${moved.map(r => `・${r.name}(${r.placed}個)`).join('\n')}\n\n配線が端子から外れることがあります。取り消し(Ctrl+Z)では戻りません。\n合わせますか？`)) return;
+    const lib0 = _symLibObj();
+    for (const t of toLib) {
+      const r = list.find(x => x.type === t);
+      if (r && r.termsMoved && !symConfirmTermMove(t, lib0[t], (state.drawingSymbols[t] || {}).terminals || [])) return;
+    }
     close();
     const ok = await symApplyChoices(toDrawing, toLib);
-    if (ok) alert(`合わせました(図面を登録シンボルに ${toDrawing.length}件・登録シンボルを図面に ${toLib.length}件)`
-      + (toDrawing.length ? '\n図面の方は保存すると図面ファイルに入ります' : ''));
+    if (ok) alert(`登録シンボルに入れました(${toLib.length}件)`);
   };
 }
 

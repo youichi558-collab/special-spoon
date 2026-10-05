@@ -73,7 +73,9 @@ const ecadLib = (() => {
     await Promise.all(KINDS.map(loadKind));
     refreshViews();
     offerMigration();
-    // 【2026-10-05】ここで図面と登録シンボルを比べて窓を出すのはやめた(js/sym_store.js symCompareDialog の説明)
+    // 【2026-10-05】ここで図面と登録シンボルを比べて窓を出すのはやめた(js/sym_store.js symCompareDialog の説明)。
+    // 登録シンボルが読めたら図面は登録シンボルで描くので、端子の位置が変わった記号だけ知らせる
+    if (typeof symMovedNotice === 'function') { try { symMovedNotice(state.drawingSymbols); } catch (e) { console.error(e); } }
   }
 
   // 保存。戻り値 {ok, error}
