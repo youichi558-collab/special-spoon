@@ -153,6 +153,50 @@ async function symStoreReorder() {
   return _symLegacyWrite(arr => { const pos = t => { const i = order.indexOf(t); return i < 0 ? 1e9 : i; }; return arr.slice().sort((a, b) => pos(a.type) - pos(b.type)); });
 }
 
+// ---- シンボルの逆引き(どの図面で使っているか。2026-10-05 欠陥6) -----------------------
+// 盛田さん「どれが使ってて使われてないか分らん」。数えるのは ①開いている図面(今の画面のページ) ②プロジェクトのフォルダの台帳(js/proj_index.js)の図面。
+// 台帳から、ツリーで開いているファイル(pg._src)は除く(①で数える)。台帳に入らない図面(.json・フォルダの外)は数えられない
+// 戻り値: { here: Map(type→個数), files: Map(type→Map(ファイル名→個数)), scope: '数えた範囲の説明', nFiles }
+function symUsage() {
+  const here = new Map(), files = new Map();
+  (state.pages || []).forEach(pg => (pg.elements || []).forEach(e => { if (e && e.type) here.set(e.type, (here.get(e.type) || 0) + 1); }));
+  const open = new Set((state.pages || []).map(p => p._src).filter(Boolean).map(x => x.replace(/^\//, '')));
+  const idx = (typeof pidxState !== 'undefined' && pidxState.index) ? pidxState.index.files : null;
+  let nFiles = 0;
+  Object.entries(idx || {}).forEach(([name, f]) => {
+    if (!f || !f.pages) return;
+    nFiles++;
+    if (open.has(name)) return;
+    f.pages.forEach(p => ['devs', 'noRef', 'arrows'].forEach(k => (p[k] || []).forEach(d => {
+      if (!d || !d.type) return;
+      if (!files.has(d.type)) files.set(d.type, new Map());
+      const m = files.get(d.type); m.set(name, (m.get(name) || 0) + 1);
+    })));
+  });
+  const dir = (typeof pidxState !== 'undefined' && pidxState.dirName) || '';
+  const scope = idx ? `開いている図面＋プロジェクト${dir ? '「' + dir + '」' : ''}の図面 ${nFiles} 枚` : '開いている図面だけ(左パネルの「プロジェクト」でフォルダを開くと、ほかの図面も数えます)';
+  return { here, files, scope, nFiles };
+}
+// シンボルパネルを開いたとき: 台帳を最新にして(変わったファイルだけ読む)から一覧を描き直す。許可は聞かない
+let _symUsageBusy = false;
+async function symUsageRefresh() {
+  if (_symUsageBusy || typeof pidxUpdate !== 'function' || typeof xprojDirHandle !== 'function') return;
+  _symUsageBusy = true;
+  try {
+    const dir = await xprojDirHandle(false);
+    if (dir) { const names = await xprojReadList(dir); await pidxUpdate(dir, names); }
+  } catch (e) { console.warn('台帳を読めませんでした', e); }
+  finally { _symUsageBusy = false; }
+  if (typeof renderSymFloat === 'function') { try { renderSymFloat(); } catch (e) {} }
+}
+// 使っている図面の一覧を見せる(シンボルパネルの「使用」を押したとき)
+function symUsageShow(type) {
+  const u = symUsage(), s = (state.customSymbols || []).find(x => x.type === type) || {};
+  const h = u.here.get(type) || 0, f = u.files.get(type) || new Map();
+  const lines = [...f.entries()].sort((a, b) => a[0].localeCompare(b[0], 'ja', { numeric: true })).map(([n, c]) => `・${n.replace(/\.seqzu$/i, '')}(${c}個)`);
+  alert(`「${s.name || s.label || type}」を使っているところ\n\n開いている図面: ${h}個\nほかの図面: ${f.size}枚\n${lines.slice(0, 40).join('\n')}${lines.length > 40 ? '\n…' : ''}\n\n数えた範囲: ${u.scope}`);
+}
+
 // ---- 端子の位置が変わる記号の知らせ・確認(2026-10-05) ----------------------------
 const _symTermPos = d => JSON.stringify(((d && d.terminals) || []).map(t => [Math.round(t.x * 100) / 100, Math.round(t.y * 100) / 100]));
 

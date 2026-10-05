@@ -155,7 +155,7 @@ function switchLTab(name, el) {
     // 対象パネルを開く
     fp.style.display = 'flex';
     el.classList.add('on');
-    if (name === 'sym') renderSymFloat();
+    if (name === 'sym') { renderSymFloat(); if (typeof symUsageRefresh === 'function') symUsageRefresh(); }   // 使っている数のために台帳を最新に(変わったファイルだけ)
     if (name === 'lay') { renderLayers(); }
     if (name === 'prt') renderPartsFloat();
     if (name === 'prj' && typeof ptreeRender === 'function') ptreeRender();
@@ -2510,7 +2510,14 @@ function rescaleCustomSym(type) {
 // 【2026-10-03 段階3】ライブラリから消す。図面で使っているシンボルは、図面の中には残る(置いた要素が描けなくならない)
 function delCusSym(type) {
   const inUse = (state.pages || []).some(pg => (pg.elements || []).some(e => e.type === type));
-  if (!confirm(inUse ? 'ライブラリから削除しますか？\n（この図面で使っているので、この図面の中には残ります）' : 'ライブラリから削除しますか？')) return;
+  // 2026-10-05 欠陥6: プロジェクトのほかの図面で使っている数も見せる(消しても図面の中の写しで描けるが、シンボルは図面ごとの写しに戻る)
+  const u = (typeof symUsage === 'function') ? symUsage() : null;
+  const others = u ? (u.files.get(type) || new Map()) : new Map();
+  const msg = '登録シンボルから削除しますか？'
+    + (inUse ? '\n（開いている図面で使っています。図面の中には写しが残ります）' : '')
+    + (others.size ? `\n（プロジェクトのほかの図面 ${others.size} 枚で使っています: ${[...others.keys()].slice(0, 5).map(n => n.replace(/\.seqzu$/i, '')).join('、')}${others.size > 5 ? ' …' : ''}。その図面は写しで描けますが、シンボルは図面ごとの写しに戻ります）` : '')
+    + (u ? `\n\n数えた範囲: ${u.scope}` : '');
+  if (!confirm(msg)) return;
   symStoreDelete(type);
 }
 
@@ -4166,25 +4173,31 @@ function importCustomSymbols() {
 function renderSymFloat() {
   const body = document.getElementById('sym-float-body');
   if (!body) return;
+  // 2026-10-05 欠陥6: 各シンボルを使っている数(開いている図面・プロジェクトのほかの図面)。台帳はシンボルタブを開いたときに最新にする(switchLTab)
+  const _use = (typeof symUsage === 'function') ? symUsage() : null;
   // 標準シンボル(電源・受動素子・スイッチ・制御機器)は使用しないため一切表示しない。
   // カスタムシンボルのみを表示する。
   let html = '';
   if (state.customSymbols && state.customSymbols.length) {
     html += `<div style="font-size:9px;color:var(--fg3);font-weight:700;margin:2px 0 3px;text-transform:uppercase;letter-spacing:.06em">カスタム</div>`;
+    if (_use) html += `<div style="font-size:9px;color:var(--fg3);margin:0 0 4px" title="使っている数を数えた範囲">数えた範囲: ${escH(_use.scope)}</div>`;
     html += `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:3px">`;
     state.customSymbols.forEach((s, i) => {
       const img = s.preview ? `<img src="${s.preview}" style="width:64px;height:48px;object-fit:contain;background:#fff;border-radius:2px">` : `<svg width="36" height="28"></svg>`;
+      const _h = _use ? (_use.here.get(s.type) || 0) : 0, _f = _use ? ((_use.files.get(s.type) || new Map()).size) : 0;
+      const _unused = _use && !_h && !_f;
       const termCount = (s.terminals||[]).length;
       const wDisp = Math.round((s.w||0) * 10) / 10, hDisp = Math.round((s.h||0) * 10) / 10;
       html += `<div class="sym-item" draggable="true" data-symidx="${i}"
         onclick="pickSym(this,'${s.type}')"
         ondragstart="symDragStart(event,${i})" ondragover="symDragOver(event)" ondrop="symDrop(event,${i})" ondragend="symDragEnd(event)"
         onpointerdown="symRowPointerDown(event,${i})"
-        style="flex-direction:column;align-items:center;padding:5px 3px;gap:2px;position:relative;cursor:grab">
+        style="flex-direction:column;align-items:center;padding:5px 3px;gap:2px;position:relative;cursor:grab${_unused ? ';opacity:.45' : ''}">
         ${img}
         <span style="font-size:9px;text-align:center;line-height:1.2">${escH(s.label||s.type)}</span>
         ${(typeof _symLibReady === 'function' && _symLibReady() && !(s.type in _symLibObj())) ? '<span title="登録シンボルではありません(この図面の中だけ)。登録するときはシンボル登録で" style="font-size:8px;color:#e07000;line-height:1">未登録</span>' : ''}
         <span style="font-size:8px;color:var(--fg3);line-height:1">${wDisp}×${hDisp}</span>
+        ${_use ? `<span onclick="event.stopPropagation();symUsageShow('${_escAttr(s.type)}')" title="押すと、使っている図面の一覧" style="font-size:8px;line-height:1;cursor:pointer;color:${_unused ? 'var(--fg3)' : 'var(--acc)'}">${_unused ? '未使用' : `使用 ${_h}個${_f ? `・ほか${_f}枚` : ''}`}</span>` : ''}
         <span onclick="event.stopPropagation();openPinEditor('${_escAttr(s.type)}')" title="端子(ピン)編集: ${termCount}点定義済み" style="position:absolute;top:2px;left:2px;font-size:9px;color:${termCount?'#0067c0':'var(--fg3)'};cursor:pointer">📍${termCount||''}</span>
         <span onclick="event.stopPropagation();rescaleCustomSym('${_escAttr(s.type)}')" title="サイズ調整: 比率を保って幅×高さを変更" style="position:absolute;top:2px;right:14px;font-size:9px;color:var(--fg3);cursor:pointer">⇔</span>
         <span onclick="event.stopPropagation();delCusSym('${_escAttr(s.type)}')" style="position:absolute;top:2px;right:2px;font-size:9px;color:var(--red);cursor:pointer">×</span>

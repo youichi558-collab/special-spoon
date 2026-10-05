@@ -60,7 +60,7 @@ function load({ lib = {}, ready = true, legacy = [], migrated = [], pages = [], 
   vm.createContext(sb);
   vm.runInContext(read('js/sym_store.js'), sb);
   ['rebuildSymbolPalette', 'usedSymbolsForSave', 'symStorePut', 'symStoreDelete', 'symStoreReorder',
-   'symDiffList', 'symApplyChoices', 'symCompareDialog', 'setDrawingSymbols'].forEach(n => { sb[n] = vm.runInContext(n, sb); });
+   'symDiffList', 'symApplyChoices', 'symCompareDialog', 'setDrawingSymbols', 'symUsage'].forEach(n => { sb[n] = vm.runInContext(n, sb); });
   return sb;
 }
 const types = sb => sb.state.customSymbols.map(s => s.type);
@@ -177,6 +177,30 @@ console.log('\n【図面と登録シンボルの違い(2026-10-05 開いたと�
   ok(/symConfirmTermMove\(_peType, cS, _peTerms\)/.test(read('js/pin_editor.js')) && /symConfirmTermMove\(type, sym,/.test(read('js/ui.js')), '端子の編集・サイズ調整の前に確かめる');
   ok(!/checkDrawingSymbolsVsLibrary/.test(ed + lb + read('js/sym_store.js')), '★図面を開いたとき・ライブラリを読んだときに比べて窓を出す処理は無い');
   ok(/onclick="symCompareDialog\(\)"[^>]*>🔍 登録シンボルと比べる/.test(html), 'シンボルパネルに「登録シンボルと比べる」');
+}
+
+console.log('\n【どの図面で使っているか(2026-10-05 欠陥6)】');
+{
+  const sb = load({ lib: { A: sym('A', 1), B: sym('B', 1), C: sym('C', 1) } });
+  sb.state.pages = [{ name: 'P', _src: '/盤外/今.seqzu', elements: [{ type: 'A' }, { type: 'A' }] }];
+  eq(sb.symUsage().scope.includes('開いている図面だけ'), true, 'プロジェクトが無ければ開いている図面だけ数え、そう書く');
+  sb.pidxState = { dirName: '案件', index: { files: {
+    '盤外/今.seqzu': { pages: [{ devs: [{ type: 'A' }], noRef: [], arrows: [] }] },        // ツリーで開いている=二重に数えない
+    'P2.seqzu': { pages: [{ devs: [{ type: 'A' }], noRef: [{ type: 'B' }], arrows: [{ type: 'C' }] }] },
+    'P3.seqzu': { pages: [{ devs: [], noRef: [{ type: 'B' }, { type: 'B' }], arrows: [] }] },
+    '壊れ.seqzu': { error: 'x' },
+  } } };
+  const u = sb.symUsage();
+  eq(u.here.get('A'), 2, '開いている図面の個数');
+  eq([...(u.files.get('A') || new Map()).entries()], [['P2.seqzu', 1]], '★ほかの図面の数(ツリーで開いているファイルは開いている図面の側で数え、二重にしない)');
+  eq([...(u.files.get('B') || new Map()).entries()], [['P2.seqzu', 1], ['P3.seqzu', 2]], 'デバイス未設定の記号も数える');
+  eq([...(u.files.get('C') || new Map()).keys()], ['P2.seqzu'], '★ページ跨ぎの矢印も数える(台帳に type を入れた)');
+  ok(/プロジェクト「案件」の図面 3 枚/.test(u.scope), '数えた範囲(読めた図面の枚数)を書く');
+  const ui = read('js/ui.js');
+  ok(/symUsageShow\('\$\{_escAttr\(s\.type\)\}'\)/.test(ui) && /'未使用' : `使用 \$\{_h\}個/.test(ui), '★シンボルパネルに「使用 N個・ほかM枚／未使用」、押すと一覧');
+  ok(/opacity:\.45/.test(ui), '使っていないものは薄く');
+  ok(/プロジェクトのほかの図面 \$\{others\.size\} 枚で使っています/.test(ui), '★削除の確認にほかの図面で使っている数');
+  ok(/if \(name === 'sym'\) \{ renderSymFloat\(\); if \(typeof symUsageRefresh === 'function'\) symUsageRefresh\(\); \}/.test(ui), 'シンボルタブを開いたときに台帳を最新にする');
 }
 
 console.log(ng ? `\n失敗 ${ng} 件` : '\nすべて通過');

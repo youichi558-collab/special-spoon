@@ -73,6 +73,7 @@ console.log('\n【矢印・デバイス未設定・グループ(作った図面)
   const p = sb.pidxExtractFile('A.json', d)[0];
   eq([p.pno, p.drawno, p.title, p.rev], ['7', 'D-1', '制御', 'B'], '表題欄の値');
   eq(p.arrows.map(a => [a.label, a.out, a.no]), [['X1', true, '101']], '★矢印は名前・送り/受け・触れている線の線番(そのファイルのシンボル定義で役割を読む)');
+  eq(p.arrows.map(a => a.type), ['out'], '矢印にもシンボルの type(逆引き 2026-10-05)');
   eq(p.noRef.map(n => [n.type, n.f.partModel]), [['lamp', 'APN']], 'デバイス未設定の記号');
   eq(p.groups.map(g => [g.ref, g.f.partModel]), [['MC1', 'S-T10']], '外形図のグループのデバイス');
   eq(p.devs.length, 0, '矢印はデバイスに入れない');

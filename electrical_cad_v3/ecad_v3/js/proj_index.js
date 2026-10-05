@@ -16,7 +16,7 @@
 // ================================================================
 
 const PIDX_FILE = 'project.seqzuidx';   // 2026-10-04 拡張子を図面(.seqzu)と分けた(ツリーに出さない)。以前の ecad_project_index.json は使わない(消してよい)
-const PIDX_VER  = 2;   // 2: 種別を登録シンボルから読む(2026-10-05)
+const PIDX_VER  = 3;   // 2: 種別を登録シンボルから読む / 3: 矢印にもシンボルの type(逆引き。2026-10-05)
 const pidxState = { index: null, dirName: '' };   // 最後に読んだ/作った台帳
 
 const _pidxSkip = ['text', 'rect', 'circle', 'fline', 'dim', 'leader', 'angle_dim', 'wire'];
@@ -99,7 +99,7 @@ function _pidxPage(pg, pi) {
         const w = wires[i], ps = w.pts || [{ x: w.x1, y: w.y1 }, { x: w.x2, y: w.y2 }];
         return [ps[0], ps[ps.length - 1]].some(e => pts.some(t => Math.hypot(t.x - e.x, t.y - e.y) <= tol));
       }));
-      rec.arrows.push({ id: el.id, label: _pidxStr(el.label), out: role === 'sig_out', loc, net: k, no: k >= 0 ? rec.nets[k].no : '' });
+      rec.arrows.push({ id: el.id, type: el.type, label: _pidxStr(el.label), out: role === 'sig_out', loc, net: k, no: k >= 0 ? rec.nets[k].no : '' });   // type: シンボルの逆引き(2026-10-05)
       return;
     }
     if (el.type === 'junction') {   // 端子台の端子(○/◎)
