@@ -2369,6 +2369,19 @@ function saveCustomSymbol() {
   const repType = document.getElementById('sr-replace')?.value || '';
   const repOld = repType ? (state.customSymbols || []).find(x => x.type === repType) : null;
   if (repType && !repOld) { alert('置き換える先のシンボルが見つかりません'); return; }
+  // 【2026-10-05 欠陥1】名前は重ねない・同じ形は確かめる(以前は番号が登録のたびに乱数で付き、同じ名前・同じ形でも増えていた)
+  {
+    const reg = (typeof _symLibReady === 'function' && _symLibReady()) ? Object.values(_symLibObj()) : (state.customSymbols || []);
+    const others = reg.filter(x => x && x.type !== repType);
+    if (others.some(x => String(x.name || x.label || '').trim() === name)) {
+      alert(`同じ名前の登録シンボル「${name}」が既にあります。\n\n直したいなら「登録のしかた」で「置き換える: ${name}」を選んでください。\n別のシンボルとして登録するなら名前を変えてください。`);
+      return;
+    }
+    const canon = d => JSON.stringify({ s: d.shapes || [], t: (d.terminals || []).map(t => [t.x, t.y]) });
+    const me = canon({ shapes: shapesR, terminals: termsR });
+    const sameShape = others.filter(x => canon(x) === me);
+    if (sameShape.length && !confirm(`同じ形・同じ端子の登録シンボル「${sameShape.map(x => x.name || x.label || x.type).join('、')}」が既にあります。\nそれでも「${name}」を${repOld ? 'この形にしますか' : '新しく登録しますか'}？`)) return;
+  }
   if (repOld) {
     const nm = repOld.name || repOld.label || repType;
     if (!confirm(`「${nm}」をこの形に置き換えます。\nシンボルは1つなので、使っている図面は全部この形になります。\n置き換える前の登録シンボルはバックアップに残ります。置き換えますか？`)) return;
@@ -2418,7 +2431,7 @@ function saveCustomSymbol() {
   closeFP('sym-reg-p');
   renderSymFloat();
   // 【2026-10-03 段階3】保存先はライブラリ(読めていなければブラウザの中。js/sym_store.js)
-  symStorePut([sym]).then(ok => {
+  symStorePut([sym], { register: true }).then(ok => {   // 登録の画面からは登録シンボルに入れる(欠陥4)
     if (!ok) return;
     alert(repOld ? `「${name}」を置き換えました。使っている図面は全部この形になります。` : `「${name}」を登録しました。シンボルパレットのカスタムタブから配置できます。`);
     // 置き換えで端子の位置が変わったら、この画面の記号を右下に知らせる(登録シンボルに書けたあとで比べる。ほかの図面は開いたときに知らせる)
@@ -4142,7 +4155,7 @@ function importCustomSymbols() {
         if (!Array.isArray(syms)) { alert('形式が正しくありません'); return; }
         const existing = new Set(state.customSymbols.map(s => s.type));
         const add = syms.filter(s => s && s.type && !existing.has(s.type));
-        symStorePut(add).then(ok => { if (ok) alert(`${add.length}件のシンボルを読み込みました（同じものが既にある${syms.length - add.length}件は今のまま）`); });   // ライブラリへ(段階3)
+        symStorePut(add, { register: true }).then(ok => { if (ok) alert(`${add.length}件のシンボルを読み込みました（同じものが既にある${syms.length - add.length}件は今のまま）`); });   // ライブラリへ(段階3)
       } catch(e) { alert('読み込みエラー'); }
     };
     reader.readAsText(file);
@@ -4170,6 +4183,7 @@ function renderSymFloat() {
         style="flex-direction:column;align-items:center;padding:5px 3px;gap:2px;position:relative;cursor:grab">
         ${img}
         <span style="font-size:9px;text-align:center;line-height:1.2">${escH(s.label||s.type)}</span>
+        ${(typeof _symLibReady === 'function' && _symLibReady() && !(s.type in _symLibObj())) ? '<span title="登録シンボルではありません(この図面の中だけ)。登録するときはシンボル登録で" style="font-size:8px;color:#e07000;line-height:1">未登録</span>' : ''}
         <span style="font-size:8px;color:var(--fg3);line-height:1">${wDisp}×${hDisp}</span>
         <span onclick="event.stopPropagation();openPinEditor('${_escAttr(s.type)}')" title="端子(ピン)編集: ${termCount}点定義済み" style="position:absolute;top:2px;left:2px;font-size:9px;color:${termCount?'#0067c0':'var(--fg3)'};cursor:pointer">📍${termCount||''}</span>
         <span onclick="event.stopPropagation();rescaleCustomSym('${_escAttr(s.type)}')" title="サイズ調整: 比率を保って幅×高さを変更" style="position:absolute;top:2px;right:14px;font-size:9px;color:var(--fg3);cursor:pointer">⇔</span>

@@ -47,10 +47,15 @@ function rebuildSymbolPalette() {
   const add = s => { if (s && s.type && !seen.has(s.type)) { seen.add(s.type); list.push(s); } };
   const libOk = _symLibReady();
   Object.keys(lib).forEach(t => add(libOk ? lib[t] : (drawing[t] || lib[t])));   // 登録シンボルが正(読めないときだけ図面の中)
-  Object.keys(drawing).forEach(t => add(drawing[t]));
-  // ブラウザの中の旧データは、まだライブラリへ移していないものだけ(移したものは、ライブラリから消したら出さない)
-  const moved = (typeof ecadLib !== 'undefined') ? ecadLib.migrated('symbols') : new Set();
-  _symLegacyArr().forEach(s => { if (s && !moved.has(s.type)) add(s); });
+  // 【2026-10-05 欠陥3】登録シンボルが読めるときは、図面の写しは**今の図面に置いてあるものだけ**(未登録として出す)。
+  // 10-03 より前の図面は使っていない分まで丸ごと写しを持つので、全部出すと消したシンボルや使っていないものが一覧に戻っていた。
+  // ブラウザの中の旧データも出さない(移すかは「移しますか？」で聞く)。読めないときは今まで通り全部(作業を止めない)
+  Object.keys(drawing).forEach(t => { if (!libOk || used.has(t)) add(drawing[t]); });
+  if (!libOk) {
+    // ブラウザの中の旧データは、まだライブラリへ移していないものだけ(移したものは、ライブラリから消したら出さない)
+    const moved = (typeof ecadLib !== 'undefined') ? ecadLib.migrated('symbols') : new Set();
+    _symLegacyArr().forEach(s => { if (s && !moved.has(s.type)) add(s); });
+  }
   state.customSymbols = list;
   if (typeof DEFS !== 'undefined') list.forEach(s => { DEFS[s.type] = s; });
   if (typeof renderSymFloat === 'function') { try { renderSymFloat(); } catch (e) {} }
@@ -90,11 +95,26 @@ async function _symLibWrite(fn) {
 }
 
 // 登録・変更(同じ type は置き換え、新しいものは末尾へ)
-async function symStorePut(defs) {
+// opts.register: 登録シンボルに無いものも登録する(シンボル登録の画面・インポートだけ)。
+// 【2026-10-05 欠陥4】それ以外(端子の編集・サイズ調整・シンボルライブラリから置き直し)は、登録シンボルに無いシンボルを登録しない
+// =図面の中だけ直す(以前は直すと `lib_…` などがそのまま登録シンボルに入り、ダブりの元になっていた)
+async function symStorePut(defs, opts) {
   defs = (defs || []).filter(d => d && d.type);
   if (!defs.length) return true;
-  // 図面で使っている定義も同じものに揃える(図面の中が正なので、直したらそちらも直す)
+  // 図面で使っている定義も同じものに揃える
   defs.forEach(d => { if (state.drawingSymbols && d.type in state.drawingSymbols) state.drawingSymbols[d.type] = d; });
+  if (_symLibReady() && !(opts && opts.register)) {
+    const lib = _symLibObj();
+    const local = defs.filter(d => !(d.type in lib));
+    if (local.length) {
+      local.forEach(d => { if (state.drawingSymbols) state.drawingSymbols[d.type] = d; });
+      if (typeof stToast === 'function') stToast(`「${local.map(d => d.name || d.label || d.type).join('、')}」は登録シンボルではないので、この図面の中だけ直しました(保存で図面に入ります)。登録するときはシンボル登録で`, 'warn');
+      (state.pages || []).forEach(pg => { if ((pg.elements || []).some(e => local.some(d => d.type === e.type))) pg.dirty = true; });
+      if (typeof renderPageTabs === 'function') renderPageTabs();
+      defs = defs.filter(d => d.type in lib);
+      if (!defs.length) { rebuildSymbolPalette(); return true; }
+    }
+  }
   let ok;
   if (_symLibReady()) {
     ok = await _symLibWrite(o => { defs.forEach(d => { o[d.type] = d; }); return o; });
@@ -108,6 +128,11 @@ async function symStorePut(defs) {
 
 // 削除(図面で使っているものは、図面の中には残る)
 async function symStoreDelete(type) {
+  // 2026-10-05 登録シンボルに無いもの(図面の中だけ。未登録)は消す先が無い。図面に置いてある限り一覧に出る
+  if (_symLibReady() && !(type in _symLibObj()) && _symTypesUsed(state.pages).has(type)) {
+    alert('このシンボルは登録シンボルではありません(この図面の中だけ)。図面に置いてある記号を消せば一覧からも消えます');
+    return false;
+  }
   let ok;
   if (_symLibReady() && type in _symLibObj()) {
     ok = await _symLibWrite(o => { delete o[type]; return o; });
@@ -210,6 +235,7 @@ function symDiffList() {
   (state.pages || []).forEach(pg => (pg.elements || []).forEach(e => { if (e && e.type) placed[e.type] = (placed[e.type] || 0) + 1; }));
   const out = [];
   Object.keys(drawing).forEach(t => {
+    if (!placed[t]) return;   // 2026-10-05 欠陥3: 置いてあるものだけ(古い図面の使っていない写しを登録シンボルに戻さない)
     const d = drawing[t], L = lib[t];
     const name = d.label || d.name || t;
     if (!L) { out.push({ type: t, name, missing: true, what: ['登録シンボルに無い'], termsMoved: false, placed: placed[t] || 0 }); return; }

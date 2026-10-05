@@ -71,19 +71,21 @@ console.log('【パレットの中身と並び・登録シンボルが正(2026-1
 {
   const sb = load({
     lib: { L1: sym('L1', 10), D1: sym('D1', 10) },
-    drawing: { D1: sym('D1', 99), D2: sym('D2', 5) },
+    drawing: { D1: sym('D1', 99), D2: sym('D2', 5), D3: sym('D3', 5) },
     legacy: [sym('L1', 1), sym('OLD', 3), sym('MOVED', 4)], migrated: ['MOVED'],
+    pages: [{ elements: [{ type: 'D1' }, { type: 'D3' }] }],
   });
   sb.rebuildSymbolPalette();
-  eq(types(sb), ['L1', 'D1', 'D2', 'OLD'], '★ライブラリ(ライブラリの順)→図面にだけある→まだ移していない旧データ');
+  eq(types(sb), ['L1', 'D1', 'D3'], '★登録シンボル(その順)＋図面に置いてある未登録だけ(置いていない写し D2・旧データ OLD は出さない。欠陥3 2026-10-05)');
   eq(sb.state.customSymbols.find(s => s.type === 'D1').w, 10, '★同じ type は登録シンボルを使う(シンボルは1つ。2026-10-05)');
   eq(sb.state.customSymbols.find(s => s.type === 'L1').w, 10, 'ライブラリにあるものは旧データよりライブラリ');
   ok(!types(sb).includes('MOVED'), '★ライブラリへ移した旧データは出さない(ライブラリから消した後に復活しない)');
   ok(sb.DEFS.D1 && sb.DEFS.D1.w === 10, '描くときの定義(DEFS)も登録シンボル');
   {
-    const sb2 = load({ lib: { D1: sym('D1', 10) }, ready: false, drawing: { D1: sym('D1', 99) } });
+    const sb2 = load({ lib: { D1: sym('D1', 10) }, ready: false, drawing: { D1: sym('D1', 99), D2: sym('D2', 5) }, legacy: [sym('OLD', 3), sym('MOVED', 4)], migrated: ['MOVED'] });
     sb2.rebuildSymbolPalette();
     eq(sb2.state.customSymbols.find(s => s.type === 'D1').w, 99, '★登録シンボルが読めないときは図面の中を使う');
+    eq(types(sb2), ['D1', 'D2', 'OLD'], '読めないときは図面の写し全部とまだ移していない旧データも出す(作業を止めない)');
   }
 }
 
@@ -105,8 +107,10 @@ console.log('\n【登録・変更・並べ替え・削除はライブラリへ�
 {
   const sb = load({ lib: { A: sym('A', 1) }, pages: [{ elements: [{ type: 'A' }] }] });
   sb.rebuildSymbolPalette();
-  await sb.symStorePut([sym('N', 2)]);
-  eq(Object.keys(sb._lib.data), ['A', 'N'], '★新しいものはライブラリの末尾へ');
+  await sb.symStorePut([sym('U', 2)]);
+  ok(!('U' in sb._lib.data), '★登録の画面以外(端子の編集・サイズ調整・置き直し)では、登録シンボルに無いものを登録しない(欠陥4)');
+  await sb.symStorePut([sym('N', 2)], { register: true });
+  eq(Object.keys(sb._lib.data), ['A', 'N'], '★登録の画面からの新しいものはライブラリの末尾へ');
   eq(types(sb), ['A', 'N'], 'パレットにも出る');
   await sb.symStorePut([sym('A', 7)]);
   eq(sb._lib.data.A.w, 7, '変更(サイズ調整・端子の編集)はライブラリの同じ type を置き換える');
@@ -148,8 +152,11 @@ console.log('\n【図面と登録シンボルの違い(2026-10-05 開いたと�
   sb.setDrawingSymbols([sym('A', 20), sym('X', 3), C2]);
   const L = sb.symDiffList();
   eq(L.map(r => [r.type, r.missing, r.what, r.termsMoved, r.placed]),
-     [['A', false, ['形', '大きさ'], false, 1], ['X', true, ['登録シンボルに無い'], false, 0], ['C', false, ['端子の位置'], true, 2]],
-     '★違い(形・大きさ・端子の位置)・登録シンボルに無いもの・置いた数を出す');
+     [['A', false, ['形', '大きさ'], false, 1], ['C', false, ['端子の位置'], true, 2]],
+     '★違い(形・大きさ・端子の位置)・置いた数を出す。置いていない写し(X)は出さない(消したものを生き返らせない。欠陥3)');
+  sb.state.pages[0].elements.push({ id: 'e9', type: 'X' });
+  eq(sb.symDiffList().find(r => r.type === 'X').what, ['登録シンボルに無い'], '置いてあれば「登録シンボルに無い」として出す');
+  sb.state.pages[0].elements.pop();
   eq(sb.shown || 0, 0, '★比べただけでは窓を出さない(開いたときも出さない)');
   await sb.symApplyChoices(['C'], ['A', 'X']);
   eq([sb._lib.data.A.w, !!sb._lib.data.X, !!sb._lib.data.B], [20, true, true], '★「登録シンボルを図面に合わせる/足す」は選んだものだけ登録シンボルへ(他は残す)');
