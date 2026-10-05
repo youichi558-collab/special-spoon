@@ -11,10 +11,13 @@
 //   ・【2026-10-05】右クリックのメニュー(と上の「＋図面」「＋フォルダ」)で、図面・フォルダの作成・名前の変更・削除(盛田さん「ツリーでできるように」)
 //     削除は**消す前に図面をバックアップ(server.py の /api/backup/save、名前「削除_〇〇」)に取る**=設定タブのバックアップから戻せる。
 //     取れなければ消さない。図面以外のファイルが入ったフォルダは消さない(エクスプローラで)。ブラウザの削除はごみ箱に入らないため
+//   ・【2026-10-05】履歴(世代管理)。盛田さん「世代管理できないな」→ 上書き保存のたびに、上書きされる前の中身を
+//     フォルダの中の隠しフォルダ .seqzu_history に残す(図面ごとに新しい方から20件)。右クリック「履歴…」で一覧から開く(下の「履歴」)
 // ================================================================
 
 const PTREE_KEY = 'ptree';                       // IndexedDB(settings.js の _stGet/_stPut)に覚えるフォルダの鍵
 const PTREE_EXT = /\.seqzu$/i;
+const PTREE_HIST = '.seqzu_history', PTREE_HIST_KEEP = 20;   // 履歴の隠しフォルダ(プロジェクトのフォルダの直下)・図面ごとに残す数
 const ptreeState = { root: null, open: new Set(), files: new Map() };   // open: 開いているフォルダの道筋 / files: 開いた図面の道筋 → ファイルの鍵
 
 // 【2026-10-05】「名前を付けて保存」で書いたファイルも、次から窓を出さずに上書きする(盛田さん)。
@@ -45,7 +48,7 @@ const _ptCmp = (a, b) => a.name.localeCompare(b.name, 'ja', { numeric: true });
 async function ptreeList(dir) {
   const dirs = [], files = [];
   for await (const [name, h] of dir.entries()) {
-    if (h.kind === 'directory') dirs.push({ name, h });
+    if (h.kind === 'directory') { if (name !== PTREE_HIST) dirs.push({ name, h }); }   // 履歴の隠しフォルダは出さない
     else if (PTREE_EXT.test(name)) files.push({ name, h });
   }
   return dirs.sort(_ptCmp).concat(files.sort(_ptCmp));
@@ -269,6 +272,8 @@ async function ptreeRename(path, kind) {
       await par.dir.removeEntry(par.name, { recursive: true });
     }
     const to = par.parentPath + '/' + nn;
+    try { await _ptHistMove(path, nn); }   // 履歴も新しい名前へ
+    catch (e) { if (typeof stToast === 'function') stToast(`履歴を新しい名前へ移せませんでした（${e && e.message || e}）。履歴は ${PTREE_HIST} の元の名前に残っています`, 'warn'); }
     if (!isDir) ptreeState.files.has(path) && ptreeState.files.set(path, await par.dir.getFileHandle(nn));
     _ptRepath(path, to, isDir);
     if (isDir) {   // フォルダの中のファイルの鍵は付け替えられないので、開いているページの鍵を引き直す
@@ -332,6 +337,103 @@ async function ptreeDelete(path, kind) {
   _ptDone(`削除しました: ${par.name}(バックアップに控えがあります)`);
 }
 
+// ================================================================
+// 履歴(世代管理)(2026-10-05)
+// 盛田さん「上書きした場合、バックアップからしか戻らない」「世代管理できないな」→ おすすめ(上書きのたび・フォルダの中・20件・右クリックで履歴)で決定。
+//   ・上書き保存(js/edit.js saveToSrcFile)の直前に、**上書きされる前の中身**を
+//     <プロジェクトのフォルダ>/.seqzu_history/<フォルダ>/<図面名>.seqzu/<日時>.seqzu に写す。日時はその中身を保存した時刻(ファイルの更新時刻)
+//   ・中身が変わらない上書きでは残さない。図面ごとに新しい方から PTREE_HIST_KEEP 件、古いものは消す
+//   ・フォルダの外のファイル(ext:)には残さない(置き場所が無いため)。ツリー・台帳(xprojReadList)には出さない
+//   ・フォルダごと持ち運べば履歴も付いてくる。名前を変えると履歴も付いていく。削除しても履歴は残す(同じ名前で作ればその履歴に見える)
+//   ・戻し方: 右クリック「履歴…」→ 版を「開く」= 今の図面と置き換えて開き、保存先は元のファイルのまま(未保存)。
+//     上書き保存でその版に戻る(そのとき今のファイルの中身も履歴に残る)。別に取っておくなら「名前を付けて保存」
+// ================================================================
+const _ptStamp = ms => { const d = new Date(ms), z = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}_${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}`; };
+// 道筋('/盤外/A.seqzu'。根は '') → 履歴の中の同じ道筋のフォルダ。create=false で無ければ例外
+async function _ptHistDir(path, create) {
+  let d = await ptreeState.root.getDirectoryHandle(PTREE_HIST, { create: !!create });
+  for (const n of String(path || '').split('/').filter(Boolean)) d = await d.getDirectoryHandle(n, { create: !!create });
+  return d;
+}
+// 図面の版の一覧(新しい順)。[{ name: '2026-10-05_143000.seqzu', h }]
+async function ptreeHistList(path) {
+  let d;
+  try { d = await _ptHistDir(path, false); } catch (e) { return []; }
+  const out = [];
+  for await (const [n, h] of d.entries()) if (h.kind === 'file' && PTREE_EXT.test(n)) out.push({ name: n, h });
+  return out.sort((a, b) => (a.name < b.name ? 1 : a.name > b.name ? -1 : 0));
+}
+// 上書きの直前に呼ぶ。fh: 上書きするファイル、newText: これから書く中身。戻り値: 残した版の名前(残さなかったら '')。書けなければ例外
+async function ptreeHistSave(src, fh, newText) {
+  if (!ptreeState.root || !src || src[0] !== '/') return '';
+  let f;
+  try { f = await fh.getFile(); } catch (e) { return ''; }   // まだ無いファイル
+  const old = await f.text();
+  if (!old || old === newText) return '';
+  const d = await _ptHistDir(src, true);
+  const st = _ptStamp(f.lastModified || Date.now());
+  let name = st + '.seqzu';
+  for (let i = 2; await _ptExists(d, name); i++) name = `${st}_${i}.seqzu`;
+  const h = await d.getFileHandle(name, { create: true });
+  const w = await h.createWritable(); await w.write(old); await w.close();
+  for (const x of (await ptreeHistList(src)).slice(PTREE_HIST_KEEP)) { try { await d.removeEntry(x.name); } catch (e) {} }
+  return name;
+}
+// 名前の変更で履歴も付けていく。from: 元の道筋、nn: 新しい名前(同じフォルダの中)
+async function _ptHistMove(from, nn) {
+  if (!ptreeState.root) return;
+  const fp = String(from).split('/').filter(Boolean), old = fp.pop();
+  let par, h;
+  try { par = await _ptHistDir(fp.join('/'), false); h = await par.getDirectoryHandle(old); } catch (e) { return; }   // 履歴なし
+  if (old.toLowerCase() === nn.toLowerCase()) { if (typeof h.move === 'function') await h.move(nn); return; }   // 大文字小文字だけの変更(Windowsでは同じ名前)
+  if (typeof h.move === 'function' && !await _ptExists(par, nn)) { await h.move(nn); return; }
+  await _ptCopyDir(h, await par.getDirectoryHandle(nn, { create: true }));   // 写して(同じ名前の古い履歴があれば合わせて)から元を消す
+  await par.removeEntry(old, { recursive: true });
+}
+const _ptHistLabel = n => n.replace(PTREE_EXT, '').replace(/^(\d{4}-\d\d-\d\d)_(\d\d)(\d\d)(\d\d)(?:_(\d+))?$/, (m, d, h, mi, s, k) => `${d} ${h}:${mi}:${s}${k ? ` (${k})` : ''}`);
+
+// 右クリック「履歴…」: 版の一覧
+async function ptreeHistShow(path) {
+  ptreeHistClose();
+  const list = await ptreeHistList(path);
+  const fname = path.split('/').pop();
+  const rows = [];
+  for (const x of list) {
+    let size = '';
+    try { size = Math.max(1, Math.round((await x.h.getFile()).size / 1024)) + ' KB'; } catch (e) {}
+    rows.push(`<div class="pt-hrow" style="display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px solid var(--bd2,#ddd)"><span style="flex:1">${_ptEsc(_ptHistLabel(x.name))}</span><span style="color:var(--fg3,#888);font-size:11px">${size}</span><button data-name="${_ptEsc(x.name)}" onclick="ptreeHistOpen(${_ptEsc(JSON.stringify(path))},this.dataset.name)" style="font-size:11px;padding:1px 8px;cursor:pointer">開く</button></div>`);
+  }
+  const m = document.createElement('div');
+  m.id = 'pt-hist';
+  m.style.cssText = 'position:fixed;left:50%;top:80px;transform:translateX(-50%);z-index:10002;background:var(--bg2,#fff);color:var(--fg,#000);border:1px solid var(--bd2,#888);border-radius:6px;box-shadow:0 4px 20px rgba(0,0,0,.45);padding:10px 14px;font-size:12px;width:380px;max-height:70vh;display:flex;flex-direction:column';
+  m.innerHTML = `<div style="font-weight:bold;margin-bottom:4px">履歴: ${_ptEsc(fname.replace(PTREE_EXT, ''))}</div>`
+    + `<div style="color:var(--fg3,#888);font-size:11px;margin-bottom:6px">上書き保存する前の中身です(新しい順・${PTREE_HIST_KEEP}件まで。時刻はその中身を保存した時刻)。<br>「開く」と今の図面と置き換えて開きます。上書き保存するとその版に戻ります(今のファイルの中身も履歴に残ります)。</div>`
+    + `<div style="overflow-y:auto;flex:1">${rows.join('') || '<div style="color:var(--fg3,#888);padding:6px 0">履歴はまだありません(上書き保存すると残ります)</div>'}</div>`
+    + `<div style="text-align:right;margin-top:8px"><button onclick="ptreeHistClose()" style="font-size:12px;padding:2px 12px;cursor:pointer">閉じる</button></div>`;
+  document.body.appendChild(m);
+}
+function ptreeHistClose() { const m = document.getElementById('pt-hist'); if (m) m.remove(); }
+
+// 版を開く: 今の図面と置き換え、保存先は元のファイルのまま(未保存にする)
+async function ptreeHistOpen(path, name) {
+  let fh, hh;
+  try {
+    fh = _ptFind(path) || await (async () => { const q = await _ptParent(path); return q.dir.getFileHandle(q.name); })();
+    hh = await (await _ptHistDir(path, false)).getFileHandle(name);
+  } catch (e) { alert(`履歴を開けませんでした（${e && e.message || e}）`); return; }
+  const dirty = (state.pages || []).some(p => p.dirty);
+  if (dirty && !confirm(`保存していないページがあります。\n「${fh.name}」の ${_ptHistLabel(name)} の版に置き換えますか？\n(取り消し Ctrl+Z で今の図面に戻せます)`)) return;
+  const text = await _ptRead(hh);
+  if (text == null) return;
+  if (!loadProjectText(text, fh.name, 'replace')) return;
+  ptreeState.files.set(path, fh);
+  state.pages.forEach(p => { p._src = path; p.dirty = true; });
+  ptreeHistClose();
+  if (typeof renderPageTabs === 'function') renderPageTabs();
+  ptreeRender();
+  if (typeof stToast === 'function') stToast(`「${fh.name}」の ${_ptHistLabel(name)} の版を開きました。上書き保存するとこの版に戻ります`, 'ok');
+}
+
 // 右クリックのメニュー
 function ptreeMenu(ev, path, kind) {
   ev.preventDefault(); ev.stopPropagation();
@@ -339,7 +441,7 @@ function ptreeMenu(ev, path, kind) {
   if (!ptreeState.root) return;
   const dirPath = kind === 'dir' ? path : kind === 'file' ? path.split('/').slice(0, -1).join('/') : '';
   const items = [];
-  if (kind === 'file') items.push(['開く(置き換え)', () => ptreeOpenFile(path)], ['ページとして足す', () => ptreeAddFile(path)], null);
+  if (kind === 'file') items.push(['開く(置き換え)', () => ptreeOpenFile(path)], ['ページとして足す', () => ptreeAddFile(path)], ['履歴…', () => ptreeHistShow(path)], null);
   items.push(['新しい図面', () => ptreeNewFile(dirPath)], ['新しいフォルダ', () => ptreeNewFolder(dirPath)]);
   if (kind === 'file' || kind === 'dir') items.push(null, ['名前の変更', () => ptreeRename(path, kind)], ['削除', () => ptreeDelete(path, kind)]);
   const m = document.createElement('div');

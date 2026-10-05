@@ -273,6 +273,9 @@ async function saveToSrcFile(src) {
   pages.forEach(p => { p.dirty = false; });   // 書き出す「前」に落とす(saveProject のコメント参照)
   const base = h.name.replace(/\.(seqzu|json)$/i, '');
   const text = _saveJSON(_saveData(pages, pages.length > 1 ? base.replace(/_all$/, '') : base.replace(/_[^_]+$/, '')));
+  // 【2026-10-05】上書きされる前の中身を履歴に残す(js/proj_tree.js ptreeHistSave・盛田さん「世代管理できないな」)。残せなくても上書きは続ける
+  try { if (typeof ptreeHistSave === 'function') await ptreeHistSave(src, h, text); }
+  catch (e) { if (typeof stToast === 'function') stToast(`履歴を残せませんでした（${e && e.message || e}）。上書き保存は続けます`, 'warn'); }
   try {
     const w = await h.createWritable();
     await w.write(text);

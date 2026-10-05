@@ -85,7 +85,7 @@ async function xprojReadList(dir) {
   const out = [];
   const walk = async (d, pre) => {
     for await (const [name, h] of d.entries()) {
-      if (h.kind === 'directory') await walk(h, pre + name + '/');
+      if (h.kind === 'directory') { if (name !== '.seqzu_history') await walk(h, pre + name + '/'); }   // 履歴(js/proj_tree.js PTREE_HIST)は数えない=同じ図面が何重にも入るため
       else if (/\.seqzu$/i.test(name)) out.push(pre + name);
     }
   };
