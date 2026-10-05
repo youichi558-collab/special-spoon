@@ -42,7 +42,7 @@ console.log('【別ファイルも数える】');
 console.log('\n【表示】');
 {
   sb.showBOM();
-  ok(/このファイル1ページ＋参照図面1ページを集計/.test(_html), '★集計した範囲を出す');
+  ok(/このファイル1ページ＋プロジェクトの別ファイル1ページを集計/.test(_html), '★集計した範囲を出す');
   const cr9 = _html.split('<tr').find(t => />CR9</.test(t)) || '';
   ok(cr9 && !/<input/.test(cr9) && /別ファイル: B/.test(cr9), '★別ファイルだけの行は打つ欄が無く、どのファイルかを出す');
   const cr1 = _html.split('<tr').find(t => />CR1</.test(t)) || '';
@@ -63,7 +63,7 @@ console.log('\n【参照図面が無いとき】');
 {
   sb.xprojState.files = [];
   sb.showBOM();
-  ok(/このファイル1ページを集計/.test(_html) && /参照図面を設定すると盤全体の部品表になります/.test(_html), '参照図面を設定するよう案内する');
+  ok(/このファイル1ページを集計/.test(_html) && /左パネルの「プロジェクト」でフォルダを開くと盤全体の部品表になります/.test(_html), 'プロジェクトのフォルダを開くよう案内する');
 }
 
 console.log(ng ? `\n失敗 ${ng} 件` : '\nすべて通過');

@@ -48,6 +48,7 @@ async function ptreeChooseRoot() {
     dir = await window.showDirectoryPicker(opt);
   } catch (e) { return; }   // 取りやめ
   ptreeState.root = dir; ptreeState.open = new Set(); ptreeState.files = new Map();
+  if (typeof xprojState !== 'undefined') { xprojState.files = []; xprojState.problems = []; xprojState.dirName = ''; }   // 前のフォルダの別ファイルを使わない(部品表・「更新」で読み直す)
   try { await _stPut(PTREE_KEY, dir); } catch (e) {}
   ptreeRender();
 }

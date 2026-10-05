@@ -2,16 +2,16 @@
 // proj_index.js — プロジェクト台帳(2026-10-04 作る順の1。盛田さん承認の設計は HANDOFF「1-1」)
 //
 // 【なぜ】図面は1ページ1ファイルで、数百〜数千ページありうる(盛田さん)。部品表・端子台表など盤全体の帳票のたびに
-// 全ファイルを丸ごと読むのは重い。そこで参照図面のフォルダに、ページごとの「帳票に要る情報だけ」を抜き出した
+// 全ファイルを丸ごと読むのは重い。そこでプロジェクトのフォルダ(左パネルの「プロジェクト」で開いたフォルダ)に、ページごとの「帳票に要る情報だけ」を抜き出した
 // 台帳 project.seqzuidx を1つ置く。
 //
 // 【性質】**正はページのファイル、台帳はその写し(キャッシュ)**。消えても作り直せる。
 //   ・ファイルごとに更新日時・サイズを覚え、比べて**変わったファイルだけ読み直す**(受け取って差し替えたファイルも拾う)
 //   ・抜き出し方を変えたら PIDX_VER を上げる(全部読み直す)
 //   ・別の窓が同時に書いても写しなので壊れない(次に比べたときに直る)
-//   ・対象は参照図面で選んだファイル(ecad_project.json の一覧)。台帳は一覧に無いファイルを載せない
+//   ・対象はプロジェクトのフォルダの図面(.seqzu)全部(サブフォルダも。2026-10-05 参照図面の一覧をやめた)。消えたファイルは台帳からも消す
 //
-// 【いつ更新するか】参照図面を読み直すとき(xprojReload=参照図面の保存・部品表・表示タブの「更新」)と、図面を保存したあと。
+// 【いつ更新するか】プロジェクトのフォルダを読み直すとき(xprojReload=部品表・表示タブの「更新」)と、図面を保存したあと。
 // 作る順の1では、まだ帳票は台帳を読まない(2で部品表を台帳読みにする)。
 // ================================================================
 
@@ -151,7 +151,7 @@ function _pidxProgress(text) {
   box.textContent = text;
 }
 
-// 台帳を最新にする。names: 参照図面の一覧。pre: 既に読んだファイル(Map 名前 → { lastModified, size, data })があれば使う。
+// 台帳を最新にする。names: フォルダの図面の道筋。pre: 既に読んだファイル(Map 名前 → { lastModified, size, data })があれば使う。
 // 戻り値: { index, read: 読み直した数, problems: [読めなかったファイル] }
 async function pidxUpdate(dir, names, pre) {
   const old = await pidxRead(dir);
@@ -160,7 +160,7 @@ async function pidxUpdate(dir, names, pre) {
   const todo = [];
   for (const name of names) {
     let file;
-    try { file = await (await dir.getFileHandle(name)).getFile(); }
+    try { file = await (typeof xprojFileHandle === 'function' ? await xprojFileHandle(dir, name) : await dir.getFileHandle(name)).getFile(); }   // name はフォルダからの道筋('盤外/Sheet1.seqzu')
     catch (e) { problems.push(`${name}: ${e && e.message || e}`); changed = true; continue; }
     const o = old && old.files[name];
     if (o && !o.error && o.lastModified === file.lastModified && o.size === file.size) { files[name] = o; continue; }
@@ -192,7 +192,7 @@ async function pidxUpdate(dir, names, pre) {
   return { index, read, problems };
 }
 
-// 図面を保存したあと: 参照図面のフォルダが使えれば(許可を聞かずに)台帳を最新にする。保存したファイルが一覧にあれば、そこだけ読み直される
+// 図面を保存したあと: プロジェクトのフォルダが使えれば(許可を聞かずに)台帳を最新にする。保存したファイルが一覧にあれば、そこだけ読み直される
 async function pidxAfterSave() {
   try {
     if (typeof xprojDirHandle !== 'function') return;

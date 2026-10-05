@@ -6,16 +6,17 @@
 // ファイル群を対象にする)と同じく、**同じフォルダの図面ファイルの一覧(プロジェクト)**を持つ。
 //
 // 【仕組み】
-//   ・ボタン「参照図面」(データタブ): フォルダを選ぶ → フォルダ内の図面(.json)から対象を選ぶ → フォルダに ecad_project.json として保存
-//     (フォルダを選ぶだけにしないのは、別案件の図面が混ざらないため)
+//   ・【2026-10-05】対象は**左パネルの「プロジェクト」で開いたフォルダ(ツリーの根)の中の図面(.seqzu)全部**(サブフォルダも)。
+//     以前はデータタブの「参照図面」ボタンでフォルダと対象のファイルを選び ecad_project.json に保存していたが、盛田さんの方針
+//     (「普通のcadは左にパネル出してプロジェクト内のファイルを出している」「参照図面と台帳をツリーのフォルダにまとめて」)でやめた。
+//     ファイル名はツリーの根からの道筋(例: 盤外/Sheet1.seqzu)
 //   ・「更新」を押すと、対象のファイルを読み直して計算する(読むだけ。図面には足さない・保存もしない)
 //   ・計算のあいだだけ、別ファイルのページを今の図面の後ろに足す(xprojWith)。位置は「ファイル名/ページ/区画」(elLocation)
-//   ・**開いている図面と同じページ名のファイルは使わない**(開いている方が新しいので。二重に数えない)
+//   ・**開いているファイルは使わない**(開いている方が新しいので。二重に数えない)。ツリーから開いたページはファイル(pg._src)で、
+//     それ以外のページは同じページ名で判定する
 //   ・別ファイルの記号の種別(コイル・接点・矢印)は、そのファイルのカスタムシンボルから読む。今の図面に同じtypeがあれば今のもの
 // ================================================================
 
-const XPROJ_FILE = 'ecad_project.json';
-const XPROJ_KEY  = 'proj';                 // IndexedDB(settings.js の _stGet/_stPut)に覚えるフォルダの鍵
 const xprojState = { files: [], dirName: '', problems: [] };   // files: [{name, pages, symbols}]
 
 const xprojBase = name => String(name || '').replace(/\.(seqzu|json)$/i, '');
@@ -33,11 +34,12 @@ function xprojVirtualPage(file, pg, idx, fi) {
 
 // 使う別ファイルのページ(今の図面と同じページ名のファイルは除く)
 function xprojPages() {
-  const mine = new Set((state.pages || []).map(p => p.name));
+  const mine = new Set((state.pages || []).filter(p => !p._src).map(p => p.name));
+  const open = new Set((state.pages || []).map(p => p._src).filter(Boolean));   // ツリーの道筋('/盤外/Sheet1.seqzu')
   const out = [];
   xprojState.files.forEach((f, fi) => {
     const pages = f.pages || [];
-    if (pages.some(p => mine.has(p.name))) return;
+    if (open.has('/' + f.name) || pages.some(p => mine.has(p.name))) return;
     pages.forEach((pg, i) => out.push({ f, pg, i, fi }));
   });
   return out;
@@ -68,27 +70,40 @@ function xprojWith(fn) {
   }
 }
 
-// ---- フォルダの読み書き(ブラウザのフォルダ選択。設定は settings.js と同じ IndexedDB) ----
+// ---- フォルダ(左パネルの「プロジェクト」で開いたフォルダ。js/proj_tree.js) ----
 async function xprojDirHandle(ask) {
-  let h = await _stGet(XPROJ_KEY);
+  let h = (typeof ptreeState !== 'undefined' && ptreeState.root) || null;
+  if (!h && typeof PTREE_KEY === 'string') { try { h = await _stGet(PTREE_KEY); } catch (e) {} }
   if (!h) return null;
   let st = 'prompt';
   try { st = await h.queryPermission({ mode: 'readwrite' }); } catch (e) {}
   if (st !== 'granted' && ask) { try { st = await h.requestPermission({ mode: 'readwrite' }); } catch (e) {} }
   return st === 'granted' ? h : null;
 }
+// フォルダの中の図面(.seqzu)をサブフォルダまで全部。戻り値: 根からの道筋('盤外/Sheet1.seqzu')の並び
 async function xprojReadList(dir) {
-  try {
-    const fh = await dir.getFileHandle(XPROJ_FILE);
-    const d = JSON.parse(await (await fh.getFile()).text());
-    return Array.isArray(d.files) ? d.files : [];
-  } catch (e) { return null; }     // まだ無い
+  const out = [];
+  const walk = async (d, pre) => {
+    for await (const [name, h] of d.entries()) {
+      if (h.kind === 'directory') await walk(h, pre + name + '/');
+      else if (/\.seqzu$/i.test(name)) out.push(pre + name);
+    }
+  };
+  try { await walk(dir, ''); } catch (e) { console.warn('プロジェクトのフォルダを読めませんでした', e); }
+  return out.sort((a, b) => a.localeCompare(b, 'ja', { numeric: true }));
+}
+// 道筋 → ファイルの鍵
+async function xprojFileHandle(dir, path) {
+  const parts = String(path).split('/').filter(Boolean);
+  let d = dir;
+  for (let i = 0; i < parts.length - 1; i++) d = await d.getDirectoryHandle(parts[i]);
+  return d.getFileHandle(parts[parts.length - 1]);
 }
 async function xprojReadFiles(dir, names) {
   const files = [], problems = [];
   for (const name of names) {
     try {
-      const fh = await dir.getFileHandle(name);
+      const fh = await xprojFileHandle(dir, name);
       const file = await fh.getFile();
       const d = JSON.parse(await file.text());
       if (!d || !Array.isArray(d.pages)) throw new Error('図面ファイルではありません');
@@ -98,12 +113,11 @@ async function xprojReadFiles(dir, names) {
   }
   return { files, problems };
 }
-// 保存済みの対象ファイルを読み直す(「更新」から呼ぶ)。フォルダが未設定なら何もしない(false)
+// プロジェクトのフォルダの図面を読み直す(「更新」・部品表から呼ぶ)。フォルダが未設定なら何もしない(false)
 async function xprojReload() {
   const dir = await xprojDirHandle(true);
-  if (!dir) return false;
+  if (!dir) { xprojState.files = []; xprojState.problems = []; xprojState.dirName = ''; return false; }
   const names = await xprojReadList(dir);
-  if (!names) return false;
   const r = await xprojReadFiles(dir, names);
   xprojState.files = r.files.map(f => { const o = Object.assign({}, f); delete o.data; return o; });
   xprojState.problems = r.problems; xprojState.dirName = dir.name;
@@ -129,52 +143,6 @@ function xprojCheckConflicts() {
   }
   xprojState.shownSig = sig;
   devResolveDialog(cf, { onDone: n => { if (n) { if (state.showXref === true) xrefRefresh(); if (typeof draw === 'function') draw(); } } });
-}
-
-// ボタン「参照図面」(データタブ): フォルダを選び、対象の図面を選ぶ
-async function xprojSetup() {
-  if (!window.showDirectoryPicker) { alert('このブラウザはフォルダ選択に対応していません(Chrome/Edgeで開いてください)'); return; }
-  let dir;
-  try {
-    const prev = await _stGet(XPROJ_KEY);
-    const opt = { id: 'ecad-proj', mode: 'readwrite' };
-    if (prev) opt.startIn = prev;
-    dir = await window.showDirectoryPicker(opt);
-  } catch (e) { return; }
-  const all = [];
-  for await (const [name, h] of dir.entries()) {
-    if (h.kind === 'file' && /\.(seqzu|json)$/i.test(name) && name !== XPROJ_FILE) all.push(name);   // 図面は .seqzu(2026-10-04)。左パネルのツリーができるまでは以前の .json も選べる。一覧は図面ではない
-  }
-  all.sort();
-  const saved = new Set((await xprojReadList(dir)) || []);
-  const mine = new Set((state.pages || []).map(p => p.name));
-  const chosen = await xprojPickDialog(dir.name, all, saved, mine);
-  if (!chosen) return;
-  try { await _stPut(XPROJ_KEY, dir); } catch (e) {}
-  const fh = await dir.getFileHandle(XPROJ_FILE, { create: true });
-  const w = await fh.createWritable();
-  await w.write(JSON.stringify({ version: 1, files: chosen }, null, 2));
-  await w.close();
-  await xprojReload();
-  if (typeof stToast === 'function') stToast(`参照図面を保存しました(${chosen.length}ファイル)。表示タブの「更新」でクロスリファレンスに反映します`, 'ok');
-}
-
-function xprojPickDialog(dirName, names, saved, _mine) {
-  return new Promise(resolve => {
-    const bg = document.createElement('div');
-    bg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;display:flex;align-items:center;justify-content:center';
-    const box = document.createElement('div');
-    box.style.cssText = 'background:var(--bg2,#fff);color:var(--fg,#000);padding:14px 16px;border-radius:6px;min-width:340px;max-width:80vw;max-height:80vh;overflow:auto;font-size:13px';
-    const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-    box.innerHTML = `<div style="font-weight:600;margin-bottom:6px">参照図面(${esc(dirName)})</div>
-      <div style="font-size:11px;opacity:.8;margin-bottom:8px">クロスリファレンス・ページ跨ぎの矢印で相手を探す図面を選びます。開いている図面と同じページ名のファイルは、開いている方を使います。</div>
-      ${names.map((n, i) => `<label style="display:block"><input type="checkbox" data-i="${i}" ${saved.has(n) ? 'checked' : ''}> ${esc(n)}</label>`).join('') || '<div>図面(.seqzu)がありません</div>'}
-      <div style="margin-top:10px;text-align:right"><button id="xp-ng">やめる</button> <button id="xp-ok">保存</button></div>`;
-    bg.appendChild(box); document.body.appendChild(bg);
-    const done = v => { bg.remove(); resolve(v); };
-    box.querySelector('#xp-ng').onclick = () => done(null);
-    box.querySelector('#xp-ok').onclick = () => done([...box.querySelectorAll('input:checked')].map(c => names[+c.dataset.i]));
-  });
 }
 
 if (typeof window !== 'undefined') (window.__ecadLoaded = window.__ecadLoaded || {})['xref_project.js'] = 1;

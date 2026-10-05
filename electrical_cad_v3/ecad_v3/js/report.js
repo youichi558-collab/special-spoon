@@ -1012,13 +1012,13 @@ function showBOM(){
     +`onchange="setBOMZone('${key}',this.checked)" style="vertical-align:-1px;margin-right:3px">`
     +`${label}</label>`;
   const extN=(typeof xprojPages==='function')?xprojPages().length:0;
-  const scope=extN?`このファイル${state.pages.length}ページ＋参照図面${extN}ページを集計`:`このファイル${state.pages.length}ページを集計`
-    +(typeof xprojState!=='undefined'&&!xprojState.files.length?`(参照図面を設定すると盤全体の部品表になります。データタブの「参照図面」)`:'');
+  const scope=extN?`このファイル${state.pages.length}ページ＋プロジェクトの別ファイル${extN}ページを集計`:`このファイル${state.pages.length}ページを集計`
+    +(typeof xprojState!=='undefined'&&!xprojState.files.length?`(左パネルの「プロジェクト」でフォルダを開くと盤全体の部品表になります)`:'');
   const head=`<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">${scope}・${devTotal} 台`
     +(noRefTotal?`　<span style="color:var(--red)">デバイス未設定 ${noRefTotal} 個</span>`:'')
     +`<br>数量はデバイス単位の台数です。構成数は接点・端子を含む図形の個数です。`
     +`プロパティで「部品表の対象外」にした部品は既定では集計されません。`
-    +(extN?`<br>別ファイル(参照図面)の分は表示だけです。打った値は開いているファイルの記号に入ります(別ファイルの分はそのファイルを開いて直してください)。`:'')+`</p>`
+    +(extN?`<br>プロジェクトの別ファイルの分は表示だけです。打った値は開いているファイルの記号に入ります(別ファイルの分はそのファイルを開いて直してください)。`:'')+`</p>`
     +`<p style="margin-bottom:6px;padding:5px 6px;background:var(--bg2);border-radius:3px">`
     +cb('excluded','対象外の部品も含める')+cb('noRef','デバイス未設定を含める')
     +(hidden?`<span style="font-size:11px;color:var(--red)">（${hidden}台を非表示中・CSVにも出ません）</span>`:'')

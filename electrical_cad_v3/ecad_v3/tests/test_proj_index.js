@@ -5,7 +5,7 @@
 //      数は今の帳票(端子台表 buildTerminalBlockRows・線番 groupWiresByNet)と同じ
 //   2. 変わったファイルだけ読み直す(更新日時・サイズ)。一覧から外れたファイルは消す。読めないファイルは記録して続ける
 //   3. 台帳を作っても開いている図面(state)は元のまま
-//   4. 参照図面を選ぶ一覧に台帳ファイルを出さない
+//   4. 対象はプロジェクトのフォルダ(左パネルのツリーの根)の図面(.seqzu)全部。台帳もそこに作る(2026-10-05)
 const fs = require('fs');
 const vm = require('vm');
 let ng = 0;
@@ -20,7 +20,7 @@ vm.createContext(sb);
 vm.runInContext(R('js/report.js'), sb);
 vm.runInContext(R('js/conn_table.js'), sb);
 vm.runInContext(R('js/devices.js'), sb);
-vm.runInContext(R('js/xref_project.js') + '\nthis.xprojState = xprojState; this.xprojBase = xprojBase;', sb);
+vm.runInContext(R('js/xref_project.js') + '\nthis.xprojState = xprojState; this.xprojBase = xprojBase; this.xprojPages = xprojPages;', sb);
 vm.runInContext(R('js/proj_index.js') + '\nthis.pidxState = pidxState;', sb);
 
 const sheet3Text = R('drawings/仕様２1002_Sheet3.json');
@@ -134,14 +134,40 @@ console.log('\n【変わったファイルだけ読み直す】');
   await sb.pidxUpdate(dir, ['Sheet3.json', 'P2.json']);
   eq(dir.reads.sort(), ['P2.json', 'Sheet3.json'], '★版の違う台帳は全部読み直す');
 
-  console.log('\n【参照図面の読み直しで台帳も更新・一覧に台帳を出さない】');
-  const dir2 = fakeDir({ 'ecad_project.json': { text: JSON.stringify({ files: ['P2.json'] }), lastModified: 1 }, 'P2.json': { text: small, lastModified: 5 } });
+  console.log('\n【プロジェクトのフォルダ(ツリーの根)の図面を全部・サブフォルダも(2026-10-05)】');
+  // 入れ子のフォルダの作り物: { 名前: {text,lastModified}(ファイル) | { sub: {...} }(フォルダ) }
+  const reads2 = [];
+  const ND = (name, tree) => ({
+    kind: 'directory', name,
+    async *entries() { for (const [n, v] of Object.entries(tree)) yield [n, v.sub ? ND(n, v.sub) : { kind: 'file', name: n }]; },
+    async getDirectoryHandle(n) { if (!tree[n] || !tree[n].sub) throw new Error('NotFound'); return ND(n, tree[n].sub); },
+    async getFileHandle(n, opt) {
+      if (!tree[n]) { if (opt && opt.create) tree[n] = { text: '', lastModified: 0 }; else throw new Error('NotFound ' + n); }
+      const f = tree[n];
+      return { name: n, async getFile() { return { lastModified: f.lastModified, size: Buffer.byteLength(f.text), async text() { reads2.push(n); return f.text; } }; },
+        async createWritable() { let buf = ''; return { async write(x) { buf += x; }, async close() { f.text = buf; f.lastModified = Date.now(); } }; } };
+    },
+  });
+  const t2 = { 'P2.seqzu': { text: small, lastModified: 5 }, '古い.json': { text: small, lastModified: 5 }, 'ecad_project.json': { text: '{}', lastModified: 1 },
+    '盤外': { sub: { 'S1.seqzu': { text: small.replace('CR5', 'CR7'), lastModified: 5 } } } };
+  const dir2 = ND('案件', t2);
   sb.xprojDirHandle = async () => dir2;
+  eq(await sb.xprojReadList(dir2), ['P2.seqzu', '盤外/S1.seqzu'], '★対象はフォルダの図面(.seqzu)全部・サブフォルダも(.json・一覧ファイルは対象外)');
   await sb.xprojReload();
-  ok('project.seqzuidx' in dir2.files, '★「更新」(xprojReload)で台帳を作る');
-  eq(dir2.reads.filter(n => n === 'P2.json').length, 1, '図面は1回だけ読む(参照図面と台帳で読んだ中身を共用)');
+  eq(sb.xprojState.files.map(f => f.name), ['P2.seqzu', '盤外/S1.seqzu'], '「更新」(xprojReload)でフォルダの図面を読む');
+  ok('project.seqzuidx' in t2, '★台帳はフォルダ(ツリーの根)に作る');
+  const idx2 = JSON.parse(t2['project.seqzuidx'].text);
+  eq(Object.keys(idx2.files).sort(), ['P2.seqzu', '盤外/S1.seqzu'], '台帳もサブフォルダの図面を道筋で持つ');
+  eq(idx2.files['盤外/S1.seqzu'].pages[0].devs[0].loc, '盤外/S1/1', '位置は道筋(拡張子なし)/ページ');
+  eq(reads2.filter(n => n.endsWith('.seqzu')).length, 2, '図面は1回だけ読む(参照図面の計算と台帳で読んだ中身を共用)');
   ok(!('data' in sb.xprojState.files[0]), '参照図面の状態に読んだ中身の丸ごとを残さない');
-  ok(/\/\\\.\(seqzu\|json\)\$\/i\.test\(name\)/.test(R('js/xref_project.js')), '★参照図面を選ぶ一覧は図面(.seqzu・以前の .json)だけ=台帳(.seqzuidx)は出ない');
+  sb.state.pages = [{ name: 'P', _src: '/盤外/S1.seqzu', elements: [], wires: [] }];
+  eq(sb.xprojPages().map(e => e.f.name), ['P2.seqzu'], '★ツリーから開いているファイルは別ファイルとして数えない(二重に数えない)');
+  sb.state.pages = [openPage];
+  sb.xprojDirHandle = async () => null;
+  await sb.xprojReload();
+  eq(sb.xprojState.files.length, 0, 'フォルダを開いていなければ別ファイルは無し');
+  ok(!/xprojSetup|rb-xproj/.test(R('index.html') + R('js/xref_project.js')), '★「参照図面」ボタンと選ぶ窓は無い');
   eq(sb.xprojBase('A.seqzu') + '|' + sb.xprojBase('B.json'), 'A|B', 'ファイル名から拡張子(.seqzu・.json)を外す');
   eq(sb.pidxExtractFile('C.seqzu', { pages: [{ name: 'X', elements: [{ id: 'q', type: 'x', partRef: 'K1', x: 0, y: 0 }], wires: [] }] })[0].devs[0].loc, 'C/1', '.seqzu の図面も位置はファイル名(拡張子なし)');
 
