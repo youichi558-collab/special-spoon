@@ -1379,7 +1379,12 @@ function explodeSelected() {
       } else if (s.t === 'A') {
         const id = genId('el');
         const c = tx(s.cx, s.cy);
-        state.elements.push({ id, type: 'arc', x: c.x, y: c.y, r: s.r * sc, startA: s.sa * Math.PI / 180 + rot, endA: s.ea * Math.PI / 180 + rot, layer: lay });
+        // 【2026-10-05】弧の向き(ccw)と反転を入れる。以前は ccw を落とし反転も見ていなかったので、分解すると弧が反対側になった
+        // (盛田さん「シンボル分解しても弧の向きが変わる」)。描くとき(symbols.js)は 反転→回転 の順で、角度 a の点は
+        // (cos a·fH, sin a·fV) を rot だけ回した所。反転が奇数回なら回る向きが逆になる
+        const xa = deg => Math.atan2(Math.sin(deg * Math.PI / 180) * fV, Math.cos(deg * Math.PI / 180) * fH) + rot;
+        const ccw = (fH * fV < 0) ? !s.ccw : !!s.ccw;
+        state.elements.push({ id, type: 'arc', x: c.x, y: c.y, r: s.r * sc, startA: xa(s.sa || 0), endA: xa(s.ea || 0), ccw, layer: lay });
         newIds.push(id);
       } else if (s.t === 'P' && s.pts && s.pts.length >= 2) {
         const pts = s.pts.map(p => tx(p[0], p[1]));

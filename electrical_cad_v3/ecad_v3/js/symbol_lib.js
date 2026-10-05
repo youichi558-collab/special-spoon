@@ -590,7 +590,7 @@ const symLib = (() => {
       ctx.beginPath();
       if(s.t==='L'){ctx.moveTo(tx(s.x1),ty(s.y1));ctx.lineTo(tx(s.x2),ty(s.y2));ctx.stroke();}
       else if(s.t==='C'){ctx.arc(tx(s.cx),ty(s.cy),s.r*sc,0,Math.PI*2);ctx.stroke();}
-      else if(s.t==='A'){ctx.arc(tx(s.cx),ty(s.cy),s.r*sc,s.sa*Math.PI/180,s.ea*Math.PI/180,false);ctx.stroke();}
+      else if(s.t==='A'){ctx.arc(tx(s.cx),ty(s.cy),s.r*sc,-s.sa*Math.PI/180,-s.ea*Math.PI/180,true);ctx.stroke();}   // DXF(y上向き)を y反転で描くので角度も反転・反時計回り(2026-10-05)
       else if(s.t==='P'&&s.pts.length){
         ctx.moveTo(tx(s.pts[0][0]),ty(s.pts[0][1]));
         for(let k=1;k<s.pts.length;k++) ctx.lineTo(tx(s.pts[k][0]),ty(s.pts[k][1]));
@@ -685,7 +685,9 @@ const symLib = (() => {
     const canvasShapes=shapes.map(s=>{
       if(s.t==='L') return {t:'L',x1:(s.x1-cxDxf)*SCALE,y1:-(s.y1-cyDxf)*SCALE,x2:(s.x2-cxDxf)*SCALE,y2:-(s.y2-cyDxf)*SCALE};
       if(s.t==='C') return {t:'C',cx:(s.cx-cxDxf)*SCALE,cy:-(s.cy-cyDxf)*SCALE,r:s.r*SCALE};
-      if(s.t==='A') return {t:'A',cx:(s.cx-cxDxf)*SCALE,cy:-(s.cy-cyDxf)*SCALE,r:s.r*SCALE,sa:s.sa,ea:s.ea};
+      // 2026-10-05 DXF の弧は y上向き・反時計回り。y を反転するので角度も反転し、向きは ccw(DXF読込 dxf_import.js と同じ)。
+      // 以前は角度をそのままにしていて、上下に対称でない弧が上下逆になっていた
+      if(s.t==='A') return {t:'A',cx:(s.cx-cxDxf)*SCALE,cy:-(s.cy-cyDxf)*SCALE,r:s.r*SCALE,sa:-s.sa,ea:-s.ea,ccw:true};
       if(s.t==='P') return {t:'P',pts:s.pts.map(p=>[(p[0]-cxDxf)*SCALE,-(p[1]-cyDxf)*SCALE]),cl:s.cl};
       return s;
     });
@@ -705,7 +707,7 @@ const symLib = (() => {
         pc.beginPath();
         if(s.t==='L'){pc.moveTo(tx(s.x1),ty(s.y1));pc.lineTo(tx(s.x2),ty(s.y2));pc.stroke();}
         else if(s.t==='C'){pc.arc(tx(s.cx),ty(s.cy),s.r*sc,0,Math.PI*2);pc.stroke();}
-        else if(s.t==='A'){pc.arc(tx(s.cx),ty(s.cy),s.r*sc,s.sa*Math.PI/180,s.ea*Math.PI/180,false);pc.stroke();}
+        else if(s.t==='A'){pc.arc(tx(s.cx),ty(s.cy),s.r*sc,-s.sa*Math.PI/180,-s.ea*Math.PI/180,true);pc.stroke();}
         else if(s.t==='P'&&s.pts.length){
           pc.moveTo(tx(s.pts[0][0]),ty(s.pts[0][1]));
           for(let k=1;k<s.pts.length;k++) pc.lineTo(tx(s.pts[k][0]),ty(s.pts[k][1]));

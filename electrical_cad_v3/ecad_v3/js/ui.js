@@ -1628,9 +1628,10 @@ function flattenSymbolElToShapes(el, cS) {
       const c = srXformPt(s.cx, s.cy, el);
       let sa = srXformAngle(s.sa, el), ea = srXformAngle(s.ea, el);
       let ccw = !!s.ccw;
-      // 反転(flipH/flipVが奇数回)は弧の向きも反転させる。sa/eaの入れ替えだけでは
-      // 足りず、回転方向(ccw)も一緒に反転させないと弧が反対側に描かれる。
-      if (flipped) { const tmp = sa; sa = ea; ea = tmp; ccw = !ccw; }
+      // 反転(flipH/flipVが奇数回)は弧の回る向き(ccw)だけを反転させる。始点・終点はそれぞれ写した点のまま。
+      // 【2026-10-05】以前は sa/ea を入れ替えた上で ccw も反転していて、2つ合わせると残りの側の弧(反対側)になっていた
+      // (反転したシンボルを登録し直すと弧が反対側に出る。tests/test_arc_explode.js で点を比べて確認)
+      if (flipped) { ccw = !ccw; }
       out.push({ t:'A', cx:c.x, cy:c.y, r: s.r * sc, sa, ea, ccw, lineWidth:s.lineWidth, lineStyle:s.lineStyle });
     } else if (s.t === 'P' && s.pts) {
       // 【2026-08-23修正】lineWidth/lineStyleがそもそも渡されておらず、ポリライン形状は

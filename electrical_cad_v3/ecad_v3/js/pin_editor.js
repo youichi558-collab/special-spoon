@@ -30,7 +30,8 @@ function peDrawShape(c, s, T, TY) {
   } else if (s.t === 'C') {
     c.beginPath(); c.arc(T(s.cx), TY(s.cy), Math.max(1, s.r * _peZoom), 0, Math.PI * 2); c.stroke();
   } else if (s.t === 'A') {
-    c.beginPath(); c.arc(T(s.cx), TY(s.cy), Math.max(1, s.r * _peZoom), s.sa * Math.PI / 180, s.ea * Math.PI / 180, false); c.stroke();
+    // 2026-10-05 弧の向き(ccw)を入れる。以前は落としていて、図面と反対側に描いていた(盛田さん「弧の計算間違ってないか」)
+    c.beginPath(); c.arc(T(s.cx), TY(s.cy), Math.max(1, s.r * _peZoom), s.sa * Math.PI / 180, s.ea * Math.PI / 180, !!s.ccw); c.stroke();
   } else if (s.t === 'P' && s.pts && s.pts.length) {
     c.beginPath(); c.moveTo(T(s.pts[0][0]), TY(s.pts[0][1]));
     for (let k = 1; k < s.pts.length; k++) c.lineTo(T(s.pts[k][0]), TY(s.pts[k][1]));
