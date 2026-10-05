@@ -1523,6 +1523,11 @@ let _srTool   = null;
 let _srDraw   = null;
 let _srFirst  = null;
 let _srMouse  = { x:0, y:0 };
+// 【2026-10-05】登録範囲(盛田さん「範囲が見えてないからどう登録されるかが見えない」「上下左右で登録範囲を出す」
+// 「10刻みか5刻みで狭くしてはみ出たら自動で切れればいい」)。{x1,y1,x2,y2}(シンボルの座標)。図形が入ると全体を囲む
+// グリッドの線に合わせて出す。辺をドラッグで刻み(5/10)ごとに動かし、範囲の外は登録するときに切る(srClipShapes)
+let _srRange = null;
+let _srRangeDrag = null;   // 'x1'|'x2'|'y1'|'y2'
 const SR_SCALE = 2;   // canvas px per coord unit
 let _srZoom = SR_SCALE;
 const SR_GRID  = 5;   // grid snap unit (coord)
@@ -1881,13 +1886,126 @@ function srGridAlignShapes(shapes) {
   return { dx, dy, hitX:bx.c, hitY:by.c, total:xs.length };
 }
 
+// ---- 登録範囲で切る(2026-10-05) ------------------------------------------
+// 図形の外形(弧・円は中心±半径。文字は位置)
+function srContentBox(shapes) {
+  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+  const add = (x, y) => { x1 = Math.min(x1, x); y1 = Math.min(y1, y); x2 = Math.max(x2, x); y2 = Math.max(y2, y); };
+  (shapes || []).forEach(s => {
+    if (s.t === 'L') { add(s.x1, s.y1); add(s.x2, s.y2); }
+    else if (s.t === 'C' || s.t === 'A') { add(s.cx - s.r, s.cy - s.r); add(s.cx + s.r, s.cy + s.r); }
+    else if (s.t === 'R') { add(s.x, s.y); add(s.x + s.w, s.y + s.h); }
+    else if (s.t === 'T') add(s.x, s.y);
+    else if (s.t === 'P' && s.pts) s.pts.forEach(p => add(p[0], p[1]));
+  });
+  return isFinite(x1) ? { x1, y1, x2, y2 } : null;
+}
+function srRangeStep() { const v = parseInt(document.getElementById('sr-rstep')?.value); return v === 10 ? 10 : 5; }
+// 図形全体を囲む、刻みの線に乗った範囲
+function srRangeFit(shapes, step) {
+  const b = srContentBox(shapes);
+  if (!b) return null;
+  const e = 1e-6;
+  return { x1: Math.floor(b.x1 / step + e) * step, y1: Math.floor(b.y1 / step + e) * step,
+           x2: Math.ceil(b.x2 / step - e) * step,  y2: Math.ceil(b.y2 / step - e) * step };
+}
+const _srIn = (R, x, y) => x >= R.x1 - 1e-6 && x <= R.x2 + 1e-6 && y >= R.y1 - 1e-6 && y <= R.y2 + 1e-6;
+// 線分を範囲で切る(Liang–Barsky)。全部外なら null
+function srClipSeg(R, ax, ay, bx, by) {
+  let t0 = 0, t1 = 1;
+  const dx = bx - ax, dy = by - ay;
+  const ps = [-dx, dx, -dy, dy], qs = [ax - R.x1, R.x2 - ax, ay - R.y1, R.y2 - ay];
+  for (let i = 0; i < 4; i++) {
+    const p = ps[i], q = qs[i];
+    if (Math.abs(p) < 1e-12) { if (q < -1e-9) return null; continue; }
+    const r = q / p;
+    if (p < 0) { if (r > t1) return null; if (r > t0) t0 = r; }
+    else { if (r < t0) return null; if (r < t1) t1 = r; }
+  }
+  if (t1 - t0 < 1e-9 && Math.hypot(dx, dy) > 1e-9) return null;
+  return [ax + t0 * dx, ay + t0 * dy, ax + t1 * dx, ay + t1 * dy];
+}
+// 円・弧を範囲で切る。戻り値: 残る弧の並び(円が全部残るなら円そのもの)
+function srClipArc(R, s) {
+  const TAU = Math.PI * 2, norm = a => ((a % TAU) + TAU) % TAU;
+  let a0, L;
+  if (s.t === 'C') { a0 = 0; L = TAU; }
+  else {
+    const sa = (s.sa || 0) * Math.PI / 180, ea = (s.ea || 0) * Math.PI / 180;
+    if (s.ccw) { a0 = ea; L = norm(sa - ea); } else { a0 = sa; L = norm(ea - sa); }
+    if (L < 1e-9) return [];
+  }
+  const cuts = [];
+  [R.x1, R.x2].forEach(X => { const d = (X - s.cx) / s.r; if (Math.abs(d) <= 1) { const t = Math.acos(d); cuts.push(t, -t); } });
+  [R.y1, R.y2].forEach(Y => { const d = (Y - s.cy) / s.r; if (Math.abs(d) <= 1) { const t = Math.asin(d); cuts.push(t, Math.PI - t); } });
+  const rel = [...new Set(cuts.map(c => norm(c - a0)).filter(v => v > 1e-9 && v < L - 1e-9).map(v => +v.toFixed(12)))].sort((a, b) => a - b);
+  const edges = [0, ...rel, L];
+  const keep = [];
+  for (let i = 0; i + 1 < edges.length; i++) {
+    const m = a0 + (edges[i] + edges[i + 1]) / 2;
+    if (_srIn(R, s.cx + s.r * Math.cos(m), s.cy + s.r * Math.sin(m))) {
+      if (keep.length && Math.abs(keep[keep.length - 1][1] - edges[i]) < 1e-9) keep[keep.length - 1][1] = edges[i + 1];
+      else keep.push([edges[i], edges[i + 1]]);
+    }
+  }
+  if (keep.length === 1 && keep[0][0] < 1e-9 && keep[0][1] > L - 1e-9) return [s];   // 全部残る
+  const deg = a => a * 180 / Math.PI;
+  return keep.map(([u, v]) => ({ t: 'A', cx: s.cx, cy: s.cy, r: s.r, sa: deg(a0 + u), ea: deg(a0 + v), ccw: false, lineWidth: s.lineWidth, lineStyle: s.lineStyle }));
+}
+// 図形を範囲で切る(範囲の外にはみ出た所を落とす)
+function srClipShapes(shapes, R) {
+  if (!R) return shapes.slice();
+  const out = [];
+  const seg = (ax, ay, bx, by, s) => { const c = srClipSeg(R, ax, ay, bx, by); if (c) out.push({ t: 'L', x1: c[0], y1: c[1], x2: c[2], y2: c[3], lineWidth: s.lineWidth, lineStyle: s.lineStyle }); };
+  shapes.forEach(s => {
+    if (s.t === 'L') {
+      if (_srIn(R, s.x1, s.y1) && _srIn(R, s.x2, s.y2)) { out.push(s); return; }
+      const c = srClipSeg(R, s.x1, s.y1, s.x2, s.y2);
+      if (c) out.push(Object.assign({}, s, { x1: c[0], y1: c[1], x2: c[2], y2: c[3] }));
+    } else if (s.t === 'P' && s.pts) {
+      if (s.pts.every(p => _srIn(R, p[0], p[1]))) { out.push(s); return; }
+      const pts = s.pts.slice(); if (s.cl && pts.length > 2) pts.push(pts[0]);
+      for (let k = 0; k + 1 < pts.length; k++) seg(pts[k][0], pts[k][1], pts[k + 1][0], pts[k + 1][1], s);
+    } else if (s.t === 'R') {
+      if (_srIn(R, s.x, s.y) && _srIn(R, s.x + s.w, s.y + s.h)) { out.push(s); return; }
+      const xa = s.x, ya = s.y, xb = s.x + s.w, yb = s.y + s.h;
+      seg(xa, ya, xb, ya, s); seg(xb, ya, xb, yb, s); seg(xb, yb, xa, yb, s); seg(xa, yb, xa, ya, s);
+    } else if (s.t === 'C' || s.t === 'A') {
+      srClipArc(R, s).forEach(a => out.push(a));
+    } else if (s.t === 'T') {
+      if (_srIn(R, s.x, s.y)) out.push(s);
+    } else out.push(s);
+  });
+  return out;
+}
+// 図形が入ったとき(貼り付け・描き始め)に範囲を出す。W/H 欄は範囲の大きさ(表示だけ)
+function srRangeInit() { _srRange = srRangeFit(_srShapes, srRangeStep()); srRangeShow(); }
+function srRangeShow() {
+  const w = document.getElementById('sr-w'), h = document.getElementById('sr-h');
+  if (w) w.value = _srRange ? Math.round((_srRange.x2 - _srRange.x1) * 100) / 100 : '';
+  if (h) h.value = _srRange ? Math.round((_srRange.y2 - _srRange.y1) * 100) / 100 : '';
+}
+function srRangeStepChanged() { if (_srRange) srRangeInit(); srRender(); }
+// 範囲の辺の近く(画面で6px)か。戻り値 'x1'|'x2'|'y1'|'y2'|null
+function srRangeEdgeAt(wx, wy) {
+  const R = _srRange; if (!R) return null;
+  const tol = 6 / _srZoom;
+  const inY = wy >= R.y1 - tol && wy <= R.y2 + tol, inX = wx >= R.x1 - tol && wx <= R.x2 + tol;
+  const c = [['x1', Math.abs(wx - R.x1), inY], ['x2', Math.abs(wx - R.x2), inY], ['y1', Math.abs(wy - R.y1), inX], ['y2', Math.abs(wy - R.y2), inX]]
+    .filter(e => e[2] && e[1] <= tol).sort((a, b) => a[1] - b[1]);
+  return c.length ? c[0][0] : null;
+}
+function srRaw(e) {
+  const cv = document.getElementById('sym-reg-cv');
+  const r = cv.getBoundingClientRect();
+  return { x: ((e.clientX - r.left) * (cv.width / r.width) - SR_CX) / _srZoom, y: ((e.clientY - r.top) * (cv.height / r.height) - SR_CY) / _srZoom };
+}
+
 // 貼り付け後、実際の図形サイズをW/H欄に反映し、
 // キャンバスに収まるようズーム倍率を合わせる。
 function srFitToContent() {
   const bb = calcCustomSymBBox(_srShapes);
-  const wEl = document.getElementById('sr-w'), hEl = document.getElementById('sr-h');
-  if (wEl) wEl.value = Math.max(10, Math.min(300, Math.round(bb.w)));
-  if (hEl) hEl.value = Math.max(10, Math.min(300, Math.round(bb.h)));
+  srRangeInit();   // 2026-10-05 登録範囲を出す(W/H 欄は範囲の大きさ)
 
   const cv = document.getElementById('sym-reg-cv');
   if (!cv) return;
@@ -1899,13 +2017,12 @@ function srFitToContent() {
 
 function srClear() {
   _srShapes = []; _srTerms = []; _srTool = null; _srDraw = null; _srFirst = null;
-  _srZoom = SR_SCALE;
+  _srZoom = SR_SCALE; _srRange = null; _srRangeDrag = null;
   const roleEl = document.getElementById('sr-role'); if (roleEl) roleEl.value = '';
   document.querySelectorAll('.sr-tool').forEach(b => b.classList.remove('active'));
   const n = document.getElementById('sr-name'); if (n) n.value = '';
   const c = document.getElementById('sr-cat'); if (c) c.value = 'カスタム';
-  const w = document.getElementById('sr-w'); if (w) w.value = 80;
-  const h = document.getElementById('sr-h'); if (h) h.value = 60;
+  srRangeShow();
   srUpdateTermList(); srRender();
 }
 
@@ -1939,16 +2056,28 @@ function srRender() {
   c.beginPath(); c.moveTo(SR_CX,0); c.lineTo(SR_CX,cv.height); c.stroke();
   c.beginPath(); c.moveTo(0,SR_CY); c.lineTo(cv.width,SR_CY); c.stroke();
 
-  // Bounding box (dashed)
-  const bw = (parseInt(document.getElementById('sr-w')?.value)||80) * _srZoom;
-  const bh = (parseInt(document.getElementById('sr-h')?.value)||60) * _srZoom;
-  c.strokeStyle = '#aac'; c.lineWidth = 1; c.setLineDash([5,4]);
-  c.strokeRect(SR_CX - bw/2, SR_CY - bh/2, bw, bh);
-  c.setLineDash([]);
+  // Shapes: 登録範囲があれば、範囲の外(切られる所)は薄く、残る所を濃く描く(2026-10-05)
+  if (_srRange) {
+    _srShapes.forEach(s => srDrawShape(c, s, '#ccc'));
+    srClipShapes(_srShapes, _srRange).forEach(s => srDrawShape(c, s, '#222'));
+  } else {
+    c.strokeStyle = '#222'; c.fillStyle = '#222'; c.lineWidth = 1.5;
+    _srShapes.forEach(s => srDrawShape(c, s, '#222'));
+  }
 
-  // Shapes
-  c.strokeStyle = '#222'; c.fillStyle = '#222'; c.lineWidth = 1.5;
-  _srShapes.forEach(s => srDrawShape(c, s, '#222'));
+  // 登録範囲(上下左右の辺をドラッグで動かす。外は登録するとき切る)
+  if (_srRange) {
+    const R = _srRange, X = v => SR_CX + v * _srZoom, Y = v => SR_CY + v * _srZoom;
+    c.save();
+    c.strokeStyle = '#e07000'; c.lineWidth = 1.5; c.setLineDash([6, 3]);
+    c.strokeRect(X(R.x1), Y(R.y1), (R.x2 - R.x1) * _srZoom, (R.y2 - R.y1) * _srZoom);
+    c.setLineDash([]); c.fillStyle = '#e07000';
+    const mx = (X(R.x1) + X(R.x2)) / 2, my = (Y(R.y1) + Y(R.y2)) / 2;
+    [[mx, Y(R.y1)], [mx, Y(R.y2)], [X(R.x1), my], [X(R.x2), my]].forEach(([hx, hy]) => c.fillRect(hx - 4, hy - 4, 8, 8));
+    c.font = '9px monospace'; c.textAlign = 'left';
+    c.fillText(`登録範囲 ${R.x2 - R.x1}×${R.y2 - R.y1}`, X(R.x1) + 2, Y(R.y1) - 3);
+    c.restore();
+  }
 
   // Preview
   if (_srDraw) { c.save(); c.setLineDash([5,4]); srDrawShape(c, _srDraw, '#888'); c.restore(); }
@@ -1956,7 +2085,8 @@ function srRender() {
   // Terminals
   _srTerms.forEach((t, i) => {
     const px = SR_CX + t.x * _srZoom, py = SR_CY + t.y * _srZoom;
-    c.fillStyle = '#0067c0'; c.fillRect(px-5,py-5,10,10);
+    c.fillStyle = (_srRange && !_srIn(_srRange, t.x, t.y)) ? '#c99' : '#0067c0';   // 範囲の外の端子は登録しない(薄い赤)
+    c.fillRect(px-5,py-5,10,10);
     c.strokeStyle = '#fff'; c.lineWidth = 1.5;
     c.beginPath(); c.moveTo(px-3,py-3); c.lineTo(px+3,py+3); c.stroke();
     c.beginPath(); c.moveTo(px+3,py-3); c.lineTo(px-3,py+3); c.stroke();
@@ -2017,6 +2147,11 @@ function srDrawShape(c, s, color) {
 
 function srOnDown(e) {
   if (e.button !== 0) return;
+  // 登録範囲の辺をつかんだら、その辺を動かす(作図中・消去ツールのときは図形の操作を優先)
+  if (_srRange && !_srFirst && _srTool !== 'erase') {
+    const r = srRaw(e), edge = srRangeEdgeAt(r.x, r.y);
+    if (edge) { _srRangeDrag = edge; return; }
+  }
   const { x, y } = srSnap(e.clientX, e.clientY);
   // 【2026-08-03修正】盛田さんの指摘: 自動検出で出た端子点を消すのに「✕消去」ツールへの
   // 切り替えが必要で分かりにくかった(📍アイコン側の端子編集パネルはツール切り替え不要で
@@ -2085,13 +2220,28 @@ function srOnDown(e) {
       const rw=Math.abs(x-f.x), rh=Math.abs(y-f.y);
       if (rw>0&&rh>0) _srShapes.push({ t:'R', x:Math.min(f.x,x), y:Math.min(f.y,y), w:rw, h:rh });
     }
-    _srFirst=null; _srDraw=null; srRender();
+    _srFirst=null; _srDraw=null;
+    if (!_srRange) srRangeInit(); else { const b = srContentBox(_srShapes.slice(-1)), R = _srRange, st = srRangeStep();   // 描いた図形が範囲の外なら範囲を広げる
+      if (b) { R.x1 = Math.min(R.x1, Math.floor(b.x1 / st) * st); R.y1 = Math.min(R.y1, Math.floor(b.y1 / st) * st); R.x2 = Math.max(R.x2, Math.ceil(b.x2 / st) * st); R.y2 = Math.max(R.y2, Math.ceil(b.y2 / st) * st); srRangeShow(); } }
+    srRender();
   }
 }
 
 function srOnMove(e) {
   const { x, y } = srSnap(e.clientX, e.clientY);
   _srMouse = { x, y };
+  const cvEl = document.getElementById('sym-reg-cv');
+  if (_srRangeDrag) {
+    const r = srRaw(e), st = srRangeStep(), R = _srRange, k = _srRangeDrag;
+    const v = Math.round((k[0] === 'x' ? r.x : r.y) / st) * st;
+    if (k === 'x1') R.x1 = Math.min(v, R.x2 - st); else if (k === 'x2') R.x2 = Math.max(v, R.x1 + st);
+    else if (k === 'y1') R.y1 = Math.min(v, R.y2 - st); else R.y2 = Math.max(v, R.y1 + st);
+    srRangeShow(); srRender(); return;
+  }
+  if (cvEl && _srRange && !_srFirst) {
+    const r = srRaw(e), edge = srRangeEdgeAt(r.x, r.y);
+    cvEl.style.cursor = edge ? (edge[0] === 'x' ? 'ew-resize' : 'ns-resize') : 'crosshair';
+  }
   if (_srFirst) {
     const f = _srFirst;
     if      (_srTool==='line')   _srDraw = { t:'L', x1:f.x,y1:f.y,x2:x,y2:y };
@@ -2101,7 +2251,7 @@ function srOnMove(e) {
   srRender();
 }
 
-function srOnUp(e) {}
+function srOnUp(e) { _srRangeDrag = null; }
 
 function srSetTool(t) {
   _srTool=t; _srFirst=null; _srDraw=null;
@@ -2184,8 +2334,12 @@ function saveCustomSymbol() {
   const name = document.getElementById('sr-name').value.trim();
   if (!name) { alert('シンボル名を入力してください'); return; }
   if (!_srShapes.length) { alert('図形を少なくとも1つ描いてください'); return; }
+  // 2026-10-05 登録範囲の外を切る。範囲の外の端子は登録しない
+  const shapesR = srClipShapes(_srShapes, _srRange);
+  const termsR = _srRange ? _srTerms.filter(t => _srIn(_srRange, t.x, t.y)) : _srTerms.slice();
+  if (!shapesR.length) { alert('登録範囲の中に図形がありません'); return; }
   const cat = document.getElementById('sr-cat').value.trim() || 'カスタム';
-  const bbox = calcCustomSymBBox(_srShapes);
+  const bbox = calcCustomSymBBox(shapesR);
   const w = bbox.w;
   const h = bbox.h;
   const type = 'custom_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,5);
@@ -2204,7 +2358,7 @@ function saveCustomSymbol() {
     tctx.translate(cx, cy);
     tctx.scale(scale * _srZoom, scale * _srZoom);
     tctx.strokeStyle = '#222'; tctx.lineWidth = 1.5 / (scale * _srZoom);
-    _srShapes.forEach(s => {
+    shapesR.forEach(s => {
       if (s.t==='L') { tctx.beginPath(); tctx.moveTo(s.x1,s.y1); tctx.lineTo(s.x2,s.y2); tctx.stroke(); }
       else if (s.t==='C') { tctx.beginPath(); tctx.arc(s.cx,s.cy,s.r,0,Math.PI*2); tctx.stroke(); }
       else if (s.t==='A') { tctx.beginPath(); tctx.arc(s.cx,s.cy,s.r,(s.sa||0)*Math.PI/180,(s.ea||0)*Math.PI/180,!!s.ccw); tctx.stroke(); }
@@ -2221,7 +2375,7 @@ function saveCustomSymbol() {
     preview = thumbCv.toDataURL('image/png');
   }
   const role = document.getElementById('sr-role')?.value || '';
-  const sym = { type, name, label:name, cat, role, w, h, shapes:[..._srShapes], terminals:[..._srTerms], preview };
+  const sym = { type, name, label:name, cat, role, w, h, shapes:shapesR, terminals:termsR, preview };
   state.customSymbols.push(sym);
   if (typeof DEFS !== 'undefined') DEFS[type] = sym;
   closeFP('sym-reg-p');

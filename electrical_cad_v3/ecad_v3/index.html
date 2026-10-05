@@ -666,7 +666,7 @@
           <canvas id="sym-reg-cv" width="320" height="260"
             style="border:1px solid var(--bd);cursor:crosshair;display:block;background:#fff"
             oncontextmenu="event.preventDefault();srUndo()"></canvas>
-          <div style="font-size:10px;color:var(--fg3);margin-top:3px">グリッド5単位スナップ　右クリック=Undo　左クリック2回で確定</div>
+          <div style="font-size:10px;color:var(--fg3);margin-top:3px">グリッド5単位スナップ　右クリック=Undo　左クリック2回で確定<br>橙の四角=登録範囲。上下左右の辺をドラッグで動かす(刻み5/10)。外にはみ出た所(薄い線)は登録するとき切る</div>
         </div>
         <div style="min-width:180px;display:flex;flex-direction:column;gap:8px">
           <div class="fr"><label>シンボル名 *</label><input type="text" id="sr-name" placeholder="例: 電磁弁"></div>
@@ -686,8 +686,10 @@
             </select>
           </div>
           <div style="display:flex;gap:6px">
-            <div class="fr" style="flex:1"><label>幅 (W)</label><input type="number" id="sr-w" value="64" min="10" max="300" oninput="srRender()"></div>
-            <div class="fr" style="flex:1"><label>高さ (H)</label><input type="number" id="sr-h" value="40" min="10" max="300" oninput="srRender()"></div>
+            <!-- 2026-10-05 W/H は登録範囲(キャンバスの橙の四角)の大きさ。範囲は辺をドラッグで動かし、外は登録するとき切る -->
+            <div class="fr" style="flex:1"><label>範囲の幅</label><input type="text" id="sr-w" readonly title="登録範囲(橙の四角)の幅。四角の辺をドラッグで変えます"></div>
+            <div class="fr" style="flex:1"><label>範囲の高さ</label><input type="text" id="sr-h" readonly title="登録範囲(橙の四角)の高さ"></div>
+            <div class="fr" style="flex:1"><label>刻み</label><select id="sr-rstep" onchange="srRangeStepChanged()" title="登録範囲の辺を動かす刻み"><option value="5">5</option><option value="10">10</option></select></div>
           </div>
           <div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
