@@ -2021,12 +2021,35 @@ function srClear() {
   const roleEl = document.getElementById('sr-role'); if (roleEl) roleEl.value = '';
   document.querySelectorAll('.sr-tool').forEach(b => b.classList.remove('active'));
   const n = document.getElementById('sr-name'); if (n) n.value = '';
+  srFillReplaceList();
   const c = document.getElementById('sr-cat'); if (c) c.value = 'カスタム';
   srRangeShow();
   srUpdateTermList(); srRender();
 }
 
 function registerAsSymbol() { showSymReg(); }
+
+// 端子の位置が同じか(置き換えの確認に使う)
+function _symTermPosSame(def, terms) {
+  const k = a => JSON.stringify((a || []).map(t => [Math.round(t.x * 100) / 100, Math.round(t.y * 100) / 100]));
+  return k(def && def.terminals) === k(terms);
+}
+// 「登録のしかた」の選択肢: 新しいシンボル＋今の登録シンボル(名前の順)。2026-10-05
+function srFillReplaceList() {
+  const sel = document.getElementById('sr-replace'); if (!sel) return;
+  const list = (state.customSymbols || []).filter(x => x && x.type && x.shapes)
+    .slice().sort((a, b) => String(a.name || a.label || a.type).localeCompare(String(b.name || b.label || b.type), 'ja', { numeric: true }));
+  sel.innerHTML = '<option value="">新しいシンボルとして登録</option>'
+    + list.map(x => `<option value="${escH(x.type)}">置き換える: ${escH(x.name || x.label || x.type)}${x.cat ? '(' + escH(x.cat) + ')' : ''}</option>`).join('');
+}
+// 置き換える先を選んだら、名前・分類・種別をそのシンボルのものにする(直してよい)
+function srReplaceChanged() {
+  const t = document.getElementById('sr-replace')?.value;
+  const old = t && (state.customSymbols || []).find(x => x.type === t);
+  if (!old) return;
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
+  set('sr-name', old.name || old.label || ''); set('sr-cat', old.cat || 'カスタム'); set('sr-role', old.role || '');
+}
 
 function srSnap(clientX, clientY) {
   const cv = document.getElementById('sym-reg-cv');
@@ -2342,7 +2365,17 @@ function saveCustomSymbol() {
   const bbox = calcCustomSymBBox(shapesR);
   const w = bbox.w;
   const h = bbox.h;
-  const type = 'custom_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,5);
+  // 2026-10-05 置き換える先が選ばれていれば、その番号(type)のまま中身を置き換える
+  const repType = document.getElementById('sr-replace')?.value || '';
+  const repOld = repType ? (state.customSymbols || []).find(x => x.type === repType) : null;
+  if (repType && !repOld) { alert('置き換える先のシンボルが見つかりません'); return; }
+  if (repOld) {
+    const nm = repOld.name || repOld.label || repType;
+    if (!confirm(`「${nm}」をこの形に置き換えます。\nシンボルは1つなので、使っている図面は全部この形になります。\n置き換える前の登録シンボルはバックアップに残ります。置き換えますか？`)) return;
+    // 端子の位置が変わるなら、使っている数を見せてもう一度確かめる(使っていなければ聞かない。js/sym_store.js)
+    if (!_symTermPosSame(repOld, termsR) && typeof symConfirmTermMove === 'function' && !symConfirmTermMove(repType, repOld, termsR)) return;
+  }
+  const type = repOld ? repType : 'custom_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,5);
   // プレビュー画像を小さなcanvasに縮小して生成
   const cv = document.getElementById('sym-reg-cv');
   let preview = null;
@@ -2376,12 +2409,21 @@ function saveCustomSymbol() {
   }
   const role = document.getElementById('sr-role')?.value || '';
   const sym = { type, name, label:name, cat, role, w, h, shapes:shapesR, terminals:termsR, preview };
-  state.customSymbols.push(sym);
+  if (repOld) {
+    const i = state.customSymbols.indexOf(repOld);
+    state.customSymbols[i] = sym;
+    if (typeof draw === 'function') setTimeout(draw, 0);
+  } else state.customSymbols.push(sym);
   if (typeof DEFS !== 'undefined') DEFS[type] = sym;
   closeFP('sym-reg-p');
   renderSymFloat();
   // 【2026-10-03 段階3】保存先はライブラリ(読めていなければブラウザの中。js/sym_store.js)
-  symStorePut([sym]).then(ok => { if (ok) alert(`「${name}」を登録しました。シンボルパレットのカスタムタブから配置できます。`); });
+  symStorePut([sym]).then(ok => {
+    if (!ok) return;
+    alert(repOld ? `「${name}」を置き換えました。使っている図面は全部この形になります。` : `「${name}」を登録しました。シンボルパレットのカスタムタブから配置できます。`);
+    // 置き換えで端子の位置が変わったら、この画面の記号を右下に知らせる(登録シンボルに書けたあとで比べる。ほかの図面は開いたときに知らせる)
+    if (repOld && typeof symMovedNotice === 'function' && !_symTermPosSame(repOld, termsR)) symMovedNotice({ [type]: repOld }, null, true);
+  });
 }
 
 // 任意のshapes配列からプレビュー画像(64x48 PNG dataURL)を生成する。

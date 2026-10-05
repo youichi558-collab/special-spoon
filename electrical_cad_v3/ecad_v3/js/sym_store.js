@@ -134,7 +134,7 @@ const _symTermPos = d => JSON.stringify(((d && d.terminals) || []).map(t => [Mat
 // 図面の写し(copies: {type: 定義})と登録シンボルで端子の位置が違い、図面に置いてある記号を知らせる(窓ではなく画面の隅に。押すとその記号へ)。
 // pageOk(pg): 数えるページ(省略で全部)。同じ図面を開いている間、同じ内容は1度だけ
 let _symMovedSig = '';
-function symMovedNotice(copies, pageOk) {
+function symMovedNotice(copies, pageOk, force) {   // force: 同じ内容でも出す(シンボルを置き換えたとき)
   if (!_symLibReady() || typeof document === 'undefined' || !document.body) return [];
   const lib = _symLibObj();
   const hits = [];
@@ -146,7 +146,7 @@ function symMovedNotice(copies, pageOk) {
   });
   if (!hits.length) return hits;
   const sig = hits.map(h => h.type + ':' + h.at.map(a => a.id).join(',')).join('|');
-  if (sig === _symMovedSig) return hits;
+  if (sig === _symMovedSig && !force) return hits;
   _symMovedSig = sig;
   const old = document.getElementById('sym-moved'); if (old) old.remove();
   const box = document.createElement('div');

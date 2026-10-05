@@ -59,5 +59,17 @@ console.log('\n【登録するとき範囲で切り、外の端子は登録し�
   ok(/id="sr-rstep"[^>]*><option value="5">5<\/option><option value="10">10<\/option>/.test(html), '刻み 5/10 を選べる');
 }
 
+console.log('\n【置き換えて登録(2026-10-05 盛田さん「a でいい」「機能はそのまま残す」)】');
+{
+  const fn = pick(/function saveCustomSymbol\(\)[\s\S]*?\n\}/);
+  ok(/const type = repOld \? repType :/.test(fn), '★置き換える先を選べば番号(type)はそのまま');
+  ok(/state\.customSymbols\[i\] = sym;/.test(fn) && /symStorePut\(\[sym\]\)/.test(fn), '★中身を置き換えて登録シンボルに書く(新しく増やさない)');
+  ok(/confirm\(`「\$\{nm\}」をこの形に置き換えます。/.test(fn) && /symConfirmTermMove\(repType, repOld, termsR\)/.test(fn), '置き換える前に確かめ、端子の位置が変わるなら使っている数を見せる');
+  ok(/symMovedNotice\(\{ \[type\]: repOld \}, null, true\)/.test(fn), '置き換えで端子の位置が変わったら、この画面の記号を知らせる');
+  const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
+  ok(/<select id="sr-replace"[^>]*><option value="">新しいシンボルとして登録<\/option><\/select>/.test(html), '「登録のしかた」= 新しいシンボル/置き換える(新しい登録も残る)');
+  ok(/srFillReplaceList\(\);/.test(pick(/function srClear\(\)[\s\S]*?\n\}/)), '登録画面を開くたびに置き換える先の一覧を作る');
+}
+
 console.log(ng ? `\n失敗 ${ng} 件` : '\nすべて通過');
 process.exit(ng ? 1 : 0);

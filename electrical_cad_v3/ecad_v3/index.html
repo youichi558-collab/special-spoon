@@ -669,6 +669,8 @@
           <div style="font-size:10px;color:var(--fg3);margin-top:3px">グリッド5単位スナップ　右クリック=Undo　左クリック2回で確定<br>橙の四角=登録範囲。上下左右の辺をドラッグで動かす(刻み5/10)。外にはみ出た所(薄い線)は登録するとき切る</div>
         </div>
         <div style="min-width:180px;display:flex;flex-direction:column;gap:8px">
+          <!-- 【2026-10-05】置き換える先(盛田さん「a でいい」「機能はそのまま残す」)。選ぶと番号(type)はそのままで中身を新しい形にする=使っている図面は全部この形になる -->
+          <div class="fr"><label>登録のしかた</label><select id="sr-replace" onchange="srReplaceChanged()" title="既にある登録シンボルを選ぶと、そのシンボルを置き換えます(番号はそのまま・使っている図面は全部この形になる)。置き換える前の登録シンボルはバックアップに残ります"><option value="">新しいシンボルとして登録</option></select></div>
           <div class="fr"><label>シンボル名 *</label><input type="text" id="sr-name" placeholder="例: 電磁弁"></div>
           <div class="fr"><label>カテゴリ</label><input type="text" id="sr-cat" value="カスタム"></div>
           <div class="fr"><label>種別（接点Ref用）</label>
