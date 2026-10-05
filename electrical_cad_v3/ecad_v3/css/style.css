@@ -282,6 +282,7 @@ body.fullscreen.lp-docked #sym-float, body.fullscreen.lp-docked #prt-float, body
 #prj-float .pt-add{float:right;padding:0 6px;border-radius:3px;color:var(--fg3);}
 #prj-float .pt-add:hover{background:var(--bg2);color:var(--acc);}
 #prj-float .pt-empty,#prj-float .pt-err{color:var(--fg3);cursor:default;}
+#pt-menu .pt-mi:hover{background:var(--bg3,#eee);}
 #prj-float .pt-msg{padding:8px;color:var(--fg3);font-size:11px;line-height:1.6;}
 #lpd-resizer{position:fixed;width:6px;cursor:ew-resize;z-index:22;display:none;}
 #lpd-resizer:hover,#lpd-resizer.on{background:var(--acc);opacity:.5;}

@@ -121,6 +121,64 @@ const rows = () => [...body.innerHTML.matchAll(/class="pt-row ([^"]*)"[^>]*data-
     ok(e.state.pages[0].dirty === true && toasts.includes('ng'), '書けなかったら未保存マークを戻して知らせる');
   }
 
+  console.log('\n【作成・名前の変更・削除(2026-10-05)】');
+  {
+    // 書ける作り物のフォルダ(move は無い=ブラウザの代わりの道を通す)
+    const W = (name, tree) => ({
+      kind: 'directory', name, tree,
+      async *entries() { for (const [n, v] of Object.entries(tree)) yield [n, typeof v === 'string' ? WF(tree, n) : W(n, v)]; },
+      async getDirectoryHandle(n, o) { if (!(n in tree)) { if (o && o.create) tree[n] = {}; else throw new Error('NotFound ' + n); } return W(n, tree[n]); },
+      async getFileHandle(n, o) { if (!(n in tree)) { if (o && o.create) tree[n] = ''; else throw new Error('NotFound ' + n); } return WF(tree, n); },
+      async removeEntry(n, o) { if (typeof tree[n] === 'object' && Object.keys(tree[n]).length && !(o && o.recursive)) throw new Error('not empty'); delete tree[n]; },
+      async queryPermission() { return 'granted'; },
+    });
+    const WF = (tree, n) => ({ kind: 'file', name: n, async getFile() { const t = tree[n]; return { size: Buffer.byteLength(t), async text() { return t; } }; },
+      async createWritable() { let b = ''; return { async write(x) { b += typeof x === 'string' ? x : await x.text(); }, async close() { tree[n] = b; } }; } });
+    const T = { 'A.seqzu': '{"pages":[{"name":"A"}]}', '盤外': { 'B.seqzu': '{"pages":[{"name":"B"}]}' }, 'docs': { 'x.txt': 'x' } };
+    sb.ptreeState.root = W('案件', T); sb.ptreeState.open = new Set(); sb.ptreeState.files = new Map();
+    const ans = []; sb.prompt = () => ans.shift(); const al = []; sb.alert = m => al.push(m); sb.confirm = () => true;
+    sb.renderPageTabs = () => {};
+
+    ans.push('S9'); await sb.ptreeNewFile('/盤外');
+    ok(T['盤外']['S9.seqzu'] && JSON.parse(T['盤外']['S9.seqzu']).pages[0].name === 'S9', '★新しい図面(.seqzu・白紙1ページ)をフォルダの中に作る');
+    ans.push('A'); await sb.ptreeNewFile('');
+    ok(/もうあります/.test(al.pop()) && T['A.seqzu'] === '{"pages":[{"name":"A"}]}', '★同じ名前があれば作らない(上書きしない)');
+    ans.push('a/b'); await sb.ptreeNewFolder('');
+    ok(/使えません/.test(al.pop()) && !('a' in T), '名前に / などは使えない');
+    ans.push('新'); await sb.ptreeNewFolder('');
+    ok(T['新'] && typeof T['新'] === 'object', 'フォルダを作る');
+
+    sb.state.pages = [{ name: 'A', _src: '/A.seqzu' }]; sb.ptreeState.files.set('/A.seqzu', {});
+    ans.push('A2'); await sb.ptreeRename('/A.seqzu', 'file');
+    ok(T['A2.seqzu'] && !('A.seqzu' in T), '★図面の名前を変える(中身はそのまま)');
+    eq([sb.state.pages[0]._src, !!sb.ptreeSrcHandle('/A2.seqzu'), !!sb.ptreeSrcHandle('/A.seqzu')], ['/A2.seqzu', true, false], '★開いているページの保存先も新しい名前に');
+    sb.state.pages = [{ name: 'B', _src: '/盤外/B.seqzu' }]; sb.ptreeState.files.set('/盤外/B.seqzu', {});
+    ans.push('盤内'); await sb.ptreeRename('/盤外', 'dir');
+    ok(T['盤内'] && T['盤内']['B.seqzu'] && !('盤外' in T), '★フォルダの名前を変える(中身を写して確かめてから元を消す)');
+    eq([sb.state.pages[0]._src, !!sb.ptreeSrcHandle('/盤内/B.seqzu')], ['/盤内/B.seqzu', true], 'フォルダの中の開いているページの保存先も付け替える');
+
+    const posts = []; let bkOk = true;
+    sb.fetch = async (url, o) => { posts.push(JSON.parse(o.body)); return { async json() { return bkOk ? { ok: true } : { ok: false, error: 'down' }; } }; };
+    bkOk = false; await sb.ptreeDelete('/A2.seqzu', 'file');
+    ok(T['A2.seqzu'] && /控えが取れないので削除しませんでした/.test(al.pop()), '★控え(バックアップ)が取れなければ削除しない');
+    bkOk = true; posts.length = 0;
+    sb.state.pages = [{ name: 'A', _src: '/A2.seqzu', dirty: false }];
+    await sb.ptreeDelete('/A2.seqzu', 'file');
+    ok(!('A2.seqzu' in T) && posts.length === 1 && posts[0].name === '削除_A2' && posts[0].data.pages[0].name === 'A', '★削除する前に「削除_〇〇」でバックアップに控えを取る');
+    eq([sb.state.pages[0]._src, sb.state.pages[0].dirty], [undefined, true], '消したファイルのページは図面に残し、未保存にする');
+    await sb.ptreeDelete('/docs', 'dir');
+    ok(T.docs && /図面以外のファイルがある/.test(al.pop()), '★図面以外のファイルが入ったフォルダは削除しない');
+    posts.length = 0; await sb.ptreeDelete('/盤内', 'dir');
+    ok(!('盤内' in T) && posts.length === 2, 'フォルダの削除は中の図面を全部控えてから');
+    sb.confirm = () => false; ans.push('X'); 
+    await sb.ptreeDelete('/新', 'dir');
+    ok('新' in T, '確認でやめたら削除しない');
+    sb.confirm = () => { confirms++; return confirmAns; };
+    const html = R('index.html');
+    ok(/onclick="ptreeNewFile\(''\)"/.test(html) && /onclick="ptreeNewFolder\(''\)"/.test(html) && /oncontextmenu="ptreeMenu\(event,'','root'\)"/.test(html), '上の「＋図面」「＋フォルダ」と、空いた所の右クリック');
+    ok(/oncontextmenu="ptreeMenu\(event,this\.dataset\.path,'file'\)"/.test(R('js/proj_tree.js')), '行の右クリックでメニュー');
+  }
+
   console.log('\n【フォルダ未設定】');
   sb.ptreeState.root = null;
   await sb.ptreeRender();

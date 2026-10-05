@@ -8,7 +8,9 @@
 //   ・行の「＋」で今の図面の後ろにページとして足す(盛田さん「コピー貼り付けしたいときはページを足した方がいい」)
 //   ・開いたページは開いたファイルを覚え(pg._src=ツリーの道筋)、「保存」で窓を出さずにそのファイルへ上書きする
 //     (盛田さん「開いたファイル全部書き換え出来ていい、普通そうだろ」。js/edit.js saveToSrcFile)
-//   ・ファイルの作成・名前変更・削除はしない
+//   ・【2026-10-05】右クリックのメニュー(と上の「＋図面」「＋フォルダ」)で、図面・フォルダの作成・名前の変更・削除(盛田さん「ツリーでできるように」)
+//     削除は**消す前に図面をバックアップ(server.py の /api/backup/save、名前「削除_〇〇」)に取る**=設定タブのバックアップから戻せる。
+//     取れなければ消さない。図面以外のファイルが入ったフォルダは消さない(エクスプローラで)。ブラウザの削除はごみ箱に入らないため
 // ================================================================
 
 const PTREE_KEY = 'ptree';                       // IndexedDB(settings.js の _stGet/_stPut)に覚えるフォルダの鍵
@@ -110,12 +112,12 @@ async function _ptRows(dir, path, depth, out, handles) {
     const pad = `padding-left:${8 + depth * 14}px`;
     if (it.h.kind === 'directory') {
       const op = ptreeState.open.has(p);
-      out.push(`<div class="pt-row pt-dir" style="${pad}" data-path="${_ptEsc(p)}" onclick="ptreeToggle(this.dataset.path)" title="${_ptEsc(it.name)}">${op ? '▾' : '▸'} 📁 ${_ptEsc(it.name)}</div>`);
+      out.push(`<div class="pt-row pt-dir" style="${pad}" data-path="${_ptEsc(p)}" onclick="ptreeToggle(this.dataset.path)" oncontextmenu="ptreeMenu(event,this.dataset.path,'dir')" title="${_ptEsc(it.name)}">${op ? '▾' : '▸'} 📁 ${_ptEsc(it.name)}</div>`);
       if (op) await _ptRows(it.h, p, depth + 1, out, handles);
     } else {
       handles.set(p, it.h);
       const cur = (state.pages || []).some(pg => pg._src === p) ? ' on' : '';   // 今開いているページのファイル
-      out.push(`<div class="pt-row pt-file${cur}" style="${pad}" data-path="${_ptEsc(p)}" onclick="ptreeOpenFile(this.dataset.path)" title="押すと今の図面と置き換えて開きます">　📄 ${_ptEsc(it.name.replace(PTREE_EXT, ''))}<span class="pt-add" onclick="event.stopPropagation();ptreeAddFile(this.parentNode.dataset.path)" title="今の図面の後ろにページとして足します(コピー・貼り付け用。保存するとこのファイルに書きます)">＋</span></div>`);
+      out.push(`<div class="pt-row pt-file${cur}" style="${pad}" data-path="${_ptEsc(p)}" onclick="ptreeOpenFile(this.dataset.path)" oncontextmenu="ptreeMenu(event,this.dataset.path,'file')" title="押すと今の図面と置き換えて開きます(右クリックで名前の変更・削除など)">　📄 ${_ptEsc(it.name.replace(PTREE_EXT, ''))}<span class="pt-add" onclick="event.stopPropagation();ptreeAddFile(this.parentNode.dataset.path)" title="今の図面の後ろにページとして足します(コピー・貼り付け用。保存するとこのファイルに書きます)">＋</span></div>`);
     }
   }
   if (!items.length && depth) out.push(`<div class="pt-row pt-empty" style="padding-left:${8 + depth * 14}px">(図面なし)</div>`);
@@ -143,6 +145,212 @@ async function ptreeRender() {
   if (seq !== _ptSeq) return;
   _ptHandles = handles;
   body.innerHTML = out.join('') || '<div class="pt-msg">このフォルダに図面(.seqzu)はありません</div>';
+}
+
+// ================================================================
+// 作成・名前の変更・削除(2026-10-05)
+// ================================================================
+const _PT_BAD = /[\\/:*?"<>|\x00-\x1f]/;
+function _ptCheckName(n) {
+  n = String(n == null ? '' : n).trim();
+  if (!n || n === '.' || n === '..') return { err: '名前が空です' };
+  if (_PT_BAD.test(n)) return { err: '名前に \\ / : * ? " < > | は使えません' };
+  return { name: n };
+}
+// 道筋('/盤外/Sheet1.seqzu') → 親フォルダの鍵と名前。根は ''
+async function _ptParent(path) {
+  const parts = String(path).split('/').filter(Boolean);
+  let d = ptreeState.root;
+  for (let i = 0; i < parts.length - 1; i++) d = await d.getDirectoryHandle(parts[i]);
+  return { dir: d, name: parts[parts.length - 1] || '', parentPath: parts.length > 1 ? '/' + parts.slice(0, -1).join('/') : '' };
+}
+async function _ptDir(dirPath) {
+  let d = ptreeState.root;
+  for (const n of String(dirPath || '').split('/').filter(Boolean)) d = await d.getDirectoryHandle(n);
+  return d;
+}
+async function _ptExists(dir, name) {
+  for await (const [n] of dir.entries()) if (n.toLowerCase() === name.toLowerCase()) return true;   // Windows は大文字小文字を区別しない
+  return false;
+}
+function _ptAsk(msg, def) { return (typeof prompt === 'function') ? prompt(msg, def) : null; }
+function _ptDone(msg) { if (typeof stToast === 'function') stToast(msg, 'ok'); ptreeRender(); }
+
+// 新しい図面(白紙1ページ)。dirPath: 作る場所(根は '')
+async function ptreeNewFile(dirPath) {
+  if (!ptreeState.root) return;
+  const r = _ptCheckName(_ptAsk('新しい図面の名前(拡張子 .seqzu は付けます)', 'Sheet1'));
+  if (r.err) { if (r.err !== '名前が空です') alert(r.err); return; }
+  const base = r.name.replace(PTREE_EXT, ''), fname = base + '.seqzu';
+  try {
+    const dir = await _ptDir(dirPath);
+    if (await _ptExists(dir, fname)) { alert(`「${fname}」はもうあります`); return; }
+    const pg = { name: base, elements: [], wires: [], groups: [], guides: [], frameObj: null };
+    const text = (typeof _saveJSON === 'function' && typeof _saveData === 'function')
+      ? _saveJSON(_saveData([pg], base.replace(/_[^_]+$/, ''))) : JSON.stringify({ version: 2, pages: [pg] }, null, 2);
+    const fh = await dir.getFileHandle(fname, { create: true });
+    const w = await fh.createWritable(); await w.write(text); await w.close();
+  } catch (e) { alert(`図面を作れませんでした（${e && e.message || e}）`); return; }
+  if (dirPath) ptreeState.open.add(dirPath);
+  _ptDone(`図面を作りました: ${fname}`);
+}
+
+async function ptreeNewFolder(dirPath) {
+  if (!ptreeState.root) return;
+  const r = _ptCheckName(_ptAsk('新しいフォルダの名前', '新しいフォルダ'));
+  if (r.err) { if (r.err !== '名前が空です') alert(r.err); return; }
+  try {
+    const dir = await _ptDir(dirPath);
+    if (await _ptExists(dir, r.name)) { alert(`「${r.name}」はもうあります`); return; }
+    await dir.getDirectoryHandle(r.name, { create: true });
+  } catch (e) { alert(`フォルダを作れませんでした（${e && e.message || e}）`); return; }
+  if (dirPath) ptreeState.open.add(dirPath);
+  _ptDone(`フォルダを作りました: ${r.name}`);
+}
+
+// 開いているページ・覚えている鍵・開いているフォルダの道筋を付け替える(名前の変更)。to=null なら外す(削除)
+function _ptRepath(from, to, isDir) {
+  const hit = p => isDir ? (p === from || p.startsWith(from + '/')) : p === from;
+  const conv = p => to + p.slice(from.length);
+  (state.pages || []).forEach(pg => {
+    if (!pg._src || !hit(pg._src)) return;
+    if (to) pg._src = conv(pg._src); else { delete pg._src; pg.dirty = true; }   // 消したファイルのページは未保存(保存で名前を付ける)
+  });
+  [...ptreeState.files.keys()].filter(hit).forEach(k => { const h = ptreeState.files.get(k); ptreeState.files.delete(k); if (to && !isDir) ptreeState.files.set(conv(k), h); });
+  [...ptreeState.open].filter(hit).forEach(k => { ptreeState.open.delete(k); if (to) ptreeState.open.add(conv(k)); });
+  if (typeof renderPageTabs === 'function') renderPageTabs();
+}
+
+async function ptreeRename(path, kind) {
+  if (!ptreeState.root || !path) return;
+  const isDir = kind === 'dir';
+  let par;
+  try { par = await _ptParent(path); } catch (e) { alert(`見つかりません（${e && e.message || e}）`); return; }
+  const cur = isDir ? par.name : par.name.replace(PTREE_EXT, '');
+  const r = _ptCheckName(_ptAsk(isDir ? 'フォルダの新しい名前' : '図面の新しい名前(拡張子 .seqzu は付けます)', cur));
+  if (r.err) { if (r.err !== '名前が空です') alert(r.err); return; }
+  const nn = isDir ? r.name : r.name.replace(PTREE_EXT, '') + '.seqzu';
+  if (nn === par.name) return;
+  if (nn.toLowerCase() !== par.name.toLowerCase() && await _ptExists(par.dir, nn)) { alert(`「${nn}」はもうあります`); return; }
+  try {
+    const h = isDir ? await par.dir.getDirectoryHandle(par.name) : await par.dir.getFileHandle(par.name);
+    if (typeof h.move === 'function') {
+      await h.move(nn);
+    } else if (!isDir) {
+      // move の無いブラウザ: 新しい名前に写して、同じ中身か確かめてから元を消す
+      const text = await (await h.getFile()).text();
+      const nh = await par.dir.getFileHandle(nn, { create: true });
+      const w = await nh.createWritable(); await w.write(text); await w.close();
+      if (await (await nh.getFile()).text() !== text) throw new Error('写した中身が元と違います(元のファイルは消していません)');
+      await par.dir.removeEntry(par.name);
+    } else {
+      // フォルダ(move の無いブラウザ): 新しい名前のフォルダに中身を全部写し、大きさを確かめてから元を消す。途中で失敗したら写しを消して元は残す
+      const nd = await par.dir.getDirectoryHandle(nn, { create: true });
+      try { await _ptCopyDir(h, nd); }
+      catch (e) { try { await par.dir.removeEntry(nn, { recursive: true }); } catch (e2) {} throw new Error(`写せませんでした(元のフォルダはそのまま): ${e && e.message || e}`); }
+      await par.dir.removeEntry(par.name, { recursive: true });
+    }
+    const to = par.parentPath + '/' + nn;
+    if (!isDir) ptreeState.files.has(path) && ptreeState.files.set(path, await par.dir.getFileHandle(nn));
+    _ptRepath(path, to, isDir);
+    if (isDir) {   // フォルダの中のファイルの鍵は付け替えられないので、開いているページの鍵を引き直す
+      for (const pg of state.pages || []) if (pg._src && pg._src.startsWith(to + '/') && !ptreeState.files.has(pg._src)) {
+        try { const q = await _ptParent(pg._src); ptreeState.files.set(pg._src, await q.dir.getFileHandle(q.name)); } catch (e) {}
+      }
+    }
+  } catch (e) { alert(`名前を変えられませんでした（${e && e.message || e}）`); return; }
+  _ptDone(`名前を変えました: ${nn}`);
+}
+
+// フォルダの中身を全部写す(ファイルは大きさを確かめる)
+async function _ptCopyDir(src, dst) {
+  for await (const [n, h] of src.entries()) {
+    if (h.kind === 'directory') { await _ptCopyDir(h, await dst.getDirectoryHandle(n, { create: true })); continue; }
+    const f = await h.getFile();
+    const nh = await dst.getFileHandle(n, { create: true });
+    const w = await nh.createWritable(); await w.write(f); await w.close();
+    if ((await nh.getFile()).size !== f.size) throw new Error(`「${n}」の大きさが合いません`);
+  }
+}
+
+// 消す前の控え: 図面をバックアップに取る(設定タブのバックアップから戻せる)。取れなければ例外
+async function _ptBackup(name, text) {
+  let data;
+  try { data = JSON.parse(text); } catch (e) { throw new Error(`「${name}」は図面として読めないので控えを取れません`); }
+  const r = await fetch('/api/backup/save', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: '削除_' + name.replace(PTREE_EXT, ''), keep: 999, data }) });
+  const j = await r.json();
+  if (!j.ok) throw new Error(`「${name}」の控えを取れませんでした（${j.error || 'サーバー'}）`);
+}
+
+async function ptreeDelete(path, kind) {
+  if (!ptreeState.root || !path) return;
+  const isDir = kind === 'dir';
+  let par, files = [], others = [];
+  try {
+    par = await _ptParent(path);
+    if (isDir) {
+      const walk = async (d, pre) => {
+        for await (const [n, h] of d.entries()) {
+          if (h.kind === 'directory') await walk(h, pre + n + '/');
+          else if (PTREE_EXT.test(n)) files.push({ name: pre + n, h });
+          else others.push(pre + n);
+        }
+      };
+      await walk(await par.dir.getDirectoryHandle(par.name), '');
+    } else files.push({ name: par.name, h: await par.dir.getFileHandle(par.name) });
+  } catch (e) { alert(`見つかりません（${e && e.message || e}）`); return; }
+  if (others.length) { alert(`フォルダ「${par.name}」には図面以外のファイルがあるので、ここでは削除しません。エクスプローラで削除してください。\n${others.slice(0, 10).join('\n')}${others.length > 10 ? '\n…' : ''}`); return; }
+  const dirtyOpen = (state.pages || []).some(pg => pg.dirty && pg._src && (pg._src === path || pg._src.startsWith(path + '/')));
+  const what = isDir ? `フォルダ「${par.name}」と中の図面 ${files.length} 件` : `図面「${par.name}」`;
+  if (!confirm(`${what}を削除します。\n\n削除する前に図面をバックアップに取ります(設定タブのバックアップから「削除_〇〇」で戻せます)。`
+    + (dirtyOpen ? '\n\n開いているページは図面に残ります(保存すると名前を付けて保存になります)。' : '') + '\n\n削除しますか？')) return;
+  try {
+    for (const f of files) await _ptBackup(f.name.split('/').pop(), await (await f.h.getFile()).text());
+  } catch (e) { alert(`${e && e.message || e}\n\n控えが取れないので削除しませんでした(start.bat でサーバーが動いているか確認してください)。`); return; }
+  try { await par.dir.removeEntry(par.name, { recursive: isDir }); }
+  catch (e) { alert(`削除できませんでした（${e && e.message || e}）`); return; }
+  _ptRepath(path, null, isDir);
+  _ptDone(`削除しました: ${par.name}(バックアップに控えがあります)`);
+}
+
+// 右クリックのメニュー
+function ptreeMenu(ev, path, kind) {
+  ev.preventDefault(); ev.stopPropagation();
+  ptreeMenuClose();
+  if (!ptreeState.root) return;
+  const dirPath = kind === 'dir' ? path : kind === 'file' ? path.split('/').slice(0, -1).join('/') : '';
+  const items = [];
+  if (kind === 'file') items.push(['開く(置き換え)', () => ptreeOpenFile(path)], ['ページとして足す', () => ptreeAddFile(path)], null);
+  items.push(['新しい図面', () => ptreeNewFile(dirPath)], ['新しいフォルダ', () => ptreeNewFolder(dirPath)]);
+  if (kind === 'file' || kind === 'dir') items.push(null, ['名前の変更', () => ptreeRename(path, kind)], ['削除', () => ptreeDelete(path, kind)]);
+  const m = document.createElement('div');
+  m.id = 'pt-menu';
+  m.style.cssText = `position:fixed;left:${ev.clientX}px;top:${ev.clientY}px;z-index:10002;background:var(--bg2,#fff);color:var(--fg,#000);border:1px solid var(--bd2,#888);border-radius:4px;box-shadow:0 2px 10px rgba(0,0,0,.35);padding:3px 0;font-size:12px;min-width:150px`;
+  items.forEach(it => {
+    if (!it) { const hr = document.createElement('div'); hr.style.cssText = 'border-top:1px solid var(--bd2,#ccc);margin:3px 0'; m.appendChild(hr); return; }
+    const d = document.createElement('div');
+    d.textContent = it[0];
+    d.className = 'pt-mi';
+    d.style.cssText = 'padding:4px 14px;cursor:pointer;white-space:nowrap' + (it[0] === '削除' ? ';color:var(--red,#c33)' : '');
+    d.onclick = () => { ptreeMenuClose(); it[1](); };
+    m.appendChild(d);
+  });
+  document.body.appendChild(m);
+  const r = m.getBoundingClientRect();   // 画面の外にはみ出さない
+  if (r.right > innerWidth) m.style.left = Math.max(0, innerWidth - r.width - 4) + 'px';
+  if (r.bottom > innerHeight) m.style.top = Math.max(0, innerHeight - r.height - 4) + 'px';
+  setTimeout(() => {
+    document.addEventListener('mousedown', _ptMenuOut, true);
+    document.addEventListener('keydown', _ptMenuKey, true);
+  }, 0);
+}
+function _ptMenuOut(e) { const m = document.getElementById('pt-menu'); if (m && !m.contains(e.target)) ptreeMenuClose(); }
+function _ptMenuKey(e) { if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); ptreeMenuClose(); } }
+function ptreeMenuClose() {
+  const m = document.getElementById('pt-menu'); if (m) m.remove();
+  document.removeEventListener('mousedown', _ptMenuOut, true);
+  document.removeEventListener('keydown', _ptMenuKey, true);
 }
 
 if (typeof window !== 'undefined') (window.__ecadLoaded = window.__ecadLoaded || {})['proj_tree.js'] = 1;
