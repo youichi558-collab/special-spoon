@@ -96,7 +96,7 @@ const rows = () => [...body.innerHTML.matchAll(/class="pt-row ([^"]*)"[^>]*data-
     const e = { console, LAYERS: [], renderPageTabs() {}, _syncCurrentPage() {}, usedSymbolsForSave: () => [], usedPartsForSave: () => [], usedTitleBlockTplsForSave: () => [],
       ptreeSrcHandle: s => handles[s] || null, stToast: (m, k) => toasts.push(k), alert: m => alerts.push(m), window: { showSaveFilePicker() {} }, dlMake: () => { e.dialog = true; } };
     vm.createContext(e);
-    vm.runInContext([pick(/function _saveJSON[\s\S]*?\n\}/), pick(/function _saveData\([\s\S]*?\n\}/), pick(/async function saveToSrcFile\([\s\S]*?\n\}/),
+    vm.runInContext([pick(/function _saveJSON[\s\S]*?\n\}/), pick(/function _saveData\([\s\S]*?\n\}/), pick(/async function saveToSrcFile\([\s\S]*?\n\}/), pick(/function _srcResolveThen\([\s\S]*?\n\}/),
       pick(/function _pageFileName\([\s\S]*?\n\}/), pick(/function saveAsProject\(\)[^\n]*/), pick(/function saveProject\(asNew\)[\s\S]*?\n\}/), pick(/function saveAllProject\(\)[\s\S]*?\n\}/)].join('\n'), e);
     e.state = { currentPage: 0, wireNoRule: '', saveFileName: 'x', pages: [
       { name: 'A1', _src: '/A.seqzu', dirty: true }, { name: 'B1', _src: '/B_all.seqzu', dirty: true }, { name: 'B2', _src: '/B_all.seqzu', dirty: true }, { name: '新', dirty: true }] };

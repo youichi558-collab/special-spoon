@@ -148,6 +148,9 @@ async function stWriteOut(fname, make, fallback, onDone) {
   try { await _stPut(ST_OUT_KEY, fh); } catch (e) {}           // 次回の開始位置として覚える
   const blob = build(fh.name);
   if (!blob) return;                                           // 中身が作れなかった(作る側で知らせ済み)
+  // 【2026-10-05】プロジェクトのフォルダの中の図面を窓で上書きするときも、上書きの前の中身を履歴に残す(js/proj_tree.js。盛田さん 案C)
+  try { if (typeof ptreeHistBeforeWrite === 'function') await ptreeHistBeforeWrite(fh, blob); }
+  catch (e) { stToast(`履歴を残せませんでした（${e && e.message || e}）。保存は続けます`, 'warn'); }
   try {
     const w = await fh.createWritable();
     await w.write(blob);

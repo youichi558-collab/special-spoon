@@ -8,6 +8,8 @@
 //   3. 履歴のフォルダはツリーにも台帳(xprojReadList)にも出さない(同じ図面が何重にも数えられるため)
 //   4. 名前を変えると履歴も付いていく
 //   5. 版を開くと置き換えで開き、保存先は元のファイルのまま・未保存
+//   6. 【案C】ブラウザを開き直したあとも、ツリーの道筋から鍵を引き直して窓を出さずに上書き(履歴も残る)。
+//      保存の窓でフォルダの中の図面を上書きしたときも履歴を残す。別のフォルダを開いたら道筋は外す
 const fs = require('fs');
 const vm = require('vm');
 let ng = 0;
@@ -25,7 +27,7 @@ const W = (name, tree) => ({
   async removeEntry(n, o) { if (tree[n] && tree[n].t === undefined && Object.keys(tree[n]).length && !(o && o.recursive)) throw new Error('not empty'); delete tree[n]; },
   async queryPermission() { return 'granted'; },
 });
-const WF = (tree, n) => ({ kind: 'file', name: n,
+const WF = (tree, n) => ({ kind: 'file', name: n, _tree: tree,
   async getFile() { const f = tree[n]; return { size: Buffer.byteLength(f.t), lastModified: f.m, async text() { return f.t; } }; },
   async createWritable() { let b = ''; return { async write(x) { b += typeof x === 'string' ? x : await x.text(); }, async close() { tree[n] = { t: b, m: clock }; } }; } });
 
@@ -36,7 +38,8 @@ const sb = { console, window: {}, LAYERS: [], alert() {}, confirm: () => true, _
   renderPageTabs() {}, usedSymbolsForSave: () => [], usedPartsForSave: () => [], usedTitleBlockTplsForSave: () => [],
   stToast: (m, k) => toasts.push([k, m]), document: { getElementById: () => null, body: { appendChild() {} }, createElement: () => ({ style: {} }) } };
 vm.createContext(sb);
-vm.runInContext(R('js/proj_tree.js') + '\n' + R('js/xref_project.js') + '\n' + [pick(/function _saveJSON[\s\S]*?\n\}/), pick(/function _saveData\([\s\S]*?\n\}/), pick(/async function saveToSrcFile\([\s\S]*?\n\}/)].join('\n')
+vm.runInContext(R('js/proj_tree.js') + '\n' + R('js/xref_project.js') + '\n' + [pick(/function _saveJSON[\s\S]*?\n\}/), pick(/function _saveData\([\s\S]*?\n\}/), pick(/async function saveToSrcFile\([\s\S]*?\n\}/), pick(/function _srcResolveThen\([\s\S]*?\n\}/),
+    pick(/function _pageFileName\([\s\S]*?\n\}/), pick(/function saveProject\(asNew\)[\s\S]*?\n\}/), pick(/function saveAllProject\(\)[\s\S]*?\n\}/)].join('\n')
   + '\nthis.ptreeState = ptreeState;', sb);
 
 const PG = n => ({ name: n, elements: [], wires: [] });
@@ -101,6 +104,48 @@ const fileText = (T, n) => T[n].t;
   eq(loads.map(l => [l[1], l[2]]), [['A2.seqzu', 'replace']], '★版を置き換えで開く');
   eq(loads[0][0], T['.seqzu_history']['A2.seqzu'][v.name].t, '開くのはその版の中身');
   eq([sb.state.pages[0]._src, sb.state.pages[0].dirty, !!sb.ptreeSrcHandle('/A2.seqzu')], ['/A2.seqzu', true, true], '★保存先は元のファイルのまま・未保存(上書き保存でその版に戻る)');
+
+  console.log('\n【案C: ブラウザを開き直したあと・保存の窓で上書きしたとき】');
+  sb._syncCurrentPage = () => {}; sb.window.showSaveFilePicker = () => {};
+  let dialog = 0; sb.dlMake = () => { dialog++; };
+  sb.ptreeState.files = new Map();   // ブラウザを開き直した = 鍵は消え、ページの道筋(_src)だけ自動保存に残っている
+  sb.state.pages = [Object.assign(PG('戻した'), { _src: '/A2.seqzu', dirty: true })]; sb.state.currentPage = 0;
+  clock += 60e3; const oldA = fileText(T, 'A2.seqzu');
+  sb.saveProject();
+  await new Promise(r => setTimeout(r, 20));
+  ok(dialog === 0 && /"戻した"/.test(fileText(T, 'A2.seqzu')), '★開き直したあとも、窓を出さずに開いたファイルへ上書き(道筋から鍵を引き直す)');
+  { const l = await sb.ptreeHistList('/A2.seqzu'); eq(T['.seqzu_history']['A2.seqzu'][l[0].name].t, oldA, '★そのときも履歴が残る(いちばん新しい版が上書き前の中身)'); }
+  sb.ptreeState.files = new Map();
+  sb.state.pages = [Object.assign(PG('消えた'), { _src: '/無い.seqzu', dirty: true })];
+  sb.saveProject();
+  await new Promise(r => setTimeout(r, 20));
+  ok(dialog === 1 && sb.state.pages[0]._src === undefined && !('無い.seqzu' in T), '★ファイルが無くなっていたら道筋を外して保存の窓(作らない)');
+  sb.ptreeState.files = new Map();
+  sb.state.pages = [Object.assign(PG('全1'), { _src: '/A2.seqzu', dirty: true })];
+  sb.saveAllProject();
+  await new Promise(r => setTimeout(r, 20));
+  ok(dialog === 1 && /"全1"/.test(fileText(T, 'A2.seqzu')), '★全ページ保存も開き直したあと窓を出さずに上書き');
+
+  // 保存の窓(js/settings.js stWriteOut)で書く直前
+  const findPath = (dir, tree, pre) => { for (const [n, v] of Object.entries(dir)) { if (v === tree) return pre.concat(n); if (v && v.t === undefined) { const r = findPath(v, tree, pre.concat(n)); if (r) return r; } } return null; };
+  sb.ptreeState.root.resolve = async fh => fh._tree === T ? [fh.name] : (findPath(T, fh._tree, []) || []).concat(fh.name);
+  const hB = await (await sb.ptreeState.root.getDirectoryHandle('盤内')).getFileHandle('B.seqzu');
+  const before2 = (await sb.ptreeHistList('/盤内/B.seqzu')).length, oldB = fileText(T['盤内'], 'B.seqzu');
+  clock += 60e3;
+  await sb.ptreeHistBeforeWrite(hB, { async text() { return '{"new":1}'; } });
+  const lb = await sb.ptreeHistList('/盤内/B.seqzu');
+  ok(lb.length === before2 + 1 && T['.seqzu_history']['盤内']['B.seqzu'][lb[0].name].t === oldB, '★保存の窓でフォルダの中の図面を上書きするときも、上書きの前の中身を履歴に残す');
+  eq(await sb.ptreeHistBeforeWrite({ name: 'Out.seqzu', _tree: {} }, { async text() { return 'x'; } }), '', 'フォルダの外は残さない');
+  ok(/await ptreeHistBeforeWrite\(fh, blob\)[\s\S]{0,200}\n  try \{\n    const w = await fh\.createWritable\(\)/.test(R('js/settings.js')), '★保存の窓で書く直前に呼んでいる');
+
+  // 別のフォルダを開いたら道筋は外す(同じ道筋の別ファイルに上書きしないため)
+  const other = W('別案件', { 'A2.seqzu': { t: '{"other":1}', m: clock } });
+  other.isSameEntry = async o => o === other;
+  sb.ptreeState.root.isSameEntry = async () => false;
+  sb.window.showDirectoryPicker = async () => other;
+  sb.state.pages = [Object.assign(PG('P'), { _src: '/A2.seqzu' })];
+  await sb.ptreeChooseRoot();
+  eq(sb.state.pages[0]._src, undefined, '★別のフォルダを開いたら、ページが覚えている道筋を外す');
 
   console.log('\n【右クリック】');
   ok(/\['履歴…', \(\) => ptreeHistShow\(path\)\]/.test(R('js/proj_tree.js')), '★図面の右クリックに「履歴…」');

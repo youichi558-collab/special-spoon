@@ -293,6 +293,21 @@ async function saveToSrcFile(src) {
   return true;
 }
 
+// 【2026-10-05】ブラウザを開き直すとファイルの鍵は消えるが、ページはツリーの道筋(_src。自動保存に入っている)を覚えている。
+// 保存の前にプロジェクトのフォルダから鍵を引き直す(js/proj_tree.js ptreeSrcResolve)→ 窓を出さずに上書き・履歴も残る
+// (盛田さん「履歴のこらない」「窓が出た」→ 案C)。引けなかった道筋は外す(=保存の窓)。引き直しを始めたら true(済んだら again をもう一度呼ぶ)
+function _srcResolveThen(pages, again) {
+  const has = s => typeof ptreeSrcHandle === 'function' && !!ptreeSrcHandle(s);
+  const need = [...new Set(pages.filter(p => p._src && p._src[0] === '/' && !has(p._src)).map(p => p._src))];
+  if (!need.length) return false;
+  const res = typeof ptreeSrcResolve === 'function' ? ptreeSrcResolve : async () => null;
+  Promise.all(need.map(s => res(s).catch(() => null))).then(() => {
+    state.pages.forEach(p => { if (need.includes(p._src) && !has(p._src)) delete p._src; });
+    again();
+  });
+  return true;
+}
+
 // 「名前を付けて保存」ボタン(2026-10-05 盛田さん。保存先が決まったページは「保存」が必ず上書きになるので、別の名前で保存する口)
 function saveAsProject() { saveProject(true); }
 
@@ -301,6 +316,7 @@ function saveProject(asNew) {
   // 現在ページのみ保存
   _syncCurrentPage();
   const pg = state.pages[state.currentPage];
+  if (_srcResolveThen([pg], () => saveProject(asNew))) return;   // ブラウザを開き直したあとはファイルの鍵を引き直してから
   const srcH = pg._src && typeof ptreeSrcHandle === 'function' ? ptreeSrcHandle(pg._src) : null;
   if (srcH && asNew !== true) { saveToSrcFile(pg._src); return; }   // 開いたファイルへ上書き
   const pages = srcH ? state.pages.filter(p => p._src === pg._src) : [pg];
@@ -329,6 +345,7 @@ function saveProject(asNew) {
 function saveAllProject() {
   // 全ページまとめて保存
   _syncCurrentPage();
+  if (_srcResolveThen(state.pages, saveAllProject)) return;   // ブラウザを開き直したあとはファイルの鍵を引き直してから
   // 【2026-10-04】ツリーから開いたページがあれば、ページごとに開いたファイルへ上書きする(1つのファイルにまとめない)。
   // 開いたファイルの無いページ(新しく作った等)は書かずに知らせる(そのページで「保存」=名前を付けて保存)
   const srcs = [...new Set(state.pages.filter(p => p._src && typeof ptreeSrcHandle === 'function' && ptreeSrcHandle(p._src)).map(p => p._src))];

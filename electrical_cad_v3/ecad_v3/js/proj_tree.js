@@ -38,8 +38,19 @@ async function ptreeAdopt(fh, pages) {
   ptreeRender();
 }
 
-// ページが開いたファイルの鍵(保存で使う。js/edit.js)。ブラウザを開き直すと鍵は消える(そのときの保存は「名前を付けて保存」)
+// ページが開いたファイルの鍵(保存で使う。js/edit.js)。ブラウザを開き直すと鍵は消える(→ ptreeSrcResolve で引き直す)
 function ptreeSrcHandle(src) { return (src && ptreeState.files.get(src)) || null; }
+// 【2026-10-05】ツリーの道筋からファイルの鍵を引き直す(ブラウザを開き直したあと。ページの _src は自動保存に残っている)。
+// 盛田さん「履歴のこらない」「窓が出た」→ 案C。フォルダの許可が要れば聞く(保存を押した直後に呼ぶ)。ファイルが無ければ null(=保存の窓)
+async function ptreeSrcResolve(src) {
+  const h0 = ptreeSrcHandle(src);
+  if (h0) return h0;
+  if (!src || src[0] !== '/') return null;
+  if (!ptreeState.root) { try { ptreeState.root = await _stGet(PTREE_KEY) || null; } catch (e) {} }
+  if (!ptreeState.root || !await _ptPerm(ptreeState.root, true)) return null;
+  try { const q = await _ptParent(src); const h = await q.dir.getFileHandle(q.name); ptreeState.files.set(src, h); return h; }
+  catch (e) { return null; }
+}
 
 const _ptEsc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const _ptCmp = (a, b) => a.name.localeCompare(b.name, 'ja', { numeric: true });
@@ -70,6 +81,10 @@ async function ptreeChooseRoot() {
     if (ptreeState.root) opt.startIn = ptreeState.root;
     dir = await window.showDirectoryPicker(opt);
   } catch (e) { return; }   // 取りやめ
+  let same = false;
+  try { same = !!ptreeState.root && await ptreeState.root.isSameEntry(dir); } catch (e) {}
+  // 別のフォルダにしたら、ページが覚えている道筋は外す(同じ道筋の別のファイルに上書きしないため。保存は名前を付けて保存になる)
+  if (!same) (state.pages || []).forEach(p => { if (p._src && p._src[0] === '/') delete p._src; });
   ptreeState.root = dir; ptreeState.open = new Set(); ptreeState.files = new Map();
   if (typeof xprojState !== 'undefined') { xprojState.files = []; xprojState.problems = []; xprojState.dirName = ''; }   // 前のフォルダの別ファイルを使わない(部品表・「更新」で読み直す)
   try { await _stPut(PTREE_KEY, dir); } catch (e) {}
@@ -378,6 +393,14 @@ async function ptreeHistSave(src, fh, newText) {
   const w = await h.createWritable(); await w.write(old); await w.close();
   for (const x of (await ptreeHistList(src)).slice(PTREE_HIST_KEEP)) { try { await d.removeEntry(x.name); } catch (e) {} }
   return name;
+}
+// 保存の窓(js/settings.js stWriteOut)で書く直前: プロジェクトのフォルダの中の図面なら、上書きの前の中身を履歴に残す(案C)
+async function ptreeHistBeforeWrite(fh, blob) {
+  if (!ptreeState.root || !fh || !PTREE_EXT.test(fh.name)) return '';
+  let parts = null;
+  try { parts = await ptreeState.root.resolve(fh); } catch (e) {}
+  if (!parts || !parts.length || parts[0] === PTREE_HIST) return '';   // フォルダの外・履歴の中
+  return ptreeHistSave('/' + parts.join('/'), fh, typeof blob === 'string' ? blob : await blob.text());
 }
 // 名前の変更で履歴も付けていく。from: 元の道筋、nn: 新しい名前(同じフォルダの中)
 async function _ptHistMove(from, nn) {
