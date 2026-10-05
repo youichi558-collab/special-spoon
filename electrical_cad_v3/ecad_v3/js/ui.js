@@ -2016,10 +2016,10 @@ function srFitToContent() {
 }
 
 function srClear() {
-  _srShapes = []; _srTerms = []; _srTool = null; _srDraw = null; _srFirst = null;
+  _srShapes = []; _srTerms = []; _srTool = 'term'; _srDraw = null; _srFirst = null;   // 【2026-10-05】作図ボタンを消したので、開いたときは端子点
   _srZoom = SR_SCALE; _srRange = null; _srRangeDrag = null;
   const roleEl = document.getElementById('sr-role'); if (roleEl) roleEl.value = '';
-  document.querySelectorAll('.sr-tool').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.sr-tool').forEach(b => b.classList.toggle('active', b.dataset.tool === _srTool));
   const n = document.getElementById('sr-name'); if (n) n.value = '';
   srFillReplaceList();
   const c = document.getElementById('sr-cat'); if (c) c.value = 'カスタム';
@@ -2223,31 +2223,7 @@ function srOnDown(e) {
     _srTerms.push({ x, y, label: '' });
     srUpdateTermList(); srRender(); return;
   }
-  if (_srTool === 'text') {
-    const txt = prompt('テキスト:','');
-    if (!txt) return;
-    _srShapes.push({ t:'T', text:txt, x, y, fs:14 });
-    srRender(); return;
-  }
-  // line/circle/rect: 2クリック確定
-  if (!_srFirst) {
-    _srFirst = { x, y };
-  } else {
-    const f = _srFirst;
-    if (_srTool==='line') {
-      _srShapes.push({ t:'L', x1:f.x, y1:f.y, x2:x, y2:y });
-    } else if (_srTool==='circle') {
-      const r = Math.round(Math.hypot(x-f.x,y-f.y));
-      if (r>0) _srShapes.push({ t:'C', cx:f.x, cy:f.y, r });
-    } else if (_srTool==='rect') {
-      const rw=Math.abs(x-f.x), rh=Math.abs(y-f.y);
-      if (rw>0&&rh>0) _srShapes.push({ t:'R', x:Math.min(f.x,x), y:Math.min(f.y,y), w:rw, h:rh });
-    }
-    _srFirst=null; _srDraw=null;
-    if (!_srRange) srRangeInit(); else { const b = srContentBox(_srShapes.slice(-1)), R = _srRange, st = srRangeStep();   // 描いた図形が範囲の外なら範囲を広げる
-      if (b) { R.x1 = Math.min(R.x1, Math.floor(b.x1 / st) * st); R.y1 = Math.min(R.y1, Math.floor(b.y1 / st) * st); R.x2 = Math.max(R.x2, Math.ceil(b.x2 / st) * st); R.y2 = Math.max(R.y2, Math.ceil(b.y2 / st) * st); srRangeShow(); } }
-    srRender();
-  }
+  // 【2026-10-05】直線・円・矩形・テキストの作図は消した(形も文字も図面で描いて貼り付ける。盛田さん)
 }
 
 function srOnMove(e) {
@@ -2264,12 +2240,6 @@ function srOnMove(e) {
   if (cvEl && _srRange && !_srFirst) {
     const r = srRaw(e), edge = srRangeEdgeAt(r.x, r.y);
     cvEl.style.cursor = edge ? (edge[0] === 'x' ? 'ew-resize' : 'ns-resize') : 'crosshair';
-  }
-  if (_srFirst) {
-    const f = _srFirst;
-    if      (_srTool==='line')   _srDraw = { t:'L', x1:f.x,y1:f.y,x2:x,y2:y };
-    else if (_srTool==='circle') { const r=Math.max(1,Math.round(Math.hypot(x-f.x,y-f.y))); _srDraw={t:'C',cx:f.x,cy:f.y,r}; }
-    else if (_srTool==='rect')   _srDraw = { t:'R', x:Math.min(f.x,x),y:Math.min(f.y,y),w:Math.abs(x-f.x),h:Math.abs(y-f.y) };
   }
   srRender();
 }

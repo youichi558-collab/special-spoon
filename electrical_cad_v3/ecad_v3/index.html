@@ -654,11 +654,8 @@
       <div style="display:flex;gap:14px;align-items:flex-start">
         <div>
           <div style="display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap">
-            <button class="fp-btn sr-tool active" data-tool="line"   onclick="srSetTool('line')">─ 直線</button>
-            <button class="fp-btn sr-tool"        data-tool="circle" onclick="srSetTool('circle')">○ 円</button>
-            <button class="fp-btn sr-tool"        data-tool="rect"   onclick="srSetTool('rect')">□ 矩形</button>
+            <!-- 【2026-10-05】直線・円・矩形・テキストのボタンは消した(盛田さん「2でいい、文字は図面で書いて貼り付ける」。形も文字も図面で描いて貼り付ける) -->
             <button class="fp-btn"                onclick="srPasteFromClipboard()">📋 貼り付け</button>
-            <button class="fp-btn sr-tool"        data-tool="text"   onclick="srSetTool('text')">Ａ テキスト</button>
             <button class="fp-btn sr-tool"        data-tool="term"   onclick="srSetTool('term')" style="color:#0067c0;border-color:#0067c0">⊕ 端子点</button>
             <button class="fp-btn sr-tool"        data-tool="erase"  onclick="srSetTool('erase')" style="color:var(--red)">✕ 消去</button>
             <button class="fp-btn" onclick="srUndo()" title="右クリックでも元に戻せます">↩ Undo</button>
@@ -666,7 +663,7 @@
           <canvas id="sym-reg-cv" width="320" height="260"
             style="border:1px solid var(--bd);cursor:crosshair;display:block;background:#fff"
             oncontextmenu="event.preventDefault();srUndo()"></canvas>
-          <div style="font-size:10px;color:var(--fg3);margin-top:3px">グリッド5単位スナップ　右クリック=Undo　左クリック2回で確定<br>橙の四角=登録範囲。上下左右の辺をドラッグで動かす(刻み5/10)。外にはみ出た所(薄い線)は登録するとき切る</div>
+          <div style="font-size:10px;color:var(--fg3);margin-top:3px">グリッド5単位スナップ　右クリック=Undo<br>橙の四角=登録範囲。上下左右の辺をドラッグで動かす(刻み5/10)。外にはみ出た所(薄い線)は登録するとき切る</div>
         </div>
         <div style="min-width:180px;display:flex;flex-direction:column;gap:8px">
           <!-- 【2026-10-05】置き換える先(盛田さん「a でいい」「機能はそのまま残す」)。選ぶと番号(type)はそのままで中身を新しい形にする=使っている図面は全部この形になる -->
