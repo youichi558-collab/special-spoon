@@ -400,11 +400,11 @@ function applyProjectData(d) {
       state.drawingTbTpls = (d.titleBlockTpls && typeof d.titleBlockTpls === 'object') ? d.titleBlockTpls : {};   // 図面の表題欄様式の写し(段階2)
       state.currentPage = 0;
       state.customSymbols.forEach(s => { DEFS[s.type] = s; });
-      // 図面のシンボル＋ライブラリでパレットを組み直し、ライブラリと違えば知らせる(段階3・決定(3)。js/sym_store.js)
+      // 図面のシンボル＋ライブラリでパレットを組み直す(段階3・決定(3)。js/sym_store.js)。
+      // 【2026-10-05】登録シンボルと違っても開いたときには聞かない(窓がループした)。比べるのはシンボルパネルの「登録シンボルと比べる」
       if (typeof setDrawingSymbols === 'function') {
         setDrawingSymbols(state.customSymbols);
         rebuildSymbolPalette();
-        setTimeout(() => { if (typeof checkDrawingSymbolsVsLibrary === 'function') checkDrawingSymbolsVsLibrary(); }, 0);
       }
       state.saveFileName = d.saveFileName || '';
       state.sel.els.clear(); state.sel.wires.clear();

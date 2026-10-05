@@ -934,6 +934,10 @@
     <button class="fp-btn" style="flex:1;font-size:10px" onclick="exportCustomSymbols()">📤 エクスポート</button>
     <button class="fp-btn" style="flex:1;font-size:10px" onclick="importCustomSymbols()">📥 インポート</button>
   </div>
+  <!-- 【2026-10-05】図面の中のシンボルと登録シンボル(ライブラリフォルダの symbols.json)の違いを、押したときだけ出す(js/sym_store.js) -->
+  <div style="padding:0 6px 4px;display:flex;flex-shrink:0">
+    <button class="fp-btn" style="flex:1;font-size:10px" onclick="symCompareDialog()" title="この図面に入っているシンボルと登録シンボルを比べ、違うものを一覧にします。シンボルごとに、図面を合わせるか登録シンボルを合わせるかを選べます">🔍 登録シンボルと比べる</button>
+  </div>
 
   <div onpointerdown="symFloatDown(event)" style="height:10px;background:var(--bg3);border-top:1px solid var(--bd2);border-radius:0 0 6px 6px;cursor:move;display:flex;align-items:center;justify-content:center;user-select:none"><span style="color:var(--fg3);font-size:10px;letter-spacing:3px">⠿⠿⠿</span></div>
 </div>

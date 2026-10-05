@@ -73,7 +73,7 @@ const ecadLib = (() => {
     await Promise.all(KINDS.map(loadKind));
     refreshViews();
     offerMigration();
-    if (typeof checkDrawingSymbolsVsLibrary === 'function') { try { checkDrawingSymbolsVsLibrary(); } catch (e) { console.error(e); } }
+    // 【2026-10-05】ここで図面と登録シンボルを比べて窓を出すのはやめた(js/sym_store.js symCompareDialog の説明)
   }
 
   // 保存。戻り値 {ok, error}

@@ -59,7 +59,7 @@ function load({ lib = {}, ready = true, legacy = [], migrated = [], pages = [], 
   vm.createContext(sb);
   vm.runInContext(read('js/sym_store.js'), sb);
   ['rebuildSymbolPalette', 'usedSymbolsForSave', 'symStorePut', 'symStoreDelete', 'symStoreReorder',
-   'checkDrawingSymbolsVsLibrary', 'setDrawingSymbols'].forEach(n => { sb[n] = vm.runInContext(n, sb); });
+   'symDiffList', 'symApplyChoices', 'symCompareDialog', 'setDrawingSymbols'].forEach(n => { sb[n] = vm.runInContext(n, sb); });
   return sb;
 }
 const types = sb => sb.state.customSymbols.map(s => s.type);
@@ -127,29 +127,32 @@ console.log('\n【ライブラリが読めていない間はブラウザの中�
   eq(sb._saves.length, 0, 'ライブラリへは送らない');
 }
 
-console.log('\n【図面とライブラリの違いを知らせる】');
+console.log('\n【図面と登録シンボルの違い(2026-10-05 開いたときは聞かない・押したときだけ比べる)】');
 {
   const base = sym('A', 10);
-  const sb = load({ lib: { A: base, B: sym('B', 1) } });
+  const C = sym('C', 5, { terminals: [{ x: 0, y: 0, label: '1' }] });
+  const sb = load({ lib: { A: base, B: sym('B', 1), C } });
   // プレビュー画像とキーの順だけ違う → 違いとみなさない
   const same = JSON.parse(JSON.stringify({ preview: 'data:other', terminals: base.terminals, shapes: base.shapes, h: base.h, w: base.w,
     role: '', cat: 'c', label: 'A', name: 'A', type: 'A' }));
   sb.setDrawingSymbols([same]);
-  sb.checkDrawingSymbolsVsLibrary();
-  ok(!sb._els['sym-diff'], '★プレビュー画像やキーの順だけの違いでは聞かない');
-  sb.setDrawingSymbols([sym('A', 20), sym('X', 3)]);
-  sb.checkDrawingSymbolsVsLibrary();
-  const ov = sb._els['sym-diff'];
-  ok(ov && /違う 1件: A/.test(ov.innerHTML) && /ライブラリに無い 1件: X/.test(ov.innerHTML), '★形が違う A・ライブラリに無い X を挙げる');
-  await sb._els['sym-diff-apply']._click();
-  eq([sb._lib.data.A.w, !!sb._lib.data.X, !!sb._lib.data.B], [20, true, true], '★「ライブラリへ反映」で図面の中のものを保存(他は残す)');
-  sb._lib.data = { A: base };   // 同じ図面で、また同じ違いになった
-  const n0 = sb.shown;
-  sb.checkDrawingSymbolsVsLibrary();
-  eq(sb.shown, n0, '★同じ違いは同じ図面で何度も聞かない');
-  sb.setDrawingSymbols([sym('A', 20), sym('X', 3)]);   // 図面を開き直した
-  sb.checkDrawingSymbolsVsLibrary();
-  eq(sb.shown, n0 + 1, '図面を開き直したらまた聞く');
+  eq(sb.symDiffList(), [], '★プレビュー画像やキーの順だけの違いは違いにしない');
+  const C2 = sym('C', 5, { terminals: [{ x: 0, y: 2, label: '1' }] });
+  sb.state.pages = [{ name: 'P', elements: [{ id: 'e1', type: 'C' }, { id: 'e2', type: 'C' }, { id: 'e3', type: 'A' }] }];
+  sb.setDrawingSymbols([sym('A', 20), sym('X', 3), C2]);
+  const L = sb.symDiffList();
+  eq(L.map(r => [r.type, r.missing, r.what, r.termsMoved, r.placed]),
+     [['A', false, ['形', '大きさ'], false, 1], ['X', true, ['登録シンボルに無い'], false, 0], ['C', false, ['端子の位置'], true, 2]],
+     '★違い(形・大きさ・端子の位置)・登録シンボルに無いもの・置いた数を出す');
+  eq(sb.shown || 0, 0, '★比べただけでは窓を出さない(開いたときも出さない)');
+  await sb.symApplyChoices(['C'], ['A', 'X']);
+  eq([sb._lib.data.A.w, !!sb._lib.data.X, !!sb._lib.data.B], [20, true, true], '★「登録シンボルを図面に合わせる/足す」は選んだものだけ登録シンボルへ(他は残す)');
+  eq([sb.state.drawingSymbols.C.terminals[0].y, sb.state.pages[0].dirty], [0, true], '★「図面を登録シンボルに合わせる」は図面の中のシンボルを置き換え、未保存にする');
+  ok(sb.state.drawingSymbols.C !== sb._lib.data.C, '図面には登録シンボルの写しを入れる(同じ物を共有しない)');
+  eq(sb.symDiffList(), [], '合わせたあとは違いが無い');
+  const ed = read('js/edit.js'), lb = read('js/library.js'), html = read('index.html');
+  ok(!/checkDrawingSymbolsVsLibrary/.test(ed + lb + read('js/sym_store.js')), '★図面を開いたとき・ライブラリを読んだときに比べて窓を出す処理は無い');
+  ok(/onclick="symCompareDialog\(\)"[^>]*>🔍 登録シンボルと比べる/.test(html), 'シンボルパネルに「登録シンボルと比べる」');
 }
 
 console.log(ng ? `\n失敗 ${ng} 件` : '\nすべて通過');
