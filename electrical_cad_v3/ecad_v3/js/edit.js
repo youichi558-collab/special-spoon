@@ -641,7 +641,99 @@ function dlMake(makeText, fname, mime, onDone) {
 // 選択したテキストのうち、最初に選んだもの(=Set挿入順の先頭)を基準にし、
 // 左揃え/右揃え/上揃え/下揃え/中央揃え(横)/中央揃え(縦)のいずれかで他のテキストを移動する。
 // 手順: ①基準・対象数を確認 → ②揃え方向を選択 → ③実行(Undo対応)＋結果を数秒ハイライト
+// ----------------------------------------------------------------
+// 【2026-10-06】シンボルの文字(デバイス名・型式・仕様)を縦一列に揃える(盛田さん)
+// 「文字揃えは型式・仕様・線番・端子番号が揃うなら意味がある、テキストだけだとあまり意味がない」
+// 「xyの数値をそろえるとかだが、シンボルによって違うよな」「デバイスと型式、仕様の文字を縦列できれいに並べるとかはかなり使える」(縦に並んだ ELB1・MCCB2・MC1・M の画面)
+// → 補正の数値は「シンボルの中心から」で、シンボルの大きさで初期位置も変わるので、数値を揃えても揃わない。
+//   **図面の上の実際の位置**(文字の左端。文字幅はこのPCのフォントで測る)を計算し、基準の左端に来るように各シンボルの補正を逆算して入れる。
+//   ・基準: 最初に選んだシンボルのデバイス名の左端(出ていなければ型式→仕様の左端)
+//   ・動かすのは左右だけ(行の高さは今のまま)。図面に出ていない文字・回転させた文字は動かさない
+//   ・仕様は「左揃え」にする(2行以上で中央揃えだと行ごとに左端が違い、短い行がへこむため。盛田さん「それでいい」)。表示しているメモも同じ左端
+//   ・実行前に移る先(縦の線と文字の枠)を図面に出して確認。Ctrl+Z で戻せる
+//   ・プロパティの仕様の「文字揃え」(1つのシンボルの中で起点のどちら側へ伸ばすか)は残す(盛田さん「残して」)
+// 端子台(junction)・線番・端子番号・横一列は今回は対象外(使いたくなったら足す)
+// ----------------------------------------------------------------
+const _ALIGN_SKIP = ['text','dim','leader','fline','rect','circle','arc','junction','bezier','angle_dim','triangle'];
+// シンボルの、図面に出ている文字(デバイス名・型式・仕様・メモ)。draw.js drawElements の位置の式と同じ
+function _symTextItems(el) {
+  if (!el || _ALIGN_SKIP.includes(el.type) || el.x == null || state.pdfSkipText) return [];
+  if (el.textRot) return [];   // 回転させた文字は揃えない
+  const d = getDef(el.type) || { w: 64, h: 34 };
+  const sc = el.scale || 1;
+  const meas = (font, t) => { ctx.font = font; return ctx.measureText(t).width; };
+  const base = el.labelOffY || (d.h * sc / 2 + 15 * sc);
+  const out = [];
+  if (state.showPartRef && el.partRef && !el.devHide) {
+    const fs = Math.round(el.devFs || 11), w = meas(`bold ${fs}px sans-serif`, el.partRef);
+    const ax = el.x + (el.devOffX || 0), y = el.y + (el.devOffY !== undefined ? el.devOffY : -(d.h * sc / 2 + 6));
+    out.push({ kind: 'dev', left: ax - w / 2, w, top: y - fs, h: fs + 2, apply: L => { el.devOffX = L + w / 2 - el.x; } });
+  }
+  if (el.showModel && el.partModel) {
+    const fs = Math.round(el.modelFs || el.labelFs || 11), w = meas(`${fs}px sans-serif`, el.partModel);
+    const ax = el.x + (el.modelOffX !== undefined ? el.modelOffX : (el.labelOffX || 0));
+    const lblLines = el.label ? String(el.label).split('\n').length : 0, lblFs = Math.round(el.labelFs || 11);
+    const y = el.y + (el.modelOffY !== undefined ? el.modelOffY : base + (lblLines ? (lblLines - 1) * Math.round(lblFs * 1.25) + fs + 3 : 0));
+    out.push({ kind: 'model', left: ax - w / 2, w, top: y - fs, h: fs + 2, apply: L => { el.modelOffX = L + w / 2 - el.x; } });
+  }
+  const lines = s => String(s).split('\n');
+  if (el.label && !el.specHide) {
+    const fs = Math.round(el.labelFs || 11), ls = lines(el.label), lh = Math.round(fs * 1.25);
+    const w = Math.max(...ls.map(t => meas(`${fs}px sans-serif`, t)));
+    const ax = el.x + (el.labelOffX || 0), al = el.labelAlign || 'center';
+    const left = al === 'left' ? ax : al === 'right' ? ax - w : ax - w / 2;
+    out.push({ kind: 'spec', left, w, top: el.y + base - fs, h: (ls.length - 1) * lh + fs + 2, apply: L => { el.labelOffX = L - el.x; el.labelAlign = 'left'; } });
+  }
+  if (el.showNote && el.note) {
+    const fs = Math.round(el.noteFs || el.labelFs || 11), ls = lines(el.note), lh = Math.round(fs * 1.25);
+    const w = Math.max(...ls.map(t => meas(`${fs}px sans-serif`, t)));
+    let auto = base;
+    if (el.label && !el.specHide) auto += lines(el.label).length * lh;
+    if (el.showModel && el.partModel) auto += lh;
+    const ax = el.x + (el.noteOffX !== undefined ? el.noteOffX : (el.labelOffX || 0)), al = el.labelAlign || 'center';
+    const left = al === 'left' ? ax : al === 'right' ? ax - w : ax - w / 2;
+    const y = el.y + (el.noteOffY !== undefined ? el.noteOffY : auto);
+    out.push({ kind: 'note', left, w, top: y - fs, h: (ls.length - 1) * lh + fs + 2, apply: L => { el.noteOffX = L - el.x; el.labelAlign = 'left'; } });
+  }
+  return out;
+}
+
+// 選んだシンボルの文字の左端を揃える。syms: 選んだ順のシンボル。戻り値は実行の約束(テスト用)
+function alignSymTexts(syms) {
+  const order = [...state.sel.els];
+  syms = syms.slice().sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  const items = syms.map(el => ({ el, it: _symTextItems(el) })).filter(o => o.it.length);
+  if (!items.length) { alert('揃える文字がありません(デバイス名・型式・仕様を図面に出しているシンボルを選んでください)。'); return null; }
+  const b0 = items[0].it;
+  const ref = b0.find(t => t.kind === 'dev') || b0.find(t => t.kind === 'model') || b0[0];
+  const L = ref.left;
+  const moves = [];
+  items.forEach(o => o.it.forEach(t => { if (Math.abs(t.left - L) > 0.05 || (t.kind === 'spec' && (o.el.labelAlign || 'center') !== 'left')) moves.push(t); }));
+  const nSym = items.length, refName = items[0].el.partRef || '(デバイス名なし)';
+  if (!moves.length) { alert(`選んだ${nSym}個のシンボルの文字は、もう左端が揃っています。`); return null; }
+  // 移る先を図面に出してから聞く(移る先の縦の線と、文字の枠)
+  const top = Math.min(...items.flatMap(o => o.it.map(t => t.top))), bot = Math.max(...items.flatMap(o => o.it.map(t => t.top + t.h)));
+  state.alignPreview = { x: L, y1: top - 10, y2: bot + 10, boxes: moves.map(t => ({ x: L, y: t.top, w: t.w, h: t.h })) };
+  draw();
+  return new Promise(res => setTimeout(() => {
+    const ok = confirm(`選んだ${nSym}個のシンボルの文字(デバイス名・型式・仕様)の左端を、「${refName}」のデバイス名の左端にそろえます(オレンジの線と枠が移る先)。\n`
+      + `動かす文字: ${moves.length}個(左右だけ。行の高さは今のまま。仕様は左揃えにします)\n\nよろしいですか？(実行後は Ctrl+Z で戻せます)`);
+    state.alignPreview = null;
+    if (!ok) { draw(); res(false); return; }
+    pushH();
+    moves.forEach(t => t.apply(L));
+    state.snapFlash = { pts: moves.map(t => ({ x: L, y: t.top + t.h / 2 })), t0: Date.now() };
+    const anim = () => { if (!state.snapFlash) return; if (Date.now() - state.snapFlash.t0 > 3000) { state.snapFlash = null; draw(); return; } draw(); requestAnimationFrame(anim); };
+    requestAnimationFrame(anim);
+    draw(); if (typeof updateRightPanel === 'function') updateRightPanel();
+    res(true);
+  }, 30));
+}
+
 function alignTexts() {
+  // シンボルを選んでいれば、シンボルの文字を縦一列に揃える(2026-10-06 上の alignSymTexts)。独立テキストだけなら今までどおり
+  const syms = state.elements.filter(el => state.sel.els.has(el.id) && _symTextItems(el).length);
+  if (syms.length) { alignSymTexts(syms); return; }
   const texts = state.elements.filter(el => state.sel.els.has(el.id) && el.type === 'text');
   if (texts.length < 2) {
     alert('テキストを2つ以上選択してください（独立テキストのみが対象です）。\n最初に選んだテキストが基準になります。');

@@ -66,6 +66,16 @@ function draw() {
   // ラバーバンド選択ボックス
   if (!state.pdfMode) drawGuides();
 
+  // 文字揃え(シンボルの文字)の移る先(js/edit.js alignSymTexts。確認の間だけ)
+  if (!state.pdfMode && state.alignPreview) {
+    const p = state.alignPreview;
+    ctx.save();
+    ctx.strokeStyle = '#ff9800'; ctx.lineWidth = 1.5 / state.zoom; ctx.setLineDash([6 / state.zoom, 4 / state.zoom]);
+    ctx.beginPath(); ctx.moveTo(p.x, p.y1); ctx.lineTo(p.x, p.y2); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha = 0.8;
+    p.boxes.forEach(b => ctx.strokeRect(b.x, b.y, b.w, b.h));
+    ctx.restore();
+  }
   // 移動した箇所のハイライト（alignTexts実行後、数秒間だけ表示）
   if (!state.pdfMode && state.snapFlash) {
     const t = (Date.now() - state.snapFlash.t0) / 400;
