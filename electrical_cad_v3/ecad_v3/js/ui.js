@@ -2582,6 +2582,13 @@ function deletePage(idx) {
 // ----------------------------------------------------------------
 // 右パネル（プロパティ）
 // ----------------------------------------------------------------
+// 【2026-10-06】「部品表の対象外」を目立たせる(盛田さん「もっと目立つようにできないか」→ 案1)。
+// 枠で囲んだ1行・大きめのチェックボックス。チェックを入れると枠と背景が赤になり「この部品は部品表に出ません」と出る(css/style.css .pp-zone)。
+// 色の切り替えは CSS(:has)でやるので、型式の引き継ぎ等でプログラムからチェックを入れたときも追いつく。欄の id(pp-zone / pp-jzone)は従来どおり
+function _ppZoneHtml(id, on) {
+  return `<label class="pp-zone" title="チェックすると部品表に集計されません。現地調達品など、この図面で手配しないものに使います"><input type="checkbox" id="${id}"${on ? ' checked' : ''}><span><b>部品表の対象外</b><span class="pp-zone-on">この部品は部品表に出ません</span></span></label>`;
+}
+
 function updateRightPanel() {
   // 部品パネルが開いていれば、選択中のシンボルの役割(コイル)で種別の絞り込みを付け直す(段階4)
   const pf = document.getElementById('prt-float');
@@ -2727,7 +2734,7 @@ function updateRightPanel() {
       // 【2026-08-23】盤内/盤外の2択セレクトから「対象外」チェックに変更。
       // 既定が盤内なので実質フラグ1つで足り、選ばせる必要が無かった。
       // 内部表現(el.panelZone: 未設定 or '外')は変えていないので既存データも読める。
-      html += `<div class="pp-row"><label>部品表の対象外</label><input type="checkbox" id="pp-jzone"${el.panelZone==='外'?' checked':''} title="チェックすると部品表に集計されません。現地調達品など、この図面で手配しないものに使います"></div>`;
+      html += `${_ppZoneHtml('pp-jzone', el.panelZone==='外')}`;
       html += `<details class="pp-details" style="border-left:4px solid ${jDevC}"><summary>デバイス表示の詳細（色・サイズ・位置）</summary>`;
       html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-jdfs" value="${escH(el.devFs!==undefined?el.devFs:'')}" placeholder="自動" min="4" max="48" step="1" oninput="previewJDeviceOff()"></div>`;
       html += `<div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="color" id="pp-jdcolor" value="${escH(el.devColor||'#555555')}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('pp-jdcolor','pp-jdcolorcode');previewJDeviceOff()"><input type="text" id="pp-jdcolorcode" value="${escH(el.devColor||'#555555')}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-jdcolorcode','pp-jdcolor');previewJDeviceOff()">${colorCodeBtns('pp-jdcolorcode','pp-jdcolor')}</div></div>`;
@@ -2887,7 +2894,7 @@ function updateRightPanel() {
       + ` placeholder="例: MC1, NFB1" onchange="onPartRefChanged()"></div>`
       + `<datalist id="pp-partref-list">${partRefOptionsHtml(el.partRef)}</datalist>`;
     html += `<div class="pp-row"><label>デバイスを図面に表示</label><input type="checkbox" id="pp-devhide"${el.devHide?'':' checked'} title="3極品等、同じデバイスを複数のシンボルに分けて配置する場合に使います。デバイス名は全部の要素に同じ値を入れつつ、文字はどれか1つだけに絞れます"></div>`;
-    html += `<div class="pp-row"><label>部品表の対象外</label><input type="checkbox" id="pp-zone"${el.panelZone==='外'?' checked':''} title="チェックすると部品表に集計されません。現地調達品など、この図面で手配しないものに使います"></div>`;
+    html += `${_ppZoneHtml('pp-zone', el.panelZone==='外')}`;
     html += `<details class="pp-details" style="border-left:4px solid ${devC}"><summary>デバイス表示の詳細（色・サイズ・位置）</summary>`;
     html += `<div class="pp-row"><label>サイズ</label><input type="number" id="pp-dfs" value="${escH(el.devFs||11)}" step="1" min="6" max="32" oninput="previewDeviceOff()"></div>`;
     html += `<div class="pp-row"><label>色</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><input type="color" id="pp-dcolor" value="${escH(el.devColor||'#1d6fb5')}" style="width:36px;height:24px;padding:1px;border:1px solid var(--bd2);border-radius:3px;cursor:pointer;flex-shrink:0" oninput="syncColorCode('pp-dcolor','pp-dcolorcode');previewDeviceOff()"><input type="text" id="pp-dcolorcode" value="${escH(el.devColor||'#1d6fb5')}" style="width:72px;font-size:11px" maxlength="7" oninput="syncColorPicker('pp-dcolorcode','pp-dcolor');previewDeviceOff()">${colorCodeBtns('pp-dcolorcode','pp-dcolor')}</div></div>`;

@@ -321,3 +321,9 @@ body.fullscreen #fs-exit{display:block;}
 .rp-pane.on{display:block}
 .rp-tabcopy{display:flex;gap:6px;padding:2px 4px 6px}
 .rp-tabcopy button{flex:1;font-size:11px;padding:3px 6px;background:var(--bg3);border:1px solid var(--bd2);border-radius:3px;cursor:pointer;color:var(--fg)}
+/* 【2026-10-06】プロパティの「部品表の対象外」(js/ui.js _ppZoneHtml)。枠で囲み、チェックを入れたら赤 */
+.pp-zone{display:flex;align-items:center;gap:8px;margin:6px 0;padding:6px 8px;border:1px solid var(--bd2);border-radius:4px;cursor:pointer;font-size:12px;color:var(--fg);}
+.pp-zone input[type=checkbox]{width:16px;height:16px;margin:0;flex-shrink:0;cursor:pointer;}
+.pp-zone .pp-zone-on{display:none;font-size:11px;font-weight:600;margin-top:2px;}
+.pp-zone:has(input:checked){border-color:var(--red);background:var(--rbg);color:var(--red);border-width:2px;padding:5px 7px;}
+.pp-zone:has(input:checked) .pp-zone-on{display:block;}

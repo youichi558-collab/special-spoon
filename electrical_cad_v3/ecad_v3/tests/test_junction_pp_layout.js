@@ -70,7 +70,7 @@ vm.createContext(sandbox);
 domEls['rp-body'] = { innerHTML: '', _el: null, _wire: null, addEventListener(){}, removeEventListener(){} };
 domEls['rp-apply-btn'] = { style: {} };
 
-vm.runInContext(grab('updateRightPanel'), sandbox);
+vm.runInContext(grab('_ppZoneHtml') + '\n' + grab('updateRightPanel'), sandbox);
 sandbox.updateRightPanel();
 const html = domEls['rp-body'].innerHTML;
 
