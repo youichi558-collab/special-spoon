@@ -356,7 +356,7 @@ async function ptreeDelete(path, kind) {
 // 履歴(世代管理)(2026-10-05)
 // 盛田さん「上書きした場合、バックアップからしか戻らない」「世代管理できないな」→ おすすめ(上書きのたび・フォルダの中・20件・右クリックで履歴)で決定。
 //   ・上書き保存(js/edit.js saveToSrcFile)の直前に、**上書きされる前の中身**を
-//     <プロジェクトのフォルダ>/.seqzu_history/<フォルダ>/<図面名>.seqzu/<日時>.seqzu に写す。日時はその中身を保存した時刻(ファイルの更新時刻)
+//     <プロジェクトのフォルダ>/.seqzu_history/<フォルダ>/<図面名>_履歴/<日時>.seqzu に写す(盛田さん「履歴でいい」=図面ごとのフォルダ名。最初は <図面名>.seqzu でファイルと見分けにくかった)。日時はその中身を保存した時刻(ファイルの更新時刻)
 //   ・中身が変わらない上書きでは残さない。図面ごとに新しい方から PTREE_HIST_KEEP 件、古いものは消す
 //   ・フォルダの外のファイル(ext:)には残さない(置き場所が無いため)。ツリー・台帳(xprojReadList)には出さない
 //   ・フォルダごと持ち運べば履歴も付いてくる。名前を変えると履歴も付いていく。削除しても履歴は残す(同じ名前で作ればその履歴に見える)
@@ -364,10 +364,25 @@ async function ptreeDelete(path, kind) {
 //     上書き保存でその版に戻る(そのとき今のファイルの中身も履歴に残る)。別に取っておくなら「名前を付けて保存」
 // ================================================================
 const _ptStamp = ms => { const d = new Date(ms), z = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}_${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}`; };
-// 道筋('/盤外/A.seqzu'。根は '') → 履歴の中の同じ道筋のフォルダ。create=false で無ければ例外
+// 図面の名前 → 履歴のフォルダの名前('A.seqzu' → 'A_履歴')。フォルダの名前はそのまま
+const _ptHistName = n => PTREE_EXT.test(n) ? n.replace(PTREE_EXT, '') + '_履歴' : n;
+// par の中のフォルダ old を nn にする(move が無いブラウザは写して元を消す。nn が既にあれば中身を合わせる)
+async function _ptMoveDir(par, old, nn) {
+  const h = await par.getDirectoryHandle(old);
+  if (old.toLowerCase() === nn.toLowerCase()) { if (typeof h.move === 'function') await h.move(nn); return; }   // 大文字小文字だけの変更(Windowsでは同じ名前)
+  if (typeof h.move === 'function' && !await _ptExists(par, nn)) { await h.move(nn); return; }
+  await _ptCopyDir(h, await par.getDirectoryHandle(nn, { create: true }));
+  await par.removeEntry(old, { recursive: true });
+}
+// 道筋('/盤外/A.seqzu'。根は '') → 履歴の中のフォルダ(.seqzu_history/盤外/A_履歴)。create=false で無ければ例外。
+// 最初の作りの名前(.seqzu_history/盤外/A.seqzu)の履歴があれば新しい名前へ移す
 async function _ptHistDir(path, create) {
   let d = await ptreeState.root.getDirectoryHandle(PTREE_HIST, { create: !!create });
-  for (const n of String(path || '').split('/').filter(Boolean)) d = await d.getDirectoryHandle(n, { create: !!create });
+  for (const n of String(path || '').split('/').filter(Boolean)) {
+    const hn = _ptHistName(n);
+    if (hn !== n) { try { if (await _ptExists(d, n) && (await d.getDirectoryHandle(n)).kind === 'directory') await _ptMoveDir(d, n, hn); } catch (e) {} }
+    d = await d.getDirectoryHandle(hn, { create: !!create });
+  }
   return d;
 }
 // 図面の版の一覧(新しい順)。[{ name: '2026-10-05_143000.seqzu', h }]
@@ -405,13 +420,10 @@ async function ptreeHistBeforeWrite(fh, blob) {
 // 名前の変更で履歴も付けていく。from: 元の道筋、nn: 新しい名前(同じフォルダの中)
 async function _ptHistMove(from, nn) {
   if (!ptreeState.root) return;
-  const fp = String(from).split('/').filter(Boolean), old = fp.pop();
-  let par, h;
-  try { par = await _ptHistDir(fp.join('/'), false); h = await par.getDirectoryHandle(old); } catch (e) { return; }   // 履歴なし
-  if (old.toLowerCase() === nn.toLowerCase()) { if (typeof h.move === 'function') await h.move(nn); return; }   // 大文字小文字だけの変更(Windowsでは同じ名前)
-  if (typeof h.move === 'function' && !await _ptExists(par, nn)) { await h.move(nn); return; }
-  await _ptCopyDir(h, await par.getDirectoryHandle(nn, { create: true }));   // 写して(同じ名前の古い履歴があれば合わせて)から元を消す
-  await par.removeEntry(old, { recursive: true });
+  try { await _ptHistDir(from, false); } catch (e) { return; }   // 履歴なし(最初の作りの名前ならここで移る)
+  const fp = String(from).split('/').filter(Boolean), old = _ptHistName(fp.pop());
+  const par = await _ptHistDir(fp.join('/'), false);
+  await _ptMoveDir(par, old, _ptHistName(nn));   // 同じ名前の古い履歴(消した図面の)があれば合わせる
 }
 const _ptHistLabel = n => n.replace(PTREE_EXT, '').replace(/^(\d{4}-\d\d-\d\d)_(\d\d)(\d\d)(\d\d)(?:_(\d+))?$/, (m, d, h, mi, s, k) => `${d} ${h}:${mi}:${s}${k ? ` (${k})` : ''}`);
 

@@ -54,8 +54,8 @@ const fileText = (T, n) => T[n].t;
 
   console.log('【上書きの前の中身を履歴に残す】');
   ok(await sb.saveToSrcFile('/A.seqzu'), '上書き保存できる');
-  const H = () => T['.seqzu_history'] && T['.seqzu_history']['A.seqzu'] || {};
-  eq(Object.keys(H()), ['2026-10-05_133000.seqzu'], '★上書きされる前の中身を .seqzu_history/A.seqzu/ に、その中身を保存した時刻の名前で残す');
+  const H = () => T['.seqzu_history'] && T['.seqzu_history']['A_履歴'] || {};
+  eq(Object.keys(H()), ['2026-10-05_133000.seqzu'], '★上書きされる前の中身を .seqzu_history/A_履歴/ に、その中身を保存した時刻の名前で残す');
   eq(H()['2026-10-05_133000.seqzu'].t, '{"v":"A0"}', '★残すのは上書き前の中身');
   ok(/"A1"/.test(fileText(T, 'A.seqzu')), 'ファイルは新しい中身');
   await sb.saveToSrcFile('/A.seqzu');
@@ -87,13 +87,13 @@ const fileText = (T, n) => T[n].t;
   const n0 = Object.keys(H()).length;
   sb.prompt = () => 'A2';
   await sb.ptreeRename('/A.seqzu', 'file');
-  ok(T['A2.seqzu'] && !T['.seqzu_history']['A.seqzu'] && Object.keys(T['.seqzu_history']['A2.seqzu']).length === n0, '★図面の名前の変更で履歴も新しい名前へ');
+  ok(T['A2.seqzu'] && !T['.seqzu_history']['A_履歴'] && Object.keys(T['.seqzu_history']['A2_履歴']).length === n0, '★図面の名前の変更で履歴も新しい名前へ');
   sb.ptreeState.files.set('/盤外/B.seqzu', await (await sb.ptreeState.root.getDirectoryHandle('盤外')).getFileHandle('B.seqzu'));
   sb.state.pages = [Object.assign(PG('B1'), { _src: '/盤外/B.seqzu' })];
   await sb.saveToSrcFile('/盤外/B.seqzu');
   sb.prompt = () => '盤内';
   await sb.ptreeRename('/盤外', 'dir');
-  ok(T['.seqzu_history']['盤内'] && T['.seqzu_history']['盤内']['B.seqzu'] && !T['.seqzu_history']['盤外'], '★フォルダの名前の変更でも履歴が付いていく');
+  ok(T['.seqzu_history']['盤内'] && T['.seqzu_history']['盤内']['B_履歴'] && !T['.seqzu_history']['盤外'], '★フォルダの名前の変更でも履歴が付いていく');
 
   console.log('\n【版を開く】');
   const loads = [];
@@ -102,7 +102,7 @@ const fileText = (T, n) => T[n].t;
   const v = (await sb.ptreeHistList('/A2.seqzu')).pop();
   await sb.ptreeHistOpen('/A2.seqzu', v.name);
   eq(loads.map(l => [l[1], l[2]]), [['A2.seqzu', 'replace']], '★版を置き換えで開く');
-  eq(loads[0][0], T['.seqzu_history']['A2.seqzu'][v.name].t, '開くのはその版の中身');
+  eq(loads[0][0], T['.seqzu_history']['A2_履歴'][v.name].t, '開くのはその版の中身');
   eq([sb.state.pages[0]._src, sb.state.pages[0].dirty, !!sb.ptreeSrcHandle('/A2.seqzu')], ['/A2.seqzu', true, true], '★保存先は元のファイルのまま・未保存(上書き保存でその版に戻る)');
 
   console.log('\n【案C: ブラウザを開き直したあと・保存の窓で上書きしたとき】');
@@ -114,7 +114,7 @@ const fileText = (T, n) => T[n].t;
   sb.saveProject();
   await new Promise(r => setTimeout(r, 20));
   ok(dialog === 0 && /"戻した"/.test(fileText(T, 'A2.seqzu')), '★開き直したあとも、窓を出さずに開いたファイルへ上書き(道筋から鍵を引き直す)');
-  { const l = await sb.ptreeHistList('/A2.seqzu'); eq(T['.seqzu_history']['A2.seqzu'][l[0].name].t, oldA, '★そのときも履歴が残る(いちばん新しい版が上書き前の中身)'); }
+  { const l = await sb.ptreeHistList('/A2.seqzu'); eq(T['.seqzu_history']['A2_履歴'][l[0].name].t, oldA, '★そのときも履歴が残る(いちばん新しい版が上書き前の中身)'); }
   sb.ptreeState.files = new Map();
   sb.state.pages = [Object.assign(PG('消えた'), { _src: '/無い.seqzu', dirty: true })];
   sb.saveProject();
@@ -134,7 +134,7 @@ const fileText = (T, n) => T[n].t;
   clock += 60e3;
   await sb.ptreeHistBeforeWrite(hB, { async text() { return '{"new":1}'; } });
   const lb = await sb.ptreeHistList('/盤内/B.seqzu');
-  ok(lb.length === before2 + 1 && T['.seqzu_history']['盤内']['B.seqzu'][lb[0].name].t === oldB, '★保存の窓でフォルダの中の図面を上書きするときも、上書きの前の中身を履歴に残す');
+  ok(lb.length === before2 + 1 && T['.seqzu_history']['盤内']['B_履歴'][lb[0].name].t === oldB, '★保存の窓でフォルダの中の図面を上書きするときも、上書きの前の中身を履歴に残す');
   eq(await sb.ptreeHistBeforeWrite({ name: 'Out.seqzu', _tree: {} }, { async text() { return 'x'; } }), '', 'フォルダの外は残さない');
   ok(/await ptreeHistBeforeWrite\(fh, blob\)[\s\S]{0,200}\n  try \{\n    const w = await fh\.createWritable\(\)/.test(R('js/settings.js')), '★保存の窓で書く直前に呼んでいる');
 
@@ -146,6 +146,13 @@ const fileText = (T, n) => T[n].t;
   sb.state.pages = [Object.assign(PG('P'), { _src: '/A2.seqzu' })];
   await sb.ptreeChooseRoot();
   eq(sb.state.pages[0]._src, undefined, '★別のフォルダを開いたら、ページが覚えている道筋を外す');
+
+  console.log('\n【履歴のフォルダ名は「図面名_履歴」・最初の作りの名前から移す】');
+  sb.ptreeState.root = W('案件', T);   // 上で別のフォルダを開いたので戻す
+  T['.seqzu_history']['旧.seqzu'] = { '2026-10-01_090000.seqzu': { t: '{"old":1}', m: clock } };
+  T['旧.seqzu'] = { t: '{"cur":1}', m: clock };
+  eq((await sb.ptreeHistList('/旧.seqzu')).map(x => x.name), ['2026-10-01_090000.seqzu'], '★最初の作りの名前(旧.seqzu)の履歴も読める');
+  ok(T['.seqzu_history']['旧_履歴'] && !('旧.seqzu' in T['.seqzu_history']), '★そのとき「旧_履歴」へ移す');
 
   console.log('\n【右クリック】');
   ok(/\['履歴…', \(\) => ptreeHistShow\(path\)\]/.test(R('js/proj_tree.js')), '★図面の右クリックに「履歴…」');
