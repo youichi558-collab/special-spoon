@@ -519,6 +519,13 @@
           <option value="jpeg">JPEG (ファイル小さめ)</option>
         </select>
       </div>
+      <div class="fr" style="margin-bottom:10px">
+        <label>色</label>
+        <select id="pdf-color" onchange="state.pdfColor=this.value;stSetPref('pdfColor',this.value)" title="白黒: 線・記号・文字をすべて黒で出す。カラー: 画面と同じ色で出す(白い文字だけは紙で消えないよう黒にする)。図面の色・画面の見た目は変わりません">
+          <option value="mono" selected>白黒 (全部黒)</option>
+          <option value="color">カラー (画面と同じ色)</option>
+        </select>
+      </div>
       <div style="display:flex;gap:6px;margin-top:8px">
         <button class="fp-btn primary" onclick="runExportPDF()">出力</button>
         <button class="fp-btn" onclick="closeFP('pdf-opt-p')">キャンセル</button>

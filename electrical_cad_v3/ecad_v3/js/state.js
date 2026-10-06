@@ -110,6 +110,7 @@ const state = {
   maskMode:     false,   // マスクモード（個人情報マスク）
   pdfZoom:      0,        // PDF出力時の実キャンバス倍率（線幅は state.zoom で計算）
   pdfDpi:       96,       // PDF出力DPI
+  pdfColor:     'mono',   // PDFの色: 'mono'=白黒(全部黒)/'color'=画面と同じ色(白い文字だけ黒)。js/pdf_export.js pdfWrapCtx(2026-10-06)
   pendingRef:   null,
   pendingTerm:  null,
   showPartRef:  true,  // デバイスのキャンバス表示（PDF出力にも反映される）。

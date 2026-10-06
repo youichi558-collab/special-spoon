@@ -2,6 +2,44 @@
 // pdf_export.js — PDF出力
 // 依存: state, LAYERS, getDef, drawSym, cv, ctx, dl
 // ================================================================
+// 【2026-10-06】PDF(と、そのプレビュー・SVG)の色。盛田さん「pdfは単色で出すのが楽だが、色付けたいときどうするかだな」→「それでいい」。
+// 発端: 画面で白にしたデバイス名・仕様が、白い紙の PDF で消えていた(盛田さんの 仕様２ 1006_Sheet3.pdf で PB1・CR1・上昇・CP1 等が抜けていた)。
+//   ・白黒(既定): 線・記号・文字・線番・図面枠をすべて黒。白(とほぼ白)の塗り=紙の背景・端子台の○の中・線番のふちどりは白のまま。塗りつぶしの色は黒になる
+//   ・カラー: 画面と同じ色(レイヤー・文字の色)。ただし白(とほぼ白)の文字だけは黒で描く(白い紙で消えないため)
+// 描く処理のあちこちを直さず、紙に描くキャンバスの「色を入れる口」(fillStyle/strokeStyle/fillText)だけを差し替える=描き忘れの抜けが出ない。
+// 図面のデータの色・画面の見た目は変えない
+function _pdfIsWhiteish(c) {
+  if (typeof c !== 'string') return false;
+  const v = c.trim().toLowerCase();
+  if (v === 'white') return true;
+  let r, g, b, m;
+  if ((m = v.match(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/))) { r = parseInt(m[1] + m[1], 16); g = parseInt(m[2] + m[2], 16); b = parseInt(m[3] + m[3], 16); }
+  else if ((m = v.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})?$/))) { r = parseInt(m[1], 16); g = parseInt(m[2], 16); b = parseInt(m[3], 16); }
+  else if ((m = v.match(/^rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/))) { r = +m[1]; g = +m[2]; b = +m[3]; }
+  else return false;
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 >= 0.88;
+}
+function pdfWrapCtx(c, mode) {
+  mode = mode || ((typeof state !== 'undefined' && state.pdfColor === 'color') ? 'color' : 'mono');
+  const P = Object.getPrototypeOf(c);
+  const fsD = Object.getOwnPropertyDescriptor(P, 'fillStyle'), ssD = Object.getOwnPropertyDescriptor(P, 'strokeStyle');
+  if (!fsD || !ssD) return c;
+  delete c.fillStyle; delete c.strokeStyle; delete c.fillText;   // 使い回すキャンバス(プレビュー)で前の差し替えを残さない
+  const black = v => (typeof v === 'string' && !_pdfIsWhiteish(v)) ? '#000000' : v;
+  if (mode === 'mono') {
+    Object.defineProperty(c, 'fillStyle', { configurable: true, get() { return fsD.get.call(c); }, set(v) { fsD.set.call(c, black(v)); } });
+    Object.defineProperty(c, 'strokeStyle', { configurable: true, get() { return ssD.get.call(c); }, set(v) { ssD.set.call(c, black(v)); } });
+  }
+  const ft = P.fillText;
+  c.fillText = function (...a) {
+    const cur = fsD.get.call(c);
+    const need = mode === 'mono' || _pdfIsWhiteish(cur);   // 文字は白でも黒に(白黒は全部・カラーは白い文字だけ)
+    if (need) fsD.set.call(c, '#000000');
+    try { return ft.apply(c, a); } finally { if (need) fsD.set.call(c, cur); }
+  };
+  return c;
+}
+
 function calcPageBounds(pg) {
   if (pg.frameObj) {
     const f = pg.frameObj;
@@ -106,6 +144,7 @@ function _renderPVPage() {
   pvc.height = Math.round(pageH * sc);
 
   const octx = pvc.getContext('2d');
+  pdfWrapCtx(octx);   // PDF の色(白黒/カラー。上の pdfWrapCtx)
   octx.fillStyle = '#ffffff';
   octx.fillRect(0, 0, pvc.width, pvc.height);
 
@@ -127,6 +166,10 @@ function _renderPVPage() {
   cv  = pvc;
   ctx = octx;
   state.zoom = sc;
+  // 【2026-10-06】プレビューも PDF と同じ「紙の描き方」(方眼なし・端子台の○の中は白)。以前は画面の方眼・背景色で描いていて、
+  // 白黒(pdfWrapCtx)だと方眼と○の中まで黒くなった。PDF 本体(_buildPDF)は前から pdfMode
+  const origPdfMode = state.pdfMode;
+  state.pdfMode = true;
 
   // 座標原点をページ左上に合わせる
   if (fr) {
@@ -146,6 +189,7 @@ function _renderPVPage() {
     state.pan         = origPan;
     state.currentPage = origPage;
     state.darkMode    = origDark;
+    state.pdfMode     = origPdfMode;
     if (origDark) document.body.classList.add('dk');
     else document.body.classList.remove('dk');
     state.sel.els   = origSelEls;
@@ -364,6 +408,7 @@ function _buildPDF(indices) {
         const oc = document.createElement('canvas');
         oc.width = imgW; oc.height = imgH;
         const octx = oc.getContext('2d');
+        pdfWrapCtx(octx);   // PDF の色(白黒/カラー。上の pdfWrapCtx)
         octx.fillStyle = '#ffffff';
         octx.fillRect(0, 0, imgW, imgH);
 
@@ -442,6 +487,7 @@ function exportSVG() {
   const oc = document.createElement('canvas');
   oc.width = imgW; oc.height = imgH;
   const octx = oc.getContext('2d');
+  pdfWrapCtx(octx);   // PDF の色(白黒/カラー。上の pdfWrapCtx)
   octx.fillStyle = '#ffffff';
   octx.fillRect(0, 0, imgW, imgH);
 
