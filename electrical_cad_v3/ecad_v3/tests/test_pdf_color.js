@@ -50,6 +50,7 @@ eq(c.log[0][2], '#123456', '設定(state.pdfColor)に従う');
 console.log('\n【組み込み】');
 eq((P.match(/const octx = (pvc|oc)\.getContext\('2d'\);\n\s*pdfWrapCtx\(octx\);/g) || []).length, 3, '★プレビュー・PDF・SVG の3か所で使う');
 eq(/const origPdfMode = state\.pdfMode;\n  state\.pdfMode = true;/.test(P) && /state\.pdfMode     = origPdfMode;/.test(P), true, '★プレビューも紙の描き方(方眼なし・○の中は白)で、終わったら戻す');
+eq(/const origDarkSvg = state\.darkMode;\n  state\.darkMode = false;/.test(P) && /try \{ draw\(\); \} finally \{ state\.darkMode = origDarkSvg; \}/.test(P), true, '★SVG も紙の色(ダークモードを外す)で描く(以前は背景が暗い灰色→白黒で全面が黒になった。盛田さんの 仕様２ 1006.svg)');
 const H = R('index.html');
 eq(/<select id="pdf-color" onchange="state\.pdfColor=this\.value;stSetPref\('pdfColor',this\.value\)"[^>]*>\s*<option value="mono" selected>白黒/.test(H), true, '★PDF出力設定に「色」(初期は白黒)・選んだものを覚える');
 eq(/p\.pdfColor === 'mono' \|\| p\.pdfColor === 'color'/.test(R('js/settings.js')) && /pdfColor: +'mono'/.test(R('js/state.js')), true, '次に開いたときも同じ設定');

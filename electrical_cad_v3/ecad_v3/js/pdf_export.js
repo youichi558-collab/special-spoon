@@ -498,12 +498,16 @@ function exportSVG() {
   cv = oc; ctx = octx;
   state.zoom = sc2;
   state.pdfMode = true;
+  // 【2026-10-06】PDF と同じく紙の色で描く(ダークモードを外す)。以前はダークモードのまま描いていて、SVG の背景が暗い灰色になっていた
+  // (白黒の PDF の色(pdfWrapCtx)を入れたら全面が黒になって見つかった。盛田さんの 仕様２ 1006.svg)
+  const origDarkSvg = state.darkMode;
+  state.darkMode = false;
   state.frameObj = fr2 || state.frameObj;
   state.pan = fr2 ? { x: 0, y: 0 } : { x: -calcPageBounds(pg).minX * sc2, y: -calcPageBounds(pg).minY * sc2 };
   // テキストもCanvasで描画する（文字化け防止）
   state.sel.els.clear(); state.sel.wires.clear();
 
-  draw();
+  try { draw(); } finally { state.darkMode = origDarkSvg; }
 
   state.pdfMode = false;
   state.frameObj = origFrameObj;
