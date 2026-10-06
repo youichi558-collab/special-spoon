@@ -348,9 +348,12 @@ function groupWiresByNet(wires, tol, elements) {
 // (Sheet3 は文字サイズ6・7で中心が右へ7〜8。縦の線31本中29本をこう動かしていた)。横の線は今までどおり線の上
 // draw.js は線を描いた向きで既定の側(左/右)が変わるので、その向きから補正量を計算する
 // (表示の初期位置そのものは変えない=既存の図面の線番は動かない。案A)
+// **線番を新しく入れたときだけ呼ぶ**(番号のある線の書き換えでは呼ばない)。
+// 【2026-10-06 直し】線を選ぶとプロパティ欄が補正0・0・サイズ10を書き込むため、「補正が未設定」では判定できなかった
+// (盛田さん「垂直に引いた場合、位置が左だな」)。補正が0・0(=動かしていない)なら初期位置、サイズは10(今までの初期値)か未設定なら6
 function wnDefaultPos(w) {
-  if (!w || !w.wireNo || w.wireNoOffX != null || w.wireNoOffY != null) return;
-  if (w.wireNoFs == null) w.wireNoFs = 6;
+  if (!w || !w.wireNo || (w.wireNoOffX || 0) !== 0 || (w.wireNoOffY || 0) !== 0) return;
+  if (w.wireNoFs == null || w.wireNoFs === 10) w.wireNoFs = 6;
   const pts = w.pts || [{ x: w.x1, y: w.y1 }, { x: w.x2, y: w.y2 }];
   const n = pts.length; if (n < 2) return;
   const i = Math.floor((n - 1) / 2), j = Math.ceil((n - 1) / 2);   // 線番を描く所(draw.js と同じ真ん中の区間)

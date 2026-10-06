@@ -215,7 +215,7 @@ function doPointerLeftDown(cx, cy, e, wxOverride, wyOverride) {
       const wires = state.wires || (pg && pg.wires) || [];
       const wi = wires.indexOf(w);
       const net = groupWiresByNet(wires, null, state.elements || (pg && pg.elements)).find(g => g.includes(wi));
-      if (net) _setNetWireNo(wires, net, assigned); else { w.wireNo = assigned; w.wireNoMain = false; if (typeof wnDefaultPos === 'function') wnDefaultPos(w); }
+      if (net) _setNetWireNo(wires, net, assigned); else { const was = w.wireNo; w.wireNo = assigned; w.wireNoMain = false; if (!was && typeof wnDefaultPos === 'function') wnDefaultPos(w); }
       const pp = wnPagePart(state.currentPage || 0);
       state.wireNoNext = pp.err ? '' : wnNextFree(pp.part, wnUsedNos());
       document.getElementById('s-hint').textContent = `「${assigned}」を割当 → 次:「${state.wireNoNext}」をクリック  [ESC] 終了`;
@@ -253,7 +253,7 @@ function handleDblAction(wx, wy) {
   if (wire) {
     const txt = prompt('線番:', wire.wireNo || '');
     if (txt === null) return;
-    pushH(); wire.wireNo = txt; if (typeof wnDefaultPos === 'function') wnDefaultPos(wire); draw(); return;
+    pushH(); const was = wire.wireNo; wire.wireNo = txt; if (!was && typeof wnDefaultPos === 'function') wnDefaultPos(wire); draw(); return;
   }
   const el = hitTest(wx, wy);
   if (!el) return;

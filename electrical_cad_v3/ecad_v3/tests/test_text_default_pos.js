@@ -52,12 +52,22 @@ eq([hz.wireNoFs, hz.wireNoOffX, hz.wireNoOffY], [6, undefined, undefined], '横�
 const moved = Object.assign(W(0, 0, 0, 100), { wireNo: '05', wireNoOffX: -5, wireNoOffY: 3 });
 sb._setNetWireNo([moved], [0], '06');
 eq([moved.wireNo, moved.wireNoOffX, moved.wireNoOffY, moved.wireNoFs], ['06', -5, 3, undefined], '★もう番号のある線は書き換えても位置・サイズを変えない');
+// 【直し】線を選ぶとプロパティ欄が補正0・0・サイズ10を書き込む(盛田さん「垂直に引いた場合、位置が左だな」)
+const touched = Object.assign(W(0, 0, 0, 100), { wireNoOffX: 0, wireNoOffY: 0, wireNoFs: 10 });
+sb._setNetWireNo([touched], [0], '07');
+eq([touched.wireNoFs, center(touched)], [6, [8, 0]], '★プロパティ欄で補正0・0・サイズ10が入った線でも、新しく線番を入れたら線の右・サイズ6');
+const keep = Object.assign(W(0, 0, 0, 100), { wireNo: '08', wireNoOffX: 0, wireNoOffY: 0, wireNoFs: 10 });
+sb._setNetWireNo([keep], [0], '09');
+eq([keep.wireNoFs, keep.wireNoOffX], [10, 0], '★番号のある線の書き換えでは、補正0・0でも変えない(既存の図面は動かない)');
+const own = Object.assign(W(0, 0, 0, 100), { wireNoOffX: -15, wireNoOffY: 0, wireNoFs: 8 });
+sb._setNetWireNo([own], [0], '10');
+eq([own.wireNoFs, own.wireNoOffX], [8, -15], '先に手で補正・サイズを入れてあれば、それを使う');
 
 console.log('\n【新しく置くときだけ(既存の図面の文字は動かない)】');
 const D = R('js/draw.js');
 eq([/const dy = el\.devOffY !== undefined \? el\.devOffY : -\(d\.h\*sc\/2 \+ 6\);/.test(D), /const fs = Math\.round\(el\.devFs \|\| 11\);/.test(D), /const fs  = w\.wireNoFs \|\| 10;/.test(D), /const fs = el\.termFs \|\| 9;/.test(D)], [true, true, true, true], '★表示の初期位置・サイズは変えていない');
 eq([/applyDefaultTextPos\(state\.elements\[state\.elements\.length - 1\]\);/.test(pick(T, /const symTool = \{[\s\S]*?\n\};/)), /applyDefaultTextPos\(state\.elements\[state\.elements\.length-1\]\)/.test(R('js/symbol_lib.js'))], [true, true], '★シンボルを置いたとき(パレット・シンボルライブラリ)に入れる');
-eq([/wnDefaultPos\(w\)/.test(R('js/input.js')), /wnDefaultPos\(wire\)/.test(R('js/input.js')), /wnFresh[\s\S]{0,400}wnDefaultPos\(wire\)/.test(R('js/ui.js'))], [true, true, true], '★線番を新しく入れる所(線番ツール・ダブルクリック・プロパティ)で入れる');
+eq([/wnDefaultPos\(w\)/.test(R('js/input.js')), /wnDefaultPos\(wire\)/.test(R('js/input.js')), /wnFresh[\s\S]{0,600}wnDefaultPos\(wire\)/.test(R('js/ui.js')), /const was = w\.wireNo;[^\n]*if \(!was &&/.test(R('js/input.js')), /const was = wire\.wireNo;[^\n]*if \(!was &&/.test(R('js/input.js'))], [true, true, true, true, true], '★線番を新しく入れる所(線番ツール・ダブルクリック・プロパティ)で入れる・番号のある線の書き換えでは入れない');
 
 console.log(ng ? `\nNG ${ng} 件` : '\nすべてOK');
 process.exit(ng ? 1 : 0);
