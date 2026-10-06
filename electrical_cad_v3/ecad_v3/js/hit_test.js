@@ -42,7 +42,15 @@ function hitTest(wx, wy) {
       continue;
     }
     if (el.type === 'fline')  { if (distToSeg(wx,wy,el.x1,el.y1,el.x2,el.y2) < R) return el; continue; }
-    if (el.type === 'rect')   { if (wx>=el.x&&wx<=el.x+el.w&&wy>=el.y&&wy<=el.y+el.h) return el; continue; }
+    if (el.type === 'rect') {
+      // 【2026-10-06】辺の近くだけで当たる(円と同じ)。以前は四角の内側全体で当たり、後から描いた枠(一点鎖線の囲み等)の中の
+      // シンボルをクリックしても枠が選ばれていた(盛田さん「一点鎖線で囲った中をクリックしても中のシンボルにクリックできない」→ 案1)。
+      // 塗りつぶしの四角(fillColor)は内側も当たる(塗った所は見た目にも四角の一部のため)
+      const x1 = Math.min(el.x, el.x + el.w), x2 = Math.max(el.x, el.x + el.w), y1 = Math.min(el.y, el.y + el.h), y2 = Math.max(el.y, el.y + el.h);
+      const inX = wx >= x1 - R && wx <= x2 + R, inY = wy >= y1 - R && wy <= y2 + R;
+      if (inX && inY && (el.fillColor || Math.abs(wx - x1) < R || Math.abs(wx - x2) < R || Math.abs(wy - y1) < R || Math.abs(wy - y2) < R)) return el;
+      continue;
+    }
     if (el.type === 'circle') { if (Math.abs(Math.hypot(wx-el.x,wy-el.y)-el.r) < R) return el; continue; }
     if (el.type === 'arc') {
       const dist = Math.abs(Math.hypot(wx-el.x,wy-el.y)-el.r);
