@@ -645,7 +645,9 @@ function exportDXF(){
       // 端子番号。文字サイズは端子ごとの指定(labelFs)があればそれを使う。
       // 「作業画面に表示されているものがそのまま出力される」の原則により、
       // draw.jsのdrawJunctionElと同じ条件・位置・サイズにする(2026-08-22)。
-      if(el.label && el.style!=='dot') eText(layer,el.x+(el.r||5)+4+(el.labelOffX||0),el.y+(el.labelOffY||0),el.labelFs||11,el.label);
+      // 【2026-10-06】画面は左揃え・基準線 y+4。DXFだけ中央揃え・+4なしで、番号が左上にずれて
+      // 線番に重なっていた(盛田さん「文字が重なるな」TrueViewのPDF)。画面と同じにした。
+      if(el.label && el.style!=='dot') eText(layer,el.x+(el.r||5)+4+(el.labelOffX||0),el.y+4+(el.labelOffY||0),el.labelFs||11,el.label,0,'left');
       // デバイス表示(端子台のTB1等)。draw.jsのdrawJunctionElと同じ条件・位置式。
       // 従来DXF出力に一切存在せず、画面には出るのにDXFに出ないというギャップの
       // 一因だった(2026-08-03)。
