@@ -162,6 +162,32 @@ const wireTool = {
 // ----------------------------------------------------------------
 // シンボル配置ツール
 // ----------------------------------------------------------------
+// 【2026-10-06】新しく置いたシンボルの文字の初期位置(盛田さん「デバイス、型式、線番、端子番号などのデフォルト位置を見直せるか」)。
+// 盛田さんの図面(Sheet3)で手で動かしていた位置の真ん中に合わせた(「数字は真ん中でいい」):
+//   ・デバイス名: 接点・ランプ等はシンボルの右(+10)・高さは中央(0)。コイルは中央(コイルの中)
+//   ・端子番号: リレーの接点・コイル(種別 coil / contact_a / contact_b)の縦向きの端子は、線の左(-10)で、
+//     高さは記号の中心から上の端子=-7・下の端子=+13(文字の下端)。a接点(高さ54)・b接点/コイル(高さ80)で同じ位置だった
+//   ・文字サイズ: デバイス名6・端子番号5(Sheet3 で使っているサイズ。位置はこのサイズで合わせてあるので組で入れる。盛田さん「1で、デバイス名は6」)
+//   ・仕様・型式・端子台の文字は決まった形が無いので変えない(仕様・型式のサイズも11のまま)
+// **新しく置くときだけ値を入れる(案A)**。表示の初期位置そのものは変えないので、既存の図面の文字は動かない
+function applyDefaultTextPos(el) {
+  const d = (el && typeof getDef === 'function') ? getDef(el.type) : null;
+  if (!d) return;
+  const role = d.role || '';
+  el.devFs = 6; el.termFs = 5;
+  el.devOffY = 0;
+  if (role !== 'coil') el.devOffX = 10;
+  if (['coil', 'contact_a', 'contact_b'].includes(role) && Array.isArray(d.terminals) && d.terminals.length) {
+    const sc = el.scale || 1, sep = (typeof SYM_TERM_SEP === 'number') ? SYM_TERM_SEP : 2;
+    el.termOff = d.terminals.map(t => {
+      const tx = (t.x || 0) * sc, ty = (t.y || 0) * sc;
+      if (Math.abs(ty) <= Math.abs(tx)) return [0, 0];    // 横向きの端子は今までどおり
+      if (Math.abs(ty) < 15) return [-10, 0];              // 中心に近い端子は左へ寄せるだけ
+      return [-10, (ty < 0 ? -7 : 13) - (ty - sep)];       // 文字の下端を中心から -7 / +13 に
+    });
+  }
+}
+
 const symTool = {
   onDown(wx, wy, e) {
     if (!state.symType) return;
@@ -189,6 +215,7 @@ const symTool = {
     });
     // ブレーカ系は極数の既定(2P)を入れる。仕様欄は既定値を入れない方針のまま(上のlabel参照)
     if (typeof applyDefaultChoices === 'function') applyDefaultChoices(state.elements[state.elements.length - 1]);
+    applyDefaultTextPos(state.elements[state.elements.length - 1]);
     state.preview = null;
   },
 

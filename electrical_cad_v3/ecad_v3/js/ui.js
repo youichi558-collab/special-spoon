@@ -3297,10 +3297,13 @@ function applyRightPanel() {
     el.layer      = vLayer(el.layer);
   } else if (wire) {
     if (wire.wireNo !== v('pp-wireno')) wire.wireNoMain = false;   // 手で直したら主回路の自動の目印を外す(js/wire_no_main.js)
+    // 線番を新しく入れた線で、位置の補正がまだ無く欄も0のままなら、初期位置(report.js wnDefaultPos。2026-10-06)
+    const wnFresh = !wire.wireNo && !!v('pp-wireno') && wire.wireNoOffX == null && wire.wireNoOffY == null;
     wire.wireNo    = v('pp-wireno'); wire.layer = vLayer(wire.layer);
     wire.wireNoFs  = parseInt(v('pp-wno-fs')) || 10;
     wire.wireNoOffX = parseFloat(v('pp-wno-ox'))||0;
     wire.wireNoOffY = parseFloat(v('pp-wno-oy'))||0;
+    if (wnFresh && !wire.wireNoOffX && !wire.wireNoOffY && typeof wnDefaultPos === 'function') { delete wire.wireNoOffX; delete wire.wireNoOffY; if (wire.wireNoFs === 10) delete wire.wireNoFs; wnDefaultPos(wire); }
     if (v('pp-wangle') !== '') {
       const ang = parseFloat(v('pp-wangle')) * Math.PI / 180;
       const pts = wire.pts || [{x:wire.x1,y:wire.y1},{x:wire.x2,y:wire.y2}];

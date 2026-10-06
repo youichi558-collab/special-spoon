@@ -343,6 +343,26 @@ function groupWiresByNet(wires, tol, elements) {
 // netWireNoOf でネットの番号を引く。
 // ----------------------------------------------------------------
 
+// 【2026-10-06】線番の初期位置(盛田さん「デフォルト位置を見直せるか」)。新しく線番を入れた線で、位置の補正がまだ無いものだけ。
+// 文字サイズは6(Sheet3 で使っているサイズ。盛田さん「1で」)。縦の線は「線のすぐ右」=文字の中心を線から右へ 文字サイズ+2
+// (Sheet3 は文字サイズ6・7で中心が右へ7〜8。縦の線31本中29本をこう動かしていた)。横の線は今までどおり線の上
+// draw.js は線を描いた向きで既定の側(左/右)が変わるので、その向きから補正量を計算する
+// (表示の初期位置そのものは変えない=既存の図面の線番は動かない。案A)
+function wnDefaultPos(w) {
+  if (!w || !w.wireNo || w.wireNoOffX != null || w.wireNoOffY != null) return;
+  if (w.wireNoFs == null) w.wireNoFs = 6;
+  const pts = w.pts || [{ x: w.x1, y: w.y1 }, { x: w.x2, y: w.y2 }];
+  const n = pts.length; if (n < 2) return;
+  const i = Math.floor((n - 1) / 2), j = Math.ceil((n - 1) / 2);   // 線番を描く所(draw.js と同じ真ん中の区間)
+  const a = i === j ? pts[Math.max(0, i - 1)] : pts[i], b = i === j ? pts[i] : pts[j];
+  if (!(Math.abs(b.x - a.x) < 0.5 && Math.abs(b.y - a.y) > 0.5)) return;   // 縦の線だけ
+  // draw.js と同じ既定の向き(法線。上向きへ揃える)
+  let nx = 0;
+  if (i !== j) { const dx = pts[j].x - pts[i].x, dy = pts[j].y - pts[i].y, L = Math.hypot(dx, dy); if (L > 0.1) { nx = -dy / L; if (dx / L > 0) nx = -nx; } }
+  const fs = w.wireNoFs || 10, off = fs + 6;
+  w.wireNoOffX = (fs + 2) - nx * off; w.wireNoOffY = 0;
+}
+
 // ネットに線番を書く。既に番号のある線(=文字が出ている所)だけを書き換え、
 // どこにも無ければ一番長い線1本に入れる(文字が読みやすい所)。空文字なら番号を消す。
 function _setNetWireNo(wires, idxs, v) {
@@ -359,7 +379,7 @@ function _setNetWireNo(wires, idxs, v) {
   };
   let best = -1;
   idxs.forEach(i => { if (wires[i] && (best < 0 || len(wires[i]) > len(wires[best]))) best = i; });
-  if (best >= 0) wires[best].wireNo = v;
+  if (best >= 0) { wires[best].wireNo = v; wnDefaultPos(wires[best]); }
 }
 
 // ページの配線ごとに「その配線が属するネットの線番」を返す(配列、添字=配線の番号)。

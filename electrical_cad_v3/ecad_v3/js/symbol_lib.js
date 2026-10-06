@@ -758,6 +758,7 @@ const symLib = (() => {
       color:null, lineStyle:null,
       w:dxfW*SCALE, h:dxfH*SCALE
     });
+    if(typeof applyDefaultTextPos==='function') applyDefaultTextPos(state.elements[state.elements.length-1]);   // 文字の初期位置(2026-10-06 js/tools.js)
 
     if((symDef.terminals||[]).length===0) toast(`「${entry.label}」を追加しました(端子が見つからないので付けていません。端子(ピン)編集で付けてください)`);
     pushRecent(entry);
