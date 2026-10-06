@@ -219,7 +219,7 @@ console.log('\n【部品表・接点Refのデバイス単位の⚠を押すと�
   sb.elLocation = () => '1/A1';
   vm.runInContext('showRefPanel()', sb);
   h = sb.htmlOut;
-  ok(/jumpToRefEl\(0,&quot;c1&quot;\)"[^>]*>⚠ コイル未配置/.test(h), '接点Ref: コイル未配置の⚠は、そのデバイスの最初の記号へ飛ぶ');
+  ok(!/コイル未配置/.test(h), '接点Ref: 「コイル未配置」の⚠は出さない(2026-10-06 盛田さん 案1。コイルの無い機器にも出ていた)');
   ok(/jumpToRefEl\(1,&quot;d1&quot;\)"[^>]*>⚠ コイルが2個/.test(h), '接点Ref: コイルが複数の⚠は、最初のコイル(2ページ目)へ飛ぶ');
 }
 

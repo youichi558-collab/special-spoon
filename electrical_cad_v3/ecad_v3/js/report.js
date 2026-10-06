@@ -1381,11 +1381,10 @@ function showRefPanel(){
     const name=spells.length?spells[0][0]:'(デバイス未設定)';
     const warns=[];
     if(spells.length>1)warns.push(`表記ゆれ: ${spells.map(s=>s[0]).join(' / ')}`);
-    // 【2026-09-20】種別未設定のシンボル(ランプ・押釦・モータ等)も表に載せる
-    // ようにしたため、無条件だと全部に「コイル未配置」が出てしまう。
-    // コイルと対で見るべきなのは接点を持つデバイスだけなので、そのときだけ出す。
+    // 【2026-10-06】「コイル未配置」の警告はやめた(盛田さん「コイル未配置になってる理由」→ 案1)。
+    // 「接点(主・a・b)があるのにコイルが無い」で出していたが、ブレーカー(CP・ELB)・インバータ(主接点)・押釦(a接点)のような
+    // もともとコイルの無い機器にも出て、本当の抜けではなかった。コイルの欄の「未配置」はそのまま(描き忘れはそこで見る)
     const nContacts=dv.contacts.filter(c=>REF_CONTACT_ROLES.includes(c.role)).length;
-    if(!dv.coils.length&&nContacts)warns.push('コイル未配置');
     if(dv.coils.length>1)warns.push(`コイルが${dv.coils.length}個`);
     if(dv.noRef)warns.push('デバイス未設定');
     // 同じデバイスで値が食い違っている(部品表の「食い違いを直す」で選ぶ)

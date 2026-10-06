@@ -210,7 +210,7 @@ console.log('\n【接点Refの確認列: 番号が出ない理由(xrefDiagnose)�
   setup([coil('CR1', 100, 100), cont('ca', 'CR1', 100, 200, '9,5', { devHide: true })]);
   ok(/デバイス名を出していない/.test(dia()[0]), '接点のデバイス名を出していないと、接点側の(位置)が出ない');
   setup([cont('ca', 'CR1', 100, 200, '')]);
-  eq(sb.xrefDiagnose(sb.xrefCollect().get('CR1')), [], 'コイルが無いデバイスは見ない(接点Refが別に「コイル未配置」を出す)');
+  eq(sb.xrefDiagnose(sb.xrefCollect().get('CR1')), [], 'コイルが無いデバイスは見ない');
 
   // 型式の書き戻し: そのデバイスの全要素(コイルも接点も)に入る。他のデバイス・電圧は触らない
   const els = [coil('CR1', 100, 100), cont('ca', 'CR1', 100, 200, '9,5'), coil('CR2', 300, 100), cont('ca', 'CR2', 300, 200, '9,5')];
