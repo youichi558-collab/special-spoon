@@ -1396,14 +1396,17 @@ function showRefPanel(){
     // 仮設定は「仮」。まだ決めていないことが一目で分かるようにする。
     const badgeTxt=r=>r==='contact_a'?'a':r==='contact_b'?'b':r==='contact_main'?'主'
                     :r==='tentative'?'仮':'他';
+    // 【2026-10-06】バッジ(コイル・接点)を押すと図面のその記号へ、デバイス名を押すとそのデバイス(コイル、無ければ最初の記号)へ飛ぶ。
+    // 盛田さん「警告ないと逆引きできないな」→ 案3。以前は⚠の文字しか押せず、「コイル未配置」をやめたら CP1・PB1 等は飛べなくなっていた
+    const jumpAt=(c,st='')=>` style="${st}cursor:pointer" title="クリックで図面のこの記号へ飛ぶ" onclick="jumpToRefEl(${c.page-1},${_jsArg(c.el.id)})"`;
     const badge=c=>{
       const r=c.role;
       const cls=r==='contact_a'?'badge-g':r==='contact_b'?'badge-b':r==='contact_main'?'badge-o':'';
-      const st=cls?'':' style="background:var(--bg4);color:var(--fg3)"';
-      return `<span class="badge ${cls}"${st}>${badgeTxt(r)} ${escH(c.loc)}</span>`;
+      const st=cls?'':'background:var(--bg4);color:var(--fg3);';
+      return `<span class="badge ${cls}"${jumpAt(c,st)}>${badgeTxt(r)} ${escH(c.loc)}</span>`;
     };
     const coilTxt=dv.coils.length
-      ? dv.coils.map(c=>`<span class="badge badge-p">${escH(c.loc)}</span>`).join(' ')
+      ? dv.coils.map(c=>`<span class="badge badge-p"${jumpAt(c)}>${escH(c.loc)}</span>`).join(' ')
       : '<span class="badge" style="background:var(--rbg);color:var(--red)">未配置</span>';
     // 「確認」列: 図面のクロスリファレンスに番号が出ない理由と、直し方(型式の入力・該当の接点へ飛ぶ)
     let chk='';
@@ -1427,7 +1430,8 @@ function showRefPanel(){
     const warnHtml=!warns.length?'':tgt
       ?`<br><span style="color:var(--red);font-size:10px;cursor:pointer;text-decoration:underline dotted" title="クリックで図面のこのデバイスへ飛ぶ" onclick="jumpToRefEl(${tgt.page-1},${_jsArg(tgt.el.id)})">⚠ ${escH(warns.join(' / '))}</span>`
       :`<br><span style="color:var(--red);font-size:10px">⚠ ${escH(warns.join(' / '))}</span>`;
-    return `<tr><td><b>${escH(name)}</b>${warnHtml}</td>`
+    const nameHtml=tgt?`<b style="cursor:pointer;text-decoration:underline dotted" title="クリックで図面のこのデバイスへ飛ぶ" onclick="jumpToRefEl(${tgt.page-1},${_jsArg(tgt.el.id)})">${escH(name)}</b>`:`<b>${escH(name)}</b>`;
+    return `<tr><td>${nameHtml}${warnHtml}</td>`
       +`<td>${coilTxt}</td>`
       +`<td>${dv.contacts.map(badge).join(' ')||'なし'}</td>`
       +`<td>${nContacts}</td>`

@@ -252,7 +252,7 @@ console.log('\n【デバイス台帳③: 型式・電圧はデバイスの値。
   ok(/値が食い違い\(型番\)/.test(html) && /placeholder="\(食い違い\)"/.test(html) && /onclick="devResolveDialog\(null,\{undo:true,onDone:\(\)=>showRefPanel\(\)\}\)"/.test(html), '接点Ref: 食い違いはデバイス名の下に警告・型式欄は空で「(食い違い)」・確認列から選ぶ画面を開ける');
   setup([coil('CR-1', 100, 100), cont('ca', 'CR1', 100, 200, '9,5')]);
   vm.runInContext('showRefPanel()', sb);
-  ok((html.match(/<tr><td><b>/g) || []).length === 1, '接点Ref: 綴り違いは1行(表記ゆれの警告つき)') ;
+  ok((html.match(/<tr><td><b[ >]/g) || []).length === 1, '接点Ref: 綴り違いは1行(表記ゆれの警告つき)') ;
   sb._reportOpen = saveOpen;
 }
 

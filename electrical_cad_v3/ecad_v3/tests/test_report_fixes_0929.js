@@ -221,6 +221,11 @@ console.log('\n【部品表・接点Refのデバイス単位の⚠を押すと�
   h = sb.htmlOut;
   ok(!/コイル未配置/.test(h), '接点Ref: 「コイル未配置」の⚠は出さない(2026-10-06 盛田さん 案1。コイルの無い機器にも出ていた)');
   ok(/jumpToRefEl\(1,&quot;d1&quot;\)"[^>]*>⚠ コイルが2個/.test(h), '接点Ref: コイルが複数の⚠は、最初のコイル(2ページ目)へ飛ぶ');
+  // 【2026-10-06】盛田さん「警告ないと逆引きできないな」→ 案3: デバイス名とバッジ(コイル・接点)を押すと飛ぶ
+  ok(/onclick="jumpToRefEl\(0,&quot;c1&quot;\)">K1<\/b>/.test(h), '★接点Ref: デバイス名を押すと、そのデバイス(コイルが無ければ最初の記号)へ飛ぶ');
+  ok(/onclick="jumpToRefEl\(1,&quot;d1&quot;\)">K2<\/b>/.test(h), '★接点Ref: コイルのあるデバイスの名前はコイルへ飛ぶ');
+  ok(/class="badge badge-g"[^>]*onclick="jumpToRefEl\(0,&quot;c1&quot;\)">a 1\/A1</.test(h), '★接点Ref: 接点のバッジを押すと、その接点へ飛ぶ');
+  ok(/class="badge badge-p"[^>]*onclick="jumpToRefEl\(1,&quot;d2&quot;\)">1\/A1</.test(h), '★接点Ref: コイルのバッジを押すと、そのコイル(2つ目)へ飛ぶ');
 }
 
 console.log('\n【部品表: デバイス未設定の行を押すと、図面のその部品へ飛ぶ(複数なら押すたびに次へ)】');
