@@ -73,7 +73,7 @@ function xprojWith(fn) {
 // ---- フォルダ(左パネルの「プロジェクト」で開いたフォルダ。js/proj_tree.js) ----
 async function xprojDirHandle(ask) {
   let h = (typeof ptreeState !== 'undefined' && ptreeState.root) || null;
-  if (!h && typeof PTREE_KEY === 'string') { try { h = await _stGet(PTREE_KEY); } catch (e) {} }
+  if (!h && typeof PTREE_KEY === 'string' && !(typeof ptreeState !== 'undefined' && ptreeState.detached)) { try { h = await _stGet(PTREE_KEY); } catch (e) {} }   // 読込でプロジェクトを外したら読まない(2026-10-06)
   if (!h) return null;
   let st = 'prompt';
   try { st = await h.queryPermission({ mode: 'readwrite' }); } catch (e) {}

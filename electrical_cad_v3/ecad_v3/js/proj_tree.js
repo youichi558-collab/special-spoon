@@ -16,9 +16,10 @@
 // ================================================================
 
 const PTREE_KEY = 'ptree';                       // IndexedDB(settings.js の _stGet/_stPut)に覚えるフォルダの鍵
+const PTREE_PREV_KEY = 'ptree_prev';             // 読込でプロジェクトを外したときの、前のフォルダ(「前のフォルダに戻す」用。2026-10-06)
 const PTREE_EXT = /\.seqzu$/i;
 const PTREE_HIST = '.seqzu_history', PTREE_HIST_KEEP = 20;   // 履歴の隠しフォルダ(プロジェクトのフォルダの直下)・図面ごとに残す数
-const ptreeState = { root: null, open: new Set(), files: new Map() };   // open: 開いているフォルダの道筋 / files: 開いた図面の道筋 → ファイルの鍵
+const ptreeState = { root: null, open: new Set(), files: new Map(), detached: false };   // detached: 読込でプロジェクトを外した(覚えたフォルダを読み直さない)   // open: 開いているフォルダの道筋 / files: 開いた図面の道筋 → ファイルの鍵
 
 // 【2026-10-05】「名前を付けて保存」で書いたファイルも、次から窓を出さずに上書きする(盛田さん)。
 // pages の保存先をそのファイルにする。プロジェクトのフォルダの中ならツリーの道筋、外なら外用の印(ext:)を保存先の名前にする。
@@ -46,7 +47,7 @@ async function ptreeSrcResolve(src) {
   const h0 = ptreeSrcHandle(src);
   if (h0) return h0;
   if (!src || src[0] !== '/') return null;
-  if (!ptreeState.root) { try { ptreeState.root = await _stGet(PTREE_KEY) || null; } catch (e) {} }
+  if (!ptreeState.root && !ptreeState.detached) { try { ptreeState.root = await _stGet(PTREE_KEY) || null; } catch (e) {} }
   if (!ptreeState.root || !await _ptPerm(ptreeState.root, true)) return null;
   try { const q = await _ptParent(src); const h = await q.dir.getFileHandle(q.name); ptreeState.files.set(src, h); return h; }
   catch (e) { return null; }
@@ -85,9 +86,38 @@ async function ptreeChooseRoot() {
   try { same = !!ptreeState.root && await ptreeState.root.isSameEntry(dir); } catch (e) {}
   // 別のフォルダにしたら、ページが覚えている道筋は外す(同じ道筋の別のファイルに上書きしないため。保存は名前を付けて保存になる)
   if (!same) (state.pages || []).forEach(p => { if (p._src && p._src[0] === '/') delete p._src; });
-  ptreeState.root = dir; ptreeState.open = new Set(); ptreeState.files = new Map();
+  ptreeState.root = dir; ptreeState.open = new Set(); ptreeState.files = new Map(); ptreeState.detached = false;
+  try { await _stPut(PTREE_PREV_KEY, null); } catch (e) {}
   if (typeof xprojState !== 'undefined') { xprojState.files = []; xprojState.problems = []; xprojState.dirName = ''; }   // 前のフォルダの別ファイルを使わない(部品表・「更新」で読み直す)
   try { await _stPut(PTREE_KEY, dir); } catch (e) {}
+  ptreeRender();
+}
+
+// 【2026-10-06】「読込」で図面を置き換えて開いたら、プロジェクトのフォルダを外す(js/edit.js loadProjectText)。
+// 盛田さん: 仕様１－１を読込で開いたら、ツリーが仕様２のフォルダのままで、部品表が仕様２の別ファイルまで集計して食い違いが出た
+// →「読込したらプロジェクト側をリセット」。読込の図面がどのフォルダのものかはブラウザからは分からないため。
+// 前のフォルダは PTREE_PREV_KEY に覚え、ツリーの「前のフォルダに戻す」で戻せる。ツリーから開く・ページとして足す・読込の「追加」では外さない
+async function ptreeDetach() {
+  const prev = ptreeState.root;
+  ptreeState.detached = true;
+  ptreeState.root = null; ptreeState.open = new Set(); ptreeState.files = new Map();
+  if (typeof xprojState !== 'undefined') { xprojState.files = []; xprojState.problems = []; xprojState.dirName = ''; }
+  try {
+    const p = prev || await _stGet(PTREE_KEY);
+    if (p) await _stPut(PTREE_PREV_KEY, p);
+    await _stPut(PTREE_KEY, null);
+  } catch (e) {}
+  ptreeRender();
+}
+// 「前のフォルダに戻す」
+async function ptreeRestorePrev() {
+  let prev = null;
+  try { prev = await _stGet(PTREE_PREV_KEY); } catch (e) {}
+  if (!prev) return;
+  if (!await _ptPerm(prev, true)) return;
+  ptreeState.root = prev; ptreeState.detached = false; ptreeState.open = new Set(); ptreeState.files = new Map();
+  if (typeof xprojState !== 'undefined') { xprojState.files = []; xprojState.problems = []; xprojState.dirName = ''; }
+  try { await _stPut(PTREE_KEY, prev); await _stPut(PTREE_PREV_KEY, null); } catch (e) {}
   ptreeRender();
 }
 
@@ -165,12 +195,17 @@ async function ptreeRender() {
   const name = document.getElementById('prj-float-root');
   if (!body) return;
   const seq = ++_ptSeq;   // 描いている途中に次が来たら古い方は捨てる
-  if (!ptreeState.root) {
+  if (!ptreeState.root && !ptreeState.detached) {
     try { ptreeState.root = await _stGet(PTREE_KEY) || null; } catch (e) {}
   }
   const root = ptreeState.root;
   if (name) name.textContent = root ? root.name : '';
-  if (!root) { body.innerHTML = '<div class="pt-msg">「フォルダを開く」でプロジェクトのフォルダを選んでください。<br>フォルダと図面(.seqzu)をエクスプローラと同じに並べます。</div>'; return; }
+  if (!root) {
+    let prev = null;
+    try { prev = await _stGet(PTREE_PREV_KEY); } catch (e) {}
+    if (seq !== _ptSeq) return;
+    if (prev) { body.innerHTML = `<div class="pt-msg">読込で開いた図面はプロジェクトの外です(部品表などはこの図面だけを集計します)。<br><button onclick="ptreeChooseRoot()">フォルダを開く</button> <button onclick="ptreeRestorePrev()">前のフォルダ${prev.name ? `(${_ptEsc(prev.name)})` : ''}に戻す</button></div>`; return; }
+    body.innerHTML = '<div class="pt-msg">「フォルダを開く」でプロジェクトのフォルダを選んでください。<br>フォルダと図面(.seqzu)をエクスプローラと同じに並べます。</div>'; return; }
   if (!await _ptPerm(root, false)) {
     if (seq !== _ptSeq) return;
     body.innerHTML = `<div class="pt-msg">前回のフォルダ「${_ptEsc(root.name)}」を開く許可が要ります。<br><button onclick="ptreeGrant()">許可して開く</button></div>`;

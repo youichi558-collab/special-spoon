@@ -584,6 +584,9 @@ function loadProjectText(text, name, mode0) {
         }
         pushH();
         const { fixedIds, zeroWires } = applyProjectData(d);
+        // 【2026-10-06】「読込」で置き換えて開いたら、プロジェクトのフォルダを外す(js/proj_tree.js ptreeDetach)。
+        // ツリーから開いたとき(mode0 あり)は外さない。読込の図面がどのフォルダのものか分からず、別のフォルダの図面まで集計していたため(盛田さん)
+        if (!mode0 && typeof ptreeDetach === 'function') ptreeDetach();
         const dm = (typeof devAfterLoad === 'function') ? devAfterLoad({ defer: true }) : { filled: 0, conflicts: [] };
         if (mode0 && !(fixedIds > 0 || zeroWires > 0) && !_devLoadMsg(dm) && typeof stToast === 'function') { stToast(`開きました: ${name}`, 'ok'); return true; }
         alert((fixedIds > 0 || zeroWires > 0
