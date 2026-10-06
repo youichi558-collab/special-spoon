@@ -63,6 +63,17 @@ const mk = () => {
   eq([JSON.stringify([A, B, C]) === snap, pushed], [true, 0], '★やめたら何も変えない');
   answer = true;
 
+  console.log('\n【記号の中に置いたデバイス名は動かさない(盛田さん「コイルとモーターのデバイスまで引っ張る」→(1))】');
+  [A, B, C] = mk(); C.devOffY = 0;   // コイルの中央にデバイス名(新しく置いたコイルの初期位置)
+  const M = { id: 'M', type: 'wide', x: 300, y: 600, partRef: 'M', devOffX: 0, devOffY: 10, label: 'AC200V\n2.2kW', labelOffX: -20 };
+  sb.state.elements.push(M); sb.state.sel.els = new Set(['A', 'B', 'C', 'M']);
+  const L2 = sb._symTextItems(A)[0].left;
+  await sb.alignSymTexts([A, B, C, M]);
+  eq([M.devOffX, C.devOffX], [0, undefined], '★記号の中のデバイス名(モーターの M・コイルの中央の MC1)は動かさない');
+  eq(sb._symTextItems(C).map(t => t.kind).join(), 'spec', 'コイルは仕様だけ揃える');
+  eq(sb._symTextItems(M).every(t => Math.abs(t.left - L2) < 1e-6) && sb._symTextItems(M).map(t => t.kind).join(), true && 'spec', '★そのシンボルの仕様は揃える');
+  eq(sb._symTextItems(B).every(t => Math.abs(t.left - L2) < 1e-6), true, '記号の外のデバイス名は今までどおり揃う');
+
   console.log('\n【入口: シンボルを選んだら新しい揃え、独立テキストだけなら今までどおり】');
   const at = pick(/function alignTexts\(\) \{[\s\S]{0,400}/);
   eq(/_symTextItems\(el\)\.length\);\n  if \(syms\.length\) \{ alignSymTexts\(syms\); return; \}/.test(at), true, '★シンボル(文字を出しているもの)を選んでいれば alignSymTexts');

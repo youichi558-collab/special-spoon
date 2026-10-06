@@ -667,7 +667,12 @@ function _symTextItems(el) {
   if (state.showPartRef && el.partRef && !el.devHide) {
     const fs = Math.round(el.devFs || 11), w = meas(`bold ${fs}px sans-serif`, el.partRef);
     const ax = el.x + (el.devOffX || 0), y = el.y + (el.devOffY !== undefined ? el.devOffY : -(d.h * sc / 2 + 6));
-    out.push({ kind: 'dev', left: ax - w / 2, w, top: y - fs, h: fs + 2, apply: L => { el.devOffX = L + w / 2 - el.x; } });
+    // 【2026-10-06】記号の中に置いたデバイス名(コイル・モーター等)は動かさない(盛田さん「リレーのコイルとモーターのデバイスまで引っ張る」→(1)
+    //  =デバイス名だけ動かさず、型式・仕様は揃える)。文字の中心が記号の枠(回転を考えた幅・高さ)の内側なら「中に置いた名前」
+    const rq = Math.abs(Math.round((el.rot || 0) / 90)) % 2 === 1;
+    const hw = (rq ? d.h : d.w) * sc / 2, hh = (rq ? d.w : d.h) * sc / 2;
+    const inside = Math.abs(ax - el.x) < hw && Math.abs(y - fs / 2 - el.y) < hh;
+    if (!inside) out.push({ kind: 'dev', left: ax - w / 2, w, top: y - fs, h: fs + 2, apply: L => { el.devOffX = L + w / 2 - el.x; } });
   }
   if (el.showModel && el.partModel) {
     const fs = Math.round(el.modelFs || el.labelFs || 11), w = meas(`${fs}px sans-serif`, el.partModel);
