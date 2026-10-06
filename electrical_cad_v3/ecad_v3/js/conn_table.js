@@ -78,6 +78,19 @@ function collectTerminalPoints(pageElements) {
   return pts;
 }
 
+// 【2026-10-06】端子台の端子(○◎)にじかに付いているシンボルの端子(配線を挟まない)。盛田さん「これが未接続になってる理由は？」
+// (Sheet3: モータ M の T1〜T4 が TB2 1〜4 の○の下の縁にじかに付いていて、未接続・どのネットにも入らない扱いだった)→ 案1「つながっていると見なす」。
+// 判定は配線の端と同じ「円の半径+許容誤差」以内(findNearestTerminal)。一番近い○を1つ選ぶ。
+// all: collectTerminalPoints の結果。戻り値: [{ sym: シンボルの端子点, tb: 端子台の端子点 }]
+function connSymOnTB(all, tol) {
+  tol = tol == null ? CONN_TABLE_TOL : tol;
+  const tbs = all.filter(p => p.kind === 'junction' && p.r);
+  if (!tbs.length) return [];
+  const out = [];
+  all.forEach(p => { if (p.kind !== 'symbol') return; const tb = findNearestTerminal(p.x, p.y, tbs, tol); if (tb) out.push({ sym: p, tb }); });
+  return out;
+}
+
 // 許容誤差内で最も近い端子点を探す(ページ単位・端子点数は通常数百程度のため線形探索で十分)
 // 【2026-10-01】端子台の端子(○◎)は円の大きさ(r)の分を引いた距離で比べる(=「半径+許容誤差」以内)。
 // 以前は中心からの距離だけで、端子の円を5より大きくすると円周で止めた線を拾えなかった(線番表は「半径+5」でずれていた)
@@ -121,6 +134,7 @@ function _analyzeConnections() {
     const all = collectTerminalPoints(pg.elements || []);
     const terms = all.filter(p => !p.isBranch);        // 端子(シンボルの端子・端子台の○◎)
     const branches = all.filter(p => p.isBranch);      // 分岐点(●)
+    const onTB = connSymOnTB(all, tol);                // 端子台の○にじかに付いたシンボルの端子
     const netNo = netWireNoOf(pg);
     const ptsOf = w => w.pts || [{ x: w.x1, y: w.y1 }, { x: w.x2, y: w.y2 }];
     // 配線の端の索引(他の配線の端に触れているかを速く調べる)
@@ -179,6 +193,11 @@ function _analyzeConnections() {
         if (seen.has(key)) return;
         if (idxs.some(i => _wireThroughCircle(ptsOf(wires[i]), t))) { seen.add(key); net.terms.push({ name: t.dispName || '-', term: t.dispTerm || '-' }); }
       });
+      // 【2026-10-06】そのネットの端子台の端子(○◎)にじかに付いているシンボルの端子も、このネットの端子(connSymOnTB)
+      onTB.forEach(({ sym, tb }) => {
+        const key = sym.elId + ':' + sym.termIdx;
+        if (seen.has(tb.elId + ':' + tb.termIdx) && !seen.has(key)) { seen.add(key); net.terms.push({ name: sym.dispName || '-', term: sym.dispTerm || '-' }); }
+      });
       net.terms.sort((a, b) => (a.name + ' ' + a.term).localeCompare(b.name + ' ' + b.term, 'ja', { numeric: true }));
       out.push(net);
     });
@@ -190,6 +209,7 @@ function _analyzeConnections() {
 // 【2026-09-29】ツールバーの「⚠未接続」(js/conn_check.js)は以前、別の作り(現在のページだけ・独自の座標計算)だった。
 // **接続チェックと同じ端子の位置(collectTerminalPoints)・同じ許容誤差・全ページ**で数えるようにここへ集めた(conn_check.js の計算は無くした)。
 // 対象は従来どおりシンボルの端子だけ。分岐点(●)と端子台の端子(○◎)は含めない(端子台の未接続は端子台表が出す)。非表示レイヤーの要素は除く。
+// 【2026-10-06】端子台の端子(○◎)にじかに付いているシンボルの端子は未接続にしない(connSymOnTB)。
 // 戻り値: [{ pageIdx, page, elId, termIdx, x, y, name, term }](ページ順 → デバイス名・端子番号の順)
 function analyzeUnconnectedTerminals() {
   if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
@@ -215,8 +235,10 @@ function analyzeUnconnectedTerminals() {
       return false;
     };
     const mine = [];
-    collectTerminalPoints(els).forEach(t => {
-      if (t.kind !== 'symbol') return;
+    const allPts = collectTerminalPoints(els);
+    const onTB = new Set(connSymOnTB(allPts, tol).map(o => o.sym));   // 端子台の○にじかに付いた端子はつながっている(2026-10-06)
+    allPts.forEach(t => {
+      if (t.kind !== 'symbol' || onTB.has(t)) return;
       const lay = (typeof LAYERS !== 'undefined') ? LAYERS.find(l => l.name === layerOf.get(t.elId)) : null;
       if (lay && !lay.visible) return;
       if (!hasEnd(t.x, t.y)) mine.push({ pageIdx: pi, page: pname, elId: t.elId, termIdx: t.termIdx, x: t.x, y: t.y, name: t.dispName || '-', term: t.dispTerm || '-' });

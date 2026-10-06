@@ -57,6 +57,15 @@ function wnmPlan(pi) {
       if (t) netOfTerm.set(t.elId + ':' + t.termIdx, netOfWire.get(i));
     });
   });
+  // 【2026-10-06】端子台の端子(○◎)にじかに付いているシンボルの端子は、その○につながっている線のネット(js/conn_table.js connSymOnTB)
+  if (typeof connSymOnTB === 'function') {
+    connSymOnTB(collectTerminalPoints(els), tol).forEach(({ sym, tb }) => {
+      const key = sym.elId + ':' + sym.termIdx;
+      if (netOfTerm.has(key)) return;
+      const i = wires.findIndex(w => { const ps = ptsOf(w); return [ps[0], ps[ps.length - 1]].some(p => Math.hypot(p.x - tb.x, p.y - tb.y) <= tb.r + tol) || (typeof _wireThroughCircle === 'function' && _wireThroughCircle(ps, tb)); });
+      if (i >= 0) netOfTerm.set(key, netOfWire.get(i));
+    });
+  }
   const elById = new Map(els.map(e => [e.id, e]));
 
   // 今の名前。自動の名前(目印あり)は入れ直すので空として扱う
