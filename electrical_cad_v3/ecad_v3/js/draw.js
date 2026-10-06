@@ -57,11 +57,10 @@ function draw() {
   // グループ境界ボックス
   if (!state.pdfMode) drawGroupBoxes();
 
-  // プレビュー（仮描画）
-  drawPreview();
-
-  // スナップマーカー
-  drawSnapMarker();
+  // プレビュー（仮描画）・スナップマーカー(カーソルの印)。紙に描くとき(PDF・プレビュー・SVG = pdfMode)は描かない
+  // 【2026-10-06】以前は描いていて、PDF を出す直前のマウスの位置に「＋」が出た(盛田さんの 仕様２ 1006_Sheet3.pdf の C6)
+  if (!state.pdfMode) drawPreview();
+  if (!state.pdfMode) drawSnapMarker();
 
   // ラバーバンド選択ボックス
   if (!state.pdfMode) drawGuides();
