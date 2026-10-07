@@ -213,6 +213,9 @@ const symTool = {
       wireNo: '',
       note:   '',
     });
+    // 大きさを焼き込んだシンボル(js/sym_store.js)は、その大きさに合わせた等倍で置いたことを覚える
+    { const d = (state.customSymbols || []).find(s => s.type === state.symType);
+      if (d && d.baked && d.baked !== 1) state.elements[state.elements.length - 1].symBaked = d.baked; }
     // ブレーカ系は極数の既定(2P)を入れる。仕様欄は既定値を入れない方針のまま(上のlabel参照)
     if (typeof applyDefaultChoices === 'function') applyDefaultChoices(state.elements[state.elements.length - 1]);
     applyDefaultTextPos(state.elements[state.elements.length - 1]);

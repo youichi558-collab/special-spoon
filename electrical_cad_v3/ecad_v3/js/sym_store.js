@@ -58,7 +58,64 @@ function rebuildSymbolPalette() {
   }
   state.customSymbols = list;
   if (typeof DEFS !== 'undefined') list.forEach(s => { DEFS[s.type] = s; });
+  symBakeFixElements();   // 大きさを焼き込んだシンボルを使っている記号の倍率を合わせる(下の「大きさの焼き込み」)
   if (typeof renderSymFloat === 'function') { try { renderSymFloat(); } catch (e) {} }
+}
+
+// ---- 大きさの焼き込み(2026-10-07) -------------------------------------
+// 盛田さん「ほかのCADと合わせたい」: シンボルは図面で使う大きさで登録し、置くときは等倍(倍率1)。
+// シンボルライブラリ(JIS の DXF)から入ったものは元の形が大きく、図面で1個ずつ 0.3 倍などに縮めて使っていたため、
+// 「登録シンボルと比べる」で足すと元の大きさで入り、パネルから置くと3倍くらい大きく出た。
+//   ・足すとき、図面で使っている倍率(いちばん多いもの)を形・端子・幅高さ・文字の大きさに掛けてから登録する(symBakeDef)
+//   ・定義に baked(何倍に縮めたか。焼き込みを重ねたら掛け算)を、記号に symBaked(どの baked に合わせた倍率か)を持つ。
+//     記号の symBaked が定義の baked と違えば、見た目が変わらないよう倍率を直す(symBakeFixElements)。
+//     =プロジェクトの外の古い図面を開いても、置いてある記号が小さくならない。盛田さんが触る欄は増えない
+//   ・線の太さは倍率で変わらない描き方(symbols.js の sInv)なので掛けない
+function symBakeDef(def, k) {
+  const d = JSON.parse(JSON.stringify(def));
+  const m = v => (typeof v === 'number') ? v * k : v;
+  (d.shapes || []).forEach(s => {
+    ['x1', 'y1', 'x2', 'y2', 'cx', 'cy', 'r', 'x', 'y', 'w', 'h', 'fs'].forEach(key => { if (key in s) s[key] = m(s[key]); });
+    if (Array.isArray(s.pts)) s.pts = s.pts.map(p => [m(p[0]), m(p[1])]);
+  });
+  (d.terminals || []).forEach(t => { t.x = m(t.x); t.y = m(t.y); });
+  d.w = m(d.w); d.h = m(d.h);
+  d.baked = (def.baked || 1) * k;
+  return d;
+}
+// 図面(開いている全ページ)でその記号に使っている倍率のうち、いちばん多いもの。置いていない・全部 1 なら null
+function symCommonScale(type) {
+  const cnt = new Map(), val = new Map();   // 数えるのは丸めた値、返すのは実際の値(割ったときにちょうど 1 になるように)
+  (state.pages || []).forEach(pg => (pg.elements || []).forEach(e => {
+    if (!e || e.type !== type) return;
+    const k = Math.round((e.scale || 1) * 1e6) / 1e6;
+    cnt.set(k, (cnt.get(k) || 0) + 1);
+    if (!val.has(k)) val.set(k, e.scale || 1);
+  }));
+  let best = null, bn = 0;
+  cnt.forEach((n, k) => { if (n > bn) { best = val.get(k); bn = n; } });
+  return (best && Math.abs(best - 1) > 1e-6) ? best : null;
+}
+// 記号の倍率を定義の baked に合わせる(何度呼んでも同じ)。直した数を返す
+function symBakeFixElements() {
+  let n = 0;
+  const defOf = t => (state.customSymbols || []).find(s => s.type === t);
+  (state.pages || []).forEach(pg => {
+    let touched = false;
+    (pg.elements || []).forEach(e => {
+      if (!e || !e.type) return;
+      const d = defOf(e.type);
+      if (!d) return;
+      const want = d.baked || 1, have = e.symBaked || 1;
+      if (Math.abs(want - have) < 1e-9) return;
+      e.scale = Math.round((e.scale || 1) * have / want * 1e6) / 1e6;
+      if (want === 1) delete e.symBaked; else e.symBaked = want;
+      touched = true; n++;
+    });
+    if (touched) pg.dirty = true;
+  });
+  if (n && typeof renderPageTabs === 'function') renderPageTabs();
+  return n;
 }
 
 // 図面を開いたときに図面のシンボルを覚えておく(applyProjectData・自動保存からの復元)
@@ -302,7 +359,19 @@ function symDiffList() {
 async function symApplyChoices(toDrawing, toLib) {
   const lib = _symLibObj(), drawing = state.drawingSymbols || {};
   let ok = true;
-  if (toLib.length) ok = await _symLibWrite(o => { toLib.forEach(t => { o[t] = drawing[t]; }); return o; });
+  // 登録シンボルに無いものを足すときは、図面で使っている大きさで登録する(上の「大きさの焼き込み」)。
+  // 置いてある記号の倍率は、登録シンボルに書けたあとの組み直し(rebuildSymbolPalette → symBakeFixElements)で 1 に戻る
+  const baked = [];
+  if (toLib.length) ok = await _symLibWrite(o => {
+    toLib.forEach(t => {
+      const k = !(t in lib) ? symCommonScale(t) : null;
+      o[t] = k ? symBakeDef(drawing[t], k) : drawing[t];
+      if (k) { state.drawingSymbols[t] = o[t]; baked.push(`${o[t].name || o[t].label || t}(${Math.round(k * 100) / 100}倍)`); }   // 図面の写しも同じに(比べたときに違いとして出さない)
+    });
+    return o;
+  });
+  if (ok) symApplyChoices.lastBaked = baked;
+  if (ok && toLib.length && typeof draw === 'function') draw();
   if (toDrawing.length) {
     toDrawing.forEach(t => { if (lib[t]) state.drawingSymbols[t] = JSON.parse(JSON.stringify(lib[t])); });
     (state.pages || []).forEach(pg => { if ((pg.elements || []).some(e => toDrawing.includes(e.type))) pg.dirty = true; });   // 保存で図面にも入る
@@ -357,7 +426,11 @@ function symCompareDialog() {
     }
     close();
     const ok = await symApplyChoices(toDrawing, toLib);
-    if (ok) alert(`登録シンボルに入れました(${toLib.length}件)`);
+    if (ok) {
+      const b = symApplyChoices.lastBaked || [];
+      alert(`登録シンボルに入れました(${toLib.length}件)` + (b.length
+        ? `\n\n図面で使っている大きさで登録しました: ${b.join('、')}\nこの図面の記号は等倍(倍率1)に直しました(見た目は変わりません)。パネルから置くと同じ大きさで出ます` : ''));
+    }
   };
 }
 

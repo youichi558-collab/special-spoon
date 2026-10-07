@@ -2394,6 +2394,9 @@ function saveCustomSymbol() {
   }
   const role = document.getElementById('sr-role')?.value || '';
   const sym = { type, name, label:name, cat, role, w, h, shapes:shapesR, terminals:termsR, preview };
+  // 置き換えのときは「何倍に縮めたか」(baked)を引き継ぐ。登録画面の形は図面に見えている大きさなので、
+  // 引き継がないと置いてある記号の倍率がずれる(js/sym_store.js 大きさの焼き込み)
+  if (repOld && repOld.baked) sym.baked = repOld.baked;
   if (repOld) {
     const i = state.customSymbols.indexOf(repOld);
     state.customSymbols[i] = sym;
