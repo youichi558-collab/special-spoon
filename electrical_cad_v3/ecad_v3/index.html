@@ -895,6 +895,8 @@
   <div id="lpd-resizer" onmousedown="lpdStartResize(event)" title="ドラッグで左の一覧の幅を変えます(前回の幅を覚えます)"></div>
   <div id="rp">
     <div id="rp-resizer" onmousedown="rpStartResize(event)" title="ドラッグでプロパティ欄の幅を変えます(前回の幅を覚えます)。ダブルクリックで元の幅(200)に戻します" ondblclick="rpSetWidth(RP_W_DEF, true)"></div>
+    <!-- 新しい画面(js/ui_v2.js)の見出し: 選んだ要素のアイコン・デバイス名・補足。今の画面では隠す -->
+    <div id="rp-v2head" class="v2-only"><div id="rp-v2icon"></div><div id="rp-v2txt"><div id="rp-v2name">プロパティ</div><div id="rp-v2sub"></div></div></div>
     <h4>プロパティ<button id="rp-toggle" onclick="toggleRightPanel()" title="パネルを折りたたむ">◀</button></h4>
     <div id="rp-body"><p style="font-size:11px;color:var(--fg3);padding:8px 10px">要素を選択すると<br>プロパティが表示されます</p></div>
     <div id="rp-footer"><button class="pp-apply" id="rp-apply-btn" onclick="applyRightPanel()" style="display:none">適用</button></div>

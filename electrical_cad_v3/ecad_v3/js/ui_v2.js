@@ -48,6 +48,9 @@ function uiV2ToolKind(m) {
 }
 function uiV2ToolName(m) { return UIV2_TOOL_NAMES[m] || m || ''; }
 
+// 右パネルの幅の既定(段階2)。前回値(設定 rpWidth)があればそちらを使う
+const UIV2_RP_W = 272;
+
 let _uiV2On = false;
 const _uiV2Moved = [];   // {el, ph}: 移した部品と、元の位置の目印
 
@@ -110,6 +113,7 @@ function uiV2Apply(on) {
     const lay = document.getElementById('v2-layer');
     _uiV2Move('qb-layer-color', lay); _uiV2Move('active-layer-sel', lay);
     _uiV2Move('sb', document.getElementById('v2-sb'));
+    _uiV2Move('rp-toggle', document.getElementById('rp-v2head'));   // 右パネルを畳むボタンは見出しの右端へ
     // 中身を全部移して空になったリボンのグループ(表示>図面)は、メニューに出さない
     document.querySelectorAll('#ribbon .rg').forEach(g => {
       const b = g.querySelector('.rg-btns');
@@ -123,6 +127,10 @@ function uiV2Apply(on) {
   }
   _uiV2On = on;
   document.body.classList.toggle('ui-v2', on);
+  // 右パネルの幅: 自分で幅を変えていなければ(前回値なし)、新しい画面は 272・今の画面は 200
+  const prefs = typeof stPrefs === 'function' ? stPrefs() : {};
+  if (!prefs.rpWidth && typeof rpSetWidth === 'function') rpSetWidth(on ? UIV2_RP_W : RP_W_DEF, false);
+  uiV2SyncRpHead();
   // 点灯を今の状態に合わせ直す(今の点灯処理をそのまま呼ぶ。起動時は分岐点の形のボタンが点いたままのことがある)
   if (typeof syncModeButtons === 'function') syncModeButtons(state.mode);
   if (state.mode === 'junction' && typeof syncJunctionStyleBtns === 'function') syncJunctionStyleBtns();
@@ -153,6 +161,53 @@ function uiV2SyncTitle() {
   f.textContent = state.saveFileName || '図面';
   const n = (state.pages || []).length;
   s.textContent = [pg && pg.name, n ? `${(state.currentPage || 0) + 1} / ${n} ページ` : ''].filter(Boolean).join(' ・ ');
+}
+
+// ── 右パネルの見出し(段階2) ──
+// 中身(js/ui.js updateRightPanel)は変えず、描き直されたら(#rp-body の中身が変わったら)見出しだけ付け直す。
+// 選んでいる要素は updateRightPanel が #rp-body._el / _wire に入れている
+function uiV2SyncRpHead() {
+  const nm = document.getElementById('rp-v2name'), sub = document.getElementById('rp-v2sub'), ic = document.getElementById('rp-v2icon');
+  const rp = document.getElementById('rp-body');
+  if (!nm || !sub || !ic || !rp) return;
+  const el = rp._el, w = rp._wire;
+  const n = (state.sel ? state.sel.els.size + state.sel.wires.size : 0);
+  let name = 'プロパティ', info = '', icon = 'none';
+  if (el) {
+    const isSym = (state.customSymbols || []).some(s => s.type === el.type);
+    if (isSym) {
+      name = el.partRef || '(デバイス名なし)';
+      info = [typeof rpSymbolLabel === 'function' ? rpSymbolLabel(el).split('／')[0] : '', el.partModel, el.layer].filter(Boolean).join(' ・ ');
+      icon = 'sym';
+    } else if (el.type === 'junction') {
+      name = el.partRef ? `${el.partRef}${el.label ? '-' + el.label : ''}` : (el.style === 'dot' || !el.style ? '分岐点' : '端子');
+      info = [el.style === 'dot' || !el.style ? '分岐点' : '端子台の端子', el.layer].filter(Boolean).join(' ・ ');
+      icon = 'junc';
+    } else {
+      name = uiV2ToolName(el.type) || el.type;
+      info = el.layer || '';
+      icon = el.type === 'text' ? 'text' : 'shape';
+    }
+  } else if (w) {
+    name = w.wireNo ? `配線 ${w.wireNo}` : '配線';
+    info = w.layer || '';
+    icon = 'wire';
+  } else if (n >= 2) {
+    info = `${n}個を選択中`;
+  } else {
+    info = '要素を選ぶと表示します';
+  }
+  nm.textContent = name;
+  sub.textContent = info;
+  const P = {
+    sym:   '<circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.3"/>',
+    junc:  '<circle cx="7" cy="7" r="3" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M1 7h3M10 7h3" stroke="currentColor" stroke-width="1.3"/>',
+    wire:  '<path d="M1 7h3M6 7h3M12 7h1M4 7V4M9 7v3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/>',
+    text:  '<path d="M2 3h10M7 3v8M4 11h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>',
+    shape: '<rect x="2.5" y="3.5" width="9" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/>',
+    none:  '<path d="M3 3.5h8M3 7h8M3 10.5h5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>',
+  };
+  ic.innerHTML = `<svg viewBox="0 0 14 14" width="18" height="18">${P[icon]}</svg>`;
 }
 
 // ── メニュー(今のリボンの同じタブの中身をドロップダウンで出す) ──
@@ -201,6 +256,11 @@ function _uiV2ClosePops() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  // 右パネルが描き直されたら見出しを付け直す(新しい画面のときだけ)
+  const rpb = document.getElementById('rp-body');
+  if (rpb && typeof MutationObserver === 'function') {
+    new MutationObserver(() => { if (_uiV2On) uiV2SyncRpHead(); }).observe(rpb, { childList: true });
+  }
   document.querySelectorAll('#v2-menus .v2-menu').forEach(b => {
     b.addEventListener('click', e => { e.stopPropagation(); uiV2OpenMenu(b); });
   });

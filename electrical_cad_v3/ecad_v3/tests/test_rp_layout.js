@@ -45,7 +45,7 @@ console.log('【つながり】');
 ok(/#cw\{flex:1;min-width:0;/.test(R('css/style.css')), 'キャンバスの枠は中のキャンバスの幅に縛られず縮む(min-width:0)');
 ok(/#rp\.collapsed\{transform:translateX\(100%\);\}/.test(R('css/style.css')), '折りたたみは自分の幅だけ外へ(幅が変わっても)');
 ok(/id="rp-resizer" onmousedown="rpStartResize\(event\)"/.test(R('index.html')), 'パネルの左端にドラッグの取っ手');
-ok(/rpSetWidth\(p\.rpWidth \|\| RP_W_DEF, false\)/.test(R('js/settings.js')), '起動時に前回の幅を戻す');
+ok(/rpSetWidth\(p\.rpWidth \|\| \(p\.uiV2 === true && typeof UIV2_RP_W !== 'undefined' \? UIV2_RP_W : RP_W_DEF\), false\)/.test(R('js/settings.js')), '起動時に前回の幅を戻す(前回値が無ければ 今の画面 200 / 新しい画面 272。2026-10-07)');
 ok(/applyRpLayout\(\);\s*\/\/ キャンバスの右端をパネルに合わせる/.test(ui), '折りたたみの切替でキャンバスを合わせる');
 
 console.log(ng ? `\n失敗 ${ng}件` : '\n全て成功');

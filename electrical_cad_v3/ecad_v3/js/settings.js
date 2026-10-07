@@ -294,13 +294,14 @@ function stApplyPrefs() {
   if (p.pdfDpi != null) setSel('pdf-dpi', p.pdfDpi);
   if (p.pdfFmt != null) setSel('pdf-fmt', p.pdfFmt);
   if (p.pdfColor === 'mono' || p.pdfColor === 'color') { state.pdfColor = p.pdfColor; setSel('pdf-color', p.pdfColor); }   // PDF の色(2026-10-06 js/pdf_export.js pdfWrapCtx)
-  if (p.xrefScale >= 0.3 && p.xrefScale <= 2) state.xrefScale = +p.xrefScale;
-  // 画面(2026-10-07 js/ui_v2.js)。既定は今の画面
-  if (typeof uiV2Apply === 'function') uiV2Apply(p.uiV2 === true);   // クロスリファレンスの表示(js/xref.js)
+  if (p.xrefScale >= 0.3 && p.xrefScale <= 2) state.xrefScale = +p.xrefScale;   // クロスリファレンスの表示(js/xref.js)
   // 右パネル(プロパティ)の幅(2026-10-02、ui.js applyRpLayout)。前回値が無くてもキャンバスの右端をパネルに合わせる
-  if (typeof rpSetWidth === 'function') rpSetWidth(p.rpWidth || RP_W_DEF, false);
+  // 前回値が無いときの幅は、新しい画面(js/ui_v2.js)なら 272、今の画面なら 200
+  if (typeof rpSetWidth === 'function') rpSetWidth(p.rpWidth || (p.uiV2 === true && typeof UIV2_RP_W !== 'undefined' ? UIV2_RP_W : RP_W_DEF), false);
   // 左パネルの固定(ドッキング)と幅(2026-10-02、ui.js applyLpLayout)
   if (typeof toggleLpDock === 'function') { if (p.lpDockW) _lpdW = +p.lpDockW; toggleLpDock(!!p.lpDocked); }
+  // 画面(2026-10-07 js/ui_v2.js)。既定は今の画面
+  if (typeof uiV2Apply === 'function') uiV2Apply(p.uiV2 === true);
 }
 
 if (typeof window !== 'undefined') (window.__ecadLoaded = window.__ecadLoaded || {})['settings.js'] = 1;

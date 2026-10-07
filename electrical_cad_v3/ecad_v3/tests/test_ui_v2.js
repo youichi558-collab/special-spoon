@@ -41,7 +41,7 @@ ok(/id="ui-v2-on"[^>]*uiV2Set\(true\)/.test(H) && /id="ui-v2-off"[^>]*uiV2Set\(f
 ok(/body:not\(\.ui-v2\) \.v2-only\{display:none!important;\}/.test(C), '今の画面では新しいバーを隠す');
 ok(/body\.ui-v2 #ribbon, body\.ui-v2 #quickbar, body\.ui-v2 #page-bar\{display:none!important;\}/.test(C), '新しい画面ではリボン・クイックバーを隠す(消さない)');
 const v2css = C.slice(C.indexOf('新しい画面(UI v2) 2026-10-07'));
-const outside = v2css.split('\n').filter(l => /^[#.a-z]/i.test(l) && !/^(body\.ui-v2|body:not\(\.ui-v2\)|body\.fullscreen|#v2-|\.v2-)/.test(l));
+const outside = v2css.split('\n').filter(l => /^[#.a-z]/i.test(l) && !/^(body\.ui-v2|body:not\(\.ui-v2\)|body\.fullscreen|#v2-|#rp-v2|\.v2-)/.test(l));
 ok(outside.length === 0, '★新しい見た目の CSS は body.ui-v2 か新しい部品(#v2-・.v2-)だけ=今の画面に効かない' + (outside.length ? ' ' + outside.join(' / ') : ''));
 ok(/function _uiV2RestoreAll\(\)/.test(V) && /ph\.parentNode\.insertBefore\(el, ph\)/.test(V), '今の画面に戻すときは移した位置へ全部戻す');
 
@@ -57,6 +57,14 @@ ok(/getElementById\(v2 \? 'v2-tbar' : 'ribbon'\)/.test(U), '右パネルの上�
 ok(/body\.ui-v2 #rp\{bottom:34px;\}/.test(C), '右パネルの下端は下のバー(34px)の上');
 ok(/#v2-top\{height:46px;/.test(C) && /#v2-tbar\{height:36px;/.test(C) && /#v2-bottom\{height:34px;/.test(C), 'バーの高さ(46・36・34)は数値で固定');
 ok(/\['ui_v2\.js'\] = 1;\s*$/.test(V), 'JS読み込み確認の目印(無いと起動時に警告が出る)');
+
+console.log('\n【段階2 右パネル】');
+ok(/id="rp-v2head" class="v2-only"/.test(H) && /_uiV2Move\('rp-toggle', document\.getElementById\('rp-v2head'\)\)/.test(V), '見出し(アイコン・デバイス名・補足)。畳むボタンは今のものを見出しへ移す');
+ok(/new MutationObserver\(\(\) => \{ if \(_uiV2On\) uiV2SyncRpHead\(\); \}\)\.observe\(rpb/.test(V) && !/uiV2SyncRpHead/.test(U), '★右パネルの中身・処理(ui.js)は変えず、描き直されたら見出しだけ付け直す');
+ok(/const UIV2_RP_W = 272;/.test(V) && /if \(!prefs\.rpWidth && typeof rpSetWidth === 'function'\) rpSetWidth\(on \? UIV2_RP_W : RP_W_DEF, false\)/.test(V), '幅の既定は 272(自分で幅を変えていればそのまま)');
+ok(/rpSetWidth\(p\.rpWidth \|\| \(p\.uiV2 === true && typeof UIV2_RP_W !== 'undefined' \? UIV2_RP_W : RP_W_DEF\), false\)/.test(S), '起動時も同じ(前回値が無ければ新しい画面は 272)');
+ok(/body\.ui-v2 #rp \.rp-tab\.on\{[^}]*font-weight:600/.test(C) && /body\.ui-v2 #rp > h4\{display:none;\}/.test(C), 'タブの見た目・今の見出し(プロパティ)は隠す');
+ok(/body\.ui-v2 #rp \.pp-zone:has\(input:checked\)\{border-color:var\(--red\);\}/.test(C), '部品表の対象外のチェック時の赤はそのまま');
 
 console.log(ng ? `\nNG ${ng} 件` : '\nすべてOK');
 process.exit(ng ? 1 : 0);
