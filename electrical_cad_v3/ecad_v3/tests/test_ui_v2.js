@@ -31,6 +31,8 @@ ok(['rb-ortho', 'rb-snapend', 'rb-snapmid', 'draw-lw-wrap', 'rb-textbox', 'jst-s
 const disp = V.match(/const UIV2_DISP = \[([^\]]*)\]/)[1];
 ok(['rb-termno', 'rb-xref', 'qb-flines', 'qb-unchk', 'qb-unconn', 'qb-pins'].every(id => disp.includes(`'${id}'`) && H.includes(`id="${id}"`)), '下のバーの表示の切替');
 ok(/_uiV2Move\('xref-scale-wrap', cr\); _uiV2Move\('rb-xref-refresh', cr\)/.test(V), 'CR倍率と更新は下のバー(右パネルのCRタブではない)');
+ok(sb.T.some(t => t[0] === 'rb-junction-circle') && !sb.M.includes('rb-junction-circle'), '★端子○はツール群(盛田さん「よく使うから場所変えたい」10-07)');
+ok(/>CR倍率<input type="number" id="xref-scale"/.test(H) && /id="rb-xref-refresh"[^>]*>CR更新</.test(H), '★倍率・更新がクロスリファレンスのものと分かる名前(CR倍率・CR更新)');
 ok(/_uiV2Move\('active-layer-sel', lay\)/.test(V), '★今のレイヤーの選択(クイックバーにあった)も下のバーへ移す=案に無かったが消えると困る');
 
 console.log('\n【切り替えの仕組み】');

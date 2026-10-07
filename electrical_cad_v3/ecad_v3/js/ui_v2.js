@@ -18,12 +18,12 @@
 const UIV2_TOOLS = [
   ['qb-sel'], ['qb-wire'],
   ['rb-text', 1], ['rb-fline'], ['rb-rect'], ['rb-circle'], ['rb-arc'], ['rb-dim'],
-  ['rb-junction-dot', 1], ['rb-junction-dbl'],
+  ['rb-junction-dot', 1], ['rb-junction-circle'], ['rb-junction-dbl'],   // 端子○は盛田さん「よく使う」(10-07)で「その他」から移した
   ['qb-partref', 1], ['qb-wireno'],
 ];
 // ツール群に無いもの(案で抜けていた11個。盛田さん「おすすめでいい」=「その他 ▾」から出す)
 const UIV2_MORE = ['rb-arc3', 'rb-triangle', 'rb-bezier', 'rb-angle_dim', 'rb-leader', 'rb-chain_dim',
-  'rb-measure', 'rb-guide_h', 'rb-guide_v', 'rb-junction-circle'];
+  'rb-measure', 'rb-guide_h', 'rb-guide_v'];
 // ツール設定帯へ移すもの。出す/隠すはツールの種類ごとに CSS(#v2-tbar[data-kind])で決める
 const UIV2_TSET = ['rb-ortho', 'rb-snapend', 'rb-snapmid', 'draw-lw-wrap', 'rb-textbox', 'jst-size-wrap',
   'wn-b-auto', 'wn-b-renum', 'wn-b-main'];
@@ -91,7 +91,7 @@ function uiV2Apply(on) {
     if (!more) {
       more = document.createElement('div');
       more.id = 'v2-more-btn';
-      more.title = 'その他のツール(弧・三角・曲線・角度寸法・指示線・連続寸法・測定・補助線・端子○)';
+      more.title = 'その他のツール(弧・三角・曲線・角度寸法・指示線・連続寸法・測定・補助線)';
       more.innerHTML = '<svg viewBox="0 0 14 14" width="15" height="15"><circle cx="3" cy="7" r="1.2" fill="currentColor"/><circle cx="7" cy="7" r="1.2" fill="currentColor"/><circle cx="11" cy="7" r="1.2" fill="currentColor"/></svg>';
       more.onclick = e => { e.stopPropagation(); _uiV2TogglePop('v2-more-pop', more); };
     }
@@ -141,8 +141,7 @@ function uiV2SyncTool(m) {
   if (nm) nm.textContent = uiV2ToolName(m);
   const more = document.getElementById('v2-more-btn');
   if (more) {
-    const id = m === 'junction' ? (state.junctionStyle === 'circle' ? 'rb-junction-circle' : '') : 'rb-' + m;
-    more.classList.toggle('on', UIV2_MORE.includes(id));
+    more.classList.toggle('on', UIV2_MORE.includes('rb-' + m));
   }
 }
 
