@@ -46,6 +46,7 @@ function syncUnconnectedBtn() {
   b.style.background = state.showUnconnected ? 'var(--acc)' : 'var(--bg)';
   b.style.color      = state.showUnconnected ? '#fff' : 'var(--fg)';
   b.style.fontWeight = state.showUnconnected ? '600' : '400';
+  b.classList.toggle('on', !!state.showUnconnected);   // 新しい画面(css body.ui-v2)はこちらで点灯する
 }
 
 // ================================================================

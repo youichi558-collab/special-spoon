@@ -327,3 +327,115 @@ body.fullscreen #fs-exit{display:block;}
 .pp-zone .pp-zone-on{display:none;font-size:11px;font-weight:600;margin-top:2px;}
 .pp-zone:has(input:checked){border-color:var(--red);background:var(--rbg);color:var(--red);border-width:2px;padding:5px 7px;}
 .pp-zone:has(input:checked) .pp-zone-on{display:block;}
+
+/* ================================================================
+   新しい画面(UI v2) 2026-10-07 — js/ui_v2.js
+   Claude Design の案 5a(明るい表示)/5b(ダーク表示)。設定の「画面」で切り替える。
+   ここから下は body.ui-v2 のときだけ効く(今の画面の CSS には触らない)。
+   ボタンは今のものを js/ui_v2.js が移して使うので、今のボタンの直書きの色(style=)に
+   勝つよう !important を付けている所がある。点灯は .on(今の点灯処理が付ける)。
+   高さは文字の大きさに頼らず数値で固定する(盛田さんの実機には Segoe UI が無い)。
+   ================================================================ */
+body:not(.ui-v2) .v2-only{display:none!important;}
+body.ui-v2{
+  --v2-desk:#efeee9;--v2-face:#ffffff;--v2-band:#fbfbf9;
+  --v2-line:#e6e5e0;--v2-fill:#f3f2ee;--v2-key:#dcdbd5;
+  --v2-fg:#1f2328;--v2-fg2:#4a4e55;--v2-fg3:#8a8d93;--v2-fg3b:#6b6f76;--v2-fg4:#a3a6ab;--v2-icon:#5b5f66;
+  --v2-acc:#0067c0;--v2-abg:#e7f0fa;--v2-abg2:#e6f0fa;--v2-on:#ffffff;--v2-savefg:#ffffff;
+  --v2-onsh:0 1px 3px rgba(0,0,0,.12);
+}
+body.ui-v2.dk{
+  --v2-desk:#161616;--v2-face:#1e1e1e;--v2-band:#232323;
+  --v2-line:#383838;--v2-fill:#2a2a2a;--v2-key:#383838;
+  --v2-fg:#f0f0f0;--v2-fg2:#c8c8c8;--v2-fg3:#9a9a9a;--v2-fg3b:#9a9a9a;--v2-fg4:#777;--v2-icon:#b0b0b0;
+  --v2-acc:#4fc3f7;--v2-abg:#1a3a5c;--v2-abg2:#1a3a5c;--v2-on:#3a3a3a;--v2-savefg:#0b1e2a;
+  --v2-onsh:none;
+}
+body.ui-v2 #ribbon, body.ui-v2 #quickbar, body.ui-v2 #page-bar{display:none!important;}
+body.fullscreen #v2-top, body.fullscreen #v2-tbar, body.fullscreen #v2-bottom{display:none!important;}
+
+/* ── 1-1 上のバー ── */
+#v2-top{height:46px;flex-shrink:0;display:flex;align-items:center;gap:10px;padding:0 12px;background:var(--v2-face);border-bottom:1px solid var(--v2-line);color:var(--v2-fg);}
+#v2-logo{width:24px;height:24px;border-radius:6px;background:#0067c0;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+#v2-title{display:flex;flex-direction:column;justify-content:center;min-width:0;max-width:220px;}
+#v2-fname{font-size:12.5px;font-weight:600;line-height:16px;height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#v2-fsub{font-size:10px;color:var(--v2-fg3);line-height:13px;height:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#v2-menus{display:flex;gap:0;flex-shrink:0;}
+.v2-menu{font-size:12px;color:var(--v2-fg2);padding:5px 8px;line-height:16px;border-radius:6px;cursor:pointer;white-space:nowrap;}
+.v2-menu:hover, .v2-menu.on{background:var(--v2-fill);}
+#v2-tools-wrap{flex:1;display:flex;justify-content:center;min-width:0;}
+#v2-tools{display:flex;align-items:center;gap:2px;padding:3px;background:var(--v2-fill);border-radius:9px;}
+/* ツール群: 今のボタンを 30×30 のアイコンにする(文字は font-size:0 で隠し、名前は title に出す) */
+#v2-tools > *{width:30px!important;height:30px!important;min-width:0!important;padding:0!important;margin:0;border:none!important;border-radius:7px!important;
+  background:transparent!important;color:var(--v2-fg2)!important;font-size:0!important;font-weight:400!important;gap:0!important;
+  display:flex!important;align-items:center;justify-content:center;flex-direction:row!important;cursor:pointer;box-shadow:none;}
+#v2-tools > * svg{width:15px!important;height:15px!important;display:block!important;}
+#v2-tools > *:hover{background:var(--v2-face)!important;}
+#v2-tools > .on{background:var(--v2-on)!important;color:var(--v2-acc)!important;box-shadow:var(--v2-onsh);}
+#v2-tools > .v2-gap{margin-left:8px!important;}
+#v2-search{width:200px;height:30px;flex-shrink:0;display:flex;align-items:center;gap:6px;padding:0 8px;background:var(--v2-fill);border-radius:8px;font-size:11.5px;color:var(--v2-fg3);cursor:pointer;white-space:nowrap;overflow:hidden;}
+#v2-search span{flex:1;overflow:hidden;text-overflow:ellipsis;}
+#v2-search kbd{font-family:inherit;font-size:10px;line-height:14px;padding:0 4px;border:1px solid var(--v2-key);border-radius:4px;color:var(--v2-fg3);background:var(--v2-face);}
+#v2-save{display:flex;height:30px;flex-shrink:0;border-radius:8px;overflow:hidden;background:var(--v2-acc);color:var(--v2-savefg);font-weight:600;font-size:12px;}
+#v2-save-main{padding:0 14px;line-height:30px;cursor:pointer;}
+#v2-save-more{padding:0 7px;line-height:30px;cursor:pointer;border-left:1px solid rgba(255,255,255,.35);}
+#v2-save-main:hover, #v2-save-more:hover{filter:brightness(1.1);background:rgba(255,255,255,.08);}
+
+/* ドロップダウン(メニュー・その他・保存▾) */
+.v2-pop{display:none;position:fixed;z-index:400;background:var(--v2-face);border:1px solid var(--v2-line);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:6px;max-width:calc(100vw - 8px);max-height:70vh;overflow:auto;color:var(--fg);}
+.v2-pop.v2-open{display:block;}   /* .fp(フロートパネル)ではないので open ではなく v2-open */
+#v2-menu-pop .rg-wrap{flex-wrap:wrap;}
+body.ui-v2 .rg.v2-empty{display:none;}   /* 中身を下のバーへ移して空になったグループ(表示>図面)は出さない(js/ui_v2.js が印を付ける) */
+#v2-more-pop.v2-open{display:grid;grid-template-columns:repeat(2,auto);gap:2px;}
+#v2-more-pop > .rb{justify-content:flex-start;}
+.v2-pop-item{padding:6px 12px;font-size:12px;border-radius:6px;cursor:pointer;white-space:nowrap;color:var(--v2-fg);}
+.v2-pop-item:hover{background:var(--v2-fill);}
+
+/* ── 1-2 ツール設定帯 ── */
+#v2-tbar{height:36px;flex-shrink:0;display:flex;align-items:center;gap:8px;padding:0 12px;background:var(--v2-band);border-bottom:1px solid var(--v2-line);font-size:11.5px;color:var(--v2-fg2);}
+#v2-toolname{background:var(--v2-abg);color:var(--v2-acc);font-weight:600;border-radius:6px;padding:0 8px;line-height:22px;height:22px;white-space:nowrap;flex-shrink:0;}
+#v2-tset{display:flex;align-items:center;gap:4px;min-width:0;overflow:hidden;}
+#v2-tset > *{display:none!important;}
+#v2-tbar[data-kind=wire] #v2-tset > :is(#rb-ortho,#rb-snapend,#rb-snapmid,#draw-lw-wrap,#wn-b-auto,#wn-b-renum,#wn-b-main),
+#v2-tbar[data-kind=draw] #v2-tset > :is(#rb-ortho,#rb-snapend,#rb-snapmid,#draw-lw-wrap),
+#v2-tbar[data-kind=text] #v2-tset > :is(#rb-ortho,#rb-snapend,#rb-snapmid,#draw-lw-wrap,#rb-textbox),
+#v2-tbar[data-kind=junction] #v2-tset > #jst-size-wrap{display:flex!important;}
+#v2-tset > .rb{flex-direction:row!important;align-items:center;gap:5px;height:24px;padding:0 8px!important;min-width:0;border:none!important;border-radius:6px;
+  background:transparent!important;color:var(--v2-fg3)!important;font-size:11.5px!important;line-height:24px;}
+#v2-tset > .rb:hover{background:var(--v2-fill)!important;}
+#v2-tset > .rb.on{background:var(--v2-on)!important;color:var(--v2-fg)!important;box-shadow:var(--v2-onsh);}
+#v2-tset > :is(#rb-ortho,#rb-snapend,#rb-snapmid,#rb-textbox) svg{display:none;}
+#v2-tset > :is(#rb-ortho,#rb-snapend,#rb-snapmid)::before{content:'';width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+#v2-tset > #rb-ortho::before{background:#0067c0;}
+#v2-tset > #rb-snapend::before{background:#107c41;}
+#v2-tset > #rb-snapmid::before{background:#f59e0b;}
+#v2-tset > #wn-b-auto{margin-left:10px!important;}
+#v2-tset > :is(#wn-b-auto,#wn-b-renum,#wn-b-main){color:var(--v2-fg2)!important;}
+#v2-tset > :is(#wn-b-auto,#wn-b-renum,#wn-b-main) svg{width:13px;height:13px;}
+#v2-tset > :is(#draw-lw-wrap,#jst-size-wrap){white-space:nowrap;font-size:11.5px!important;color:var(--v2-fg3)!important;gap:5px!important;margin-left:6px;}
+#v2-tset select, #v2-tset input{height:24px;font-size:11.5px!important;border:1px solid var(--v2-line)!important;border-radius:6px!important;background:var(--v2-face)!important;color:var(--v2-fg)!important;padding:0 4px!important;}
+#v2-hint{flex:1;min-width:0;text-align:right;color:var(--v2-fg3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#v2-hint #s-hint{flex:none!important;font-size:11.5px!important;opacity:1!important;}
+
+/* ── 1-3 下のバー ── */
+#v2-bottom{height:34px;flex-shrink:0;display:flex;align-items:center;gap:10px;padding:0 10px;background:var(--v2-face);border-top:1px solid var(--v2-line);color:var(--v2-fg2);}
+#v2-pages{flex:1;min-width:0;overflow-x:auto;display:flex;align-items:center;}
+#v2-pages #page-tabs{gap:2px;}
+#v2-pages .page-tab{border:none;border-radius:6px;background:transparent;color:var(--v2-fg2);padding:0 10px;line-height:24px;height:24px;font-weight:400;}
+#v2-pages .page-tab:hover{background:var(--v2-fill);}
+#v2-pages .page-tab.active{background:var(--v2-abg2);color:var(--v2-acc);font-weight:600;}
+#v2-pages .page-tab-add{border:none;border-radius:6px;background:transparent;color:var(--v2-fg3);padding:0 8px;line-height:24px;height:24px;font-size:13px;}
+#v2-pages .page-tab-add:hover{background:var(--v2-fill);color:var(--v2-acc);}
+#v2-disp, #v2-cr{display:flex;align-items:center;gap:2px;padding:2px;background:var(--v2-fill);border-radius:7px;flex-shrink:0;}
+#v2-disp > *, #v2-cr > *{display:flex!important;flex-direction:row!important;align-items:center;gap:4px!important;height:22px!important;padding:0 7px!important;min-width:0!important;
+  border:none!important;border-radius:5px!important;background:transparent!important;color:var(--v2-fg3b)!important;font-size:11px!important;font-weight:400!important;line-height:22px;white-space:nowrap;cursor:pointer;}
+#v2-disp > *:hover, #v2-cr > *:hover{background:var(--v2-face)!important;}
+#v2-disp > .on, #v2-cr > .on{background:var(--v2-on)!important;color:var(--v2-acc)!important;box-shadow:0 1px 2px rgba(0,0,0,.08);}
+#v2-disp svg, #v2-cr svg{width:12px!important;height:12px!important;}
+#v2-cr #xref-scale-wrap{cursor:default;}
+#v2-cr input{width:42px!important;height:18px;font-size:11px;border:1px solid var(--v2-line);border-radius:4px;background:var(--v2-face);color:var(--v2-fg);padding:0 3px;}
+#v2-layer{display:flex;align-items:center;gap:4px;flex-shrink:0;}
+#v2-layer #active-layer-sel{height:24px!important;min-width:90px!important;font-size:11px!important;border:1px solid var(--v2-line)!important;border-radius:6px!important;background:var(--v2-face)!important;color:var(--v2-fg)!important;}
+#v2-sb{flex-shrink:0;}
+#v2-sb #sb{background:transparent;color:var(--v2-fg3b);padding:0;gap:6px;font:10.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:nowrap;}
+body.ui-v2 #rp{bottom:34px;}

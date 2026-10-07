@@ -22,10 +22,12 @@ function switchRibbon(name, el) {
 // リボンは折り返し表示のためタブごとに実際の高さが変わる。#rp(右パネル)は position:fixed で
 // top:var(--ribbon-h)に依存しているため、ズレないようリボンの実測高さを都度反映する。
 function syncRibbonHeight() {
-  const rb = document.getElementById('ribbon');
+  // 新しい画面(js/ui_v2.js)ではリボンを隠し、上のバー2本(#v2-top・#v2-tbar)の下端に合わせる
+  const v2 = document.body.classList.contains('ui-v2');
+  const rb = document.getElementById(v2 ? 'v2-tbar' : 'ribbon');
   if (!rb) return;
   requestAnimationFrame(() => {
-    equalizeRibbonHeight();
+    if (!v2) equalizeRibbonHeight();
     // offsetHeight(リボンの高さ)ではなく画面上の下端を使う。
     // 警告の帯(#banner-area)が出るとリボンごと下がるため、高さだけ見ていると
     // #rp(右パネル)が帯の分だけ上にズレる。2026-09-19
@@ -2499,6 +2501,7 @@ function renderPageTabs() {
   el.innerHTML = state.pages.map((p,i) =>
     `<div class="page-tab${i===state.currentPage?' active':''}" draggable="true" onclick="switchPage(${i})" ondblclick="renamePage(${i})" ondragstart="pageDragStart(event,${i})" ondragover="pageDragOver(event)" ondrop="pageDrop(event,${i})" style="display:flex;align-items:center;gap:4px" title="ドラッグで並び替え／ダブルクリックで名前変更">${escH(p.name||('Sheet'+(i+1)))}${p.dirty?'<span style="color:var(--red);font-size:10px">●</span>':''}${state.pages.length>1?`<span onclick="event.stopPropagation();deletePage(${i})" style="font-size:10px;color:var(--fg3);cursor:pointer;line-height:1" title="削除">×</span>`:''}</div>`
   ).join('') + `<div class="page-tab-add" onclick="addPage()">＋</div>`;
+  if (typeof uiV2SyncTitle === 'function') uiV2SyncTitle();   // 新しい画面の上のバーのファイル名(js/ui_v2.js)
 }
 
 // ── ページタブ ドラッグ並び替え ──
@@ -3908,6 +3911,9 @@ function syncJunctionStyleBtns() {
   if (sizeInput) sizeInput.value = state.junctionR || 2;
   const map = { dot:'rb-junction-dot', circle:'rb-junction-circle', dbl:'rb-junction-dbl' };
   Object.values(map).forEach(id => document.getElementById(id)?.classList.remove('on'));
+  // 【2026-10-07】点けるのは接続点モードのときだけ。起動時(boot.js)にも呼ばれ、選択モードなのに
+  // 分岐点のボタンが点いていた(新しい画面 js/ui_v2.js ではツール群に並ぶので「選択」と2つ点いて見えた)
+  if (state.mode !== 'junction') return;
   const activeId = map[state.junctionStyle || 'dot'];
   document.getElementById(activeId)?.classList.add('on');
 }
@@ -3921,6 +3927,7 @@ function toggleFlineMarkDisp() {
     b.style.background = state.showFlineMark ? 'var(--acc)' : 'var(--bg)';
     b.style.color      = state.showFlineMark ? '#fff' : 'var(--fg)';
     b.style.fontWeight = state.showFlineMark ? '600' : '400';
+    b.classList.toggle('on', !!state.showFlineMark);   // 新しい画面(css body.ui-v2)はこちらで点灯する
   }
   draw();
 }
@@ -3934,6 +3941,7 @@ function syncSymPinsBtn() {
   b.style.background = state.showSymPins ? 'var(--acc)' : 'var(--bg)';
   b.style.color      = state.showSymPins ? '#fff' : 'var(--fg)';
   b.style.fontWeight = state.showSymPins ? '600' : '400';
+  b.classList.toggle('on', !!state.showSymPins);   // 新しい画面(css body.ui-v2)はこちらで点灯する
 }
 
 // シンボルの端子番号を図面に出すトグル(全体一括)。

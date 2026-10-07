@@ -581,6 +581,13 @@ function syncModeButtons(m) {
   const qbWire = document.getElementById('qb-wire');
   if (qbSel)  { qbSel.style.background  = m==='select' ? 'var(--acc)' : 'var(--bg)';  qbSel.style.color  = m==='select' ? '#fff' : 'var(--fg)'; }
   if (qbWire) { qbWire.style.background = m==='wire'   ? 'var(--acc)' : 'var(--bg)';  qbWire.style.color = m==='wire'   ? '#fff' : 'var(--fg)'; }
+  // 【2026-10-07】新しい画面(js/ui_v2.js)。クイックバーのボタンをそのまま上のツール群へ移して使うので、
+  // 点灯はここで .on を付ける(css body.ui-v2 が .on で色を付ける)。採番中は№採番・線番クリックを点ける
+  qbSel?.classList.toggle('on', m === 'select');
+  qbWire?.classList.toggle('on', m === 'wire');
+  document.getElementById('qb-partref')?.classList.toggle('on', m === 'partref');
+  document.getElementById('qb-wireno')?.classList.toggle('on', m === 'wireno');
+  if (typeof uiV2SyncTool === 'function') uiV2SyncTool(m);   // ツール設定帯の札と中身
 }
 
 function toggleOrtho() {
