@@ -478,3 +478,14 @@ body.ui-v2 #rp .rp-tabcopy{padding:2px 10px 6px;}
 body.ui-v2 #rp .pp-row:has(> input[type=checkbox]:only-of-type){display:flex;flex-direction:row-reverse;justify-content:flex-end;align-items:center;gap:8px;}
 body.ui-v2 #rp .pp-row:has(> input[type=checkbox]:only-of-type) > input[type=checkbox]{width:15px;height:15px;margin:0;flex-shrink:0;}
 body.ui-v2 #rp .pp-row:has(> input[type=checkbox]:only-of-type) > label{margin:0;font-size:12px;color:var(--v2-fg2);}
+
+/* ── 段階3 左パネル(#lp)をアイコンの列に 2026-10-07 ──
+   押したときの処理は今の switchLTab()・固定(toggleLpDock)・幅変更(#lpd-resizer)のまま。文字は隠し、名前は title に出す */
+body.ui-v2 #lp{width:48px;background:var(--v2-face);border-right:1px solid var(--v2-line);align-items:center;padding:8px 0;gap:4px;}
+body.ui-v2 #lp-tabs{align-items:center;gap:4px;}
+body.ui-v2 #lp .lt, body.ui-v2 #lp .lt-dock, body.ui-v2 #lp .lt-v2set{width:32px;height:32px;padding:0;border:none;border-radius:8px;writing-mode:horizontal-tb;font-size:0;letter-spacing:0;
+  display:flex;align-items:center;justify-content:center;color:var(--v2-icon);background:transparent;cursor:pointer;flex-shrink:0;}
+body.ui-v2 #lp .lt:hover, body.ui-v2 #lp .lt-dock:hover, body.ui-v2 #lp .lt-v2set:hover{background:var(--v2-fill);color:var(--v2-acc);}
+body.ui-v2 #lp .lt.on, body.ui-v2 #lp .lt-dock.on{background:var(--v2-abg);color:var(--v2-acc);}
+body.ui-v2 #lt-prj{order:-1;}
+body.ui-v2 #lp .lt-dock{margin-top:auto;}

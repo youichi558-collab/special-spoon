@@ -217,7 +217,7 @@ const rows = () => [...body.innerHTML.matchAll(/class="pt-row ([^"]*)"[^>]*data-
 
   console.log('\n【左パネル・固定】');
   const html = R('index.html'), ui = R('js/ui.js');
-  ok(/switchLTab\('prj',this\)">プロジェクト</.test(html), '★縦タブに「プロジェクト」');
+  ok(/switchLTab\('prj',this\)">(<svg class="v2-only"[^]*?<\/svg>)?プロジェクト</.test(html), '★縦タブに「プロジェクト」(新しい画面用のアイコン svg.v2-only が前に付く。2026-10-07)');
   ok(/prj:'prj-float'/.test(ui) && /'prt-float', 'prj-float'\]/.test(ui), 'タブの切替と固定(ドッキング)の対象に入っている');
   ok(/<script src="js\/proj_tree.js"><\/script>/.test(html) && /id="prj-float"/.test(html) && /onclick="closePrj\(\)"/.test(html), '読み込み・窓・閉じる×');
   ok(/function loadProjectText\(text, name, mode0\)/.test(R('js/edit.js')), '読込の本体を中身から呼べる(loadProjectText)');

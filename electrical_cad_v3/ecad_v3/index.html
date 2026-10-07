@@ -423,13 +423,16 @@
   <!-- 左パネル -->
   <div id="lp">
     <div id="lp-tabs">
-      <div class="lt on" onclick="switchLTab('sym',this)">シンボル</div>
-      <div class="lt" onclick="switchLTab('lay',this)">レイヤー</div>
-      <div class="lt" onclick="switchLTab('prt',this)">部品DB</div>
-      <div class="lt" onclick="switchLTab('prj',this)">プロジェクト</div>
+      <!-- 【2026-10-07】新しい画面(js/ui_v2.js 段階3)では文字を隠してアイコンの列にする(svg.v2-only)。並びは css の order でプロジェクトを先頭に -->
+      <div class="lt on" id="lt-sym" title="シンボル" onclick="switchLTab('sym',this)"><svg class="v2-only" viewBox="0 0 14 14" width="16" height="16"><path d="M2 2.5h4v4H2zM8 2.5h4v4H8zM2 8.5h4v4H2zM8 8.5h4v4H8z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/></svg>シンボル</div>
+      <div class="lt" id="lt-lay" title="レイヤー" onclick="switchLTab('lay',this)"><svg class="v2-only" viewBox="0 0 14 14" width="16" height="16"><path d="M7 2l5 2.5-5 2.5-5-2.5zM2 7.5l5 2.5 5-2.5M2 10l5 2.5 5-2.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/></svg>レイヤー</div>
+      <div class="lt" id="lt-prt" title="部品DB" onclick="switchLTab('prt',this)"><svg class="v2-only" viewBox="0 0 14 14" width="16" height="16"><path d="M3 2.5h8v9H3zM5 5h4M5 7.5h4M5 10h2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/></svg>部品DB</div>
+      <div class="lt" id="lt-prj" title="プロジェクト" onclick="switchLTab('prj',this)"><svg class="v2-only" viewBox="0 0 14 14" width="16" height="16"><path d="M1.5 4h4l1 1.2h6v6.3h-11z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/></svg>プロジェクト</div>
     </div>
     <!-- 【2026-10-02】固定(ドッキング)の切替。ONでシンボル一覧などを縦タブの右に並べて置く(ui.js toggleLpDock) -->
-    <div class="lt-dock" id="lt-dock" onclick="toggleLpDock()" title="ONにすると、シンボル一覧・レイヤー・部品DB・プロジェクトを左に固定して並べます(キャンバスはその右から)。タブで切替、開いているタブをもう一度押すと畳みます。右端のドラッグで幅を変えられます。OFFは浮いた窓">📌固定</div>
+    <div class="lt-dock" id="lt-dock" onclick="toggleLpDock()" title="ONにすると、シンボル一覧・レイヤー・部品DB・プロジェクトを左に固定して並べます(キャンバスはその右から)。タブで切替、開いているタブをもう一度押すと畳みます。右端のドラッグで幅を変えられます。OFFは浮いた窓"><svg class="v2-only" viewBox="0 0 14 14" width="16" height="16"><path d="M5 1.5h4M6 1.5v4L3.5 8h7L8 5.5v-4M7 8v4.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/></svg>📌固定</div>
+    <!-- 新しい画面だけ: いちばん下に設定 -->
+    <div class="lt-v2set v2-only" onclick="openSettingsPanel()" title="設定(保存先・部品DBの場所・線番・バックアップ・画面)"><svg viewBox="0 0 14 14" width="16" height="16"><circle cx="7" cy="7" r="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M7 1.5v2M7 10.5v2M1.5 7h2M10.5 7h2M3.1 3.1l1.4 1.4M9.5 9.5l1.4 1.4M3.1 10.9l1.4-1.4M9.5 4.5l1.4-1.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></div>
     <!-- #lp-tabsのボタンはswitchLTab()経由でsym-float/lay-float/prt-float(浮動パネル)を開閉する。
          以前ここにあった#lp-body(旧インライン一覧)は常時display:noneで実際には表示されておらず、
          完全に未使用だったため削除した。カスタムシンボル一覧・レイヤー一覧・部品DB一覧は

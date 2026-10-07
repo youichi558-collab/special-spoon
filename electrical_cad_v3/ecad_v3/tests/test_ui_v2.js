@@ -66,5 +66,11 @@ ok(/rpSetWidth\(p\.rpWidth \|\| \(p\.uiV2 === true && typeof UIV2_RP_W !== 'unde
 ok(/body\.ui-v2 #rp \.rp-tab\.on\{[^}]*font-weight:600/.test(C) && /body\.ui-v2 #rp > h4\{display:none;\}/.test(C), 'タブの見た目・今の見出し(プロパティ)は隠す');
 ok(/body\.ui-v2 #rp \.pp-zone:has\(input:checked\)\{border-color:var\(--red\);\}/.test(C), '部品表の対象外のチェック時の赤はそのまま');
 
+console.log('\n【段階3 左パネル】');
+ok(['sym', 'lay', 'prt', 'prj'].every(k => new RegExp(`id="lt-${k}" title="[^"]+" onclick="switchLTab\\('${k}',this\\)"><svg class="v2-only"`).test(H)), '★4つのタブは今の switchLTab のまま、アイコン(新しい画面だけ)を足しただけ');
+ok(/body\.ui-v2 #lt-prj\{order:-1;\}/.test(C), '並びはプロジェクト・シンボル・レイヤー・部品DB(順番は CSS だけで変える)');
+ok(/class="lt-v2set v2-only" onclick="openSettingsPanel\(\)"/.test(H), 'いちばん下に設定');
+ok(/body\.ui-v2 #lp\{width:48px;/.test(C) && /width:32px;height:32px;[^}]*border-radius:8px;[^}]*font-size:0;/.test(C), 'アイコンの列 48px・ボタン 32×32 角丸8(文字は隠して title に出す)');
+
 console.log(ng ? `\nNG ${ng} 件` : '\nすべてOK');
 process.exit(ng ? 1 : 0);
