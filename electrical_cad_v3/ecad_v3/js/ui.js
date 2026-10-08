@@ -2732,10 +2732,10 @@ function updateRightPanel() {
       // TB1は1台として扱われる。
       const jDevC = el.devColor||(state.darkMode?'#4da3ff':'#1d6fb5');
       html += `<div class="pp-group" style="border-left:4px solid ${jDevC}"><div class="pp-group-cap" style="color:${jDevC}">◆ デバイス</div>`;
-      html += `<div class="pp-row"><label>デバイス</label>`
+      html += `<div class="pp-row"><div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--fg3);margin-bottom:2px">デバイス`
+      + `<button class="fp-btn" style="font-size:10px;padding:1px 6px;white-space:nowrap" onclick="devRenameDialog()" title="この端子台の端子すべて(プロジェクトの別ファイルも)の名前を付け替えます。使われている名前なら番号をずらして入れます">付け替え…</button></div>`
         + `<input type="text" id="pp-jref" list="pp-jref-list" value="${escH(el.partRef||'')}"`
-        + ` placeholder="例: TB1" onchange="onJunctionRefChanged()">`
-        + `<button class="fp-btn" style="font-size:10px;padding:1px 6px;margin-left:4px;white-space:nowrap" onclick="devRenameDialog()" title="この端子台の端子すべて(プロジェクトの別ファイルも)の名前を付け替えます。使われている名前なら番号をずらして入れます">付け替え…</button></div>`
+        + ` placeholder="例: TB1" onchange="onJunctionRefChanged()"></div>`
         + `<datalist id="pp-jref-list">${partRefOptionsHtml(el.partRef)}</datalist>`;
       html += `<div class="pp-row"><label>デバイスを図面に表示</label><input type="checkbox" id="pp-jrefshow" ${(el.showDev!==undefined?el.showDev:true)?'checked':''}></div>`;
       // 【2026-08-23】盤内/盤外の2択セレクトから「対象外」チェックに変更。
@@ -2896,11 +2896,12 @@ function updateRightPanel() {
     // デバイス欄は入力欄＋候補リスト(datalist)。候補は図面上で実際に使われている
     // デバイス記号だけを出す。既存デバイスを選ぶと型番・仕様がそこから引き継がれる
     // (MC1は主接点・コイル・補助接点と複数箇所に置くため、2つ目以降は選ぶだけで済む)。
-    html += `<div class="pp-row"><label>デバイス</label>`
+    // 【2026-10-08】「付け替え…」= そのデバイスの記号すべて(別ファイルも)の名前を付け替える(js/devices.js devRenameDialog)。
+    // 見出しの行に置く(入力欄の横だと幅が足りず下へ折り返し、入力欄の候補の一覧に隠れて押せなかった。盛田さん実機)
+    html += `<div class="pp-row"><div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--fg3);margin-bottom:2px">デバイス`
+      + `<button class="fp-btn" style="font-size:10px;padding:1px 6px;white-space:nowrap" onclick="devRenameDialog()" title="このデバイスの記号すべて(接点・端子・外形図。プロジェクトの別ファイルも)の名前を付け替えます。使われている名前なら番号をずらして入れます">付け替え…</button></div>`
       + `<input type="text" id="pp-partref" list="pp-partref-list" value="${escH(el.partRef||'')}"`
-      + ` placeholder="例: MC1, NFB1" onchange="onPartRefChanged()">`
-      // 【2026-10-08】そのデバイスの記号すべて(別ファイルも)の名前を付け替える(js/devices.js devRenameDialog)
-      + `<button class="fp-btn" style="font-size:10px;padding:1px 6px;margin-left:4px;white-space:nowrap" onclick="devRenameDialog()" title="このデバイスの記号すべて(接点・端子・外形図。プロジェクトの別ファイルも)の名前を付け替えます。使われている名前なら番号をずらして入れます">付け替え…</button></div>`
+      + ` placeholder="例: MC1, NFB1" onchange="onPartRefChanged()"></div>`
       + `<datalist id="pp-partref-list">${partRefOptionsHtml(el.partRef)}</datalist>`;
     html += `<div class="pp-row"><label>デバイスを図面に表示</label><input type="checkbox" id="pp-devhide"${el.devHide?'':' checked'} title="3極品等、同じデバイスを複数のシンボルに分けて配置する場合に使います。デバイス名は全部の要素に同じ値を入れつつ、文字はどれか1つだけに絞れます"></div>`;
     html += `${_ppZoneHtml('pp-zone', el.panelZone==='外')}`;
