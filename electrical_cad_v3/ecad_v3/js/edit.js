@@ -546,6 +546,21 @@ function _askLoadMode(info, cb) {
   ov.querySelector('#lm-replace').focus();
 }
 
+// 【2026-10-08】「読込」はファイルの窓(showOpenFilePicker)で選ぶ。選んだ図面の場所(ファイルの鍵)が分かるので、
+// 置き換えで開いたあと、今のプロジェクトの中の図面ならプロジェクトのまま・外ならそのフォルダをプロジェクトにするか聞く
+// (js/proj_tree.js ptreeAfterLoadFile。盛田さん「２と４かな」→「はい」)。窓が使えないブラウザは今までの選び方
+async function loadPick() {
+  if (!window.showOpenFilePicker) { document.getElementById('load-in').click(); return; }
+  let fh;
+  try {
+    [fh] = await window.showOpenFilePicker({ id: 'ecad-load', multiple: false,
+      types: [{ description: '図面データ', accept: { 'application/x-seqzu': ['.seqzu'], 'application/json': ['.json'] } }] });
+  } catch (e) { return; }   // 取りやめ
+  let text;
+  try { text = await (await fh.getFile()).text(); }
+  catch (e) { alert(`「${fh.name}」を読めませんでした（${e && e.message || e}）`); return; }
+  loadProjectText(text, fh.name, undefined, { fh });
+}
 function loadProject(input) {
   const f = input.files[0]; if (!f) return;
   const rd = new FileReader();
@@ -556,7 +571,7 @@ function loadProject(input) {
 
 // 図面ファイルの中身(文字列)を読み込む。mode0 を渡せば方法を聞かずにそれで読む
 // (左パネルのプロジェクトのツリー js/proj_tree.js から。2026-10-04)。渡さなければ置き換え/追加を聞く
-function loadProjectText(text, name, mode0) {
+function loadProjectText(text, name, mode0, opts) {
     let d;
     try { d = JSON.parse(text); }
     catch(err) { alert('読込失敗: ' + err.message); return false; }
@@ -586,7 +601,9 @@ function loadProjectText(text, name, mode0) {
         const { fixedIds, zeroWires } = applyProjectData(d);
         // 【2026-10-06】「読込」で置き換えて開いたら、プロジェクトのフォルダを外す(js/proj_tree.js ptreeDetach)。
         // ツリーから開いたとき(mode0 あり)は外さない。読込の図面がどのフォルダのものか分からず、別のフォルダの図面まで集計していたため(盛田さん)
-        if (!mode0 && typeof ptreeDetach === 'function') ptreeDetach();
+        // 【2026-10-08】読込のファイルの鍵があれば(loadPick)、今のプロジェクトの中の図面ならプロジェクトのまま・外ならそのフォルダをプロジェクトにするか聞く
+        if (!mode0 && opts && opts.fh && typeof ptreeAfterLoadFile === 'function') ptreeAfterLoadFile(opts.fh);
+        else if (!mode0 && typeof ptreeDetach === 'function') ptreeDetach();
         const dm = (typeof devAfterLoad === 'function') ? devAfterLoad({ defer: true }) : { filled: 0, conflicts: [] };
         if (mode0 && !(fixedIds > 0 || zeroWires > 0) && !_devLoadMsg(dm) && typeof stToast === 'function') { stToast(`開きました: ${name}`, 'ok'); return true; }
         alert((fixedIds > 0 || zeroWires > 0

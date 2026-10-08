@@ -214,6 +214,57 @@ async function ptreeDetach() {
   } catch (e) {}
   ptreeRender();
 }
+// 【2026-10-08】読込(js/edit.js loadPick)で置き換えて開いた図面の扱い。
+//   今のプロジェクトのフォルダの中の図面 → 何も聞かずにプロジェクトのまま(ツリーから開いたのと同じ。上書き保存も効く)
+//   外の図面 → 「この図面のフォルダをプロジェクトにしますか？」(画面の中のボタン。押した直後にフォルダの窓を出すため=ブラウザは押した直後でないと窓を出せない)
+//     はい → フォルダの窓をその図面のフォルダの中で開く(押すのは「フォルダーの選択」だけ)/ いいえ → 今まで通りプロジェクトを外す
+async function ptreeAfterLoadFile(fh) {
+  let root = ptreeState.root;
+  if (!root && !ptreeState.detached) { try { root = await _stGet(PTREE_KEY) || null; } catch (e) {} }
+  let rel = null;
+  if (root) { try { rel = await root.resolve(fh); } catch (e) {} }
+  if (rel) {
+    ptreeState.root = root; ptreeState.detached = false;
+    _ptAdoptLoaded(fh, rel);
+    if (typeof stToast === 'function') stToast(`プロジェクト「${root.name}」の図面として開きました`, 'ok');
+    return;
+  }
+  await ptreeDetach();   // ひとまず外す(いいえ・取りやめのときはこのまま)
+  _ptAskAdopt(fh);
+}
+function _ptAdoptLoaded(fh, rel) {
+  const path = '/' + rel.join('/');
+  for (let i = 1; i < rel.length; i++) ptreeState.open.add('/' + rel.slice(0, i).join('/'));
+  ptreeState.files.set(path, fh);
+  (state.pages || []).forEach(p => { p._src = path; });
+  ptreeRender();
+}
+function _ptAskAdopt(fh) {
+  const old = document.getElementById('pt-adopt'); if (old) old.remove();
+  const box = document.createElement('div');
+  box.id = 'pt-adopt';
+  box.style.cssText = 'position:fixed;right:12px;bottom:44px;z-index:10002;max-width:400px;background:var(--bg2,#2a2a2a);color:var(--fg,#ddd);'
+    + 'border:1px solid var(--acc,#4fc3f7);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.4);padding:10px 12px;font-size:12px;line-height:1.6';
+  box.innerHTML = `<div style="font-weight:600;margin-bottom:2px">「${_ptEsc(fh.name)}」のフォルダをプロジェクトにしますか？</div>`
+    + '<div style="font-size:11px;color:var(--fg3,#999);margin-bottom:8px">プロジェクトの外の図面です。プロジェクトにすると、部品表などがそのフォルダの図面で集計され、上書き保存も効きます。'
+    + '「する」を押すとフォルダの窓がこの図面のフォルダで開くので、そのまま「フォルダーの選択」を押してください。</div>'
+    + '<div style="display:flex;gap:6px;justify-content:flex-end"><button class="fp-btn" id="pt-adopt-no">しない(この図面だけ)</button>'
+    + '<button class="fp-btn primary" id="pt-adopt-yes">する</button></div>';
+  document.body.appendChild(box);
+  document.getElementById('pt-adopt-no').onclick = () => box.remove();
+  document.getElementById('pt-adopt-yes').onclick = async () => {
+    box.remove();
+    let dir;
+    try { dir = await window.showDirectoryPicker({ id: 'ecad-ptree', mode: 'readwrite', startIn: fh }); } catch (e) { return; }
+    let rel = null;
+    try { rel = await dir.resolve(fh); } catch (e) {}
+    if (!rel) { alert(`選んだフォルダ「${dir.name}」に、図面「${fh.name}」は入っていません。プロジェクトは外したままです`); return; }
+    await _ptSetRoot(dir);
+    _ptAdoptLoaded(fh, rel);
+    if (typeof stToast === 'function') stToast(`プロジェクトを「${dir.name}」にしました`, 'ok');
+  };
+}
+
 // 「前のフォルダに戻す」
 async function ptreeRestorePrev() {
   let prev = null;

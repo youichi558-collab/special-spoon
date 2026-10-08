@@ -9,7 +9,18 @@ const cwEl = document.getElementById('cw');
 
 function fgC() { return state.darkMode ? '#ccc' : '#222'; }
 
+// 【2026-10-08】明るい表示(ダークでない画面)では、白(とほぼ白)の文字を黒で描く。盛田さん「２と４かな」→ 案A「はい」。
+// 白にしたデバイス名・仕様(Sheet3 では 85点中36点)が明るい背景でほぼ読めなかった。図面のデータの色は変えない(ダークでは白のまま)。
+// PDF の「白い文字は黒で描く」と同じ決まり(js/pdf_export.js pdfWrapCtx の 'color')を画面のキャンバスにも掛ける。
+// 紙に描くとき(pdfMode)は PDF 側が自分で掛けるので、ここでは掛けない
+function _lightTextFix(c) {
+  const on = !state.pdfMode && !state.darkMode && typeof pdfWrapCtx === 'function';
+  if (on && !c._lightFix) { pdfWrapCtx(c, 'color'); c._lightFix = true; }
+  else if (!on && c._lightFix) { delete c.fillText; c._lightFix = false; }
+}
+
 function draw() {
+  _lightTextFix(ctx);
   ctx.clearRect(0, 0, cv.width, cv.height);
 
   // 背景（PDF出力時は白・グリッドなし）
