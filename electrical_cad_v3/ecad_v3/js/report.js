@@ -1789,20 +1789,19 @@ function _tbExtCount(dev, test) {
 }
 
 // 指定デバイスの端子番号を、表示されている順に1から振り直す。
-// 【2026-10-08】端子台表は別ファイルの端子も並べるので、番号は**別ファイルも含めた表の順**で決め、書き込むのは開いているファイルの端子だけ。
-// 別ファイルの端子はそのファイルを開いて同じボタンを押せば、同じ表の順で番号が入る(まとめて書くのは作る順の4 一括操作)。
+// 【2026-10-08】端子台表は別ファイルの端子も並べるので、番号は**別ファイルも含めた表の順**で決める。
+// 【2026-10-08 作る順の4①(盛田さん「1から」)】開いているファイルの端子はすぐ書き(Ctrl+Z で戻せる)、別ファイルの端子は
+// 書き換える一覧を見せて聞いてから書く(部品表と同じ口。js/proj_index.js pidxDevApply)。台帳が無ければ開いているファイルだけ。
 function renumberTerminals(dev) {
-  const list = _tbProjWith(() => (groupTerminalsByDevice(collectTerminals()).get(dev) || [])
-    .map((r, i) => ({ el: r.el, no: String(i + 1), ext: !!(state.pages[r.page] && state.pages[r.page]._file) })));
-  if (!list.length) return;
-  const mine = list.filter(r => !r.ext), extN = list.length - mine.length;
-  if (!mine.length) {
-    alert(`${dev} の端子はこのファイルにありません（別ファイルに ${extN} 点）。\nそのファイルを開いて振り直してください。`);
-    return;
-  }
+  const run = () => (groupTerminalsByDevice(collectTerminals()).get(dev) || []).forEach((r, i) => { r.el.label = String(i + 1); });
+  const n = _tbProjWith(() => (groupTerminalsByDevice(collectTerminals()).get(dev) || []).length);
+  if (!n) return;
   if (typeof pushH === 'function') pushH();
-  mine.forEach(r => { r.el.label = r.no; });
-  if (extN && typeof stToast === 'function') stToast(`このファイルの ${mine.length} 点を振り直しました。別ファイルにある ${extN} 点は書き換えていません（そのファイルを開いて同じボタンを押すと、この表の順で番号が入ります）`, 'warn');
+  if (typeof pidxDevApply === 'function' && typeof pidxReady === 'function' && pidxReady()) {
+    pidxDevApply(run, `${dev} の端子番号の振り直し`, () => {
+      if (document.getElementById('report-p')?.classList.contains('open') && _lastReportTab === 'tbtbl') showTBTable();
+    });
+  } else _tbProjWith(run);   // 参照図面(xprojWith)の写しに書いても捨てるだけ。開いているファイルの端子に入る
   if (typeof draw === 'function') draw();
   // 【2026-09-21修正】updateRightPanel() を呼んでいなかった。
   // 端子を1つ選んだまま「この順で番号を振り直す」を押すと、図面とデータの

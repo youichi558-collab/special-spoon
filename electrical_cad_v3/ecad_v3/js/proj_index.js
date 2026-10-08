@@ -363,7 +363,7 @@ function pidxDevPlan(fn) {
       if (!Object.keys(set).length) return;
       const pg = state.pages[x.pi];
       const loc = x.group ? `${pg._file}/${pg._pno}/外形図` : elLocation(x.o, x.pi);
-      out.push({ file: x.o._pidxSrc, pi: x.o._pidxPi, id: x.o._pidxId, group: x.group, ref: x.o.partRef || '', set, before: x.before, loc });
+      out.push({ file: x.o._pidxSrc, pi: x.o._pidxPi, id: x.o._pidxId, group: x.group, type: x.o.type, ref: x.o.partRef || '', set, before: x.before, loc });
     });
     return out;
   });
@@ -383,7 +383,7 @@ async function pidxWritePlan(plan) {
       const file = await fh.getFile();
       const rec = idx.files[name];
       // 台帳を作ったあとに変わったファイル(別の窓で保存した等)は書かない。読み直した台帳で打ち直してもらう
-      if (!rec || rec.lastModified !== file.lastModified || rec.size !== file.size) { ng.push(`${name}: 部品表を開いたあとに変わっています`); continue; }
+      if (!rec || rec.lastModified !== file.lastModified || rec.size !== file.size) { ng.push(`${name}: 帳票を開いたあとに変わっています`); continue; }
       const d = JSON.parse(await file.text());
       let n = 0;
       items.forEach(it => {
@@ -412,7 +412,8 @@ function pidxAskWrite(plan, what) {
   return new Promise(resolve => {
     const old = document.getElementById('pidx-write-dlg');
     if (old) old.remove();
-    const fname = k => { const f = (typeof DEV_FIELDS !== 'undefined' ? DEV_FIELDS : []).find(x => x.key === k); return f ? f.name : k; };
+    // 端子台の端子(○◎)の label は端子番号(仕様ではない)
+    const fname = (k, it) => { if (k === 'label' && it && it.type === 'junction') return '端子番号'; const f = (typeof DEV_FIELDS !== 'undefined' ? DEV_FIELDS : []).find(x => x.key === k); return f ? f.name : k; };
     const show = (k, v) => { const f = (typeof DEV_FIELDS !== 'undefined' ? DEV_FIELDS : []).find(x => x.key === k) || {}; return (typeof devShowVal === 'function') ? devShowVal(f, v == null ? '' : (v === true ? 'true' : String(v))) : String(v == null ? '' : v); };
     const byFile = new Map();
     plan.forEach(it => { (byFile.get(it.file) || byFile.set(it.file, []).get(it.file)).push(it); });
@@ -420,7 +421,7 @@ function pidxAskWrite(plan, what) {
     byFile.forEach((items, name) => {
       rows += `<div style="border-top:1px solid var(--bd2);padding:5px 0"><div style="font-weight:600">${escH(_pidxBase(name))}（${items.length}個）</div>`
         + items.slice(0, 30).map(it => `<div style="color:var(--fg3)">${escH(it.ref)}　${escH(it.loc)}　`
-          + Object.keys(it.set).filter(k => k !== 'specHide').map(k => `${escH(fname(k))}: ${escH(show(k, it.before[k]))} → <b style="color:var(--fg)">${escH(show(k, it.set[k]))}</b>`).join('、')
+          + Object.keys(it.set).filter(k => k !== 'specHide').map(k => `${escH(fname(k, it))}: ${escH(show(k, it.before[k]))} → <b style="color:var(--fg)">${escH(show(k, it.set[k]))}</b>`).join('、')
           + (Object.keys(it.set).length === 1 && 'specHide' in it.set ? '仕様を図面に表示しない' : '') + `</div>`).join('')
         + (items.length > 30 ? `<div style="color:var(--fg3)">ほか ${items.length - 30}個</div>` : '') + `</div>`;
     });
@@ -430,7 +431,7 @@ function pidxAskWrite(plan, what) {
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3001;display:flex;align-items:center;justify-content:center';
     ov.innerHTML = `<div role="dialog" style="background:var(--bg2);color:var(--fg);border:1px solid var(--bd);border-radius:6px;padding:14px 18px;width:600px;max-width:92vw;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 4px 24px var(--sh);font-size:12px;line-height:1.5">
       <div style="font-size:13px;font-weight:600;margin-bottom:4px">別ファイルにも入れますか？（${byFile.size}ファイル・${plan.length}個）</div>
-      <div style="color:var(--fg3);margin-bottom:6px">${escH(what || '')}を、開いているファイルに入れました。同じデバイスの記号が下の別ファイルにもあります。<br>
+      <div style="color:var(--fg3);margin-bottom:6px">${escH(what || '')}を、開いているファイルの記号に入れました。同じデバイスの記号が下の別ファイルにもあります。<br>
       書くと、そのファイルを直接書き換えます（書く前の図面は履歴に残ります。<b>Ctrl+Z では戻りません</b>。戻すときはプロジェクトのツリーの履歴から）。</div>
       <div style="overflow-y:auto;flex:1">${rows}</div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
@@ -447,7 +448,7 @@ function pidxAskWrite(plan, what) {
       const r = await pidxWritePlan(plan);
       if (typeof stToast === 'function') {
         if (r.files.length) stToast(`別ファイル ${r.files.length} 件に書きました（${r.files.map(_pidxBase).join('、')}）`);
-        if (r.ng.length) stToast('書けなかった別ファイルがあります（書いていません。部品表を開き直してから、もう一度打ってください）:\n' + r.ng.join('\n'), 'warn');
+        if (r.ng.length) stToast('書けなかった別ファイルがあります（書いていません。帳票を開き直してから、もう一度やり直してください）:\n' + r.ng.join('\n'), 'warn');
       }
       resolve(r);
     };

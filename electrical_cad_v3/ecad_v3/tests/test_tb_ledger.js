@@ -120,21 +120,27 @@ console.log('\n【並び: ファイルの名前順 → そのファイルの中�
   eq(sb.buildTerminalBlockRows().filter(r => r.tbRef === 'XT1').map(r => r.termNo), ['5'], 'プロジェクトが無ければ今まで通り開いているファイルだけ');
 }
 
-console.log('\n【番号の振り直し: 表の順で、書くのは開いているファイルだけ】');
+console.log('\n【番号の振り直し: 表の順で。別ファイルの端子は一覧を見せて聞く(作る順の4①)】');
 {
   ledger();
-  toasts.length = 0;
+  let asked = null;
+  const saveAsk = sb.pidxAskWrite;
+  sb.pidxAskWrite = (plan, what) => { asked = { plan, what }; return Promise.resolve(null); };
   sb.renumberTerminals('XT1');
-  eq(openPage.elements.find(e => e.id === 'o1').label, '1', '★開いているファイルの端子は表の順(1番目)');
-  eq(fileA.pages[0].elements.filter(e => e.partRef === 'XT1').map(e => e.label), ['1', '2', '3'], '別ファイルの図面は書き換えない');
-  ok(toasts.some(m => /別ファイルにある 4 点は書き換えていません/.test(m)), '別ファイルの分は書き換えていないと知らせる');
+  eq(openPage.elements.find(e => e.id === 'o1').label, '1', '★開いているファイルの端子は表の順(1番目)ですぐ入る');
+  eq(fileA.pages[0].elements.filter(e => e.partRef === 'XT1').map(e => e.label), ['1', '2', '3'], 'まだ別ファイルの図面は書き換えない(聞いてから)');
+  eq(asked && asked.what, 'XT1 の端子番号の振り直し', '★別ファイルの分を聞く');
+  eq(asked.plan.map(p => [p.file, p.id, p.before.label, p.set.label]).sort(), [['盤A.seqzu', 'a1', '1', '3'], ['盤A.seqzu', 'a3', '3', '4'], ['盤B.seqzu', 'b1', '9', '5']],
+    '★番号が変わる別ファイルの端子だけ(盤A の 2 は表の順でも 2 なので入らない)');
+  ok(asked.plan.every(p => p.type === 'junction'), '一覧では「端子番号」と出す(仕様ではない)');
   openPage._src = '/盤Z.seqzu';
   sb.renumberTerminals('XT1');
-  eq(openPage.elements.find(e => e.id === 'o1').label, '5', '★別ファイルの後ろなら 5(ファイルごとに押しても通しの番号になる)');
+  eq(openPage.elements.find(e => e.id === 'o1').label, '5', '別ファイルの後ろなら 5');
   openPage._src = '/盤0.seqzu';
-  toasts.length = 0;
+  asked = null;
   sb.renumberTerminals('XT2');
-  ok(toasts.some(m => /^alert:XT2 の端子はこのファイルにありません/.test(m)), '開いているファイルに端子が無ければ書かずに知らせる');
+  eq(asked, null, '番号が変わらなければ聞かない(別ファイルだけの台 XT2 は 1 のまま)');
+  sb.pidxAskWrite = saveAsk;
 }
 
 console.log('\n【端子台として集計の切り替え】');

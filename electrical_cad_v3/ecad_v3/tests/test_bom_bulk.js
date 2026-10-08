@@ -86,7 +86,7 @@ sb.state = { pages: [openPage], currentPage: 0, customSymbols: [], customParts: 
     const p2 = sb.pidxDevPlan(() => sb.devSetField('KR1', 'partMaker', 'オムロン'));
     tree['P2.seqzu'].lastModified = ++now;   // 別の窓で保存された
     const r2 = await sb.pidxWritePlan(p2);
-    eq([r2.files, r2.ng.length, /P2\.seqzu: 部品表を開いたあとに変わっています/.test(r2.ng[0]), el('P2.seqzu', 'k2').partMaker], [['盤外/P3.seqzu'], 1, true, undefined], '★台帳のあとに変わったファイルは書かない');
+    eq([r2.files, r2.ng.length, /P2\.seqzu: 帳票を開いたあとに変わっています/.test(r2.ng[0]), el('P2.seqzu', 'k2').partMaker], [['盤外/P3.seqzu'], 1, true, undefined], '★台帳のあとに変わったファイルは書かない');
     await sb.pidxRefresh();
     const p3 = sb.pidxDevPlan(() => sb.devSetField('KR1', 'partMaker', 'オムロン'));
     const t = JSON.parse(tree['P2.seqzu'].text); t.pages[0].elements = t.pages[0].elements.filter(e => !/^k/.test(e.id)); t.pages[0].groups = [];
