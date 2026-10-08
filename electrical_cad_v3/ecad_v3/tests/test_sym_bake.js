@@ -50,7 +50,7 @@ const oldDrawing = [{ type: 'lib_mc', scale: 0.3 }];   // プロジェクトの�
 sb.state.pages = [{ elements: oldDrawing }];
 sb.symBakeFixElements();
 ok(near(oldDrawing[0].scale, 1), '★古い図面を開いても、置いてある記号は小さくならない(倍率を直す)');
-const placed = [{ type: 'lib_mc', symBaked: 0.3 }];   // パネルから新しく置いたもの
+const placed = [{ type: 'lib_mc', symBaked: 0.3, symLbl: 0.3 }];   // パネルから新しく置いたもの
 sb.state.pages = [{ elements: placed }];
 ok(sb.symBakeFixElements() === 0 && placed[0].scale === undefined, 'パネルから置いた記号(等倍)はそのまま');
 sb.state.customSymbols = [{ type: 'lib_mc', w: 80 }];   // 焼き込んでいない写ししか読めない PC(ライブラリ無し)
@@ -58,6 +58,30 @@ const back = [{ type: 'lib_mc', scale: 1, symBaked: 0.3 }];
 sb.state.pages = [{ elements: back }];
 sb.symBakeFixElements();
 ok(near(back[0].scale, 0.3) && !('symBaked' in back[0]), '焼き込む前の形で描くときは、元の倍率に戻す');
+
+console.log('\n【端子番号の位置は変えない(位置補正に足す)】');
+{
+  // 端子番号の文字の基準点は「定義の端子の座標(倍率を掛けない)」(draw.js symTermPoints)。縮めると基準点も縮むので、ズレた分を termOff に足す
+  sb.state.customSymbols = [b];
+  const e1 = { type: 'lib_mc', scale: 0.3, termOff: [[1, 2]] };
+  const e2 = { type: 'lib_mc', scale: 0.3, rot: 90 };
+  sb.state.pages = [{ elements: [e1, e2] }];
+  sb.symBakeFixElements();
+  const base = (t, e) => { const a = (e.rot || 0) * Math.PI / 180; return [t.x * Math.cos(a) - t.y * Math.sin(a), t.x * Math.sin(a) + t.y * Math.cos(a)]; };
+  const pos = (e, def, i, off) => { const p = base(def.terminals[i], e); const o = (off || [])[i] || [0, 0]; return [p[0] + o[0], p[1] + o[1]]; };
+  const before0 = pos({}, orig, 0, [[1, 2]]), after0 = pos(e1, b, 0, e1.termOff);
+  ok(near(before0[0], after0[0]) && near(before0[1], after0[1]), '★端子番号の文字の位置は整理の前と同じ(位置補正 1,2 を入れていた端子)');
+  const b1 = pos({}, orig, 1, null), a1 = pos(e1, b, 1, e1.termOff);
+  ok(near(b1[0], a1[0]) && near(b1[1], a1[1]), '位置補正を入れていなかった端子も同じ位置');
+  const br = pos({ rot: 90 }, orig, 0, null), ar = pos(e2, b, 0, e2.termOff);
+  ok(Math.abs(br[0] - ar[0]) < 1e-3 && Math.abs(br[1] - ar[1]) < 1e-3, '回したシンボルも同じ位置');
+  ok(near(e1.symLbl, 0.3) && sb.symBakeFixElements() === 0, '直したら印(symLbl)を付ける・何度呼んでも同じ');
+  const old1 = { type: 'lib_mc', scale: 1, symBaked: 0.3, termOff: [[1, 2]] };   // 10-08 より前に整理した記号(倍率だけ直っている)
+  sb.state.pages = [{ elements: [old1] }];
+  ok(sb.symBakeFixElements() === 1 && old1.scale === 1, '★前の版で整理した記号は、倍率はそのまま・位置補正だけ直す');
+  const a2 = pos(old1, b, 0, old1.termOff);
+  ok(near(a2[0], before0[0]) && near(a2[1], before0[1]), '端子番号が整理の前の位置に戻る');
+}
 
 console.log('\n【大きさの整理(今ある登録シンボル)】');
 {
@@ -96,7 +120,7 @@ ok(/_symTermPos\(_symCopyAtLibSize\(copies\[t\], lib\[t\]\)\)/.test(S) && /d = _
 console.log('\n【つなぎ込み】');
 ok(/const k = !\(t in lib\) \? symCommonScale\(t\) : null;\s*o\[t\] = k \? symBakeDef\(drawing\[t\], k\) : drawing\[t\];/.test(S), '★「比べる」で足すとき(登録シンボルに無いもの)だけ焼き込む。「図面の写しに戻す」は焼き込まない');
 ok(/DEFS\[s\.type\] = s; \}\);\s*symBakeFixElements\(\);/.test(S), 'シンボル一覧を組み直すたびに記号の倍率を合わせる(図面を開いたとき・登録シンボルに書いたとき)');
-ok(/if \(d && d\.baked && d\.baked !== 1\) state\.elements\[state\.elements\.length - 1\]\.symBaked = d\.baked;/.test(R('js/tools.js')), 'パネルから置いた記号は焼き込んだ大きさの等倍と覚える');
+ok(/ne\.symBaked = d\.baked; ne\.symLbl = d\.baked;/.test(R('js/tools.js')), 'パネルから置いた記号は焼き込んだ大きさの等倍と覚える(端子番号の位置も新しい形に合っている)');
 ok(/if \(repOld && repOld\.baked\) sym\.baked = repOld\.baked;/.test(R('js/ui.js')), '登録画面で置き換えたときは baked を引き継ぐ(形は見えている大きさなので)');
 
 const H = R('index.html');

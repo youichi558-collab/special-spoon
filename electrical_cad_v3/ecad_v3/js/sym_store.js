@@ -97,17 +97,39 @@ function symCommonScale(type) {
   return (best && Math.abs(best - 1) > 1e-6) ? best : null;
 }
 // 記号の並び(els)の倍率を、定義(defOf(type))の baked に合わせる。直した数を返す(何度呼んでも同じ)
+// 【2026-10-08 端子番号】端子番号の文字の基準点は「定義の端子の座標そのまま(記号の倍率を掛けない)」という昔の決まり
+// (js/draw.js symTermPoints の lrx/lry)。形を縮めると基準点も縮んで、置き換えたシンボルの端子番号が全部ズレた(盛田さん)。
+// 見た目を変えないよう、ズレた分を端子ごとの位置補正(termOff)に足す。記号の symLbl = どの baked に合わせた位置補正か。
+// (倍率の symBaked と分けて持つ: 10-08 より前に整理した記号は倍率だけ直っていて位置補正が古いので、ここで直す)
 function symBakeFixList(els, defOf) {
   let n = 0;
+  const r6 = v => Math.round(v * 1e6) / 1e6, r3 = v => Math.round(v * 1e3) / 1e3;
   (els || []).forEach(e => {
     if (!e || !e.type) return;
     const d = defOf(e.type);
     if (!d) return;
-    const want = d.baked || 1, have = e.symBaked || 1;
-    if (Math.abs(want - have) < 1e-9) return;
-    e.scale = Math.round((e.scale || 1) * have / want * 1e6) / 1e6;
-    if (want === 1) delete e.symBaked; else e.symBaked = want;
-    n++;
+    const want = d.baked || 1, have = e.symBaked || 1, lbl = e.symLbl || 1;
+    let hit = false;
+    if (Math.abs(want - have) >= 1e-9) {
+      e.scale = r6((e.scale || 1) * have / want);
+      if (want === 1) delete e.symBaked; else e.symBaked = want;
+      hit = true;
+    }
+    if (Math.abs(want - lbl) >= 1e-9) {
+      const r = lbl / want;   // 位置補正を合わせた定義の端子の座標 = 今の定義の端子の座標 × r
+      if (Array.isArray(d.terminals) && d.terminals.length) {
+        const a = (e.rot || 0) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+        const off = Array.isArray(e.termOff) ? e.termOff.map(o => Array.isArray(o) ? [+o[0] || 0, +o[1] || 0] : [0, 0]) : [];
+        d.terminals.forEach((t, i) => {
+          const dx = (t.x || 0) * (r - 1), dy = (t.y || 0) * (r - 1), o = off[i] || [0, 0];
+          off[i] = [r3(o[0] + dx * c - dy * s), r3(o[1] + dx * s + dy * c)];
+        });
+        e.termOff = off;
+      }
+      if (want === 1) delete e.symLbl; else e.symLbl = want;
+      hit = true;
+    }
+    if (hit) n++;
   });
   return n;
 }
