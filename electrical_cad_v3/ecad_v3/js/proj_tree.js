@@ -16,6 +16,8 @@
 // ================================================================
 
 const PTREE_KEY = 'ptree';                       // IndexedDB(settings.js の _stGet/_stPut)に覚えるフォルダの鍵
+const PTREE_RECENT_KEY = 'ptree_recent';         // 最近開いたプロジェクトのフォルダの鍵(新しい順。2026-10-08 ptreeRecentMenu)
+const PTREE_RECENT_MAX = 10;
 const PTREE_PREV_KEY = 'ptree_prev';             // 読込でプロジェクトを外したときの、前のフォルダ(「前のフォルダに戻す」用。2026-10-06)
 const PTREE_EXT = /\.seqzu$/i;
 const PTREE_HIST = '.seqzu_history', PTREE_HIST_KEEP = 20;   // 履歴の隠しフォルダ(プロジェクトのフォルダの直下)・図面ごとに残す数
@@ -106,14 +108,7 @@ async function ptreeChooseRoot() {
   }
   const dirty = fh && (state.pages || []).some(p => p.dirty);
   if (dirty && !confirm(`保存していないページがあります。\n「${fh.name}」に置き換えて開きますか？\n(「キャンセル」ならフォルダだけプロジェクトにします)`)) fh = null;
-  let same = false;
-  try { same = !!ptreeState.root && await ptreeState.root.isSameEntry(dir); } catch (e) {}
-  // 別のフォルダにしたら、ページが覚えている道筋は外す(同じ道筋の別のファイルに上書きしないため。保存は名前を付けて保存になる)
-  if (!same) (state.pages || []).forEach(p => { if (p._src && p._src[0] === '/') delete p._src; });
-  ptreeState.root = dir; ptreeState.open = new Set(); ptreeState.files = new Map(); ptreeState.detached = false;
-  try { await _stPut(PTREE_PREV_KEY, null); } catch (e) {}
-  if (typeof xprojState !== 'undefined') { xprojState.files = []; xprojState.problems = []; xprojState.dirName = ''; }   // 前のフォルダの別ファイルを使わない(部品表・「更新」)
-  try { await _stPut(PTREE_KEY, dir); } catch (e) {}
+  await _ptSetRoot(dir);
   if (fh && rel) {
     // 選んだ図面を開く(ツリーで図面を押したのと同じ。サブフォルダの中ならそのフォルダを開いておく)
     const path = '/' + rel.join('/');
@@ -125,6 +120,82 @@ async function ptreeChooseRoot() {
     }
   }
   ptreeRender();
+}
+
+// プロジェクトのフォルダを替える(フォルダを開く・最近のプロジェクト)
+async function _ptSetRoot(dir) {
+  let same = false;
+  try { same = !!ptreeState.root && await ptreeState.root.isSameEntry(dir); } catch (e) {}
+  // 別のフォルダにしたら、ページが覚えている道筋は外す(同じ道筋の別のファイルに上書きしないため。保存は名前を付けて保存になる)
+  if (!same) (state.pages || []).forEach(p => { if (p._src && p._src[0] === '/') delete p._src; });
+  ptreeState.root = dir; ptreeState.open = new Set(); ptreeState.files = new Map(); ptreeState.detached = false;
+  try { await _stPut(PTREE_PREV_KEY, null); } catch (e) {}
+  if (typeof xprojState !== 'undefined') { xprojState.files = []; xprojState.problems = []; xprojState.dirName = ''; }   // 前のフォルダの別ファイルを使わない(部品表・「更新」)
+  try { await _stPut(PTREE_KEY, dir); } catch (e) {}
+  await ptreeRecentAdd(dir);
+}
+
+// ---- 最近のプロジェクト(2026-10-08) ----------------------------------
+// 盛田さん「２つめの窓はどうしようもないんだよな」→ 案A。一度開いたフォルダの鍵を覚えておき、「フォルダを開く」の横の ▾ から
+// 窓を出さずに替える(ブラウザを開き直した直後は、押したときに「許可」を1回聞かれることがある)。窓が2回出るのは初めてのフォルダだけ
+async function ptreeRecentList() {
+  let a = [];
+  try { a = (await _stGet(PTREE_RECENT_KEY)) || []; } catch (e) {}
+  return Array.isArray(a) ? a.filter(h => h && h.kind === 'directory') : [];
+}
+async function ptreeRecentAdd(dir) {
+  const a = await ptreeRecentList();
+  const out = [dir];
+  for (const h of a) {
+    let same = false;
+    try { same = await h.isSameEntry(dir); } catch (e) {}
+    if (!same) out.push(h);
+  }
+  try { await _stPut(PTREE_RECENT_KEY, out.slice(0, PTREE_RECENT_MAX)); } catch (e) {}
+}
+async function ptreeRecentRemove(i) {
+  const a = await ptreeRecentList();
+  a.splice(i, 1);
+  try { await _stPut(PTREE_RECENT_KEY, a); } catch (e) {}
+}
+async function ptreeRecentOpen(i) {
+  ptreeRecentClose();
+  const a = await ptreeRecentList();
+  const dir = a[i];
+  if (!dir) return;
+  if (!await _ptPerm(dir, true)) { alert(`「${dir.name}」を開く許可がもらえませんでした`); return; }
+  const dirty = (state.pages || []).some(p => p.dirty);
+  if (dirty && !confirm(`保存していないページがあります。\nプロジェクトを「${dir.name}」に替えますか？\n(開いている図面はそのまま。保存は名前を付けて保存になります)`)) return;
+  await _ptSetRoot(dir);
+  ptreeRender();
+  if (typeof stToast === 'function') stToast(`プロジェクトを「${dir.name}」にしました。図面はツリーから開いてください`, 'ok');
+}
+async function ptreeRecentMenu(ev) {
+  if (ev) ev.stopPropagation();
+  ptreeRecentClose();
+  const a = await ptreeRecentList();
+  const m = document.createElement('div');
+  m.id = 'pt-recent';
+  m.style.cssText = 'position:fixed;z-index:100002;min-width:200px;max-width:320px;background:var(--bg2);color:var(--fg);border:1px solid var(--bd2);'
+    + 'border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.35);padding:4px;font-size:12px';
+  let cur = null;
+  for (const h of a) { try { if (ptreeState.root && await h.isSameEntry(ptreeState.root)) { cur = h; break; } } catch (e) {} }
+  m.innerHTML = '<div style="font-size:10px;color:var(--fg3);padding:2px 6px 4px">最近のプロジェクト(押すと替えます)</div>'
+    + (a.length ? a.map((h, i) => `<div class="pt-recent-row" style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:4px;cursor:pointer${h === cur ? ';font-weight:600;color:var(--acc)' : ''}" onclick="ptreeRecentOpen(${i})">`
+      + `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📁 ${_ptEsc(h.name)}</span>`
+      + `<span title="一覧から外す(フォルダは消えません)" style="color:var(--fg3);padding:0 4px" onclick="event.stopPropagation();ptreeRecentRemove(${i}).then(()=>ptreeRecentMenu())">×</span></div>`).join('')
+      : '<div style="padding:4px 6px;color:var(--fg3)">まだありません(「フォルダを開く」で開いたフォルダがここに並びます)</div>');
+  document.body.appendChild(m);
+  const b = document.getElementById('pt-recent-btn');
+  const r = b ? b.getBoundingClientRect() : { left: 100, bottom: 100 };
+  m.style.left = Math.max(4, Math.min(r.left, window.innerWidth - m.offsetWidth - 4)) + 'px';
+  m.style.top = Math.round(r.bottom + 4) + 'px';
+  setTimeout(() => document.addEventListener('mousedown', _ptRecentOut, true), 0);
+}
+function _ptRecentOut(e) { const m = document.getElementById('pt-recent'); if (m && !m.contains(e.target)) ptreeRecentClose(); }
+function ptreeRecentClose() {
+  const m = document.getElementById('pt-recent'); if (m) m.remove();
+  document.removeEventListener('mousedown', _ptRecentOut, true);
 }
 
 // 【2026-10-06】「読込」で図面を置き換えて開いたら、プロジェクトのフォルダを外す(js/edit.js loadProjectText)。
@@ -152,6 +223,7 @@ async function ptreeRestorePrev() {
   ptreeState.root = prev; ptreeState.detached = false; ptreeState.open = new Set(); ptreeState.files = new Map();
   if (typeof xprojState !== 'undefined') { xprojState.files = []; xprojState.problems = []; xprojState.dirName = ''; }
   try { await _stPut(PTREE_KEY, prev); await _stPut(PTREE_PREV_KEY, null); } catch (e) {}
+  await ptreeRecentAdd(prev);
   ptreeRender();
 }
 
@@ -224,6 +296,7 @@ async function _ptRows(dir, path, depth, out, handles) {
 }
 
 let _ptSeq = 0;
+let _ptRecentSeen = null;
 async function ptreeRender() {
   const body = document.getElementById('prj-float-body');
   const name = document.getElementById('prj-float-root');
@@ -245,6 +318,7 @@ async function ptreeRender() {
     body.innerHTML = `<div class="pt-msg">前回のフォルダ「${_ptEsc(root.name)}」を開く許可が要ります。<br><button onclick="ptreeGrant()">許可して開く</button></div>`;
     return;
   }
+  if (_ptRecentSeen !== root) { _ptRecentSeen = root; ptreeRecentAdd(root); }   // 前から開いていたフォルダも最近のプロジェクトに入れる
   const out = [], handles = new Map();
   await _ptRows(root, '', 0, out, handles);
   if (seq !== _ptSeq) return;
