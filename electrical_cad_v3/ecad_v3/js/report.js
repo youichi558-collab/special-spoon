@@ -1501,7 +1501,13 @@ function setRefModel(ki,v){
   const key=(window._refKeys||[])[ki];
   if(key==null)return;
   if(typeof pushH==='function')pushH();
-  devSetField(key,'partModel',v);   // デバイスの全部の記号と外形図へ(js/devices.js)
+  // デバイスの全部の記号と外形図へ(js/devices.js)。【2026-10-08 作る順の4(盛田さん「接点Refで」)】別ファイル(プロジェクト台帳)の
+  // 同じデバイスの記号は、部品表と同じく書き換える一覧を見せて聞いてから書く(js/proj_index.js pidxDevApply)
+  const set=()=>devSetField(key,'partModel',v);
+  if(typeof pidxDevApply==='function'){
+    const D=(typeof deviceLedger==='function')?deviceLedger().get(key):null;
+    pidxDevApply(set,`${D?D.ref:key} の型番`,()=>{ if(document.getElementById('report-p')?.classList.contains('open')&&_lastReportTab==='ref')showRefPanel(); });
+  }else set();
   if(typeof draw==='function')draw();
   if(typeof updateRightPanel==='function')updateRightPanel();
   showRefPanel();

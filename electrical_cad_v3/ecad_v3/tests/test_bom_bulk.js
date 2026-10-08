@@ -124,6 +124,10 @@ sb.state = { pages: [openPage], currentPage: 0, customSymbols: [], customParts: 
     eq([openPage.elements[0].partMaker, asked && asked.n, asked && asked.what], ['IDEC', 3, 'KR1 のメーカー'], '★部品表で打つと開いているファイルに入れて、別ファイルの記号3個を聞く(メーカーは外形図に持たない)');
     ok(/pidxDevApply\(run/.test(R('js/devices.js')), '食い違いを直す画面も同じ口');
     asked = null;
+    sb.window._refKeys = [sb.devKey('KR1')];
+    sb.setRefModel(0, 'G2R');
+    eq([openPage.elements[0].partModel, asked && asked.n, asked && asked.what], ['G2R', 4, 'KR1 の型番'], '★接点Ref の型式欄も同じ(開いているファイルに入れて、別ファイルの記号3個と外形図1つを聞く)');
+    asked = null;
     sb.pidxState.index = null;
     sb.setBOMMaker(0, 'オムロン');
     eq([openPage.elements[0].partMaker, asked], ['オムロン', null], '台帳が無ければ今まで通り開いているファイルだけ(聞かない)');
