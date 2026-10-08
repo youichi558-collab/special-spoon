@@ -74,22 +74,56 @@ async function _ptPerm(h, ask) {
 }
 
 // 「フォルダを開く」
+// 【2026-10-08】まず図面(ファイル)を選び、続くフォルダの窓はその図面のフォルダの中で開く(押すのは「フォルダーの選択」だけ)。
+// 盛田さん「フォルダを開くでファイル名が見えない状態を選択するのが問題」「ファイルそのものを選んでそのフォルダをプロジェクトとする方がいい」。
+// ブラウザ(File System Access API)はファイルからそのフォルダを取れないので、窓は2回(2回目はボタン1つ)。
+// 選んだフォルダにその図面が入っているかを確かめ(resolve)、入っていればプロジェクトにして図面を開く。
+// ファイルの窓を取りやめたら、図面の無いフォルダを選ぶ(新しいプロジェクト等)ために、今までのフォルダの窓を出すか聞く
 async function ptreeChooseRoot() {
   if (!window.showDirectoryPicker) { alert('このブラウザはフォルダ選択に対応していません(Chrome/Edgeで開いてください)'); return; }
+  let fh = null;
+  if (window.showOpenFilePicker) {
+    try {
+      const fopt = { id: 'ecad-ptree-file', multiple: false,
+        types: [{ description: '図面データ', accept: { 'application/x-seqzu': ['.seqzu'] } }] };
+      if (ptreeState.root) fopt.startIn = ptreeState.root;
+      [fh] = await window.showOpenFilePicker(fopt);
+    } catch (e) {
+      if (!confirm('図面を選ばずに、フォルダだけ選びますか？\n(図面の無い新しいフォルダをプロジェクトにするとき)')) return;
+    }
+  }
   let dir;
   try {
     const opt = { id: 'ecad-ptree', mode: 'readwrite' };
-    if (ptreeState.root) opt.startIn = ptreeState.root;
+    if (fh) opt.startIn = fh;                        // 選んだ図面のフォルダの中で開く
+    else if (ptreeState.root) opt.startIn = ptreeState.root;
     dir = await window.showDirectoryPicker(opt);
   } catch (e) { return; }   // 取りやめ
+  let rel = null;
+  if (fh) {
+    try { rel = await dir.resolve(fh); } catch (e) {}
+    if (!rel) { alert(`選んだフォルダ「${dir.name}」に、図面「${fh.name}」は入っていません。\nもう一度「フォルダを開く」からやり直してください(フォルダの窓では、そのまま「フォルダーの選択」を押します)`); return; }
+  }
+  const dirty = fh && (state.pages || []).some(p => p.dirty);
+  if (dirty && !confirm(`保存していないページがあります。\n「${fh.name}」に置き換えて開きますか？\n(「キャンセル」ならフォルダだけプロジェクトにします)`)) fh = null;
   let same = false;
   try { same = !!ptreeState.root && await ptreeState.root.isSameEntry(dir); } catch (e) {}
   // 別のフォルダにしたら、ページが覚えている道筋は外す(同じ道筋の別のファイルに上書きしないため。保存は名前を付けて保存になる)
   if (!same) (state.pages || []).forEach(p => { if (p._src && p._src[0] === '/') delete p._src; });
   ptreeState.root = dir; ptreeState.open = new Set(); ptreeState.files = new Map(); ptreeState.detached = false;
   try { await _stPut(PTREE_PREV_KEY, null); } catch (e) {}
-  if (typeof xprojState !== 'undefined') { xprojState.files = []; xprojState.problems = []; xprojState.dirName = ''; }   // 前のフォルダの別ファイルを使わない(部品表・「更新」で読み直す)
+  if (typeof xprojState !== 'undefined') { xprojState.files = []; xprojState.problems = []; xprojState.dirName = ''; }   // 前のフォルダの別ファイルを使わない(部品表・「更新」)
   try { await _stPut(PTREE_KEY, dir); } catch (e) {}
+  if (fh && rel) {
+    // 選んだ図面を開く(ツリーで図面を押したのと同じ。サブフォルダの中ならそのフォルダを開いておく)
+    const path = '/' + rel.join('/');
+    for (let i = 1; i < rel.length; i++) ptreeState.open.add('/' + rel.slice(0, i).join('/'));
+    const text = await _ptRead(fh);
+    if (text != null && loadProjectText(text, fh.name, 'replace')) {
+      ptreeState.files.set(path, fh);
+      state.pages.forEach(p => { p._src = path; });
+    }
+  }
   ptreeRender();
 }
 

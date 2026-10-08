@@ -1045,7 +1045,7 @@
     <span onclick="closePrj()" style="cursor:pointer;font-size:14px;color:var(--fg3);padding:0 4px">×</span>
   </div>
   <div style="padding:6px;flex-shrink:0;display:flex;gap:4px;flex-wrap:wrap">
-    <button onclick="ptreeChooseRoot()" title="プロジェクトのフォルダを選びます(次回も同じフォルダを開きます)" style="font-size:11px;padding:2px 4px;white-space:nowrap;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)">フォルダを開く</button>
+    <button onclick="ptreeChooseRoot()" title="まず図面を選び、続くフォルダの窓でそのまま「フォルダーの選択」を押すと、その図面のフォルダがプロジェクトになって図面が開きます(次回も同じフォルダを開きます)。図面の無いフォルダは、図面の窓を取りやめるとフォルダだけ選べます" style="font-size:11px;padding:2px 4px;white-space:nowrap;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)">フォルダを開く</button>
     <button onclick="ptreeRender()" title="フォルダの中身を読み直します" style="font-size:11px;padding:2px 4px;white-space:nowrap;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)">↻ 更新</button>
     <button onclick="ptreeNewFile('')" title="フォルダのいちばん上に新しい図面(白紙1ページ)を作ります。フォルダの中に作るときはフォルダを右クリック" style="font-size:11px;padding:2px 4px;white-space:nowrap;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)">＋図面</button>
     <button onclick="ptreeNewFolder('')" title="フォルダのいちばん上に新しいフォルダを作ります" style="font-size:11px;padding:2px 4px;white-space:nowrap;cursor:pointer;border:1px solid var(--bd2);border-radius:3px;background:var(--bg2);color:var(--fg)">＋フォルダ</button>
