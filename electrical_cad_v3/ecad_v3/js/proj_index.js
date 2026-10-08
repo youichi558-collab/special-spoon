@@ -340,7 +340,7 @@ async function pidxRefresh() {
 // 何を書くかは、台帳の仮の記号(pidxPages)に**開いているファイルと同じ関数(devSetField)**を掛けて、変わった所を拾う(pidxDevPlan)。
 // 書き方の決まり(仕様は代表の記号にだけ図面に表示 等)が開いているファイルと別ファイルで食い違わない。
 // 開いているファイルは今まで通り画面の中で直す(Ctrl+Z で戻せる)。別ファイルは Ctrl+Z では戻らない(戻すときはツリーの履歴から)。
-const _pidxDevKeys = () => (typeof DEV_FIELDS !== 'undefined' ? DEV_FIELDS.map(f => f.key) : []).concat(['specHide']);
+const _pidxDevKeys = () => (typeof DEV_FIELDS !== 'undefined' ? DEV_FIELDS.map(f => f.key) : []).concat(['specHide', 'partRef']);   // partRef: デバイス名の付け替え(js/devices.js devRenameApply)
 // fn(devSetField などデバイスの値を書く処理)を、台帳の別ファイルを足した状態で実行する。開いているファイルにはそのまま入る。
 // 戻り値: 別ファイルで変わる記号 [{ file, pi, id, group, set: {項目: 新しい値(undefined=消す)}, before: {項目: 前の値}, loc }]。台帳が無ければ []
 function pidxDevPlan(fn) {

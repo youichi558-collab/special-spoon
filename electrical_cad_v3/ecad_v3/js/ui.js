@@ -2734,7 +2734,8 @@ function updateRightPanel() {
       html += `<div class="pp-group" style="border-left:4px solid ${jDevC}"><div class="pp-group-cap" style="color:${jDevC}">◆ デバイス</div>`;
       html += `<div class="pp-row"><label>デバイス</label>`
         + `<input type="text" id="pp-jref" list="pp-jref-list" value="${escH(el.partRef||'')}"`
-        + ` placeholder="例: TB1" onchange="onJunctionRefChanged()"></div>`
+        + ` placeholder="例: TB1" onchange="onJunctionRefChanged()">`
+        + `<button class="fp-btn" style="font-size:10px;padding:1px 6px;margin-left:4px;white-space:nowrap" onclick="devRenameDialog()" title="この端子台の端子すべて(プロジェクトの別ファイルも)の名前を付け替えます。使われている名前なら番号をずらして入れます">付け替え…</button></div>`
         + `<datalist id="pp-jref-list">${partRefOptionsHtml(el.partRef)}</datalist>`;
       html += `<div class="pp-row"><label>デバイスを図面に表示</label><input type="checkbox" id="pp-jrefshow" ${(el.showDev!==undefined?el.showDev:true)?'checked':''}></div>`;
       // 【2026-08-23】盤内/盤外の2択セレクトから「対象外」チェックに変更。
@@ -2897,7 +2898,9 @@ function updateRightPanel() {
     // (MC1は主接点・コイル・補助接点と複数箇所に置くため、2つ目以降は選ぶだけで済む)。
     html += `<div class="pp-row"><label>デバイス</label>`
       + `<input type="text" id="pp-partref" list="pp-partref-list" value="${escH(el.partRef||'')}"`
-      + ` placeholder="例: MC1, NFB1" onchange="onPartRefChanged()"></div>`
+      + ` placeholder="例: MC1, NFB1" onchange="onPartRefChanged()">`
+      // 【2026-10-08】そのデバイスの記号すべて(別ファイルも)の名前を付け替える(js/devices.js devRenameDialog)
+      + `<button class="fp-btn" style="font-size:10px;padding:1px 6px;margin-left:4px;white-space:nowrap" onclick="devRenameDialog()" title="このデバイスの記号すべて(接点・端子・外形図。プロジェクトの別ファイルも)の名前を付け替えます。使われている名前なら番号をずらして入れます">付け替え…</button></div>`
       + `<datalist id="pp-partref-list">${partRefOptionsHtml(el.partRef)}</datalist>`;
     html += `<div class="pp-row"><label>デバイスを図面に表示</label><input type="checkbox" id="pp-devhide"${el.devHide?'':' checked'} title="3極品等、同じデバイスを複数のシンボルに分けて配置する場合に使います。デバイス名は全部の要素に同じ値を入れつつ、文字はどれか1つだけに絞れます"></div>`;
     html += `${_ppZoneHtml('pp-zone', el.panelZone==='外')}`;

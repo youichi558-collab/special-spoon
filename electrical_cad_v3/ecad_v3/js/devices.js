@@ -288,6 +288,138 @@ function devAfterLoad(opts) {
 }
 
 // ================================================================
+// デバイス名の付け替え(2026-10-08 プロジェクト台帳の作る順の4④。盛田さん「それでいい、進めて」)
+// ----------------------------------------------------------------
+// 決めたこと(盛田さん):
+//   ・部品表からはしない(どこにあるデバイスか判らない=間違いのもと)。**図面の記号を選んで**プロパティの「付け替え…」から
+//   ・**そのデバイスの記号すべて**(接点・端子台の端子・外形図。プロジェクトの別ファイルも)を新しい名前にする
+//   ・新しい名前が使われていたら止めずに「**ずらして入れる**」: CR3 と打って CR3〜CR5 があり CR6 が空いていれば、
+//     CR5→CR6・CR4→CR5・CR3→CR4 とずらしてから選んだデバイスを CR3 にする(最初の空き番号の手前まで。名前が数字で終わらないときは止める)
+//   ・実行前に変わる一覧(どのファイル・位置)を見せ、押したらまとめて変える。開いているファイルは Ctrl+Z で戻せる、別ファイルは履歴に残して書く
+// 選んだ記号にデバイス名が無ければ、その記号だけに名前を付ける(ずらすのは同じ)。
+// ================================================================
+function _devAllWith(fn) { return (typeof projWith === 'function') ? projWith(fn) : fn(); }
+
+// 付け替えの中身を決める。el: 選んだ記号、newName: 打った名前。
+// 戻り値: { ok, why, K, newName, map: Map(デバイスのキー → 新しい名前), shift: [[今の名前, 新しい名前]], items: [{ ext, file, loc, old, nw, group }] }
+function devRenamePlan(el, newName) {
+  newName = String(newName == null ? '' : newName).trim();
+  const K = devKey(el && el.partRef), NK = devKey(newName);
+  if (!NK) return { ok: false, why: '新しい名前を入れてください' };
+  if (NK === K) return { ok: false, why: '今と同じ名前です' };
+  return _devAllWith(() => {
+    const led = deviceLedger();
+    const used = new Set([...led.keys()].filter(k => k !== K));   // 選んだデバイス自身は空く
+    const map = new Map(), shift = [];
+    if (used.has(NK)) {
+      const m = newName.match(/^(.*?)(\d+)$/);
+      if (!m) return { ok: false, why: `${newName} はもう使われています(名前が数字で終わらないので、ずらせません)` };
+      const pre = m[1], w = m[2].length, n0 = parseInt(m[2], 10);
+      const nm = i => pre + String(i).padStart(w, '0');
+      let j = n0;
+      while (used.has(devKey(nm(j)))) j++;   // 最初の空き番号
+      for (let i = j - 1; i >= n0; i--) { map.set(devKey(nm(i)), nm(i + 1)); shift.push([led.get(devKey(nm(i))).ref, nm(i + 1)]); }
+    }
+    const items = [];
+    (state.pages || []).forEach((pg, pi) => {
+      const one = (o, group) => {
+        const k = devKey(o.partRef);
+        let nw = null;
+        if (K ? k === K : o === el) nw = newName;
+        else if (k && map.has(k)) nw = map.get(k);
+        if (nw == null) return;
+        const loc = group ? `${pg._file ? pg._file + '/' : ''}${pg._pno || pi + 1}/外形図` : elLocation(o, pi);
+        items.push({ ext: !!pg._file, file: pg._file || '', loc, old: String(o.partRef || '').trim(), nw, group });
+      };
+      (pg.elements || []).forEach(o => { if (!(o.type === 'junction' && (o.style || 'dot') === 'dot')) one(o, false); });
+      (pg.groups || []).forEach(o => one(o, true));
+    });
+    return { ok: true, K, newName, map, shift, items, el };
+  });
+}
+
+// 付け替える(計画のとおり)。開いているファイルの記号はすぐ、別ファイルは台帳から書く(js/proj_index.js)。戻り値: Promise<{ files, ng }>
+function devRenameApply(plan) {
+  if (typeof pushH === 'function') pushH();
+  const run = () => (state.pages || []).forEach(pg => {
+    const one = o => {
+      const k = devKey(o.partRef);
+      if (plan.K ? k === plan.K : o === plan.el) o.partRef = plan.newName;
+      else if (k && plan.map.has(k)) o.partRef = plan.map.get(k);
+    };
+    (pg.elements || []).forEach(o => { if (!(o.type === 'junction' && (o.style || 'dot') === 'dot')) one(o); });
+    (pg.groups || []).forEach(one);
+  });
+  const ext = (typeof pidxDevPlan === 'function') ? pidxDevPlan(run) : (run(), []);
+  if (typeof draw === 'function') draw();
+  if (typeof updateRightPanel === 'function') updateRightPanel();
+  if (!ext.length || typeof pidxWritePlan !== 'function') return Promise.resolve({ files: [], ng: [] });
+  return pidxWritePlan(ext);
+}
+
+// 付け替えの窓(プロパティの「付け替え…」)。選んでいる記号1つが対象
+function devRenameDialog() {
+  const el = (state.sel && state.sel.els && state.sel.els.size === 1) ? (state.elements || []).find(e => state.sel.els.has(e.id)) : null;
+  if (!el) { alert('記号を1つ選んでから押してください'); return; }
+  const old = document.getElementById('dev-rename-dlg');
+  if (old) old.remove();
+  const cur = String(el.partRef || '').trim();
+  const btn = 'padding:6px 14px;font-size:12px;cursor:pointer;border:1px solid var(--bd2);border-radius:4px;background:var(--bg2);color:var(--fg)';
+  const ov = document.createElement('div');
+  ov.id = 'dev-rename-dlg';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3001;display:flex;align-items:center;justify-content:center';
+  ov.innerHTML = `<div role="dialog" style="background:var(--bg2);color:var(--fg);border:1px solid var(--bd);border-radius:6px;padding:14px 18px;width:560px;max-width:92vw;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 4px 24px var(--sh);font-size:12px;line-height:1.5">
+    <div style="font-size:13px;font-weight:600;margin-bottom:4px">デバイス名の付け替え</div>
+    <div style="color:var(--fg3);margin-bottom:6px">${cur ? `「${escH(cur)}」の記号すべて(接点・端子・外形図。プロジェクトの別ファイルも)を新しい名前にします。` : 'この記号に名前を付けます。'}
+    使われている名前を入れると、その番号以降を1つずつずらしてから入れます(最初の空き番号の手前まで)。</div>
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px"><label>新しい名前</label>
+      <input type="text" id="devrn-name" value="${escH(cur)}" style="flex:1;font-size:12px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:3px;padding:2px 4px"></div>
+    <div id="devrn-list" style="overflow-y:auto;flex:1;min-height:40px"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+      <button id="devrn-no" style="${btn}">やめる</button>
+      <button id="devrn-ok" style="${btn};background:var(--acc);color:#fff;border-color:var(--acc)" disabled>付け替える</button>
+    </div></div>`;
+  document.body.appendChild(ov);
+  const inp = ov.querySelector('#devrn-name'), list = ov.querySelector('#devrn-list'), ok = ov.querySelector('#devrn-ok');
+  let plan = null;
+  const render = () => {
+    plan = devRenamePlan(el, inp.value);
+    if (!plan.ok) { list.innerHTML = `<div style="color:var(--red)">${escH(plan.why)}</div>`; ok.disabled = true; ok.textContent = '付け替える'; return; }
+    const groups = new Map();   // 「今 → 新」ごと
+    plan.items.forEach(it => { const k = `${it.old || '(名前なし)'} → ${it.nw}`; (groups.get(k) || groups.set(k, []).get(k)).push(it); });
+    const files = new Set(plan.items.filter(it => it.ext).map(it => it.file));
+    list.innerHTML = (plan.shift.length ? `<div style="color:var(--org,#c77b00);margin-bottom:4px">${escH(plan.newName)} は使われています。${escH(plan.shift.map(x => x[0]).reverse().join('・'))} を1つずつずらしてから入れます。</div>` : '')
+      + [...groups.entries()].map(([k, its]) => `<div style="border-top:1px solid var(--bd2);padding:4px 0"><b>${escH(k)}</b>　${its.length}個`
+        + `<div style="color:var(--fg3)">${escH(its.slice(0, 12).map(it => it.loc).join(', '))}${its.length > 12 ? ' …' : ''}</div></div>`).join('')
+      + (files.size ? `<div style="color:var(--fg3);margin-top:4px">別ファイル(${escH([...files].join('、'))})も書き換えます(書く前の図面は履歴に残ります。Ctrl+Z では戻りません)。</div>` : '');
+    ok.disabled = false;
+    ok.textContent = plan.shift.length ? 'ずらして入れる' : '付け替える';
+  };
+  const close = () => { document.removeEventListener('keydown', onKey, true); ov.remove(); };
+  const onKey = e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } else if (e.key === 'Enter' && !ok.disabled) { e.stopPropagation(); ok.click(); } };
+  document.addEventListener('keydown', onKey, true);
+  inp.addEventListener('input', render);
+  render();
+  inp.focus(); inp.select();
+  ov.querySelector('#devrn-no').onclick = close;
+  ok.onclick = async () => {
+    if (!plan || !plan.ok) return;
+    const p = plan;
+    close();
+    const r = await devRenameApply(p);
+    if (typeof stToast === 'function') {
+      stToast(`デバイス名を付け替えました(${p.shift.length ? p.shift.map(x => x.join('→')).reverse().join('、') + '、' : ''}${(p.items.find(it => it.nw === p.newName) || {}).old || '(名前なし)'}→${p.newName})`
+        + (r.files.length ? `。別ファイル ${r.files.length} 件にも書きました` : ''));
+      if (r.ng.length) stToast('書けなかった別ファイルがあります(書いていません。部品表か端子台表を開き直してから、もう一度付け替えてください):\n' + r.ng.join('\n'), 'warn');
+    }
+    if (document.getElementById('report-p')?.classList.contains('open') && typeof _lastReportTab !== 'undefined') {
+      if (_lastReportTab === 'bom' && typeof showBOM === 'function') showBOM();
+      else if (_lastReportTab === 'tbtbl' && typeof showTBTable === 'function') showTBTable();
+    }
+  };
+}
+
+// ================================================================
 // 読み込めたことの目印(autosave.js の _asMissingScripts が見る。ファイル末尾に置く)
 // ================================================================
 if (typeof window !== 'undefined') (window.__ecadLoaded = window.__ecadLoaded || {})['devices.js'] = 1;
