@@ -109,6 +109,7 @@ vm.runInContext([
   'function showTBTable(){}',
   pick(/function reorderTerminal\([\s\S]*?\n\}/),
   pick(/function renumberTerminals\([\s\S]*?\n\}/),
+  pick(/function _tbProjWith\([\s\S]*?\n\}/),   // 2026-10-08 端子台表と同じ範囲(プロジェクトが無ければ開いているファイルだけ)
 ].join('\n'), sandbox);
 
 const ids = () => sandbox.collectTerminals().map(r => r.el.id);

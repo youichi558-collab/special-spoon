@@ -6,7 +6,7 @@ const REPORT_TABS = [
   { key:'bom',     label:'部品表',       call:'openBOM()' },
   { key:'wire',    label:'線番表',       call:'wireNoTable()' },
   { key:'conntbl', label:'接続チェック', call:'showConnTable()' },
-  { key:'tbtbl',   label:'端子台表',     call:'showTBTable()' },
+  { key:'tbtbl',   label:'端子台表',     call:'openTBTable()' },
   { key:'ref',     label:'接点Ref',      call:'showRefPanel()' },
 ];
 
@@ -1593,6 +1593,9 @@ function isTBExcluded(el) {
 function setTBExcluded(dev, excluded) {
   if (typeof pushH === 'function') pushH();   // 取り消せるようにする
   const target = String(dev || '');
+  // 【2026-10-08】別ファイルの端子(端子台表が台帳から足したもの)には書けない。あれば知らせる
+  const extN = _tbExtCount(dev, el => !!el.tbExclude !== !!excluded);
+  if (extN && typeof stToast === 'function') stToast(`別ファイルにある ${extN} 点は切り替えていません（そのファイルを開いて切り替えてください）`, 'warn');
   // デバイスのある台は台帳(js/devices.js)で書く(綴りの違う端子にも。部品表・接点Refと同じまとめ方)
   if (typeof devSetField === 'function' && typeof devKey === 'function' && devKey(target) && target !== '(デバイス未設定)') {
     const n = devSetField(devKey(target), 'tbExclude', excluded ? 'true' : '');
@@ -1631,8 +1634,15 @@ function collectTerminals() {
     });
   });
   // tbOrder があるものを優先し、無いものは後ろに元の順で残す
+  // 【2026-10-08】プロジェクトの別ファイルの端子(端子台表が台帳から足す)は、ファイルの名前順(ツリーと同じ)→そのファイルの中で tbOrder。
+  // tbOrder はファイルごとの通し番号なので、ファイルをまたいでは比べない。開いているファイルの位置はそのファイルの名前(_src)で決める
+  const base = n => String(n || '').replace(/^\//, '').replace(/\.(seqzu|json)$/i, '');
+  const openName = base(((state.pages || []).find(p => !p._file && p._src) || {})._src);
+  const fileOf = r => { const pg = state.pages[r.page]; return (pg && pg._file) || openName; };
   out.forEach((r, i) => { r._seq = i; });
   out.sort((a, b) => {
+    const fa = fileOf(a), fb = fileOf(b);
+    if (fa !== fb) return fa.localeCompare(fb, 'ja', { numeric: true });
     const ao = a.el.tbOrder, bo = b.el.tbOrder;
     if (ao != null && bo != null) return ao - bo;
     if (ao != null) return -1;
@@ -1751,13 +1761,32 @@ function reorderTerminal(dragId, targetId) {
   rows.forEach((r, i) => { r.el.tbOrder = i; });
 }
 
+// 端子台表と同じ範囲(プロジェクトの別ファイルも)で fn を実行する(js/proj_index.js projWith)
+function _tbProjWith(fn) {
+  if (typeof projWith === 'function') return projWith(fn);
+  return (typeof xprojWith === 'function') ? xprojWith(fn) : fn();
+}
+// その台の端子のうち別ファイルにあるもの(test を渡せば、それに合うもの)の数
+function _tbExtCount(dev, test) {
+  return _tbProjWith(() => (groupTerminalsByDevice(collectTerminals()).get(dev) || [])
+    .filter(r => state.pages[r.page] && state.pages[r.page]._file && (!test || test(r.el))).length);
+}
+
 // 指定デバイスの端子番号を、表示されている順に1から振り直す。
+// 【2026-10-08】端子台表は別ファイルの端子も並べるので、番号は**別ファイルも含めた表の順**で決め、書き込むのは開いているファイルの端子だけ。
+// 別ファイルの端子はそのファイルを開いて同じボタンを押せば、同じ表の順で番号が入る(まとめて書くのは作る順の4 一括操作)。
 function renumberTerminals(dev) {
-  const groups = groupTerminalsByDevice(collectTerminals());
-  const list = groups.get(dev);
-  if (!list || !list.length) return;
+  const list = _tbProjWith(() => (groupTerminalsByDevice(collectTerminals()).get(dev) || [])
+    .map((r, i) => ({ el: r.el, no: String(i + 1), ext: !!(state.pages[r.page] && state.pages[r.page]._file) })));
+  if (!list.length) return;
+  const mine = list.filter(r => !r.ext), extN = list.length - mine.length;
+  if (!mine.length) {
+    alert(`${dev} の端子はこのファイルにありません（別ファイルに ${extN} 点）。\nそのファイルを開いて振り直してください。`);
+    return;
+  }
   if (typeof pushH === 'function') pushH();
-  list.forEach((r, i) => { r.el.label = String(i + 1); });
+  mine.forEach(r => { r.el.label = r.no; });
+  if (extN && typeof stToast === 'function') stToast(`このファイルの ${mine.length} 点を振り直しました。別ファイルにある ${extN} 点は書き換えていません（そのファイルを開いて同じボタンを押すと、この表の順で番号が入ります）`, 'warn');
   if (typeof draw === 'function') draw();
   // 【2026-09-21修正】updateRightPanel() を呼んでいなかった。
   // 端子を1つ選んだまま「この順で番号を振り直す」を押すと、図面とデータの

@@ -13,10 +13,11 @@
 //
 // 【いつ更新するか】プロジェクトのフォルダを読み直すとき(xprojReload=部品表・表示タブの「更新」)と、図面を保存したあと。
 // 【2026-10-08 作る順の2】部品表(と、その「食い違いを直す」)は台帳から集計する(pidxWith)。参照図面の計算(xprojWith)は今までどおり全部読む。
+// 【2026-10-08 作る順の3】端子台表も台帳から(別ファイルの端子は読むだけ。矢印の相手の線番も借りる pidxArrowBorrow)。
 // ================================================================
 
 const PIDX_FILE = 'project.seqzuidx';   // 2026-10-04 拡張子を図面(.seqzu)と分けた(ツリーに出さない)。以前の ecad_project_index.json は使わない(消してよい)
-const PIDX_VER  = 4;   // 2: 種別を登録シンボルから読む / 3: 矢印にもシンボルの type(逆引き。2026-10-05) / 4: デバイス未設定の端子台の端子も noRef に(部品表と同じ数え方。2026-10-08)
+const PIDX_VER  = 5;   // 2: 種別を登録シンボルから読む / 3: 矢印にもシンボルの type(逆引き。2026-10-05) / 4: デバイス未設定の端子台の端子も noRef に(部品表と同じ数え方。2026-10-08) / 5: 端子の線番の無いネット(un。矢印の相手から借りる。2026-10-08)
 const pidxState = { index: null, dirName: '' };   // 最後に読んだ/作った台帳
 
 const _pidxSkip = ['text', 'rect', 'circle', 'fline', 'dim', 'leader', 'angle_dim', 'wire'];
@@ -103,7 +104,11 @@ function _pidxPage(pg, pi) {
       return;
     }
     if (el.type === 'junction') {   // 端子台の端子(○/◎)
-      const t = { id: el.id, ref: _pidxStr(el.partRef), no: _pidxStr(el.label), loc, conns: _tbConnsOf(el, pg, netNo) };
+      const hit = [];
+      const t = { id: el.id, ref: _pidxStr(el.partRef), no: _pidxStr(el.label), loc, conns: _tbConnsOf(el, pg, netNo, hit) };
+      // 線番の無いネット(rec.nets の添字)。端子台表がページ跨ぎの矢印の相手の線番を借りる(pidxArrowBorrow。版5)
+      const un = [...new Set(hit.filter(wi => !netNo[wi]).map(wi => nets.findIndex(g => g.includes(wi))))].filter(k => k >= 0);
+      if (un.length) t.un = un;
       if (el.tbOrder != null) t.tbOrder = el.tbOrder;
       if (el.tbExclude) t.tbExclude = true;
       if (_pidxStr(el.partModel)) t.partModel = String(el.partModel);
@@ -215,24 +220,88 @@ function _pidxVEl(pre, o, extra) {
   if (o.type === 'junction') v.style = 'circle';   // 台帳の端子は端子台の端子(○◎)だけ(分岐点●は入れていない)
   return v;
 }
-function pidxPages() {
+const _pidxBase = n => String(n || '').replace(/\.(seqzu|json)$/i, '');
+// 使う台帳のファイル(名前順)。開いているファイルは除く(xprojPages と同じ判定。開いている方が新しい)
+function _pidxExtFiles() {
   const idx = pidxState.index;
   if (!idx || !idx.files) return [];
-  const mine = new Set((state.pages || []).filter(p => !p._src).map(p => p.name));
+  const mine = new Set((state.pages || []).filter(p => !p._src && !p._file).map(p => p.name));
   const open = new Set((state.pages || []).map(p => p._src).filter(Boolean));
-  const base = n => String(n || '').replace(/\.(seqzu|json)$/i, '');
   const out = [];
   Object.keys(idx.files).sort((a, b) => a.localeCompare(b, 'ja', { numeric: true })).forEach((name, fi) => {
     const recs = idx.files[name].pages;
     if (!Array.isArray(recs) || open.has('/' + name) || recs.some(r => mine.has(r.name))) return;
+    out.push({ name, fi, recs });
+  });
+  return out;
+}
+function pidxPages() {
+  const out = [];
+  _pidxExtFiles().forEach(({ name, fi, recs }) => {
     recs.forEach((r, pi) => {
       const pre = `pi${fi}:`;
+      // 端子台の端子(○◎)には端子台表に要るもの(並び順・つながる線番)も持たせる(2026-10-08 作る順の3)
+      const terms = new Map((r.terms || []).map(t => [t.id, t]));
+      const tb = o => {
+        const t = o.type === 'junction' && terms.get(o.id);
+        if (!t) return {};
+        const x = { label: t.no, _pidxTerm: { conns: t.conns || [], un: t.un || [], key: `${name}|${pi}` } };
+        if (t.tbOrder != null) x.tbOrder = t.tbOrder;
+        return x;
+      };
       out.push({
-        name: `${base(name)}/${r.name || ''}`, _file: base(name), _pno: pi + 1, frameObj: r.pno ? { page: r.pno } : null, wires: [],
-        elements: (r.devs || []).map(d => _pidxVEl(pre, d, { partRef: d.ref })).concat((r.noRef || []).map(d => _pidxVEl(pre, d))),
+        name: `${_pidxBase(name)}/${r.name || ''}`, _file: _pidxBase(name), _pno: pi + 1, frameObj: r.pno ? { page: r.pno } : null, wires: [],
+        elements: (r.devs || []).map(d => _pidxVEl(pre, d, Object.assign({ partRef: d.ref }, tb(d)))).concat((r.noRef || []).map(d => _pidxVEl(pre, d, tb(d)))),
         groups: (r.groups || []).map(g => Object.assign({}, g.f || {}, { id: pre + g.id, partRef: g.ref })),
       });
     });
+  });
+  return out;
+}
+
+// ---- ページ跨ぎの矢印の相手の線番(2026-10-08 作る順の3。盛田さん「未採番はなおるのか？」) ----
+// 開いているファイルの端子台表は、線番の無いネットでも矢印でつながる相手のネットに線番があればその番号を出す(report.js netWireNoOf)。
+// 台帳の端子も同じにする: 台帳の矢印(名前・送り/受け・触れているネット・線番)と開いている図面の矢印を名前で組にし(送り1・受け1の一対一。
+// sigarrowCompute と同じ決まり)、番号の無い側のネットに相手の番号を貸す。
+// 戻り値 Map: '台帳のファイル名|ページ添字|ネット添字' または '#open|ページ添字|ネット添字'(開いている図面。groupWiresByNet の順) → 線番
+function pidxArrowBorrow() {
+  const out = new Map();
+  if (!pidxReady()) return out;
+  const key = l => (typeof sigarrowKey === 'function') ? sigarrowKey({ label: l }) : String(l || '').normalize('NFKC').trim().toUpperCase();
+  const groups = new Map();
+  const add = (a, at) => {
+    const k = key(a.label);
+    if (!k) return;
+    (groups.get(k) || groups.set(k, []).get(k)).push({ out: !!a.out, no: a.no || '', at: a.net >= 0 ? `${at}|${a.net}` : null });
+  };
+  (state.pages || []).forEach((pg, pi) => {
+    if (pg._file || !(pg.elements || []).some(e => { const r = symRole(e); return r === 'sig_out' || r === 'sig_in'; })) return;
+    _pidxPage(pg, pi).arrows.forEach(a => add(a, `#open|${pi}`));
+  });
+  _pidxExtFiles().forEach(({ name, recs }) => recs.forEach((r, pi) => (r.arrows || []).forEach(a => add(a, `${name}|${pi}`))));
+  groups.forEach(list => {
+    const outs = list.filter(a => a.out), ins = list.filter(a => !a.out);
+    if (outs.length !== 1 || ins.length !== 1) return;
+    [[outs[0], ins[0]], [ins[0], outs[0]]].forEach(([me, other]) => { if (me.at && !me.no && other.no) out.set(me.at, other.no); });
+  });
+  return out;
+}
+// 台帳の端子のつながる線番(未採番のネットは矢印の相手の番号を借りる。借りられなければ「未採番」のまま)
+function pidxTermConns(t, borrow) {
+  const got = (t.un || []).map(k => borrow && borrow.get(`${t.key}|${k}`)).filter(Boolean);
+  if (!got.length) return t.conns.slice();
+  const left = (t.un || []).length > got.length;
+  const out = [];
+  t.conns.forEach(c => { if (c !== '未採番') out.push(c); else { got.forEach(n => out.push(n)); if (left) out.push(c); } });
+  return [...new Set(out)];
+}
+// 開いている図面のページの線番(配線ごと)のうち、番号の無いネットに矢印の相手(台帳)の番号を入れる
+function pidxFillNetNo(pg, pi, netNo, borrow) {
+  if (!borrow || !borrow.size || !netNo.includes('')) return netNo;
+  const out = netNo.slice();
+  groupWiresByNet(pg.wires || [], null, pg.elements).forEach((idxs, k) => {
+    const b = borrow.get(`#open|${pi}|${k}`);
+    if (b) idxs.forEach(i => { if (!out[i]) out[i] = b; });
   });
   return out;
 }

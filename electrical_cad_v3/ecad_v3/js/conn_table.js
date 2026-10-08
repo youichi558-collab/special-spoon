@@ -410,7 +410,8 @@ function _wireThroughCircle(pts, t) {
 
 // 端子に繋がっている線番を集める
 // netNo: 配線ごとのネットの線番(省略時は netWireNoOf)。プロジェクト台帳(js/proj_index.js)は別ファイルを読むとき自分で数えて渡す
-function _tbConnsOf(el, pg, netNo) {
+// hit: 配列を渡すと、つながっている配線の番号(ページの wires の添字)も入れる(台帳が矢印の相手の線番を借りるため。2026-10-08)
+function _tbConnsOf(el, pg, netNo, hit) {
   const conns = new Set();
   // 【2026-09-25】線番は1ネット1か所なので、ネットの番号を出す(report.js netWireNoOf)
   netNo = netNo || netWireNoOf(pg);
@@ -425,18 +426,39 @@ function _tbConnsOf(el, pg, netNo) {
         const d = Math.hypot(p.x - t.x, p.y - t.y);
         if (d <= (t.r || 5) + CONN_TABLE_TOL && d < bestD) { bestD = d; best = t; }
       });
-      if (best === el) conns.add(netNo[wi] || '未採番');
+      if (best === el) { conns.add(netNo[wi] || '未採番'); if (hit) hit.push(wi); }
     });
     // 【2026-10-02】端子の円の中を通っている線(端子の上をまっすぐ通して描いた線)もつながっているとみなす
-    if (_wireThroughCircle(pts, el)) conns.add(netNo[wi] || '未採番');
+    if (_wireThroughCircle(pts, el)) { conns.add(netNo[wi] || '未採番'); if (hit) hit.push(wi); }
   });
   return [...conns];
 }
 
-function buildTerminalBlockRows() { return (typeof sigMemoRun === 'function') ? sigMemoRun(_buildTerminalBlockRows) : _buildTerminalBlockRows(); }
-function _buildTerminalBlockRows() {
-  if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
+// 【2026-10-08 プロジェクト台帳の作る順の3】プロジェクトの別ファイルの端子も集計する(部品表と同じ。台帳があれば台帳 js/proj_index.js projWith、
+// 無ければ参照図面の読み込み xprojWith)。別ファイルの行(ext)は読むだけ(並べ替え・飛ぶ・振り直しの書き込みは開いているファイルの端子だけ)。
+// 開いている図面の線番(矢印の相手の番号を借りる netWireNoOf)は、別ファイルを足す前に数える(足したあとに数えると参照図面の矢印が二重になる)。
+function buildTerminalBlockRows() {
+  const run = () => {
+    if (typeof _syncCurrentPage === 'function') _syncCurrentPage();
+    const own = new Map((state.pages || []).map(pg => [pg, netWireNoOf(pg)]));
+    const wrap = (typeof projWith === 'function') ? projWith : (typeof xprojWith === 'function') ? xprojWith : (f => f());
+    return wrap(() => _buildTerminalBlockRows(own));
+  };
+  return (typeof sigMemoRun === 'function') ? sigMemoRun(run) : run();
+}
+function _buildTerminalBlockRows(own) {
+  if (!own && typeof _syncCurrentPage === 'function') _syncCurrentPage();
   const all = collectTerminals();
+  // 線番: 開いている図面は own(＋台帳の矢印の相手)、台帳の端子は台帳の線番(＋矢印の相手)、参照図面の端子はそのページで数える
+  const borrow = (typeof pidxArrowBorrow === 'function') ? pidxArrowBorrow() : null;
+  const netNos = new Map();
+  const connsOf = r => {
+    const pg = state.pages[r.page] || {};
+    if (r.el._pidxTerm) return (typeof pidxTermConns === 'function') ? pidxTermConns(r.el._pidxTerm, borrow) : r.el._pidxTerm.conns.slice();
+    if (!own || !own.has(pg)) return _tbConnsOf(r.el, pg);
+    if (!netNos.has(pg)) netNos.set(pg, (typeof pidxFillNetNo === 'function') ? pidxFillNetNo(pg, r.page, own.get(pg), borrow) : own.get(pg));
+    return _tbConnsOf(r.el, pg, netNos.get(pg));
+  };
   const names = tbDeviceNames(all);   // 綴りが違っても同じデバイスなら1つの台にする(部品表・接点Refと同じ判定)
   // 型式はデバイスの値(台帳 js/devices.js)。デバイスの無い端子は端子自身の値
   const led = (typeof deviceLedger === 'function') ? deviceLedger() : null;
@@ -445,12 +467,14 @@ function _buildTerminalBlockRows() {
     el:      r.el,
     page:    state.pages[r.page]?.name || ('Sheet' + (r.page + 1)),
     pageIdx: r.page,
+    ext:     !!(state.pages[r.page] && state.pages[r.page]._file),   // 別ファイルの端子(読むだけ)
+    file:    (state.pages[r.page] && state.pages[r.page]._file) || '',
     loc:     r.loc,
     tbRef:   names.get(_tbKey(r.el.partRef)),
     tbModel: (() => { const D = devOf(r.el); return D ? (D.vals.partModel || '') : (r.el.partModel || ''); })(),
     tbDev:   devOf(r.el),
     termNo:  r.el.label || '-',
-    conns:   _tbConnsOf(r.el, state.pages[r.page] || {}),
+    conns:   connsOf(r),
   }));
 }
 
@@ -568,13 +592,19 @@ function showTBTable() {
   const incRows = [...incGroups.values()].flat();
   const exRows  = [...exGroups.values()].flat();
   const unconn  = incRows.filter(r => !r.conns.length).length;
+  // 【2026-10-08】プロジェクトの別ファイルの端子も集計する(部品表と同じ書き方)
+  const extN = (typeof projExtPageCount === 'function') ? projExtPageCount() : 0;
+  const extRows = rows.filter(r => r.ext).length;
   let html = `<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">`
-    + `全${state.pages.length}ページ集計。端子${incRows.length}点 / 端子台${incGroups.size}台`;
+    + (extN ? `このファイル${state.pages.length}ページ＋プロジェクトの別ファイル${extN}ページを集計` : `このファイル${state.pages.length}ページを集計`)
+    + `。端子${incRows.length}点 / 端子台${incGroups.size}台`;
   if (unconn) html += ` / <span style="color:var(--red);font-weight:600">未接続 ${unconn}点</span>`;
   // 外した分は必ず数字で見せる。黙って減っていると出力を誤解するため(部品表と同じ)。
   if (exRows.length) html += ` / <span style="color:var(--fg3)">集計対象外 ${exGroups.size}台・${exRows.length}点（CSVにも出ません）</span>`;
   html += `<br>行を押すと、この一覧を閉じて図面のその端子へ移動します。行をドラッグすると並べ替えできます。並べ替えた順で「番号を振り直す」と端子番号が1から振り直されます。`
-    + `<br>PLC・インバータ等の「端子台ではない」台は、見出しの「端子台として集計」を外してください（台ごとに1回で、図面に残ります）。</p>`;
+    + `<br>PLC・インバータ等の「端子台ではない」台は、見出しの「端子台として集計」を外してください（台ごとに1回で、図面に残ります）。`
+    + (extRows ? `<br>灰色の行は別ファイルの端子です（読むだけ。並べ替え・番号の振り直し・「端子台として集計」は開いているファイルの端子にだけ効きます）。` : '')
+    + `</p>`;
 
   const devSection = (list, dev) => {
     // 型式は同じデバイスの端子すべてで揃う運用(プロパティ側で統一)なので、
@@ -607,8 +637,13 @@ function showTBTable() {
       + `</p>`
       + `<table class="tbl"><tr><th style="width:22px"></th><th>No</th><th>端子番号</th>`
       + `<th>位置</th><th>接続線番</th></tr>`
-      + list.map((r, i) =>
-          `<tr draggable="true" data-elid="${escH(r.el.id)}"`
+      + list.map((r, i) => r.ext
+        ? `<tr style="color:var(--fg3)" title="別ファイル（${escH(r.file)}）の端子。読むだけです">`
+          + `<td></td><td>${i + 1}</td><td>${escH(r.termNo)}</td><td>${escH(r.loc)}</td>`
+          + `<td>${r.conns.length
+              ? r.conns.map(n => `<span class="badge badge-b" style="opacity:.6">${escH(n)}</span>`).join(' ')
+              : '<span style="color:var(--red)">未接続</span>'}</td></tr>`
+        : `<tr draggable="true" data-elid="${escH(r.el.id)}"`
           + ` ondragstart="tbDragStart(event,${_jsArg(r.el.id)})" ondragover="tbDragOver(event)"`
           + ` ondrop="tbDrop(event,${_jsArg(r.el.id)})" ondragend="tbDragEnd(event)"`
           // 【2026-09-29】行を押すと、図面のその端子へ飛ぶ(ドラッグの並べ替えは従来どおり。ドラッグしたときは押した扱いにならない)
@@ -630,6 +665,16 @@ function showTBTable() {
     exGroups.forEach((list, dev) => devSection(list, dev));
   }
   _reportOpen('tbtbl', '端子台表', html, exportTBCSV);
+}
+
+// 端子台表を開く(リボン・帳票のタブ): 今の台帳ですぐ出し、台帳を最新にしたら出し直す(部品表の openBOM と同じ。2026-10-08)。
+// 並べ替え・振り直しなどのあとの出し直しは showTBTable(読み直さない)
+async function openTBTable() {
+  showTBTable();
+  if (typeof pidxRefresh !== 'function') return;
+  let reloaded = false;
+  try { reloaded = await pidxRefresh(); } catch (e) { console.warn('プロジェクト台帳の更新に失敗', e); }
+  if (reloaded && document.getElementById('report-p')?.classList.contains('open') && _lastReportTab === 'tbtbl') showTBTable();
 }
 
 // _jsArg(onclick等の属性に文字列を安全に渡す)は report.js にある(部品表・線番表・接点Refでも使うため、そちらに置いた)。
