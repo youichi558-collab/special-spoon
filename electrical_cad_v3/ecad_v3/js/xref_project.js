@@ -63,6 +63,11 @@ function xprojWith(fn) {
     xprojState.files.forEach(f => (f.symbols || []).forEach(x => { if (x && x.type && !have.has(x.type)) { have.add(x.type); more.push(x); } }));
     if (more.length) state.customSymbols = (savedSyms || []).concat(more);
     state.pages = savedPages.concat(ext.map(e => xprojVirtualPage(e.f, e.pg, e.i, e.fi)));
+    // 別ファイルの記号も、大きさを焼き込んだシンボル(js/sym_store.js)に倍率を合わせる(写しなのでファイルは変わらない)
+    if (typeof symBakeFixList === 'function') {
+      const defOf = t => (state.customSymbols || []).find(s => s.type === t);
+      state.pages.slice(savedPages.length).forEach(pg => symBakeFixList(pg.elements, defOf));
+    }
     return fn();
   } finally {
     state.pages = savedPages; state.customSymbols = savedSyms;

@@ -12,7 +12,7 @@ const S = R('js/sym_store.js');
 const pick = n => S.match(new RegExp('function ' + n + '\\([\\s\\S]*?\\n\\}'))[0];
 const sb = { state: {}, renderPageTabs: () => {} };
 vm.createContext(sb);
-vm.runInContext(['symBakeDef', 'symCommonScale', 'symBakeFixElements'].map(pick).join('\n'), sb);
+vm.runInContext(['symBakeDef', 'symCommonScale', 'symBakeFixList', 'symBakeFixElements', 'symTidyCandidates', 'symTidyApplyToData', '_symCopyAtLibSize'].map(pick).join('\n'), sb);
 
 const orig = { type: 'lib_mc', name: '電磁接触器', w: 80, h: 60,
   shapes: [{ t: 'L', x1: -40, y1: 0, x2: 40, y2: 0, lineWidth: 0.5 }, { t: 'C', cx: 0, cy: 0, r: 10 }, { t: 'R', x: -20, y: -10, w: 40, h: 20 },
@@ -59,11 +59,50 @@ sb.state.pages = [{ elements: back }];
 sb.symBakeFixElements();
 ok(near(back[0].scale, 0.3) && !('symBaked' in back[0]), '焼き込む前の形で描くときは、元の倍率に戻す');
 
+console.log('\n【大きさの整理(今ある登録シンボル)】');
+{
+  const lib = { relay: { type: 'relay', name: '補助継電器', w: 96, h: 80, shapes: [], terminals: [] },
+    motor: { type: 'motor', name: '電動機', w: 90, h: 64 }, unused: { type: 'unused', w: 10, h: 10 },
+    done: { type: 'done', name: '焼き込み済み', w: 30, h: 30, baked: 0.3 } };
+  const files = [
+    { name: 'A.seqzu', pages: [{ elements: [{ type: 'relay', scale: 0.29 }, { type: 'relay', scale: 0.29 }, { type: 'motor' }] }] },
+    { name: '盤外/B.seqzu', pages: [{ elements: [{ type: 'relay', scale: 0.5 }, { type: 'done', scale: 1, symBaked: 0.3 }] }] },
+  ];
+  const open = [{ elements: [{ type: 'relay', scale: 0.29 }] }];
+  const c = sb.symTidyCandidates(lib, files, open);
+  ok(c.length === 1 && c[0].type === 'relay', '★縮めて使っているもの(補助継電器)だけ。等倍の電動機・使っていない・焼き込み済みで等倍のものは出ない');
+  ok(near(c[0].k, 0.29) && c[0].mixed === true, 'いちばん多い倍率 0.29(0.5 の記号もある印)');
+  ok(c[0].perFile.length === 2 && c[0].perFile[0].n === 2 && c[0].openN === 1, '図面ごとの記号の数・開いている図面の数');
+  const newDefs = { relay: sb.symBakeDef(lib.relay, c[0].k) };
+  const d = { pages: files[0].pages, customSymbols: [lib.relay, lib.motor] };
+  ok(sb.symTidyApplyToData(d, newDefs) === 2, 'ファイルの記号を書き換える(補助継電器 2 個)');
+  ok(near(d.pages[0].elements[0].scale, 1) && d.pages[0].elements[2].scale === undefined, '★倍率 1 に(見た目は同じ)・ほかのシンボルは触らない');
+  ok(d.customSymbols[0] === newDefs.relay && d.customSymbols[1] === lib.motor, '図面に入っている写しも新しい形に');
+  const d2 = { pages: [{ elements: [{ type: 'motor' }] }], customSymbols: [lib.motor] };
+  ok(sb.symTidyApplyToData(d2, newDefs) === 0 && d2.customSymbols[0] === lib.motor, '関係ない図面は書き換えない(0 を返す)');
+  const c2 = sb.symTidyCandidates({ relay: newDefs.relay }, [{ name: 'A', pages: d.pages }], []);
+  ok(c2.length === 0, '整理したあとは候補に出ない(何度押しても同じ)');
+}
+
+console.log('\n【整理の前の写しと比べるときは大きさをそろえる】');
+{
+  const L = sb.symBakeDef(orig, 0.3);
+  const same = sb._symCopyAtLibSize(orig, L);
+  ok(JSON.stringify(same.terminals) === JSON.stringify(L.terminals) && JSON.stringify(same.shapes) === JSON.stringify(L.shapes), '★古い図面の写し(縮める前)をそろえると登録シンボルと同じ=「端子の位置が変わった」と出ない・比べるで違いに出ない');
+  ok(sb._symCopyAtLibSize(L, L) === L && sb._symCopyAtLibSize(orig, orig) === orig, '大きさが同じならそのまま');
+}
+ok(/_symTermPos\(_symCopyAtLibSize\(copies\[t\], lib\[t\]\)\)/.test(S) && /d = _symCopyAtLibSize\(drawing\[t\], L\)/.test(S), '開いたときの知らせ(symMovedNotice)と「比べる」(symDiffList)の両方でそろえる');
+
 console.log('\n【つなぎ込み】');
 ok(/const k = !\(t in lib\) \? symCommonScale\(t\) : null;\s*o\[t\] = k \? symBakeDef\(drawing\[t\], k\) : drawing\[t\];/.test(S), '★「比べる」で足すとき(登録シンボルに無いもの)だけ焼き込む。「図面の写しに戻す」は焼き込まない');
 ok(/DEFS\[s\.type\] = s; \}\);\s*symBakeFixElements\(\);/.test(S), 'シンボル一覧を組み直すたびに記号の倍率を合わせる(図面を開いたとき・登録シンボルに書いたとき)');
 ok(/if \(d && d\.baked && d\.baked !== 1\) state\.elements\[state\.elements\.length - 1\]\.symBaked = d\.baked;/.test(R('js/tools.js')), 'パネルから置いた記号は焼き込んだ大きさの等倍と覚える');
 ok(/if \(repOld && repOld\.baked\) sym\.baked = repOld\.baked;/.test(R('js/ui.js')), '登録画面で置き換えたときは baked を引き継ぐ(形は見えている大きさなので)');
 
+const H = R('index.html');
+ok(/onclick="symSizeTidyDialog\(\)"/.test(H), 'シンボルパネルの下に「大きさの整理」');
+ok(/if \(!symTidyApplyToData\(d, newDefs\)\) continue;/.test(S) && /ptreeHistSave\('\/' \+ f\.name, fh, text\)/.test(S), '★書き換える図面だけ書き、前の中身は履歴に残す');
+ok(/filter\(n => !open\.has\(n\)\)/.test(S), '開いている図面のファイルは書き換えない(画面の中で直して保存)');
+ok(/symBakeFixList\(pg\.elements, defOf\)/.test(R('js/xref_project.js')), '別ファイルを読む計算(参照図面)でも倍率を合わせる');
 console.log(ng ? `\nNG ${ng} 件` : '\nすべてOK');
 process.exit(ng ? 1 : 0);

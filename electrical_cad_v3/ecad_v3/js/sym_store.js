@@ -96,26 +96,149 @@ function symCommonScale(type) {
   cnt.forEach((n, k) => { if (n > bn) { best = val.get(k); bn = n; } });
   return (best && Math.abs(best - 1) > 1e-6) ? best : null;
 }
-// 記号の倍率を定義の baked に合わせる(何度呼んでも同じ)。直した数を返す
+// 記号の並び(els)の倍率を、定義(defOf(type))の baked に合わせる。直した数を返す(何度呼んでも同じ)
+function symBakeFixList(els, defOf) {
+  let n = 0;
+  (els || []).forEach(e => {
+    if (!e || !e.type) return;
+    const d = defOf(e.type);
+    if (!d) return;
+    const want = d.baked || 1, have = e.symBaked || 1;
+    if (Math.abs(want - have) < 1e-9) return;
+    e.scale = Math.round((e.scale || 1) * have / want * 1e6) / 1e6;
+    if (want === 1) delete e.symBaked; else e.symBaked = want;
+    n++;
+  });
+  return n;
+}
+// 開いている図面の記号を、今のシンボル一覧(state.customSymbols)の baked に合わせる
 function symBakeFixElements() {
   let n = 0;
   const defOf = t => (state.customSymbols || []).find(s => s.type === t);
   (state.pages || []).forEach(pg => {
-    let touched = false;
-    (pg.elements || []).forEach(e => {
-      if (!e || !e.type) return;
-      const d = defOf(e.type);
-      if (!d) return;
-      const want = d.baked || 1, have = e.symBaked || 1;
-      if (Math.abs(want - have) < 1e-9) return;
-      e.scale = Math.round((e.scale || 1) * have / want * 1e6) / 1e6;
-      if (want === 1) delete e.symBaked; else e.symBaked = want;
-      touched = true; n++;
-    });
-    if (touched) pg.dirty = true;
+    const k = symBakeFixList(pg.elements, defOf);
+    if (k) { pg.dirty = true; n += k; }
   });
   if (n && typeof renderPageTabs === 'function') renderPageTabs();
   return n;
+}
+
+// ---- 大きさの整理(2026-10-08。焼き込みの「2」) ----------------------------
+// 盛田さん「シンボル」(=こちらから): 今ある登録シンボルで、図面では1個ずつ縮めて使っているもの(補助継電器 0.29 等)を、
+// 使っている大きさで登録し直し、プロジェクトフォルダの図面の記号の倍率を 1 に書き換える(見た目は変わらない)。
+// 押すとまず「どのシンボルを何倍で・どの図面の記号を何個」の一覧を出し、選んだものだけ実行する。
+// 書き換える前の図面は履歴(.seqzu_history)、登録シンボルはバックアップに残る。
+// 開いている図面は書き換えず、登録シンボルを書いたあとの組み直し(symBakeFixElements)で直す(保存で入る)。
+// プロジェクトの外の図面は、開いたときに同じ仕組みで直る。
+//
+// 候補: 登録シンボルのうち、プロジェクトの図面＋開いている図面での「見た目の倍率」のいちばん多いものが 1 でないもの。
+//   見た目の倍率 = 記号の倍率 × 記号の symBaked ÷ 定義の baked(焼き込み済みの記号も同じ物差しで数える)
+function symTidyCandidates(lib, files, openPages) {
+  const out = [];
+  Object.keys(lib || {}).forEach(t => {
+    const L = lib[t];
+    const cnt = new Map(), val = new Map(), perFile = [];
+    const add = (e) => {
+      const eff = (e.scale || 1) * (e.symBaked || 1) / (L.baked || 1);
+      const k = Math.round(eff * 1e6) / 1e6;
+      cnt.set(k, (cnt.get(k) || 0) + 1);
+      if (!val.has(k)) val.set(k, eff);
+    };
+    (files || []).forEach(f => {
+      let n = 0;
+      (f.pages || []).forEach(pg => (pg.elements || []).forEach(e => { if (e && e.type === t) { add(e); n++; } }));
+      if (n) perFile.push({ name: f.name, n });
+    });
+    let openN = 0;
+    (openPages || []).forEach(pg => (pg.elements || []).forEach(e => { if (e && e.type === t) { add(e); openN++; } }));
+    let best = null, bn = 0;
+    cnt.forEach((n, k) => { if (n > bn) { best = val.get(k); bn = n; } });
+    if (!best || Math.abs(best - 1) < 1e-6) return;
+    out.push({ type: t, name: L.name || L.label || t, k: best, w: L.w, h: L.h, perFile, openN,
+      mixed: cnt.size > 1 });
+  });
+  return out;
+}
+// 図面ファイル1つ分の中身(d)を、焼き込んだ定義(newDefs: type→定義)に合わせる。直した記号の数を返す
+function symTidyApplyToData(d, newDefs) {
+  let n = 0;
+  (d.pages || []).forEach(pg => { n += symBakeFixList(pg.elements, t => newDefs[t]); });
+  if (n && Array.isArray(d.customSymbols)) d.customSymbols = d.customSymbols.map(s => (s && newDefs[s.type]) ? newDefs[s.type] : s);
+  return n;
+}
+
+async function symSizeTidyDialog() {
+  if (typeof document === 'undefined' || !document.body) return;
+  if (!_symLibReady()) { alert('登録シンボル(ライブラリフォルダの symbols.json)が読めていないので整理できません。設定の「部品DBの場所」でライブラリフォルダを確かめてください'); return; }
+  const dir = (typeof xprojDirHandle === 'function') ? await xprojDirHandle(true) : null;
+  if (!dir) { alert('プロジェクトのフォルダが開かれていません。左の「プロジェクト」でフォルダを開いてから押してください(フォルダの図面の記号の倍率を書き換えるため)'); return; }
+  const open = new Set((state.pages || []).map(p => p._src).filter(Boolean).map(s => s.replace(/^\//, '')));
+  const names = (await xprojReadList(dir)).filter(n => !open.has(n));
+  const r = await xprojReadFiles(dir, names);
+  const lib = _symLibObj();
+  const list = symTidyCandidates(lib, r.files, state.pages);
+  if (!list.length) { alert('整理するシンボルはありません(登録シンボルは、どれも図面で等倍で使われています)'); return; }
+  const old = document.getElementById('sym-tidy'); if (old) old.remove();
+  const ov = document.createElement('div');
+  ov.id = 'sym-tidy';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100001;display:flex;align-items:center;justify-content:center';
+  const r2 = v => Math.round(v * 100) / 100;
+  ov.innerHTML = '<div style="background:var(--bg2,#2a2a2a);color:var(--fg,#ddd);border:1px solid var(--bd2,#444);border-radius:6px;'
+    + 'box-shadow:0 4px 20px rgba(0,0,0,.5);padding:14px 16px;max-width:820px;max-height:82vh;overflow:auto;font-size:12px;line-height:1.6">'
+    + '<div style="font-size:14px;font-weight:600;margin-bottom:4px">シンボルの大きさの整理</div>'
+    + '<div style="font-size:11px;color:var(--fg3,#999);margin-bottom:6px">図面で縮めて使っている登録シンボルを、使っている大きさで登録し直します。'
+    + '図面の記号の倍率は 1 に直すので、<b>見た目は変わりません</b>。これからはパネルから置くと等倍で同じ大きさになります(ほかのCADと同じ)。<br>'
+    + `書き換えるのはプロジェクトフォルダ「${escH(dir.name)}」の図面(${r.files.length}件中、下の数)。書き換える前の図面は履歴、登録シンボルはバックアップに残ります。`
+    + (open.size ? '開いている図面は書き換えず、この画面の中で直します(保存してください)。' : '') + '</div>'
+    + '<table class="tbl" style="width:100%"><tr><th></th><th>シンボル</th><th>今の形</th><th>使っている倍率</th><th>登録し直す形</th><th>書き換える図面・記号</th></tr>'
+    + list.map((x, i) => {
+      const files = x.perFile.map(f => `${escH(f.name)}(${f.n})`).join('<br>');
+      const nEl = x.perFile.reduce((a, f) => a + f.n, 0);
+      return `<tr><td><input type="checkbox" data-i="${i}" checked></td><td>${escH(x.name)}</td><td>${r2(x.w)}×${r2(x.h)}</td>`
+        + `<td style="text-align:right">${r2(x.k)}${x.mixed ? ' <span title="違う倍率の記号もあります。その記号も見た目は変わりません" style="color:var(--ora,#c98a4b)">ほかの倍率あり</span>' : ''}</td>`
+        + `<td>${r2(x.w * x.k)}×${r2(x.h * x.k)}</td>`
+        + `<td><details><summary>${x.perFile.length}図面・${nEl}個${x.openN ? `＋開いている図面 ${x.openN}個` : ''}</summary>${files || '(フォルダの図面には無し)'}</details></td></tr>`;
+    }).join('')
+    + '</table>'
+    + (r.problems.length ? `<div style="font-size:11px;color:var(--red,#e55);margin-top:6px">読めなかった図面(書き換えません。開いたときに直ります): ${escH(r.problems.join(' / '))}</div>` : '')
+    + '<div style="text-align:right;margin-top:10px;display:flex;gap:6px;justify-content:flex-end">'
+    + '<button class="fp-btn" id="sym-tidy-close">閉じる</button>'
+    + '<button class="fp-btn primary" id="sym-tidy-apply">選んだものを整理する</button></div></div>';
+  document.body.appendChild(ov);
+  const close = () => { ov.remove(); document.removeEventListener('keydown', onKey, true); };
+  const onKey = e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+  document.addEventListener('keydown', onKey, true);
+  document.getElementById('sym-tidy-close').onclick = close;
+  document.getElementById('sym-tidy-apply').onclick = async () => {
+    const pick = [...ov.querySelectorAll('input[data-i]')].filter(c => c.checked).map(c => list[+c.dataset.i]);
+    if (!pick.length) { close(); return; }
+    close();
+    const newDefs = {};
+    pick.forEach(x => { newDefs[x.type] = symBakeDef(lib[x.type], x.k); });
+    // 1) 図面ファイルを書き換える(先に。登録シンボルだけ変わって図面が古いままの時間を作らない)
+    let nFile = 0;
+    const ng = [];
+    for (const f of r.files) {
+      const d = f.data;
+      if (!symTidyApplyToData(d, newDefs)) continue;
+      try {
+        const fh = await xprojFileHandle(dir, f.name);
+        const text = _saveJSON(d);
+        try { if (typeof ptreeHistSave === 'function') await ptreeHistSave('/' + f.name, fh, text); } catch (e) {}
+        const w = await fh.createWritable(); await w.write(text); await w.close();
+        nFile++;
+      } catch (e) { ng.push(`${f.name}: ${e && e.message || e}`); }
+    }
+    // 2) 登録シンボルを書く → 組み直しで開いている図面の記号も直る(symBakeFixElements)
+    Object.keys(newDefs).forEach(t => { if (state.drawingSymbols && t in state.drawingSymbols) state.drawingSymbols[t] = newDefs[t]; });
+    const ok = await _symLibWrite(o => { Object.keys(newDefs).forEach(t => { o[t] = newDefs[t]; }); return o; });
+    if (typeof draw === 'function') draw();
+    if (typeof xprojReload === 'function') { try { await xprojReload(); } catch (e) {} }   // 台帳・参照図面を読み直す
+    alert(`整理しました: ${pick.map(x => `${x.name}(${r2(x.k)}倍)`).join('、')}\n図面を書き換えた数: ${nFile}`
+      + (ok ? '' : '\n\n※ 登録シンボルを書けませんでした。図面は書き換え済みで、開くと元の形に合わせて倍率が戻ります')
+      + (ng.length ? `\n\n書けなかった図面(開いたときに直ります):\n${ng.join('\n')}` : '')
+      + ((state.pages || []).some(p => p.dirty) ? '\n\n開いている図面も直したので、保存してください' : ''));
+  };
 }
 
 // 図面を開いたときに図面のシンボルを覚えておく(applyProjectData・自動保存からの復元)
@@ -255,6 +378,12 @@ function symUsageShow(type) {
 }
 
 // ---- 端子の位置が変わる記号の知らせ・確認(2026-10-05) ----------------------------
+// 図面の写しを登録シンボルと同じ大きさにそろえて比べる(大きさの整理の前に保存した図面の写しは、縮める前の大きさ)。
+// そろえないと、整理したあとに古い図面を開くたび「端子の位置が変わった」と出てしまう(実際の位置は記号の倍率で同じ)
+function _symCopyAtLibSize(copy, libDef) {
+  const r = ((libDef && libDef.baked) || 1) / ((copy && copy.baked) || 1);
+  return (copy && Math.abs(r - 1) > 1e-9) ? symBakeDef(copy, r) : copy;
+}
 const _symTermPos = d => JSON.stringify(((d && d.terminals) || []).map(t => [Math.round(t.x * 100) / 100, Math.round(t.y * 100) / 100]));
 
 // 図面の写し(copies: {type: 定義})と登録シンボルで端子の位置が違い、図面に置いてある記号を知らせる(窓ではなく画面の隅に。押すとその記号へ)。
@@ -265,7 +394,7 @@ function symMovedNotice(copies, pageOk, force) {   // force: 同じ内容でも�
   const lib = _symLibObj();
   const hits = [];
   Object.keys(copies || {}).forEach(t => {
-    if (!lib[t] || _symTermPos(lib[t]) === _symTermPos(copies[t])) return;
+    if (!lib[t] || _symTermPos(lib[t]) === _symTermPos(_symCopyAtLibSize(copies[t], lib[t]))) return;
     const at = [];
     (state.pages || []).forEach((pg, pi) => { if (!pageOk || pageOk(pg)) (pg.elements || []).forEach(e => { if (e.type === t) at.push({ pi, id: e.id }); }); });
     if (at.length) hits.push({ type: t, name: lib[t].label || lib[t].name || t, at });
@@ -337,7 +466,7 @@ function symDiffList() {
   const out = [];
   Object.keys(drawing).forEach(t => {
     if (!placed[t]) return;   // 2026-10-05 欠陥3: 置いてあるものだけ(古い図面の使っていない写しを登録シンボルに戻さない)
-    const d = drawing[t], L = lib[t];
+    const L = lib[t], d = _symCopyAtLibSize(drawing[t], L);   // 大きさの整理の前の写しは、同じ大きさにそろえて比べる
     const name = d.label || d.name || t;
     if (!L) { out.push({ type: t, name, missing: true, what: ['登録シンボルに無い'], termsMoved: false, placed: placed[t] || 0 }); return; }
     if (_symCanon(L) === _symCanon(d)) return;
