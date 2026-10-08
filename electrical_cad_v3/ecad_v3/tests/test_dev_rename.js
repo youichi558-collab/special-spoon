@@ -1,6 +1,6 @@
 // デバイス名の付け替え(2026-10-08 プロジェクト台帳の作る順の4④。js/devices.js devRenamePlan・devRenameApply)
 //   node tests/test_dev_rename.js
-// 盛田さんと決めたこと: 図面の記号を選んで「付け替え…」。そのデバイスの記号すべて(別ファイルも)を新しい名前に。
+// 盛田さんと決めたこと: 図面の記号を選んでプロパティのデバイス欄で名前を変えると、ほかの記号もあれば窓を出す。そのデバイスの記号すべて(別ファイルも)を新しい名前に。
 // 使われている名前なら「ずらして入れる」(最初の空き番号の手前まで)。名前が数字で終わらなければ止める。実行前に一覧を見せる。
 // このテストが守るもの:
 //   1. ★そのデバイスの記号すべて(綴りの違う記号・外形図・端子台の端子・別ファイル)が新しい名前になる。ほかのデバイスは変わらない
@@ -126,7 +126,21 @@ const sel = id => D.open.elements.find(e => e.id === id);
     const r = await sb.devRenameApply(p);
     eq([openRef('c1'), extRef('k2'), r.files], ['KR9', 'kr1', []], '別ファイルは書かない');
   }
-  ok(/devRenameDialog\(\)/.test(R('js/ui.js')), 'プロパティ欄に「付け替え…」');
+
+  console.log('\n【入口: デバイスの入力欄で名前を変えたとき】');
+  await reset();
+  {
+    eq([sb.devRenameNeedsAsk(sel('c1'), 'KR9'), sb.devRenameNeedsAsk(sel('n1'), 'CR9'), sb.devRenameNeedsAsk(sel('c3'), 'CR9')], [true, true, false], '★ほかの記号があるデバイス(別ファイル・外形図も)は聞く。CR3 は記号1つなので聞かない');
+    eq([sb.devRenameNeedsAsk(sel('z'), 'CR9'), sb.devRenameNeedsAsk(sel('c1'), ''), sb.devRenameNeedsAsk(sel('c1'), 'kr1'), sb.devRenameNeedsAsk(sel('m'), 'MC-B')], [false, false, false, false],
+      '名前の無い記号・空にする・同じ名前・記号が1つだけのデバイスは聞かない(今まで通り)');
+    eq([sb.devRenameKeep(sel('c1'), 'KR9'), sb.devRenameKeep(sel('m'), 'MC-B')], ['KR1', 'MC-B'], '★自動適用は、聞く間は元の名前のまま(聞かないときは打った名前)');
+    sb.pidxState.index = null;
+    eq(sb.devRenameNeedsAsk(sel('c5'), 'CR9'), false, '台帳が無ければ開いているファイルだけで数える(CR5 は開いているファイルに1つ)');
+    const ui = R('js/ui.js');
+    ok(/devRenameKeep\(el, v\('pp-partref'\)\)/.test(ui) && /devRenameKeep\(el, v\('pp-jref'\)\)/.test(ui), '自動適用(記号・端子台の端子)は devRenameKeep を通す');
+    ok(/function onPartRefChanged[\s\S]*?devRenameAsk\(el, ref\)/.test(ui) && /function onJunctionRefChanged[\s\S]*?devRenameAsk\(el, ref\)/.test(ui), '入力欄の onchange から窓を出す');
+    ok(!/>付け替え…<\/button>/.test(ui), '「付け替え…」ボタンはやめた');
+  }
 
   console.log(ng ? `\n失敗 ${ng} 件` : '\nすべて通過');
   process.exit(ng ? 1 : 0);

@@ -1255,6 +1255,7 @@ function onJunctionRefChanged() {
   if (!el || el.type !== 'junction') return;
   const ref = document.getElementById('pp-jref')?.value.trim() || '';
   if (!ref) return;
+  if (typeof devRenameAsk === 'function' && devRenameAsk(el, ref)) return;   // 【2026-10-08】ほかの端子もあれば聞く(js/devices.js)
   const info = collectDeviceInfo().get(ref);
   el.partRef = ref;
   if (!info || (!info.model && !info.zone)) { draw(); return; }   // 新規デバイスならそのまま
@@ -1342,6 +1343,8 @@ function onPartRefChanged() {
   if (!el) return;
   const ref = document.getElementById('pp-partref')?.value.trim() || '';
   if (!ref) return;
+  // 【2026-10-08】そのデバイスにほかの記号もあれば、全部付け替えるか・この記号だけかを聞く(js/devices.js)
+  if (typeof devRenameAsk === 'function' && devRenameAsk(el, ref)) return;
   const info = collectDeviceInfo().get(ref);
   if (!info) return;                       // 新規デバイスなら何もしない
   pushH();                                 // 変更前の状態を履歴に積む
@@ -2732,8 +2735,7 @@ function updateRightPanel() {
       // TB1は1台として扱われる。
       const jDevC = el.devColor||(state.darkMode?'#4da3ff':'#1d6fb5');
       html += `<div class="pp-group" style="border-left:4px solid ${jDevC}"><div class="pp-group-cap" style="color:${jDevC}">◆ デバイス</div>`;
-      html += `<div class="pp-row"><div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--fg3);margin-bottom:2px">デバイス`
-      + `<button class="fp-btn" style="font-size:10px;padding:1px 6px;white-space:nowrap" onclick="devRenameDialog()" title="この端子台の端子すべて(プロジェクトの別ファイルも)の名前を付け替えます。使われている名前なら番号をずらして入れます">付け替え…</button></div>`
+      html += `<div class="pp-row"><label>デバイス</label>`
         + `<input type="text" id="pp-jref" list="pp-jref-list" value="${escH(el.partRef||'')}"`
         + ` placeholder="例: TB1" onchange="onJunctionRefChanged()"></div>`
         + `<datalist id="pp-jref-list">${partRefOptionsHtml(el.partRef)}</datalist>`;
@@ -2896,10 +2898,8 @@ function updateRightPanel() {
     // デバイス欄は入力欄＋候補リスト(datalist)。候補は図面上で実際に使われている
     // デバイス記号だけを出す。既存デバイスを選ぶと型番・仕様がそこから引き継がれる
     // (MC1は主接点・コイル・補助接点と複数箇所に置くため、2つ目以降は選ぶだけで済む)。
-    // 【2026-10-08】「付け替え…」= そのデバイスの記号すべて(別ファイルも)の名前を付け替える(js/devices.js devRenameDialog)。
-    // 見出しの行に置く(入力欄の横だと幅が足りず下へ折り返し、入力欄の候補の一覧に隠れて押せなかった。盛田さん実機)
-    html += `<div class="pp-row"><div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--fg3);margin-bottom:2px">デバイス`
-      + `<button class="fp-btn" style="font-size:10px;padding:1px 6px;white-space:nowrap" onclick="devRenameDialog()" title="このデバイスの記号すべて(接点・端子・外形図。プロジェクトの別ファイルも)の名前を付け替えます。使われている名前なら番号をずらして入れます">付け替え…</button></div>`
+    // 【2026-10-08】名前を変えたとき、そのデバイスにほかの記号もあれば付け替えの窓を出す(js/devices.js devRenameAsk。盛田さん「この操作入力欄から打ちそうだな」)
+    html += `<div class="pp-row"><label>デバイス</label>`
       + `<input type="text" id="pp-partref" list="pp-partref-list" value="${escH(el.partRef||'')}"`
       + ` placeholder="例: MC1, NFB1" onchange="onPartRefChanged()"></div>`
       + `<datalist id="pp-partref-list">${partRefOptionsHtml(el.partRef)}</datalist>`;
@@ -3262,7 +3262,7 @@ function applyRightPanel() {
     if (v('pp-jstyle')!=='') el.style = v('pp-jstyle');
     if (el.style === 'circle' || el.style === 'dbl') {
       el.label     = v('pp-jlabel');
-      el.partRef   = v('pp-jref');
+      el.partRef   = (typeof devRenameKeep === 'function') ? devRenameKeep(el, v('pp-jref')) : v('pp-jref');   // 付け替えの窓で決める間は元の名前(js/devices.js)
       el.partModel = v('pp-jmodel');
       el.panelZone = chk('pp-jzone') ? '外' : undefined;
       el.showDev   = !!chk('pp-jrefshow');
@@ -3373,7 +3373,7 @@ function applyRightPanel() {
   } else if (el) {
     el.label     = v('pp-label');
     el.labelAlign = v('pp-lalign') || undefined;
-    el.partRef   = v('pp-partref');
+    el.partRef   = (typeof devRenameKeep === 'function') ? devRenameKeep(el, v('pp-partref')) : v('pp-partref');   // 付け替えの窓で決める間は元の名前(js/devices.js)
     el.devHide   = !document.getElementById('pp-devhide')?.checked;
     el.panelZone = chk('pp-zone') ? '外' : undefined;
     el.partModel = v('pp-partmodel');

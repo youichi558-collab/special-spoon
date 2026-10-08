@@ -291,11 +291,15 @@ function devAfterLoad(opts) {
 // デバイス名の付け替え(2026-10-08 プロジェクト台帳の作る順の4④。盛田さん「それでいい、進めて」)
 // ----------------------------------------------------------------
 // 決めたこと(盛田さん):
-//   ・部品表からはしない(どこにあるデバイスか判らない=間違いのもと)。**図面の記号を選んで**プロパティの「付け替え…」から
+//   ・部品表からはしない(どこにあるデバイスか判らない=間違いのもと)。**図面の記号を選んで**プロパティのデバイス欄から(下の【入口】)
 //   ・**そのデバイスの記号すべて**(接点・端子台の端子・外形図。プロジェクトの別ファイルも)を新しい名前にする
 //   ・新しい名前が使われていたら止めずに「**ずらして入れる**」: CR3 と打って CR3〜CR5 があり CR6 が空いていれば、
 //     CR5→CR6・CR4→CR5・CR3→CR4 とずらしてから選んだデバイスを CR3 にする(最初の空き番号の手前まで。名前が数字で終わらないときは止める)
 //   ・実行前に変わる一覧(どのファイル・位置)を見せ、押したらまとめて変える。開いているファイルは Ctrl+Z で戻せる、別ファイルは履歴に残して書く
+//   ・【入口】プロパティの**デバイスの入力欄で名前を変えたとき**、そのデバイスにほかの記号(別ファイル・外形図も)があれば窓を出す
+//     (盛田さん「この操作入力欄から打ちそうだな」→ 案に「それでいい」)。窓は「全部付け替える/ずらして入れる」「この記号だけ」「やめる」。
+//     ほかの記号が無い・名前の無い記号に付ける・空にするときは今まで通り聞かない。最初に作った「付け替え…」ボタンはやめた
+//     (入力欄の候補の一覧に隠れて押せなかった。見出しの行に移したが、入力欄から打つ方が自然なので入口を1つにした)
 // 選んだ記号にデバイス名が無ければ、その記号だけに名前を付ける(ずらすのは同じ)。
 // ================================================================
 function _devAllWith(fn) { return (typeof projWith === 'function') ? projWith(fn) : fn(); }
@@ -357,9 +361,27 @@ function devRenameApply(plan) {
   return pidxWritePlan(ext);
 }
 
-// 付け替えの窓(プロパティの「付け替え…」)。選んでいる記号1つが対象
-function devRenameDialog() {
-  const el = (state.sel && state.sel.els && state.sel.els.size === 1) ? (state.elements || []).find(e => state.sel.els.has(e.id)) : null;
+// 入力欄で名前を変えたとき、聞くかどうか: 名前のある記号の名前が別のデバイスに変わり、そのデバイスにほかの記号(別ファイル・外形図も)があるとき
+function devRenameNeedsAsk(el, newRef) {
+  const K = devKey(el && el.partRef), NK = devKey(newRef);
+  if (!K || !NK || K === NK) return false;
+  return _devAllWith(() => { const d = deviceLedger().get(K); return !!d && d.items.some(it => it.el !== el); });
+}
+// プロパティの自動適用(applyRightPanel)が名前を書くとき: 聞く場合は元の名前のまま(窓で決める)
+function devRenameKeep(el, newRef) {
+  return devRenameNeedsAsk(el, newRef) ? el.partRef : newRef;
+}
+// 入力欄の onchange から: 聞く場合は窓を出して true(呼んだ側は何もしない)
+function devRenameAsk(el, newRef) {
+  if (!devRenameNeedsAsk(el, newRef)) return false;
+  if (!document.getElementById('dev-rename-dlg')) devRenameDialog({ el, name: newRef });
+  return true;
+}
+
+// 付け替えの窓。opts.el: 記号(省略時は選んでいる記号1つ)、opts.name: 入力欄に打った名前
+function devRenameDialog(opts) {
+  opts = opts || {};
+  const el = opts.el || ((state.sel && state.sel.els && state.sel.els.size === 1) ? (state.elements || []).find(e => state.sel.els.has(e.id)) : null);
   if (!el) { alert('記号を1つ選んでから押してください'); return; }
   const old = document.getElementById('dev-rename-dlg');
   if (old) old.remove();
@@ -373,18 +395,20 @@ function devRenameDialog() {
     <div style="color:var(--fg3);margin-bottom:6px">${cur ? `「${escH(cur)}」の記号すべて(接点・端子・外形図。プロジェクトの別ファイルも)を新しい名前にします。` : 'この記号に名前を付けます。'}
     使われている名前を入れると、その番号以降を1つずつずらしてから入れます(最初の空き番号の手前まで)。</div>
     <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px"><label>新しい名前</label>
-      <input type="text" id="devrn-name" value="${escH(cur)}" style="flex:1;font-size:12px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:3px;padding:2px 4px"></div>
+      <input type="text" id="devrn-name" value="${escH(opts.name != null ? opts.name : cur)}" style="flex:1;font-size:12px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:3px;padding:2px 4px"></div>
     <div id="devrn-list" style="overflow-y:auto;flex:1;min-height:40px"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
       <button id="devrn-no" style="${btn}">やめる</button>
+      <button id="devrn-one" style="${btn}" title="選んでいる記号だけを新しい名前にします(別のデバイスに入れ直すとき。今までの入力欄と同じ)">この記号だけ</button>
       <button id="devrn-ok" style="${btn};background:var(--acc);color:#fff;border-color:var(--acc)" disabled>付け替える</button>
     </div></div>`;
   document.body.appendChild(ov);
-  const inp = ov.querySelector('#devrn-name'), list = ov.querySelector('#devrn-list'), ok = ov.querySelector('#devrn-ok');
+  const inp = ov.querySelector('#devrn-name'), list = ov.querySelector('#devrn-list'), ok = ov.querySelector('#devrn-ok'), one = ov.querySelector('#devrn-one');
   let plan = null;
   const render = () => {
     plan = devRenamePlan(el, inp.value);
-    if (!plan.ok) { list.innerHTML = `<div style="color:var(--red)">${escH(plan.why)}</div>`; ok.disabled = true; ok.textContent = '付け替える'; return; }
+    one.disabled = !devKey(inp.value) || devKey(inp.value) === devKey(cur);
+    if (!plan.ok) { list.innerHTML = `<div style="color:var(--red)">${escH(plan.why)}</div>`; ok.disabled = true; ok.textContent = '全部付け替える'; return; }
     const groups = new Map();   // 「今 → 新」ごと
     plan.items.forEach(it => { const k = `${it.old || '(名前なし)'} → ${it.nw}`; (groups.get(k) || groups.set(k, []).get(k)).push(it); });
     const files = new Set(plan.items.filter(it => it.ext).map(it => it.file));
@@ -393,15 +417,28 @@ function devRenameDialog() {
         + `<div style="color:var(--fg3)">${escH(its.slice(0, 12).map(it => it.loc).join(', '))}${its.length > 12 ? ' …' : ''}</div></div>`).join('')
       + (files.size ? `<div style="color:var(--fg3);margin-top:4px">別ファイル(${escH([...files].join('、'))})も書き換えます(書く前の図面は履歴に残ります。Ctrl+Z では戻りません)。</div>` : '');
     ok.disabled = false;
-    ok.textContent = plan.shift.length ? 'ずらして入れる' : '付け替える';
+    ok.textContent = plan.shift.length ? 'ずらして入れる' : '全部付け替える';
   };
-  const close = () => { document.removeEventListener('keydown', onKey, true); ov.remove(); };
-  const onKey = e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } else if (e.key === 'Enter' && !ok.disabled) { e.stopPropagation(); ok.click(); } };
+  // 閉じたらプロパティを出し直す(やめたとき、入力欄に打った名前を元に戻す)
+  const close = () => { document.removeEventListener('keydown', onKey, true); ov.remove(); if (typeof updateRightPanel === 'function') updateRightPanel(); };
+  const onKey = e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } else if (e.key === 'Enter' && !ok.disabled) { e.stopPropagation(); e.preventDefault(); ok.click(); } };
   document.addEventListener('keydown', onKey, true);
   inp.addEventListener('input', render);
   render();
   inp.focus(); inp.select();
   ov.querySelector('#devrn-no').onclick = close;
+  // この記号だけ: 今までの入力欄と同じ(その記号だけ別のデバイスへ。入ったデバイスの値にそろえる devCommitEl)
+  one.onclick = () => {
+    const nm = inp.value.trim();
+    if (!devKey(nm)) return;
+    close();
+    if (typeof pushH === 'function') pushH();
+    const before = devSnap(el);
+    el.partRef = nm;
+    devCommitEl(el, before);
+    if (typeof draw === 'function') draw();
+    if (typeof updateRightPanel === 'function') updateRightPanel();
+  };
   ok.onclick = async () => {
     if (!plan || !plan.ok) return;
     const p = plan;
