@@ -249,10 +249,12 @@ function pidxPages() {
         if (t.tbOrder != null) x.tbOrder = t.tbOrder;
         return x;
       };
+      // _pidxSrc・_pidxPi・_pidxId: 元のファイル・ページ・記号(一括操作で別ファイルへ書くとき使う。pidxDevPlan)
+      const src = o => ({ _pidxSrc: name, _pidxPi: pi, _pidxId: o.id });
       out.push({
         name: `${_pidxBase(name)}/${r.name || ''}`, _file: _pidxBase(name), _pno: pi + 1, frameObj: r.pno ? { page: r.pno } : null, wires: [],
-        elements: (r.devs || []).map(d => _pidxVEl(pre, d, Object.assign({ partRef: d.ref }, tb(d)))).concat((r.noRef || []).map(d => _pidxVEl(pre, d, tb(d)))),
-        groups: (r.groups || []).map(g => Object.assign({}, g.f || {}, { id: pre + g.id, partRef: g.ref })),
+        elements: (r.devs || []).map(d => _pidxVEl(pre, d, Object.assign({ partRef: d.ref }, tb(d), src(d)))).concat((r.noRef || []).map(d => _pidxVEl(pre, d, Object.assign(tb(d), src(d))))),
+        groups: (r.groups || []).map(g => Object.assign({}, g.f || {}, { id: pre + g.id, partRef: g.ref }, src(g))),
       });
     });
   });
@@ -330,6 +332,132 @@ async function pidxRefresh() {
   const r = await pidxUpdate(dir, names);
   if (r.problems.length && typeof stToast === 'function') stToast('読めなかった図面があります:\n' + r.problems.join('\n'), 'warn');
   return true;
+}
+
+// ---- 一括操作: デバイスの値を別ファイルにも書く(2026-10-08 作る順の4。盛田さん「部品表は？」→ 部品表から・「a」=打つたびに確認して書く) ----
+// 流れ(台帳の設計 1-1): 書き換える記号の一覧を見せる → 実行 → 台帳を作ったあとにファイルが変わっていないか確かめる
+//   → 書く前の図面を履歴(.seqzu_history)に残す → 書く → 台帳を最新にする。
+// 何を書くかは、台帳の仮の記号(pidxPages)に**開いているファイルと同じ関数(devSetField)**を掛けて、変わった所を拾う(pidxDevPlan)。
+// 書き方の決まり(仕様は代表の記号にだけ図面に表示 等)が開いているファイルと別ファイルで食い違わない。
+// 開いているファイルは今まで通り画面の中で直す(Ctrl+Z で戻せる)。別ファイルは Ctrl+Z では戻らない(戻すときはツリーの履歴から)。
+const _pidxDevKeys = () => (typeof DEV_FIELDS !== 'undefined' ? DEV_FIELDS.map(f => f.key) : []).concat(['specHide']);
+// fn(devSetField などデバイスの値を書く処理)を、台帳の別ファイルを足した状態で実行する。開いているファイルにはそのまま入る。
+// 戻り値: 別ファイルで変わる記号 [{ file, pi, id, group, set: {項目: 新しい値(undefined=消す)}, before: {項目: 前の値}, loc }]。台帳が無ければ []
+function pidxDevPlan(fn) {
+  if (!pidxReady()) { fn(); return []; }
+  const keys = _pidxDevKeys();
+  const snap = o => { const x = {}; keys.forEach(k => { x[k] = o[k]; }); return x; };
+  return pidxWith(() => {
+    const ext = [];
+    (state.pages || []).forEach((pg, pi) => {
+      if (!pg._file) return;
+      (pg.elements || []).forEach(o => { if (o._pidxSrc) ext.push({ o, group: false, pi }); });
+      (pg.groups || []).forEach(o => { if (o._pidxSrc) ext.push({ o, group: true, pi }); });
+    });
+    ext.forEach(x => { x.before = snap(x.o); });
+    fn();
+    const out = [];
+    ext.forEach(x => {
+      const set = {};
+      keys.forEach(k => { if (JSON.stringify(x.o[k]) !== JSON.stringify(x.before[k])) set[k] = x.o[k]; });
+      if (!Object.keys(set).length) return;
+      const pg = state.pages[x.pi];
+      const loc = x.group ? `${pg._file}/${pg._pno}/外形図` : elLocation(x.o, x.pi);
+      out.push({ file: x.o._pidxSrc, pi: x.o._pidxPi, id: x.o._pidxId, group: x.group, ref: x.o.partRef || '', set, before: x.before, loc });
+    });
+    return out;
+  });
+}
+
+// 書く。戻り値 { files: [書いたファイル], ng: [書けなかったファイルと理由] }
+async function pidxWritePlan(plan) {
+  const files = [], ng = [];
+  const dir = (typeof xprojDirHandle === 'function') ? await xprojDirHandle(true) : null;
+  if (!dir) return { files, ng: ['プロジェクトのフォルダを開けません'] };
+  const idx = pidxState.index || { files: {} };
+  const byFile = new Map();
+  plan.forEach(it => { (byFile.get(it.file) || byFile.set(it.file, []).get(it.file)).push(it); });
+  for (const [name, items] of byFile) {
+    try {
+      const fh = await xprojFileHandle(dir, name);
+      const file = await fh.getFile();
+      const rec = idx.files[name];
+      // 台帳を作ったあとに変わったファイル(別の窓で保存した等)は書かない。読み直した台帳で打ち直してもらう
+      if (!rec || rec.lastModified !== file.lastModified || rec.size !== file.size) { ng.push(`${name}: 部品表を開いたあとに変わっています`); continue; }
+      const d = JSON.parse(await file.text());
+      let n = 0;
+      items.forEach(it => {
+        const pg = (d.pages || [])[it.pi];
+        const o = pg && ((it.group ? pg.groups : pg.elements) || []).find(e => e.id === it.id);
+        if (!o) return;
+        Object.keys(it.set).forEach(k => { if (it.set[k] === undefined) delete o[k]; else o[k] = it.set[k]; });
+        n++;
+      });
+      if (!n) { ng.push(`${name}: 書き換える記号が見つかりません`); continue; }
+      const text = (typeof _saveJSON === 'function') ? _saveJSON(d) : JSON.stringify(d, null, 2);
+      try { if (typeof ptreeHistSave === 'function') await ptreeHistSave('/' + name, fh, text); } catch (e) {}
+      const w = await fh.createWritable(); await w.write(text); await w.close();
+      files.push(name);
+    } catch (e) { ng.push(`${name}: ${e && e.message || e}`); }
+  }
+  if (files.length) {
+    try { await pidxUpdate(dir, await xprojReadList(dir)); } catch (e) { console.warn('プロジェクト台帳の更新に失敗', e); }
+  }
+  return { files, ng };
+}
+
+// 書き換える記号の一覧を見せて、書くか聞く。what: 何をしたか(見出し)。戻り値: 書いたら { files, ng }、書かなければ null
+function pidxAskWrite(plan, what) {
+  if (!plan || !plan.length) return Promise.resolve(null);
+  return new Promise(resolve => {
+    const old = document.getElementById('pidx-write-dlg');
+    if (old) old.remove();
+    const fname = k => { const f = (typeof DEV_FIELDS !== 'undefined' ? DEV_FIELDS : []).find(x => x.key === k); return f ? f.name : k; };
+    const show = (k, v) => { const f = (typeof DEV_FIELDS !== 'undefined' ? DEV_FIELDS : []).find(x => x.key === k) || {}; return (typeof devShowVal === 'function') ? devShowVal(f, v == null ? '' : (v === true ? 'true' : String(v))) : String(v == null ? '' : v); };
+    const byFile = new Map();
+    plan.forEach(it => { (byFile.get(it.file) || byFile.set(it.file, []).get(it.file)).push(it); });
+    let rows = '';
+    byFile.forEach((items, name) => {
+      rows += `<div style="border-top:1px solid var(--bd2);padding:5px 0"><div style="font-weight:600">${escH(_pidxBase(name))}（${items.length}個）</div>`
+        + items.slice(0, 30).map(it => `<div style="color:var(--fg3)">${escH(it.ref)}　${escH(it.loc)}　`
+          + Object.keys(it.set).filter(k => k !== 'specHide').map(k => `${escH(fname(k))}: ${escH(show(k, it.before[k]))} → <b style="color:var(--fg)">${escH(show(k, it.set[k]))}</b>`).join('、')
+          + (Object.keys(it.set).length === 1 && 'specHide' in it.set ? '仕様を図面に表示しない' : '') + `</div>`).join('')
+        + (items.length > 30 ? `<div style="color:var(--fg3)">ほか ${items.length - 30}個</div>` : '') + `</div>`;
+    });
+    const btn = 'padding:6px 14px;font-size:12px;cursor:pointer;border:1px solid var(--bd2);border-radius:4px;background:var(--bg2);color:var(--fg)';
+    const ov = document.createElement('div');
+    ov.id = 'pidx-write-dlg';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3001;display:flex;align-items:center;justify-content:center';
+    ov.innerHTML = `<div role="dialog" style="background:var(--bg2);color:var(--fg);border:1px solid var(--bd);border-radius:6px;padding:14px 18px;width:600px;max-width:92vw;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 4px 24px var(--sh);font-size:12px;line-height:1.5">
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">別ファイルにも入れますか？（${byFile.size}ファイル・${plan.length}個）</div>
+      <div style="color:var(--fg3);margin-bottom:6px">${escH(what || '')}を、開いているファイルに入れました。同じデバイスの記号が下の別ファイルにもあります。<br>
+      書くと、そのファイルを直接書き換えます（書く前の図面は履歴に残ります。<b>Ctrl+Z では戻りません</b>。戻すときはプロジェクトのツリーの履歴から）。</div>
+      <div style="overflow-y:auto;flex:1">${rows}</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+        <button id="pidxw-no" style="${btn}">このファイルだけ</button>
+        <button id="pidxw-ok" style="${btn};background:var(--acc);color:#fff;border-color:var(--acc)">別ファイルにも書く</button>
+      </div></div>`;
+    document.body.appendChild(ov);
+    const close = () => { document.removeEventListener('keydown', onKey, true); ov.remove(); };
+    const onKey = e => { if (e.key === 'Escape') { e.stopPropagation(); close(); resolve(null); } };
+    document.addEventListener('keydown', onKey, true);
+    ov.querySelector('#pidxw-no').onclick = () => { close(); resolve(null); };
+    ov.querySelector('#pidxw-ok').onclick = async () => {
+      close();
+      const r = await pidxWritePlan(plan);
+      if (typeof stToast === 'function') {
+        if (r.files.length) stToast(`別ファイル ${r.files.length} 件に書きました（${r.files.map(_pidxBase).join('、')}）`);
+        if (r.ng.length) stToast('書けなかった別ファイルがあります（書いていません。部品表を開き直してから、もう一度打ってください）:\n' + r.ng.join('\n'), 'warn');
+      }
+      resolve(r);
+    };
+  });
+}
+// 部品表・食い違いの画面から: fn(デバイスの値を書く)を開いているファイルに入れ、別ファイルの分は聞いてから書く。書いたら after() で出し直す
+function pidxDevApply(fn, what, after) {
+  const plan = pidxDevPlan(fn);
+  if (plan.length) pidxAskWrite(plan, what).then(r => { if (r && after) after(); });
+  return plan;
 }
 
 if (typeof window !== 'undefined') (window.__ecadLoaded = window.__ecadLoaded || {})['proj_index.js'] = 1;

@@ -1048,7 +1048,9 @@ function showBOM(){
     +(noRefTotal?`　<span style="color:var(--red)">デバイス未設定 ${noRefTotal} 個</span>`:'')
     +`<br>数量はデバイス単位の台数です。構成数は接点・端子を含む図形の個数です。`
     +`プロパティで「部品表の対象外」にした部品は既定では集計されません。`
-    +(extN?`<br>プロジェクトの別ファイルの分は表示だけです。打った値は開いているファイルの記号に入ります(別ファイルの分はそのファイルを開いて直してください)。`:'')+`</p>`
+    +(extN?(typeof pidxReady==='function'&&pidxReady()
+      ?`<br>打った値はそのデバイスの記号すべてに入ります。プロジェクトの別ファイルにある記号は、書き換える一覧を見せてから書きます。`
+      :`<br>プロジェクトの別ファイルの分は表示だけです。打った値は開いているファイルの記号に入ります(別ファイルの分はそのファイルを開いて直してください)。`):'')+`</p>`
     +`<p style="margin-bottom:6px;padding:5px 6px;background:var(--bg2);border-radius:3px">`
     +cb('excluded','対象外の部品も含める')+cb('noRef','デバイス未設定を含める')
     +(hidden?`<span style="font-size:11px;color:var(--red)">（${hidden}台を非表示中・CSVにも出ません）</span>`:'')
@@ -1060,9 +1062,11 @@ function showBOM(){
   // 部品表でもコイル電圧を変えられるようにする(プロパティとどちらでも変更できる)。
   // 変更するとその行(=そのデバイス)の要素すべてに反映される。
   window._bomRows = rows;
+  // 【2026-10-08】台帳があれば別ファイルだけの行も打てる(別ファイルへは聞いてから書く)。台帳が無ければ今まで通り表示だけ
+  const extEdit = typeof pidxReady==='function' && pidxReady();
   const voltCell = (r, i) => {
     if (r.noRef) return '<td style="color:var(--fg3)">-</td>';
-    if (r.local === false) return `<td style="color:var(--fg2)">${escH(r.volt || '')}</td>`;   // 別ファイルだけの行は表示だけ
+    if (r.local === false && !extEdit) return `<td style="color:var(--fg2)">${escH(r.volt || '')}</td>`;   // 別ファイルだけの行は表示だけ(台帳が無いとき)
     const opts = (r.model && typeof partVoltOptions === 'function') ? partVoltOptions(r.model) : [];
     if (!opts.length) {
       // 【2026-09-29】部品DBに無い型番(・型番が未入力)でも、コイルのあるデバイスには電圧を打てるようにする(盛田さん「電圧の修正が効かない」)。
@@ -1091,7 +1095,7 @@ function showBOM(){
   // 部品DBに登録済みの型番は値が既に入っているので打ち直さなくてよい。
   // 手打ちできるセルを作る共通部分(メーカー・名称・備考)。
   const typedCell = (r, i, val, fn, w) => {
-    if (r.noRef || r.local === false) return `<td style="color:${r.noRef ? 'var(--fg3)' : 'var(--fg2)'}">${escH(val||'')}</td>`;   // 別ファイルだけの行は表示だけ
+    if (r.noRef || (r.local === false && !extEdit)) return `<td style="color:${r.noRef ? 'var(--fg3)' : 'var(--fg2)'}">${escH(val||'')}</td>`;   // 別ファイルだけの行は表示だけ(台帳が無いとき)
     return `<td><input type="text" value="${escH(val||'')}" placeholder="—"`
       + ` onchange="${fn}(${i}, this.value)"`
       + ` style="width:${w}px;font-size:11px;background:var(--bg3);color:var(--fg);`
@@ -1140,7 +1144,7 @@ function showBOM(){
       ? `<div style="color:var(--red);font-size:10px;cursor:pointer;text-decoration:underline dotted" title="クリックで図面のこのデバイスへ飛ぶ" onclick="jumpToRefEl(${r.jump.pi},${_jsArg(r.jump.id)})">⚠${escH(r.warn)}</div>`
       : `<div style="color:var(--red);font-size:10px">⚠${escH(r.warn)}</div>`) : '';
     if (r.noRef) return `<td>${noRefJump(r, i, escH(r.label))}${warn}</td>`;
-    if (r.local === false) return `<td>${escH(r.model || '(型番未設定)')}${warn}</td>`;   // 別ファイルだけの行は表示だけ
+    if (r.local === false && !extEdit) return `<td>${escH(r.model || '(型番未設定)')}${warn}</td>`;   // 別ファイルだけの行は表示だけ(台帳が無いとき)
     return `<td><input type="text" value="${escH(r.model||'')}" placeholder="(型番未設定)"`
       + ` onchange="setBOMModel(${i}, this.value)" title="このデバイスの全要素(コイル・接点・端子)に同じ型番を入れます"`
       + ` style="width:170px;font-size:11px;background:var(--bg3);color:var(--fg);border:1px solid var(--bd2);border-radius:3px;padding:1px 3px">${warn}</td>`;
@@ -1149,7 +1153,7 @@ function showBOM(){
     `<tr${r.noRef?' style="background:var(--rbg)"':''}>`
     +`<td style="font-weight:600">${r.noRef?noRefJump(r,i,'<span style="color:var(--red)">未設定</span>'):(escH(r.refs.join(', '))||'-')}`
     // 別ファイル(参照図面)にある分: どのファイルか。開いているファイルにもあるなら、打った値は別ファイルの分には入らないことを添える
-    +((r.extFiles||[]).length?`<div style="font-weight:400;font-size:10px;color:var(--fg3)" title="${r.local?'打った値は開いているファイルの記号にだけ入ります。別ファイルの分はそのファイルを開いて直してください':'別ファイルだけにある部品です。直すときはそのファイルを開いてください'}">${r.local?'＋':''}別ファイル: ${escH(r.extFiles.join(', '))}</div>`:'')
+    +((r.extFiles||[]).length?`<div style="font-weight:400;font-size:10px;color:var(--fg3)" title="${extEdit?'打った値は別ファイルの記号にも、一覧を見せてから書きます':r.local?'打った値は開いているファイルの記号にだけ入ります。別ファイルの分はそのファイルを開いて直してください':'別ファイルだけにある部品です。直すときはそのファイルを開いてください'}">${r.local?'＋':''}別ファイル: ${escH(r.extFiles.join(', '))}</div>`:'')
     +`</td>`
     +nameCell(r,i)
     +modelCell(r,i)
@@ -1174,6 +1178,18 @@ function showBOM(){
     : '<p style="font-size:11px;color:var(--fg3)">配置されたシンボルがありません</p>';
   _reportOpen('bom', '部品表 (BOM)', html, exportBOMCSV);
 }
+// 部品表のセルからデバイスの値を入れる共通の口。開いているファイルの記号に入れ、
+// 【2026-10-08 作る順の4】プロジェクトの別ファイルに同じデバイスの記号があれば、一覧を見せて聞いてから書く(js/proj_index.js pidxDevApply)。
+// 別ファイルの記号は台帳の仮の記号で数えるので、仕様を図面に表示する代表の記号もプロジェクト全体で1つになる。
+function _bomDevSet(r, fieldKey, v){
+  const key=devKey(r.refs[0]);
+  const f=(typeof DEV_FIELDS!=='undefined'?DEV_FIELDS:[]).find(x=>x.key===fieldKey);
+  const what=`${r.refs[0]} の${f?f.name:fieldKey}`;
+  const after=()=>{ if(document.getElementById('report-p')?.classList.contains('open')&&_lastReportTab==='bom')showBOM(); };
+  if(typeof pidxDevApply==='function')return pidxDevApply(()=>devSetField(key,fieldKey,v),what,after);
+  devSetField(key,fieldKey,v);
+  return [];
+}
 // 部品表のセルから電圧を変更する。その行の全要素に書き戻して表を作り直す。
 function setBOMVolt(idx, volt){
   const r=(window._bomRows||[])[idx];
@@ -1181,7 +1197,7 @@ function setBOMVolt(idx, volt){
   volt=(volt||'').trim();   // 手打ち(部品DBに無い型番のセル)の前後の空白を落とす
   if(typeof pushH==='function')pushH();   // 変更前の状態を履歴に積む
   if(typeof stSetPref==='function')stSetPref('partVolt',volt);   // 前回値(settings.js)
-  devSetField(devKey(r.refs[0]),'partVolt',volt);   // デバイスの全部の記号へ(js/devices.js)
+  _bomDevSet(r,'partVolt',volt);   // デバイスの全部の記号へ(js/devices.js。別ファイルは聞いてから)
   if(typeof draw==='function')draw();
   if(typeof updateRightPanel==='function')updateRightPanel();
   showBOM();
@@ -1192,7 +1208,7 @@ function setBOMMaker(idx, maker){
   const r=(window._bomRows||[])[idx];
   if(!r)return;
   if(typeof pushH==='function')pushH();   // 変更前の状態を履歴に積む
-  devSetField(devKey(r.refs[0]),'partMaker',maker);   // デバイスの全部の記号へ(js/devices.js)
+  _bomDevSet(r,'partMaker',maker);   // デバイスの全部の記号へ(js/devices.js。別ファイルは聞いてから)
   if(typeof draw==='function')draw();
   if(typeof updateRightPanel==='function')updateRightPanel();
   showBOM();
@@ -1213,7 +1229,7 @@ function setBOMModel(idx, v){
   const r=(window._bomRows||[])[idx];
   if(!r||r.noRef)return;
   if(typeof pushH==='function')pushH();   // 変更前の状態を履歴に積む
-  devSetField(devKey(r.refs[0]),'partModel',v);   // デバイスの全部の記号と外形図へ(js/devices.js)
+  _bomDevSet(r,'partModel',v);   // デバイスの全部の記号と外形図へ(js/devices.js。別ファイルは聞いてから)
   if(typeof draw==='function')draw();
   if(typeof updateRightPanel==='function')updateRightPanel();
   showBOM();
@@ -1229,7 +1245,7 @@ function setBOMSpec(idx, v){
   if(typeof pushH==='function')pushH();   // 変更前の状態を履歴に積む
   // デバイスの全部の記号へ(js/devices.js)。仕様が空だった記号は「仕様を図面に表示」をOFFにして入れるので、
   // 図面の見た目は変わらない(仕様が無いデバイスに初めて入れるときはコイル、無ければ最初の記号にだけ出る)
-  devSetField(devKey(r.refs[0]),'label',v);
+  _bomDevSet(r,'label',v);
   if(typeof draw==='function')draw();
   if(typeof updateRightPanel==='function')updateRightPanel();
   showBOM();
@@ -1241,7 +1257,7 @@ function _setBOMField(idx, prop, v){
   const r=(window._bomRows||[])[idx];
   if(!r)return;
   if(typeof pushH==='function')pushH();   // 変更前の状態を履歴に積む
-  devSetField(devKey(r.refs[0]),prop,v);   // デバイスの全部の記号へ(js/devices.js)
+  _bomDevSet(r,prop,v);   // デバイスの全部の記号へ(js/devices.js。別ファイルは聞いてから)
   if(typeof draw==='function')draw();
   if(typeof updateRightPanel==='function')updateRightPanel();
   showBOM();

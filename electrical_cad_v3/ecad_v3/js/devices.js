@@ -201,7 +201,10 @@ function devConflicts() {
 function devConflictNote(conflicts) {
   const files = new Set();
   (conflicts || []).forEach(c => c.options.forEach(o => o.items.forEach(it => { if (it.ext) files.add(it.file); })));
-  return files.size ? `別ファイル（${[...files].join('、')}）の値は、ここでは書き換えません。選んだ値は今開いている図面だけに入ります。別ファイルは、そのファイルを開いて直してください。` : '';
+  if (!files.size) return '';
+  // 【2026-10-08】台帳があれば、別ファイルにも一覧を見せてから書く(js/proj_index.js pidxDevApply)
+  if (typeof pidxReady === 'function' && pidxReady()) return `別ファイル（${[...files].join('、')}）の記号にも、選んだ値を入れるか、そろえたあとに一覧を見せて聞きます。`;
+  return `別ファイル（${[...files].join('、')}）の値は、ここでは書き換えません。選んだ値は今開いている図面だけに入ります。別ファイルは、そのファイルを開いて直してください。`;
 }
 
 // 食い違いを選ぶ画面。選んだ項目だけそろえる(選ばなかった項目はそのまま。あとで部品表から開き直せる)。
@@ -254,7 +257,14 @@ function devResolveDialog(conflicts, opts) {
     close();
     if (!picks.length) { if (opts.onDone) opts.onDone(0); return; }
     if (typeof pushH === 'function') pushH();   // そろえた操作は単独で元に戻せる(読込直後でも。読込ごと戻したいときはもう一度戻す)
-    picks.forEach(p => devSetField(p.c.key, p.c.field, p.value));
+    // 【2026-10-08 作る順の4】別ファイル(台帳)の記号もそろえる。別ファイルへは一覧を見せて聞いてから書く(js/proj_index.js pidxDevApply)
+    const run = () => picks.forEach(p => devSetField(p.c.key, p.c.field, p.value));
+    if (typeof pidxDevApply === 'function') {
+      pidxDevApply(run, `${picks.map(p => p.c.ref).filter((v, i, a) => a.indexOf(v) === i).join('・')} の食い違い`, () => {
+        if (document.getElementById('report-p')?.classList.contains('open') && typeof showBOM === 'function' && _lastReportTab === 'bom') showBOM();
+        else if (document.getElementById('report-p')?.classList.contains('open') && typeof showTBTable === 'function' && _lastReportTab === 'tbtbl') showTBTable();
+      });
+    } else run();
     if (typeof draw === 'function') draw();
     if (typeof updateRightPanel === 'function') updateRightPanel();
     if (opts.onDone) opts.onDone(picks.length);

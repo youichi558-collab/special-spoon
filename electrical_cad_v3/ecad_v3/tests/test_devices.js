@@ -137,9 +137,10 @@ console.log('\n【②: 入力口がデバイス台帳を通る(片方だけ抜�
   ok(/function doPlacePart[\s\S]*?\['partModel', 'partVolt', 'partPoles', 'partAmp', 'partChar'\]\.forEach\(f => devSetField/.test(ui), '部品DBの割り当て');
   ok(/function pasteDeviceProps[\s\S]*?devSyncFromEl/.test(ui) && /tab === 'basic' && typeof devSyncFromEl/.test(ui), '一括貼り付け・基本タブの貼り付け');
   ok(/function applyGroupDevice[\s\S]*?devSetField/.test(ui), '外形図(グループ)の型番');
-  ['setBOMVolt', 'setBOMMaker', 'setBOMModel', 'setBOMSpec', '_setBOMField', 'setRefModel'].forEach(fn => {
+  // 【2026-10-08】部品表は _bomDevSet(devSetField を別ファイルの台帳ごと掛ける口)を通す
+  ['setBOMVolt', 'setBOMMaker', 'setBOMModel', 'setBOMSpec', '_setBOMField', 'setRefModel', '_bomDevSet'].forEach(fn => {
     const body = rep.slice(rep.indexOf('function ' + fn + '('), rep.indexOf('\n}', rep.indexOf('function ' + fn + '(')));
-    ok(/devSetField\(/.test(body) && !/el\.(partModel|partVolt|partMaker|label)=|el\[prop\]=/.test(body), `帳票の ${fn} はデバイス台帳だけで書く`);
+    ok(/(devSetField|_bomDevSet)\(/.test(body) && !/el\.(partModel|partVolt|partMaker|label)=|el\[prop\]=/.test(body), `帳票の ${fn} はデバイス台帳だけで書く`);
   });
 }
 
