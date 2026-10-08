@@ -13,20 +13,14 @@ function draw() {
   ctx.clearRect(0, 0, cv.width, cv.height);
 
   // 背景（PDF出力時は白・グリッドなし）
-  // 【2026-10-08 新しい画面の段階4】図面を「机(背景)の上の用紙」に見せる(js/ui_v2.js・Claude Design の案)。
-  // 机は無地(グリッドは用紙の中だけ=frame.js drawFrame が描く)。図面枠の無いページ・表紙は今までどおり全体にグリッド
-  const v2paper = !state.pdfMode && typeof document !== 'undefined' && document.body.classList.contains('ui-v2')
-    && state.frameObj && !state.frameObj.isCover;
   if (state.pdfMode) {
     ctx.fillStyle = '#ffffff';
-  } else if (v2paper) {
-    ctx.fillStyle = state.darkMode ? '#161616' : '#efeee9';
   } else {
     ctx.fillStyle = state.darkMode ? '#252525' : '#d4d4cc';
   }
   ctx.fillRect(0, 0, cv.width, cv.height);
 
-  if (!state.pdfMode && !v2paper) drawGrid();
+  if (!state.pdfMode) drawGrid();
 
   ctx.save();
   ctx.translate(state.pan.x, state.pan.y);

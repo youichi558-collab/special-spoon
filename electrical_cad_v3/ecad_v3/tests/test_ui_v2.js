@@ -72,13 +72,11 @@ ok(/body\.ui-v2 #lt-prj\{order:-1;\}/.test(C), '並びはプロジェクト・�
 ok(/class="lt-v2set v2-only" onclick="openSettingsPanel\(\)"/.test(H), 'いちばん下に設定');
 ok(/body\.ui-v2 #lp\{width:48px;/.test(C) && /width:32px;height:32px;[^}]*border-radius:8px;[^}]*font-size:0;/.test(C), 'アイコンの列 48px・ボタン 32×32 角丸8(文字は隠して title に出す)');
 
-console.log('\n【段階4 机の上の用紙】');
+console.log('\n【段階4】');
 {
   const D = R('js/draw.js'), F = R('js/frame.js');
-  ok(/const v2paper = !state\.pdfMode && [^\n]*classList\.contains\('ui-v2'\)[\s\S]*?state\.frameObj && !state\.frameObj\.isCover;/.test(D), '★新しい画面で図面枠のあるページだけ(PDF・SVG と表紙は今まで通り)');
-  ok(/state\.darkMode \? '#161616' : '#efeee9'/.test(D) && /if \(!state\.pdfMode && !v2paper\) drawGrid\(\);/.test(D), '机の色・机にはグリッドを描かない(用紙の中のグリッドは drawFrame)');
-  ok(/const v2paper=!state\.pdfMode&&[^\n]*ui-v2/.test(F) && /ctx\.shadowBlur=24;/.test(F) && /'#202020':'#ffffff'/.test(F), '用紙は塗りつぶし＋影(PDF では今まで通り)');
-  ok(/id="v2-zoom" class="v2-only"/.test(H) && /onclick="doZoom\(0\.8\)"/.test(H) && /onclick="resetView\(\)" title="全体表示 0"/.test(H), '左下に浮かせたズーム(− ％ ＋ ｜ 全体)。処理は今の doZoom・resetView');
+  ok(!/v2paper/.test(D) && !/v2paper/.test(F), '★机の上の用紙の見せ方はやめた(盛田さん「戻した方がいい」=枠の外に逃がすときグリッドが要る)。背景は今まで通り');
+  ok(/id="v2-zoom" class="v2-only"/.test(H) && /onclick="doZoom\(0\.8\)"/.test(H) && /onclick="resetView\(\)" title="全体表示 0"/.test(H), '左下に浮かせたズームは残す(− ％ ＋ ｜ 全体。処理は今の doZoom・resetView)');
   ok(/getElementById\('v2-zoom-pct'\)/.test(D), 'ズームの％は描くたびに更新');
 }
 

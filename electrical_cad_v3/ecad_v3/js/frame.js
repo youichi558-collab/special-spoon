@@ -216,19 +216,8 @@ function drawFrame(fr){
 
   ctx.save();
   // 用紙
-  // 【2026-10-08】新しい画面(段階4・js/ui_v2.js)では、机の上に置いた用紙に見せる(塗りつぶし＋影)。PDF・SVG(pdfMode)は今までどおり
-  const v2paper=!state.pdfMode&&typeof document!=='undefined'&&document.body.classList.contains('ui-v2');
-  if(v2paper){
-    ctx.save();
-    ctx.shadowColor=state.darkMode?'rgba(0,0,0,0.55)':'rgba(30,30,20,0.16)';
-    ctx.shadowBlur=24; ctx.shadowOffsetY=8;
-    ctx.fillStyle=state.darkMode?'#202020':'#ffffff';
-    ctx.fillRect(0,0,W,H);
-    ctx.restore();
-  } else {
-    ctx.fillStyle=state.darkMode?'rgba(42,42,42,0.85)':'rgba(255,255,255,0.85)';
-    ctx.fillRect(0,0,W,H);
-  }
+  ctx.fillStyle=state.darkMode?'rgba(42,42,42,0.85)':'rgba(255,255,255,0.85)';
+  ctx.fillRect(0,0,W,H);
   // グリッド（PDF出力時はスキップ）
   if (!state.pdfMode) {
     const step=state.G;
