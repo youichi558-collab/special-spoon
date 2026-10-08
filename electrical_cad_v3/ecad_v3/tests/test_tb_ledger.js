@@ -147,8 +147,13 @@ console.log('\n【端子台として集計の切り替え】');
 {
   ledger();
   toasts.length = 0;
+  let asked = null;
+  const saveAsk = sb.pidxAskWrite;
+  sb.pidxAskWrite = (plan, what) => { asked = { plan, what }; return Promise.resolve(null); };
   sb.setTBExcluded('XT1', true);
-  ok(toasts.some(m => /別ファイルにある 4 点は切り替えていません/.test(m)), '別ファイルの端子は切り替えていないと知らせる');
+  eq(asked && asked.what, 'XT1 の「端子台として集計」', '★別ファイルの端子は聞いてから書く(作る順の4②)');
+  eq(asked.plan.map(p => [p.id, p.set.tbExclude]).sort(), [['a1', true], ['a2', true], ['a3', true], ['b1', true]], '★別ファイルの XT1 の端子4点');
+  sb.pidxAskWrite = saveAsk;
   eq(openPage.elements.find(e => e.id === 'o1').tbExclude, true, '開いているファイルの端子は切り替わる');
   sb.setTBExcluded('XT1', false);
 }

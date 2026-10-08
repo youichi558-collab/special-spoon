@@ -1609,12 +1609,16 @@ function isTBExcluded(el) {
 function setTBExcluded(dev, excluded) {
   if (typeof pushH === 'function') pushH();   // 取り消せるようにする
   const target = String(dev || '');
-  // 【2026-10-08】別ファイルの端子(端子台表が台帳から足したもの)には書けない。あれば知らせる
-  const extN = _tbExtCount(dev, el => !!el.tbExclude !== !!excluded);
-  if (extN && typeof stToast === 'function') stToast(`別ファイルにある ${extN} 点は切り替えていません（そのファイルを開いて切り替えてください）`, 'warn');
   // デバイスのある台は台帳(js/devices.js)で書く(綴りの違う端子にも。部品表・接点Refと同じまとめ方)
+  // 【2026-10-08 作る順の4②(盛田さん「2で」)】別ファイル(プロジェクト台帳)の端子は、書き換える一覧を見せて聞いてから書く
+  // (部品表・番号の振り直しと同じ口。js/proj_index.js pidxDevApply)。台帳が無ければ開いているファイルだけ
   if (typeof devSetField === 'function' && typeof devKey === 'function' && devKey(target) && target !== '(デバイス未設定)') {
-    const n = devSetField(devKey(target), 'tbExclude', excluded ? 'true' : '');
+    const set = () => devSetField(devKey(target), 'tbExclude', excluded ? 'true' : '');
+    let n = 0;
+    if (typeof pidxDevApply === 'function') pidxDevApply(() => { n = set(); }, `${target} の「端子台として集計」`, () => {
+      if (document.getElementById('report-p')?.classList.contains('open') && _lastReportTab === 'tbtbl' && typeof showTBTable === 'function') showTBTable();
+    });
+    else n = set();
     if (typeof draw === 'function') draw();
     if (typeof updateRightPanel === 'function') updateRightPanel();
     if (typeof showTBTable === 'function') showTBTable();
@@ -1782,12 +1786,6 @@ function _tbProjWith(fn) {
   if (typeof projWith === 'function') return projWith(fn);
   return (typeof xprojWith === 'function') ? xprojWith(fn) : fn();
 }
-// その台の端子のうち別ファイルにあるもの(test を渡せば、それに合うもの)の数
-function _tbExtCount(dev, test) {
-  return _tbProjWith(() => (groupTerminalsByDevice(collectTerminals()).get(dev) || [])
-    .filter(r => state.pages[r.page] && state.pages[r.page]._file && (!test || test(r.el))).length);
-}
-
 // 指定デバイスの端子番号を、表示されている順に1から振り直す。
 // 【2026-10-08】端子台表は別ファイルの端子も並べるので、番号は**別ファイルも含めた表の順**で決める。
 // 【2026-10-08 作る順の4①(盛田さん「1から」)】開いているファイルの端子はすぐ書き(Ctrl+Z で戻せる)、別ファイルの端子は
