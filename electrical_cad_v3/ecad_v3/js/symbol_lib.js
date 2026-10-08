@@ -679,7 +679,13 @@ const symLib = (() => {
 
     const {mnX,mnY,mxX,mxY}=getBBox(shapes);
     const dxfW=Math.max(mxX-mnX,1), dxfH=Math.max(mxY-mnY,1);
-    const SCALE=8;
+    // 【2026-10-08】DXF の 1mm を 6 にする(以前は 8)。盛田さん「グリッドに乗ってる方がいい」。
+    // JIS の図記号は端子・極の間隔が 5mm なので 30(登録シンボルの CP・漏電ブレーカー・インバーターと同じ極の間隔)。
+    // 8 のときは 40 で、ほかのシンボルより大きく出て毎回縮めていた(縮めると端子がグリッドから外れる)。
+    // 30 も 10 の倍数なので、下の libAlignToGrid の平行移動で端子はグリッドに乗る(Sheet3 の JIS 図記号5種で確認)。
+    // 大きさは置いたあとに図面のバランスで調整し、「登録シンボルと比べる」で足すとその大きさで登録される(js/sym_store.js)。
+    // すでに登録シンボル・図面にある図記号(lib_…)の大きさは変わらない(定義があればそれを使う)
+    const SCALE=6;
     const cxDxf=(mnX+mxX)/2, cyDxf=(mnY+mxY)/2;
 
     const canvasShapes=shapes.map(s=>{

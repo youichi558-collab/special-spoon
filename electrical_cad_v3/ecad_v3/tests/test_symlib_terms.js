@@ -38,6 +38,21 @@ for (const [t, n] of [['MCCB_T1V', 2], ['LS-B_S1V', 2], ['PBS-B_S1H', 2]]) {
 eq(sb.libAlignToGrid([{ t: 'C', cx: 0, cy: 0, r: 10 }]).terms, [], '線の開いた端が無い図記号(枠だけ等)は端子なし');
 eq(sb.libAlignToGrid(shapesOf('MC-3P_F1V')).terms.length, 6, '向きが分からなくても、向かい合う2辺の両方に線の端がある方(上下)を端子にする');
 
+console.log('\n【置くときの大きさ: DXF の 1mm を 6(2026-10-08 盛田さん「グリッドに乗ってる方がいい」)】');
+ok(/const SCALE=6;/.test(lib), '★DXF の 1mm = 6(端子・極の間隔 5mm → 30。以前は 8 で 40)');
+{
+  const k = 6 / 8;   // Sheet3 の図記号は 8 で置いたもの。6 にしたときの形
+  const sc = sh => sh.map(s => s.t === 'L' ? Object.assign({}, s, { x1: s.x1 * k, y1: s.y1 * k, x2: s.x2 * k, y2: s.y2 * k })
+    : (s.t === 'C' || s.t === 'A') ? Object.assign({}, s, { cx: s.cx * k, cy: s.cy * k, r: s.r * k })
+    : s.t === 'P' ? Object.assign({}, s, { pts: s.pts.map(p => [p[0] * k, p[1] * k]) }) : s);
+  const a = sb.libAlignToGrid(sc(shapesOf('MC-3P_F1V')), 'V');
+  eq(a.terms.map(t => [t.x, t.y]), [[-20, -30], [10, -30], [40, -30], [-20, 30], [10, 30], [40, 30]], '★3極の電磁接触器: 極の間隔30・上下±30 でグリッドに乗る');
+  for (const t of ['RY-A_S1V', 'MCCB_T1V', 'LS-B_S1V', 'PBS-B_S1H']) {
+    const b = sb.libAlignToGrid(sc(shapesOf(t)), t.slice(-1));
+    ok(b.terms.length === 2 && onGrid(b.terms), `${t}: 6 でも端子がグリッドに乗る(${JSON.stringify(b.terms.map(x => [x.x, x.y]))})`);
+  }
+}
+
 console.log('\n【置いてあるものは画面上で動かない】');
 {
   const el = { type: 'X', x: 100, y: 200, rot: 90, flipH: true, scale: 0.5 };
