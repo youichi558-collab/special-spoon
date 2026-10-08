@@ -12,11 +12,11 @@
 //   ・対象はプロジェクトのフォルダの図面(.seqzu)全部(サブフォルダも。2026-10-05 参照図面の一覧をやめた)。消えたファイルは台帳からも消す
 //
 // 【いつ更新するか】プロジェクトのフォルダを読み直すとき(xprojReload=部品表・表示タブの「更新」)と、図面を保存したあと。
-// 作る順の1では、まだ帳票は台帳を読まない(2で部品表を台帳読みにする)。
+// 【2026-10-08 作る順の2】部品表(と、その「食い違いを直す」)は台帳から集計する(pidxWith)。参照図面の計算(xprojWith)は今までどおり全部読む。
 // ================================================================
 
 const PIDX_FILE = 'project.seqzuidx';   // 2026-10-04 拡張子を図面(.seqzu)と分けた(ツリーに出さない)。以前の ecad_project_index.json は使わない(消してよい)
-const PIDX_VER  = 3;   // 2: 種別を登録シンボルから読む / 3: 矢印にもシンボルの type(逆引き。2026-10-05)
+const PIDX_VER  = 4;   // 2: 種別を登録シンボルから読む / 3: 矢印にもシンボルの type(逆引き。2026-10-05) / 4: デバイス未設定の端子台の端子も noRef に(部品表と同じ数え方。2026-10-08)
 const pidxState = { index: null, dirName: '' };   // 最後に読んだ/作った台帳
 
 const _pidxSkip = ['text', 'rect', 'circle', 'fline', 'dim', 'leader', 'angle_dim', 'wire'];
@@ -108,7 +108,6 @@ function _pidxPage(pg, pi) {
       if (el.tbExclude) t.tbExclude = true;
       if (_pidxStr(el.partModel)) t.partModel = String(el.partModel);
       rec.terms.push(t);
-      if (!_pidxStr(el.partRef)) return;
     }
     if (_pidxStr(el.partRef)) {
       rec.devs.push({ id: el.id, type: el.type, sym: _pidxSymName(el), role, ref: _pidxStr(el.partRef), loc, terms: _pidxTerms(el), f: _pidxFields(el) });
@@ -203,6 +202,65 @@ async function pidxAfterSave() {
     const names = await xprojReadList(dir);
     if (names && names.length) await pidxUpdate(dir, names);
   } catch (e) { console.warn('プロジェクト台帳の更新に失敗', e); }
+}
+
+// ---- 帳票を台帳から集計する(2026-10-08 作る順の2。盛田さん「２で」) ----
+// 部品表を開くたびにプロジェクトの図面を全部読んでいた(xprojReload)のを、台帳を最新にする(変わったファイルだけ読む)だけにする。
+// 集計の関数(_collectBOMRows・deviceLedger)はそのまま使い、台帳の記録から「部品表に要る値だけを持った仮の記号」を作って
+// 今の図面の後ろに足す(xprojWith と同じ形。計算が終わったら元に戻す)。仮の記号の役割(コイル等)・位置・シンボル名は台帳に
+// 書いてあるものを使う(symRole・elLocation が _pidxRole・_pidxLoc を見る)。別ファイルのシンボル定義は要らない。
+// 開いているファイルは使わない(xprojPages と同じ判定。開いている方が新しい)。
+function _pidxVEl(pre, o, extra) {
+  const v = Object.assign({}, o.f || {}, { id: pre + o.id, type: o.type, _pidxLoc: o.loc, _pidxSym: o.sym, _pidxRole: o.role || '' }, extra);
+  if (o.type === 'junction') v.style = 'circle';   // 台帳の端子は端子台の端子(○◎)だけ(分岐点●は入れていない)
+  return v;
+}
+function pidxPages() {
+  const idx = pidxState.index;
+  if (!idx || !idx.files) return [];
+  const mine = new Set((state.pages || []).filter(p => !p._src).map(p => p.name));
+  const open = new Set((state.pages || []).map(p => p._src).filter(Boolean));
+  const base = n => String(n || '').replace(/\.(seqzu|json)$/i, '');
+  const out = [];
+  Object.keys(idx.files).sort((a, b) => a.localeCompare(b, 'ja', { numeric: true })).forEach((name, fi) => {
+    const recs = idx.files[name].pages;
+    if (!Array.isArray(recs) || open.has('/' + name) || recs.some(r => mine.has(r.name))) return;
+    recs.forEach((r, pi) => {
+      const pre = `pi${fi}:`;
+      out.push({
+        name: `${base(name)}/${r.name || ''}`, _file: base(name), _pno: pi + 1, frameObj: r.pno ? { page: r.pno } : null, wires: [],
+        elements: (r.devs || []).map(d => _pidxVEl(pre, d, { partRef: d.ref })).concat((r.noRef || []).map(d => _pidxVEl(pre, d))),
+        groups: (r.groups || []).map(g => Object.assign({}, g.f || {}, { id: pre + g.id, partRef: g.ref })),
+      });
+    });
+  });
+  return out;
+}
+function pidxWith(fn) {
+  const ext = pidxPages();
+  if (!ext.length) return fn();
+  const saved = state.pages;
+  try { state.pages = saved.concat(ext); return fn(); }
+  finally { state.pages = saved; }
+}
+// 部品表が使う別ファイル: 台帳があれば台帳、無ければ参照図面の読み込み(xprojState)
+function pidxReady() { return !!(pidxState.index && pidxState.index.files); }
+function projWith(fn) {
+  if (pidxReady()) return pidxWith(fn);
+  return (typeof xprojWith === 'function') ? xprojWith(fn) : fn();
+}
+function projExtPageCount() {
+  if (pidxReady()) return pidxPages().length;
+  return (typeof xprojPages === 'function') ? xprojPages().length : 0;
+}
+// 部品表を開くとき: 台帳を最新にする(変わったファイルだけ読む)。プロジェクトのフォルダが無ければ台帳も使わない(false)
+async function pidxRefresh() {
+  const dir = (typeof xprojDirHandle === 'function') ? await xprojDirHandle(true) : null;
+  if (!dir) { pidxState.index = null; pidxState.dirName = ''; return false; }
+  const names = await xprojReadList(dir);
+  const r = await pidxUpdate(dir, names);
+  if (r.problems.length && typeof stToast === 'function') stToast('読めなかった図面があります:\n' + r.problems.join('\n'), 'warn');
+  return true;
 }
 
 if (typeof window !== 'undefined') (window.__ecadLoaded = window.__ecadLoaded || {})['proj_index.js'] = 1;

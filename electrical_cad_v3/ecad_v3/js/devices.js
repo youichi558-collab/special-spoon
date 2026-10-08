@@ -193,6 +193,8 @@ function devConflicts() {
     })));
     return out;
   };
+  // 【2026-10-08】部品表と同じ別ファイル(台帳があれば台帳。js/proj_index.js projWith)
+  if (typeof projWith === 'function') return projWith(run);
   return (typeof xprojWith === 'function') ? xprojWith(run) : run();
 }
 // 選ぶ画面に添える注意(別ファイルの記号が入っているとき)。無ければ ''

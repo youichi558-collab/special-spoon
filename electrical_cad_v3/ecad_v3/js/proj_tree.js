@@ -130,7 +130,7 @@ async function _ptSetRoot(dir) {
   if (!same) (state.pages || []).forEach(p => { if (p._src && p._src[0] === '/') delete p._src; });
   ptreeState.root = dir; ptreeState.open = new Set(); ptreeState.files = new Map(); ptreeState.detached = false;
   try { await _stPut(PTREE_PREV_KEY, null); } catch (e) {}
-  if (typeof xprojState !== 'undefined') { xprojState.files = []; xprojState.problems = []; xprojState.dirName = ''; }   // 前のフォルダの別ファイルを使わない(部品表・「更新」)
+  if (typeof xprojState !== 'undefined') { xprojState.files = []; xprojState.problems = []; xprojState.dirName = ''; if (typeof pidxState !== 'undefined') { pidxState.index = null; pidxState.dirName = ''; } }   // 前のフォルダの別ファイルを使わない(部品表・「更新」)
   try { await _stPut(PTREE_KEY, dir); } catch (e) {}
   await ptreeRecentAdd(dir);
 }
@@ -206,7 +206,7 @@ async function ptreeDetach() {
   const prev = ptreeState.root;
   ptreeState.detached = true;
   ptreeState.root = null; ptreeState.open = new Set(); ptreeState.files = new Map();
-  if (typeof xprojState !== 'undefined') { xprojState.files = []; xprojState.problems = []; xprojState.dirName = ''; }
+  if (typeof xprojState !== 'undefined') { xprojState.files = []; xprojState.problems = []; xprojState.dirName = ''; if (typeof pidxState !== 'undefined') { pidxState.index = null; pidxState.dirName = ''; } }
   try {
     const p = prev || await _stGet(PTREE_KEY);
     if (p) await _stPut(PTREE_PREV_KEY, p);
@@ -272,7 +272,7 @@ async function ptreeRestorePrev() {
   if (!prev) return;
   if (!await _ptPerm(prev, true)) return;
   ptreeState.root = prev; ptreeState.detached = false; ptreeState.open = new Set(); ptreeState.files = new Map();
-  if (typeof xprojState !== 'undefined') { xprojState.files = []; xprojState.problems = []; xprojState.dirName = ''; }
+  if (typeof xprojState !== 'undefined') { xprojState.files = []; xprojState.problems = []; xprojState.dirName = ''; if (typeof pidxState !== 'undefined') { pidxState.index = null; pidxState.dirName = ''; } }
   try { await _stPut(PTREE_KEY, prev); await _stPut(PTREE_PREV_KEY, null); } catch (e) {}
   await ptreeRecentAdd(prev);
   ptreeRender();

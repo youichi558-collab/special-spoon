@@ -802,7 +802,11 @@ function normalizeRef(s){
 // 以前は開いているファイルだけで、1ページ1ファイルに分けて描くと、そのページの部品しか出なかった。
 // 別ファイルの記号は読むだけ(xprojWith の写し)なので、打った値の書き戻しは開いているファイルの記号にだけ効く(devSetField)。
 // 行には r.local(開いているファイルに記号がある)・r.extFiles(別ファイルの名前)を付け、別ファイルだけの行は打てなくする(showBOM)。
-function collectBOMRows(){ return (typeof xprojWith === 'function') ? xprojWith(_collectBOMRows) : _collectBOMRows(); }
+// 【2026-10-08】別ファイルの分はプロジェクト台帳(js/proj_index.js projWith)から。台帳が無ければ従来どおり参照図面の読み込み(xprojWith)。
+function collectBOMRows(){
+  if (typeof projWith === 'function') return projWith(_collectBOMRows);
+  return (typeof xprojWith === 'function') ? xprojWith(_collectBOMRows) : _collectBOMRows();
+}
 function _collectBOMRows(){
   const skip=['text','rect','circle','fline','dim','leader','angle_dim','wire'];
   const devices={};   // 正規化キー -> { spellings:Map(表記->出現数), models:Set, types:Set, parts:0 }
@@ -860,7 +864,7 @@ function _collectBOMRows(){
       }else{
         // 型番も名前も無いときは登録シンボルの名前を出す(以前は内部名 custom_xxx が出た)。登録も無ければ「(登録なし)」
         const cS=(state.customSymbols||[]).find(s=>s.type===el.type);
-        const symName=(cS&&(cS.name||cS.label))||(String(el.type).startsWith('custom_')?'(登録なし)':el.type);
+        const symName=el._pidxSym||(cS&&(cS.name||cS.label))||(String(el.type).startsWith('custom_')?'(登録なし)':el.type);   // _pidxSym: 台帳の仮の記号(js/proj_index.js)
         const name=(el.partModel||'').trim()||el.label||symName;
         const k=`${el.type}|${name}`;
         if(!noRef[k])noRef[k]={type:el.type,model:(el.partModel||'').trim(),label:name,
@@ -1014,13 +1018,16 @@ function _bomFilterRows(rows) {
   });
 }
 
-// 部品表を開く(リボン・帳票のタブ): 今読んでいる参照図面ですぐ出し、参照図面を読み直したら出し直す(クロスリファレンスの「更新」と同じ)。
+// 部品表を開く(リボン・帳票のタブ): 今の台帳ですぐ出し、台帳を最新にしたら出し直す。
+// 【2026-10-08 作る順の2】以前はここで参照図面を全部読み直していた(xprojReload)。ページが増えると重いので、
+// 台帳を最新にする(変わったファイルだけ読む。js/proj_index.js pidxRefresh)だけにした。
 // 値を打ったあと等の出し直しは showBOM(読み直さない)
 async function openBOM(){
   showBOM();
-  if (typeof xprojReload !== 'function') return;
+  const refresh = (typeof pidxRefresh === 'function') ? pidxRefresh : (typeof xprojReload === 'function' ? xprojReload : null);
+  if (!refresh) return;
   let reloaded = false;
-  try { reloaded = await xprojReload(); } catch (e) { console.warn('参照図面の読み直しに失敗', e); }
+  try { reloaded = await refresh(); } catch (e) { console.warn('プロジェクト台帳の更新に失敗', e); }
   if (reloaded && document.getElementById('report-p')?.classList.contains('open') && _lastReportTab === 'bom') showBOM();
 }
 function showBOM(){
@@ -1034,9 +1041,9 @@ function showBOM(){
     +`<input type="checkbox"${_bomZone[key]?' checked':''} `
     +`onchange="setBOMZone('${key}',this.checked)" style="vertical-align:-1px;margin-right:3px">`
     +`${label}</label>`;
-  const extN=(typeof xprojPages==='function')?xprojPages().length:0;
+  const extN=(typeof projExtPageCount==='function')?projExtPageCount():(typeof xprojPages==='function')?xprojPages().length:0;
   const scope=extN?`このファイル${state.pages.length}ページ＋プロジェクトの別ファイル${extN}ページを集計`:`このファイル${state.pages.length}ページを集計`
-    +(typeof xprojState!=='undefined'&&!xprojState.files.length?`(左パネルの「プロジェクト」でフォルダを開くと盤全体の部品表になります)`:'');
+    +(typeof xprojState!=='undefined'&&!xprojState.files.length&&!(typeof pidxReady==='function'&&pidxReady())?`(左パネルの「プロジェクト」でフォルダを開くと盤全体の部品表になります)`:'');
   const head=`<p style="font-size:11px;color:var(--fg3);margin-bottom:6px">${scope}・${devTotal} 台`
     +(noRefTotal?`　<span style="color:var(--red)">デバイス未設定 ${noRefTotal} 個</span>`:'')
     +`<br>数量はデバイス単位の台数です。構成数は接点・端子を含む図形の個数です。`
@@ -1296,6 +1303,7 @@ function elAnchor(el) {
 // 図面枠そのものが無いページはページ番号だけを返す。ページ番号は表題欄の頁番号(空欄ならシートの並び順)。
 // 「枠が無い」のか「枠の外にはみ出している」のかを区別できるようにしてある。
 function elLocation(el, pageIdx) {
+  if (el && el._pidxLoc != null) return el._pidxLoc;   // 台帳の仮の記号(js/proj_index.js)は台帳に書いた位置
   const pg = state.pages[pageIdx];
   const p = elAnchor(el);
   const z = (p && pg) ? zoneOf(p.x, p.y, pg.frameObj) : '';
@@ -1324,6 +1332,7 @@ function elLocation(el, pageIdx) {
 // ページ跨ぎの矢印(送り・受け)。部品表・接点Refなど部品を数える帳票からは除く(2026-09-30)
 function isSigArrowRole(r){ return r==='sig_out'||r==='sig_in'; }
 function symRole(el){
+  if(el&&el._pidxRole!=null)return el._pidxRole;   // 台帳の仮の記号(js/proj_index.js)は台帳に書いた役割
   const d=getDef(el.type)||{};
   if(d.role)return d.role;
   return '';
