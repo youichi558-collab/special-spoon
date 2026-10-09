@@ -33,6 +33,14 @@ let _asRestoreFailed = false;
 // 保存済みデータがあったのに復元できなかったとき、その量を覚えておく(通知用)
 let _asBlockedCount = 0;
 
+// 【2026-10-09 追加】自動保存が「止まった」ことは、画面の上の赤い帯(state.js showTopBanner)にも出す。
+// 下のバーの案内の欄(#s-hint)は、F8 の直交・コピーの終わり・割り当ての案内など30か所あまりから書き換えられ、
+// 止まった知らせは1回しか書かないので、すぐ消えて「止まっていることに気づけない」状態になっていた
+// (外部のレビュー「保存失敗時にユーザーが確実に気付けるか」→ 盛田さん「その案で進めて」)。
+// 自動保存は一度止まるとリロードするまで止まったままなので、帯も消さない。案内の欄にも今まで通り書く。
+const AS_BANNER_ID = 'autosave-banner';
+function _asBanner(msg) { if (typeof showTopBanner === 'function') showTopBanner(AS_BANNER_ID, msg); }
+
 // 【2026-09-19 追加】JSが虫食いで読み込めていない状態を検出する。
 //
 // 【背景】盛田さんの「図面消えた」(2026-09-19)。サーバー(start.bat)が落ちた
@@ -101,20 +109,24 @@ function doAutosave() {
   // リロードすればそのまま復元できる。
   const _missing = _asMissingScripts();
   if (_missing.length) {
-    const h = document.getElementById('s-hint');
-    if (h) h.textContent =
+    const msg =
       `⚠ JSが読み込めていないため自動保存を停止しています（${_missing.join(' / ')}）。`
       + `保存済みデータは無傷です。start.bat を起動し直してから、この画面をリロードしてください`;
+    const h = document.getElementById('s-hint');
+    if (h) h.textContent = msg;
+    _asBanner(msg);
     return;
   }
   // 復元に失敗している場合は絶対に書かない。読み込めなかった図面を
   // 上書きしてしまうと復旧手段が無くなる(2026-08-23の事故の直接原因)。
   if (_asRestoreFailed) {
-    const h = document.getElementById('s-hint');
-    if (h) h.textContent =
+    const msg =
       `⚠ 前回のデータを復元できなかったため自動保存を停止しています`
       + `（保存済み ${_asBlockedCount}個は無傷です）。`
       + `作業を続ける前にF12→Consoleのエラーを確認してください`;
+    const h = document.getElementById('s-hint');
+    if (h) h.textContent = msg;
+    _asBanner(msg);
     return;
   }
   clearTimeout(_asTimer); _asTimer = null;
@@ -180,9 +192,11 @@ function doAutosave() {
     _asDisabled = true;
     const h = document.getElementById('s-hint');
     const quota = e && (e.name === 'QuotaExceededError' || e.code === 22 || e.code === 1014);
-    if (h) h.textContent = quota
+    const msg = quota
       ? '⚠ 自動保存が容量超過で停止しました（JSONファイル保存を使用してください）'
       : `⚠ 自動保存が失敗したため停止しました（${e && e.message || e}）。JSONファイル保存を使用してください`;
+    if (h) h.textContent = msg;
+    _asBanner(msg);
     console.error('[autosave] 保存に失敗:', e);
   }
 }
@@ -316,10 +330,12 @@ function restoreAutosave() {
     // 原因を直してリロードすればそのまま復元できる。
     console.error('[autosave] 復元処理でエラー:', e);
     setTimeout(() => {
-      const h = document.getElementById('s-hint');
-      if (h) h.textContent = '⚠ 復元処理でエラーが発生しました。自動保存を停止しています'
+      const msg = '⚠ 復元処理でエラーが発生しました。自動保存を停止しています'
         + `（保存済み ${_asBlockedCount}個は無傷です）。`
         + 'F12→Consoleのエラーを確認してください';
+      const h = document.getElementById('s-hint');
+      if (h) h.textContent = msg;
+      _asBanner(msg);
     }, 0);
   }
 }

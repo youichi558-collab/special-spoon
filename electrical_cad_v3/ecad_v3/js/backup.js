@@ -33,6 +33,10 @@ let _bkLastAt   = 0;      // 最後に書いた時刻(ms)
 let _bkLastBody = '';     // 最後に書いた中身。同じなら書かない
 let _bkTimer    = null;
 let _bkLastError = '';
+// 【2026-10-09】バックアップを取れないことは、画面の上の赤い帯(state.js showTopBanner)にも出し、次に取れたら消す。
+// 下のバーの案内の欄(#s-hint)はほかの操作ですぐ書き換わり、同じ失敗は二度書かないので、気づけなくなっていた(js/autosave.js の _asBanner と同じ理由)
+const BK_BANNER_ID = 'backup-banner';
+function _bkBanner(msg) { if (typeof showTopBanner === 'function') showTopBanner(BK_BANNER_ID, msg); }
 
 // ---- 設定の読み書き ------------------------------------------------
 // 図面データではなくアプリの設定なので、自動保存のペイロードではなく
@@ -120,6 +124,7 @@ async function bkRun(force) {
     missingJs,
     sameAsLast: body === _bkLastBody,
   });
+  if (d.reason === 'off') { _bkLastError = ''; _bkBanner(''); }   // バックアップを切ったら、前の失敗の帯は残さない
   if (!d.save) return d;
 
   try {
@@ -133,17 +138,20 @@ async function bkRun(force) {
     _bkLastAt = Date.now();
     _bkLastBody = body;
     _bkLastError = '';
+    _bkBanner('');   // 取れたら、前の失敗の帯を消す
     return { save: true, reason: 'ok', file: j.file, deleted: j.deleted };
   } catch (e) {
     // サーバーが落ちている等。自動保存(localStorage)は別経路で生きているので、
     // ここで作業を止めない。ただし黙って失敗し続けると気づけないので一度は出す。
     const msg = String(e && e.message || e);
+    const text = `⚠ バックアップを取れませんでした（${msg}）。`
+      + `start.bat が動いているか確認してください。自動保存（ブラウザ内）は続いています`;
     if (msg !== _bkLastError) {
       _bkLastError = msg;
       const h = document.getElementById('s-hint');
-      if (h) h.textContent = `⚠ バックアップを取れませんでした（${msg}）。`
-        + `start.bat が動いているか確認してください。自動保存（ブラウザ内）は続いています`;
+      if (h) h.textContent = text;
     }
+    _bkBanner(text);   // 案内の欄はすぐ書き換わるので、取れるまで上の赤い帯にも残す(2026-10-09)
     // 次の間隔でまた試せるよう、時刻は進めない
     return { save: false, reason: 'error', error: msg };
   }
