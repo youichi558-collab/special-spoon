@@ -80,5 +80,15 @@ console.log('\n【段階4】');
   ok(!/v2-zoom-pct/.test(D), '描くたびの％の更新も消した');
 }
 
+console.log('\n【メニューのドロップダウンを縦に(2026-10-09 Claude Design 6a)】');
+{
+  const blk = C.slice(C.indexOf('/* ── メニューのドロップダウン:リボンのグループを縦に積む'));
+  const sels = blk.split('\n').filter(l => /^[#.a-z][^{]*\{/.test(l)).map(l => l.slice(0, l.indexOf('{')));
+  ok(sels.length >= 10 && sels.every(x => x.split(',').every(y => y.trim().startsWith('#v2-menu-pop'))), `★メニューの CSS は #v2-menu-pop の下だけ(${sels.length}個。今の画面のリボンには効かない)`);
+  const keys = ['Ctrl+Z', 'Ctrl+Y', 'Ctrl+C', 'Ctrl+X', 'Ctrl+V', 'Del', 'R', 'Ctrl+G', 'Ctrl+Shift+G'];
+  ok(keys.every(k => new RegExp(`class="rb[^"]*"[^>]*data-key="${k.replace(/\+/g, '\\+')}"`).test(H)), 'ショートカットを右端に出すボタン9個に data-key');
+  ok(/#v2-menu-pop \.rb\[data-key\]::after\{content:attr\(data-key\)/.test(C), 'data-key を右端に出す');
+}
+
 console.log(ng ? `\nNG ${ng} 件` : '\nすべてOK');
 process.exit(ng ? 1 : 0);
