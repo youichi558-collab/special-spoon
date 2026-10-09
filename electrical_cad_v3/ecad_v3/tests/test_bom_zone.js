@@ -40,9 +40,9 @@ const sandbox = {
   updateRightPanel: () => {},
 };
 vm.createContext(sandbox);
-vm.runInContext(fs.readFileSync(__dirname + '/../js/report.js', 'utf8'), sandbox);
+vm.runInContext(fs.readFileSync(__dirname + '/../js/report.js', 'utf8').replace(/\r\n/g, '\n'), sandbox);
 // CSVのファイル名は js/edit.js の _csvName(図面名_用途.csv) をそのまま使う
-{ const e = fs.readFileSync(__dirname + '/../js/edit.js', 'utf8'); const s = e.indexOf('function _csvName(');
+{ const e = fs.readFileSync(__dirname + '/../js/edit.js', 'utf8').replace(/\r\n/g, '\n'); const s = e.indexOf('function _csvName(');
   vm.runInContext(e.slice(s, e.indexOf('\n}', s) + 2), sandbox); }
 
 sandbox.state = {

@@ -24,9 +24,9 @@ function cut(src, head) {
   if (s < 0) throw new Error('関数が見つからない: ' + head);
   return src.slice(s, src.indexOf('\n}', s) + 2);
 }
-const resizeSrc = fs.readFileSync(__dirname + '/../js/resize.js', 'utf8');
-const uiSrc     = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8');
-const editSrc   = fs.readFileSync(__dirname + '/../js/edit.js', 'utf8');
+const resizeSrc = fs.readFileSync(__dirname + '/../js/resize.js', 'utf8').replace(/\r\n/g, '\n');
+const uiSrc     = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8').replace(/\r\n/g, '\n');
+const editSrc   = fs.readFileSync(__dirname + '/../js/edit.js', 'utf8').replace(/\r\n/g, '\n');
 
 function makeSandbox(selCount) {
   const drawn = [];

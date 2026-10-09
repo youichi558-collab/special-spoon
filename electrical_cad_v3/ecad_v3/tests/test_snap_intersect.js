@@ -6,7 +6,7 @@ const fs = require('fs');
 const vm = require('vm');
 let ng = 0;
 const ok = (c, m) => { if (!c) { ng++; console.log('  NG', m); } else console.log('  OK', m); };
-const S = fs.readFileSync(__dirname + '/../js/snap.js', 'utf8');
+const S = fs.readFileSync(__dirname + '/../js/snap.js', 'utf8').replace(/\r\n/g, '\n');
 const sb = { snap: v => Math.round(v / 10) * 10 };
 vm.createContext(sb);
 vm.runInContext(S.match(/function segIntersect\([\s\S]*?\n\}/)[0], sb);

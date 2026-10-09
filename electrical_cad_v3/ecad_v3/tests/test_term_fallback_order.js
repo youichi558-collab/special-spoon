@@ -31,7 +31,7 @@ const FILES = ['js/snap.js', 'js/conn_table.js', 'js/draw.js'];
 console.log('【4箇所とも「左が1番目」で揃っている】');
 const found = {};
 FILES.forEach(f => {
-  const src = fs.readFileSync(path.join(root, f), 'utf8');
+  const src = fs.readFileSync(path.join(root, f), 'utf8').replace(/\r\n/g, '\n');
   // コメント行は除いて、実際のコードだけを見る
   const code = src.split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
   const good = (code.match(/\[-hw,\s*\+hw\]/g) || []).length;
@@ -47,7 +47,7 @@ console.log('【数え上げ漏れが無い】');
   const all = fs.readdirSync(path.join(root, 'js')).filter(f => f.endsWith('.js'));
   const others = all.map(f => 'js/' + f).filter(f => !FILES.includes(f));
   const strays = others.filter(f => {
-    const src = fs.readFileSync(path.join(root, f), 'utf8');
+    const src = fs.readFileSync(path.join(root, f), 'utf8').replace(/\r\n/g, '\n');
     const code = src.split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
     return /\[[-+]hw,\s*[-+]hw\]/.test(code);
   });

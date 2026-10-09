@@ -93,7 +93,7 @@ eq(M.resolvePartSpec(flatPart, {}).terminals, 'コイル:A1,A2 / 主回路:1,3,5
 console.log('\n【端子グループ形式との接続】');
 // resolvePartSpec が返す terminals は、既に実装済みの parseTerminalGroups が
 // そのまま読める形式であること（割り当て時にグループ選択が効く）
-const src = require('fs').readFileSync(__dirname + '/../js/ui.js', 'utf8');
+const src = require('fs').readFileSync(__dirname + '/../js/ui.js', 'utf8').replace(/\r\n/g, '\n');
 const m = src.match(/function parseTerminalGroups\([\s\S]*?\n\}/);
 eq(!!m, true, 'ui.jsからparseTerminalGroupsを取り出せる');
 const parseTerminalGroups = eval(`(${m[0]})`);

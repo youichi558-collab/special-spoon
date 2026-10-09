@@ -19,7 +19,7 @@ const eq = (a, b, m) => {
   else console.log('  OK', m);
 };
 
-const src = fs.readFileSync(__dirname + '/../js/dxf_export.js', 'utf8');
+const src = fs.readFileSync(__dirname + '/../js/dxf_export.js', 'utf8').replace(/\r\n/g, '\n');
 const start = src.indexOf('  customSyms.forEach((s,i)=>{', src.indexOf('  customSyms.forEach((s,i)=>{') + 1);
 if (start < 0) throw new Error('該当ブロックが見つかりません');
 const end = src.indexOf('\n  });', start) + 6;

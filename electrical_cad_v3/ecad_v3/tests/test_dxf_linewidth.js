@@ -4,10 +4,10 @@
 // 線幅は図面座標の値でズームに追随しないため、短い線分が多い部品外形図では
 // 線幅1.0だと線分より太くなって図が潰れる。線分長の中央値から決める。
 const fs=require('fs');
-const src=fs.readFileSync(__dirname+'/../js/dxf_import.js','utf8');
+const src=fs.readFileSync(__dirname+'/../js/dxf_import.js','utf8').replace(/\r\n/g, '\n');
 // 実装は js/ui.js の snapLineWidth に依存する。読み込まないとフォールバックで
 // 1.0になり、テストが通らないだけでなく実装の検証にもならない。
-const ui=fs.readFileSync(__dirname+'/../js/ui.js','utf8');
+const ui=fs.readFileSync(__dirname+'/../js/ui.js','utf8').replace(/\r\n/g, '\n');
 const grab=re=>{const m=ui.match(re);if(!m)throw new Error('見つからない:'+re);return m[0];};
 eval([grab(/const LINE_WIDTHS = \[[\s\S]*?\];/).replace('const','var'),
       grab(/const DEFAULT_LINE_WIDTH = [\d.]+;/).replace('const','var'),
@@ -32,7 +32,7 @@ eq(calc([],[]),1,        '要素が無ければ1.0');
 console.log('\n【実ファイルで確認】');
 const SAMPLE='/mnt/user-data/uploads/ha01d800_MSO-T10_KP__.dxf';
 if(!fs.existsSync(SAMPLE)){console.log('  (サンプルDXFが無いため省略)');console.log(ng?`\n失敗 ${ng}件`:'\n全て成功');process.exit(ng?1:0);}
-const t=fs.readFileSync(SAMPLE,'utf8').split('\n').map(l=>l.replace(/\r/g,'').trim());
+const t=fs.readFileSync(SAMPLE,'utf8').replace(/\r\n/g, '\n').split('\n').map(l=>l.replace(/\r/g,'').trim());
 const pairs=[];for(let i=0;i<t.length-1;i+=2){const c=parseInt(t[i]);if(!isNaN(c))pairs.push({code:c,val:t[i+1]});}
 const wires=[];
 for(let i=0;i<pairs.length;i++){

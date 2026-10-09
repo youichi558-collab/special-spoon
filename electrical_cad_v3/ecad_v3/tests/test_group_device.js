@@ -4,7 +4,7 @@
 // 部品外形図は数十本の線の集まりなので、デバイス記号はグループ側が持つ。
 // 文字サイズ・色・位置の調整UIが出て、値が保存されることを実コードで確認する。
 const fs=require('fs');
-const ui=fs.readFileSync(__dirname+'/../js/ui.js','utf8');
+const ui=fs.readFileSync(__dirname+'/../js/ui.js','utf8').replace(/\r\n/g, '\n');
 const pick=re=>{const m=ui.match(re);if(!m)throw new Error('見つからない:'+re);return m[0];};
 global.draw=()=>{}; global.pushH=()=>{}; global.updateRightPanel=()=>{};
 global._escAttr=s=>String(s==null?'':s);

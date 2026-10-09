@@ -5,8 +5,8 @@
 // 中途半端な太さが図面に混ざると、線同士を繋いだときに段差が出るため、
 // DXFから読み込んだ値も推測値も必ず規格値に丸める。
 const fs=require('fs');
-const ui=fs.readFileSync(__dirname+'/../js/ui.js','utf8');
-const di=fs.readFileSync(__dirname+'/../js/dxf_import.js','utf8');
+const ui=fs.readFileSync(__dirname+'/../js/ui.js','utf8').replace(/\r\n/g, '\n');
+const di=fs.readFileSync(__dirname+'/../js/dxf_import.js','utf8').replace(/\r\n/g, '\n');
 const pick=(src,re)=>{const m=src.match(re);if(!m)throw new Error('見つからない:'+re);return m[0];};
 // constはevalのスコープから出ないのでvarに置き換えて読み込む(実コードは変えない)
 eval([

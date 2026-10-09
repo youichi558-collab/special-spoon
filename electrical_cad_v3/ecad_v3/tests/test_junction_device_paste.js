@@ -26,7 +26,7 @@ let ng = 0;
 const ok = (cond, m) => { if (!cond) { ng++; console.log('  NG', m); } else console.log('  OK', m); };
 const eq = (a, b, m) => ok(JSON.stringify(a) === JSON.stringify(b), `${m} (期待 ${JSON.stringify(b)}, 実際 ${JSON.stringify(a)})`);
 
-const src = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8');
+const src = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8').replace(/\r\n/g, '\n');
 const grab = (name) => {
   const start = src.indexOf(`function ${name}(`);
   if (start < 0) throw new Error(`関数 ${name} が見つかりません`);

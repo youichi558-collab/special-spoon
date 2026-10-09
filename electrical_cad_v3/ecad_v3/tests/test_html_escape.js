@@ -52,7 +52,7 @@ console.log('\n【部品表(BOM): 型番・デバイス名が生のHTMLになら
     getDef: () => ({}), partVoltOptions: () => [], updateRightPanel: () => {},
   };
   vm.createContext(sandbox);
-  vm.runInContext(fs.readFileSync(__dirname + '/../js/report.js', 'utf8'), sandbox);
+  vm.runInContext(fs.readFileSync(__dirname + '/../js/report.js', 'utf8').replace(/\r\n/g, '\n'), sandbox);
   sandbox.state = {
     pages: [{
       name: 'P1',
@@ -83,7 +83,7 @@ console.log('\n【線番表: ページ名・線番が生のHTMLにならない�
     groupWiresByNet: idxs => idxs.map((_, i) => [i]),
   };
   vm.createContext(sandbox);
-  vm.runInContext(fs.readFileSync(__dirname + '/../js/report.js', 'utf8'), sandbox);
+  vm.runInContext(fs.readFileSync(__dirname + '/../js/report.js', 'utf8').replace(/\r\n/g, '\n'), sandbox);
   sandbox.state = {
     pages: [{
       name: EVIL,
@@ -125,7 +125,7 @@ console.log('\n【端子(ピン)編集: 端子番号が生のHTMLにならない
     draw: () => {}, saveSymbolsToStorage: () => {}, requestAnimationFrame: () => {},
   };
   vm.createContext(sandbox);
-  vm.runInContext(fs.readFileSync(__dirname + '/../js/pin_editor.js', 'utf8'), sandbox);
+  vm.runInContext(fs.readFileSync(__dirname + '/../js/pin_editor.js', 'utf8').replace(/\r\n/g, '\n'), sandbox);
   sandbox.openPinEditor('testsym');
   vm.runInContext('_peTerms.push({x:0,y:0,label:' + JSON.stringify(EVIL_ATTR) + '}); peUpdateList();', sandbox);
   const html = domEls['pe-term-list'].innerHTML;
@@ -143,7 +143,7 @@ console.log('\n【端子(ピン)編集: 端子番号が生のHTMLにならない
 // (実際にポートを開くテストはCIでもローカルでも副作用が大きいため)。
 console.log('\n【server.py: LANに公開しない】');
 {
-  const src = fs.readFileSync(__dirname + '/../server.py', 'utf8');
+  const src = fs.readFileSync(__dirname + '/../server.py', 'utf8').replace(/\r\n/g, '\n');
   ok(!/HTTPServer\(\(''\s*,/.test(src), "HTTPServer(('', PORT)) で全インターフェースに開いていない");
   ok(/HOST = os\.environ\.get\('ECAD_HOST', '127\.0\.0\.1'\)/.test(src),
      '既定の待ち受けは127.0.0.1(このPCからのみ)');
@@ -161,7 +161,7 @@ console.log('\n【catalog_server.py: LANに公開しない・CORSを絞る】');
   if (!fs.existsSync(p)) {
     console.log('  -- catalog_server.py が無いので省略');
   } else {
-    const src = fs.readFileSync(p, 'utf8');
+    const src = fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n');
     ok(!/HTTPServer\(\(''\s*,/.test(src), "HTTPServer(('', port)) で全インターフェースに開いていない");
     ok(/DEFAULT_HOST = '127\.0\.0\.1'/.test(src), '既定の待ち受けは127.0.0.1');
     ok(!/'Access-Control-Allow-Origin', '\*'/.test(src), 'CORSが * のままになっていない');
@@ -171,7 +171,7 @@ console.log('\n【catalog_server.py: LANに公開しない・CORSを絞る】');
 // ------------------------------------------------------------------
 console.log('\n【JSZipを外部CDNから読まない(オフラインで動く)】');
 {
-  const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
+  const html = fs.readFileSync(__dirname + '/../index.html', 'utf8').replace(/\r\n/g, '\n');
   ok(!/src="https?:\/\//.test(html), 'index.htmlが外部URLのscriptを読み込んでいない');
   ok(/src="js\/jszip(\.min)?\.js"/.test(html), 'JSZipを同梱ファイルから読んでいる');
   ok(fs.existsSync(__dirname + '/../js/jszip.min.js'), 'js/jszip.min.js が存在する');

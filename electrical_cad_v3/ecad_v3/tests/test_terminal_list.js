@@ -44,7 +44,7 @@ const sandbox = { state, dl: () => {}, _reportOpen: () => {}, console };
 vm.createContext(sandbox);
 
 // report.js は他モジュール依存があるため、対象の関数だけ切り出してevalする
-const src = fs.readFileSync(__dirname + '/../js/report.js', 'utf8');
+const src = fs.readFileSync(__dirname + '/../js/report.js', 'utf8').replace(/\r\n/g, '\n');
 const pick = re => { const m = src.match(re); if (!m) { console.log('  NG 関数を取り出せません:', re); process.exit(1); } return m[0]; };
 vm.runInContext([
   'function elLocation(el, pageIdx) { return String(pageIdx + 1); }',   // 区画計算は本テストの対象外

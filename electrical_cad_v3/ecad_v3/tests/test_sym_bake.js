@@ -7,7 +7,7 @@ const vm = require('vm');
 let ng = 0;
 const ok = (c, m) => { if (!c) { ng++; console.log('  NG', m); } else console.log('  OK', m); };
 const near = (a, b) => Math.abs(a - b) < 1e-6;
-const R = f => fs.readFileSync(__dirname + '/../' + f, 'utf8');
+const R = f => fs.readFileSync(__dirname + '/../' + f, 'utf8').replace(/\r\n/g, '\n');
 const S = R('js/sym_store.js');
 const pick = n => S.match(new RegExp('function ' + n + '\\([\\s\\S]*?\\n\\}'))[0];
 const sb = { state: {}, renderPageTabs: () => {} };

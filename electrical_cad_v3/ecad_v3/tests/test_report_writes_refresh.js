@@ -24,9 +24,9 @@ const fs = require('fs');
 let ng = 0;
 const ok = (c, m) => { if (!c) { ng++; console.log('  NG ' + m); } else console.log('  OK ' + m); };
 
-const rep = fs.readFileSync(__dirname + '/../js/report.js', 'utf8');
-const ct  = fs.readFileSync(__dirname + '/../js/conn_table.js', 'utf8');
-const ui  = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8');
+const rep = fs.readFileSync(__dirname + '/../js/report.js', 'utf8').replace(/\r\n/g, '\n');
+const ct  = fs.readFileSync(__dirname + '/../js/conn_table.js', 'utf8').replace(/\r\n/g, '\n');
+const ui  = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8').replace(/\r\n/g, '\n');
 
 // 関数の中身だけを取り出す(次の function 宣言まで)
 function body(src, name) {

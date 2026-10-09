@@ -4,7 +4,7 @@
 // レイヤー名が付かないとLAYERS.findが外れ、描画色がfgC()(ダークで#ccc=ほぼ白)に
 // なって「図面の一か所だけ白く壊れる」症状になる。実コードをevalして検証する。
 const fs=require('fs');
-const src=fs.readFileSync(__dirname+'/../js/dxf_import.js','utf8');
+const src=fs.readFileSync(__dirname+'/../js/dxf_import.js','utf8').replace(/\r\n/g, '\n');
 const m=src.match(/\{\s*const FALLBACK='外形';[\s\S]*?\n  \}/);
 if(!m)throw new Error('救済処理が見つからない');
 

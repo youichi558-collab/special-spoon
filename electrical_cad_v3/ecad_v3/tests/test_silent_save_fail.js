@@ -25,9 +25,9 @@ const eq = (a, b, m) => {
 };
 const ok = (cond, m) => { if (!cond) { ng++; console.log('  NG', m); } else console.log('  OK', m); };
 
-const stateSrc = fs.readFileSync(__dirname + '/../js/state.js', 'utf8');
-const uiSrc    = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8');
-const libSrc   = fs.readFileSync(__dirname + '/../js/symbol_lib.js', 'utf8');
+const stateSrc = fs.readFileSync(__dirname + '/../js/state.js', 'utf8').replace(/\r\n/g, '\n');
+const uiSrc    = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8').replace(/\r\n/g, '\n');
+const libSrc   = fs.readFileSync(__dirname + '/../js/symbol_lib.js', 'utf8').replace(/\r\n/g, '\n');
 const pick = (src, re) => { const m = src.match(re); if (!m) throw new Error('見つからない:' + re); return m[0]; };
 
 // 画面上の帯を受け取れる最小限のDOM
@@ -67,7 +67,7 @@ const aDone = (async () => {
   };
   vm.createContext(sandbox);
   vm.runInContext(pick(stateSrc, /function showTopBanner\([\s\S]*?\n\}/), sandbox);
-  vm.runInContext(fs.readFileSync(__dirname + '/../js/sym_store.js', 'utf8'), sandbox);
+  vm.runInContext(fs.readFileSync(__dirname + '/../js/sym_store.js', 'utf8').replace(/\r\n/g, '\n'), sandbox);
 
   eq(await vm.runInContext('symStorePut', sandbox)([{ type: 'sym1' }]), false, '保存できなければ false を返す');
   ok(alerts.some(m => /保存できませんでした/.test(m) && /容量が一杯/.test(m)), '★保存できなかったこと・容量超過だと知らせる');
@@ -103,7 +103,7 @@ console.log('\n【B: 保存データが壊れていても機能が死なない�
 // ------------------------------------------------------------------
 console.log('\n【帯の実装が1箇所にまとまっている】');
 {
-  const partsSrc = fs.readFileSync(__dirname + '/../js/parts_db.js', 'utf8');
+  const partsSrc = fs.readFileSync(__dirname + '/../js/parts_db.js', 'utf8').replace(/\r\n/g, '\n');
   ok(/showTopBanner\('parts-db-banner'/.test(partsSrc),
      'parts_db.js は state.js の showTopBanner を使う（帯を自前で作らない）');
   ok(!/createElement\('div'\)[\s\S]{0,200}parts-db-banner/.test(partsSrc),

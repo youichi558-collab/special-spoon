@@ -4,7 +4,7 @@
 // 370は1/100mm単位の整数。負の値は太さの指定ではなく
 // -1=レイヤーに従う / -2=ブロックに従う / -3=既定に従う を意味する。
 const fs=require('fs');
-const src=fs.readFileSync(__dirname+'/../js/dxf_import.js','utf8');
+const src=fs.readFileSync(__dirname+'/../js/dxf_import.js','utf8').replace(/\r\n/g, '\n');
 const pick=re=>{const m=src.match(re);if(!m)throw new Error('見つからない:'+re);return m[0];};
 eval(pick(/function lineweightToMm\([\s\S]*?\n\}/));
 eval(pick(/function _lwOf\([\s\S]*?\n\}/));

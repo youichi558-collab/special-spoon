@@ -9,7 +9,7 @@ const fs = require('fs');
 const vm = require('vm');
 let ng = 0;
 const eq = (a, b, m) => { if (JSON.stringify(a) !== JSON.stringify(b)) { ng++; console.log('  NG', m, '\n    期待', JSON.stringify(b), '\n    実際', JSON.stringify(a)); } else console.log('  OK', m); };
-const R = f => fs.readFileSync(__dirname + '/../' + f, 'utf8');
+const R = f => fs.readFileSync(__dirname + '/../' + f, 'utf8').replace(/\r\n/g, '\n');
 const sb = { console, window: {}, document: { getElementById: () => null }, escH: require('./_esch.js').escH, getDef: () => null, LAYERS: [] };
 vm.createContext(sb);
 vm.runInContext(R('js/report.js'), sb);

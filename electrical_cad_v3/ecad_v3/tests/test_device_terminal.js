@@ -35,12 +35,12 @@ let ng = 0;
 const ok = (cond, m) => { if (!cond) { ng++; console.log('  NG', m); } else console.log('  OK', m); };
 const eq = (a, b, m) => ok(JSON.stringify(a) === JSON.stringify(b), `${m} (期待 ${JSON.stringify(b)}, 実際 ${JSON.stringify(a)})`);
 
-const reportSrc = fs.readFileSync(__dirname + '/../js/report.js', 'utf8');
-const uiSrc     = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8');
+const reportSrc = fs.readFileSync(__dirname + '/../js/report.js', 'utf8').replace(/\r\n/g, '\n');
+const uiSrc     = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8').replace(/\r\n/g, '\n');
 // 種別コードの定義(PART_TYPE_CODES等)は2026-09-02にjs/part_types.jsへ切り出した
 // (部品DB単独画面と共有するため)。ui.js側は今でも LEGACY_PART_TYPES[type] 等を
 // 「使って」いるので uiSrc は引き続き要るが、「定義」はこちらから読む。
-const typesSrc  = fs.readFileSync(__dirname + '/../js/part_types.js', 'utf8');
+const typesSrc  = fs.readFileSync(__dirname + '/../js/part_types.js', 'utf8').replace(/\r\n/g, '\n');
 
 const grab = (src, name) => {
   const start = src.indexOf(`function ${name}(`);
@@ -260,7 +260,7 @@ console.log('【廃止した種別(sw_no/sw_nc)の扱い】');
   // 【2026-09-03】CSV一括登録は部品DB単独画面(parts.html / js/parts_page.js)
   // へ移した。CADのindex.html/js/ui.jsにはもうこの経路が無いので、
   // legacy種別の扱いはそちらのソースで確認する。
-  const pageSrc = fs.readFileSync(__dirname + '/../js/parts_page.js', 'utf8');
+  const pageSrc = fs.readFileSync(__dirname + '/../js/parts_page.js', 'utf8').replace(/\r\n/g, '\n');
   const codes = JSON.parse('[' +
     typesSrc.match(/const PART_TYPE_CODES = \[([^\]]*)\]/)[1].replace(/'/g, '"') + ']');
   const legacyBlock = typesSrc.match(/const LEGACY_PART_TYPES = \{[^}]*\}/)[0];
@@ -284,7 +284,7 @@ console.log('【廃止した種別(sw_no/sw_nc)の扱い】');
   // contactType が js/data.js に残っていることを確認していた。標準シンボル20種を
   // 削除した(盛田さんの指示・一度も使っていない/端子点が無く使い物にならない)ため、
   // 確認の向きを逆にする。部品DBの LEGACY_PART_TYPES(上の確認)は別物なので残る。
-  const dataSrc = fs.readFileSync(__dirname + '/../js/data.js', 'utf8');
+  const dataSrc = fs.readFileSync(__dirname + '/../js/data.js', 'utf8').replace(/\r\n/g, '\n');
   ok(!/^\s*sw_no:/m.test(dataSrc) && !/^\s*sw_nc:/m.test(dataSrc),
      '図面のシンボル種別としてのsw_no/sw_ncはDEFSから削除されている');
   ok(!dataSrc.includes('contactType'),

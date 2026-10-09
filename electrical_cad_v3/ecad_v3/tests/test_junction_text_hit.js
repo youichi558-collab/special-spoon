@@ -24,7 +24,7 @@ const vm = require('vm');
 let ng = 0;
 const ok = (cond, m) => { if (!cond) { ng++; console.log('  NG', m); } else console.log('  OK', m); };
 
-const src = fs.readFileSync(__dirname + '/../js/hit_test.js', 'utf8');
+const src = fs.readFileSync(__dirname + '/../js/hit_test.js', 'utf8').replace(/\r\n/g, '\n');
 const start = src.indexOf('function hitTestJunction(');
 const end = src.indexOf('\n}', start) + 2;
 const fnSrc = src.slice(start, end);
@@ -122,7 +122,7 @@ console.log('【ロックされたレイヤーは丸も文字もヒットしな�
 
 console.log('【draw.jsの描画式と一致していること(回帰防止)】');
 {
-  const drawSrc = fs.readFileSync(__dirname + '/../js/draw.js', 'utf8');
+  const drawSrc = fs.readFileSync(__dirname + '/../js/draw.js', 'utf8').replace(/\r\n/g, '\n');
   const drawFn = drawSrc.slice(drawSrc.indexOf('function drawJunctionEl('), drawSrc.indexOf('function drawJunctionEl(') + 3000);
   ok(drawFn.includes('el.x + r + 4 + (el.labelOffX||0)'),
      '端子番号の位置式が現在もdraw.js側と同じ(前提が崩れていない)');

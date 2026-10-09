@@ -32,8 +32,8 @@ const sandbox = {
   getDef: () => ({}),
 };
 vm.createContext(sandbox);
-vm.runInContext(fs.readFileSync(__dirname + '/../js/report.js', 'utf8'), sandbox);
-vm.runInContext(fs.readFileSync(__dirname + '/../js/conn_table.js', 'utf8'), sandbox);
+vm.runInContext(fs.readFileSync(__dirname + '/../js/report.js', 'utf8').replace(/\r\n/g, '\n'), sandbox);
+vm.runInContext(fs.readFileSync(__dirname + '/../js/conn_table.js', 'utf8').replace(/\r\n/g, '\n'), sandbox);
 
 sandbox.state = {
   G: 10, pan: { x: 0, y: 0 }, zoom: 1,

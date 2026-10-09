@@ -10,7 +10,7 @@ const fs = require('fs');
 const vm = require('vm');
 let ng = 0;
 const eq = (a, b, m) => { if (JSON.stringify(a) !== JSON.stringify(b)) { ng++; console.log('  NG', m, '期待', JSON.stringify(b), '実際', JSON.stringify(a)); } else console.log('  OK', m); };
-const R = f => fs.readFileSync(__dirname + '/../' + f, 'utf8');
+const R = f => fs.readFileSync(__dirname + '/../' + f, 'utf8').replace(/\r\n/g, '\n');
 
 const D = (name, files) => ({ kind: 'directory', name, async *entries() { for (const n of files) yield [n, { kind: 'file', name: n }]; }, async queryPermission() { return 'granted'; }, async requestPermission() { return 'granted'; } });
 const idb = new Map();

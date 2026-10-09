@@ -28,7 +28,7 @@ const eq = (a, b, m) => {
 // 切り出しは「関数定義をそのままの文字列で取り出す」方式なので、実コードと
 // 同じものを検証している。
 // ------------------------------------------------------------------
-const src = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8');
+const src = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8').replace(/\r\n/g, '\n');
 const grab = (name) => {
   const start = src.indexOf(`function ${name}(`);
   if (start < 0) throw new Error(`関数 ${name} が見つかりません`);
@@ -51,9 +51,9 @@ vm.runInContext(
   sandbox
 );
 // 型式の反映はデバイス台帳(js/devices.js)を通る(2026-09-30)。本物を読み込む
-{ const rep = fs.readFileSync(__dirname + '/../js/report.js', 'utf8'); const i = rep.indexOf('function normalizeRef(');
+{ const rep = fs.readFileSync(__dirname + '/../js/report.js', 'utf8').replace(/\r\n/g, '\n'); const i = rep.indexOf('function normalizeRef(');
   vm.runInContext(rep.slice(i, rep.indexOf('\n}', i) + 2), sandbox);
-  vm.runInContext(fs.readFileSync(__dirname + '/../js/devices.js', 'utf8'), sandbox); }
+  vm.runInContext(fs.readFileSync(__dirname + '/../js/devices.js', 'utf8').replace(/\r\n/g, '\n'), sandbox); }
 
 // ------------------------------------------------------------------
 console.log('【collectDeviceInfo: 端子台の端子番号を「仕様」として拾わない】');

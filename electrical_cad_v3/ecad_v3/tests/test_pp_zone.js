@@ -6,7 +6,7 @@ const fs = require('fs');
 const vm = require('vm');
 let ng = 0;
 const ok = (c, m) => { if (!c) { ng++; console.log('  NG', m); } else console.log('  OK', m); };
-const R = f => fs.readFileSync(__dirname + '/../' + f, 'utf8');
+const R = f => fs.readFileSync(__dirname + '/../' + f, 'utf8').replace(/\r\n/g, '\n');
 const U = R('js/ui.js');
 const sb = {};
 vm.createContext(sb);

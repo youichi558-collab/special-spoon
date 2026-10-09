@@ -38,8 +38,8 @@ function cut(src, head) {
   if (s < 0) throw new Error('関数が見つからない: ' + head);
   return src.slice(s, src.indexOf('\n}', s) + 2);
 }
-const editSrc = fs.readFileSync(__dirname + '/../js/edit.js', 'utf8');
-const drawSrc = fs.readFileSync(__dirname + '/../js/draw.js', 'utf8');
+const editSrc = fs.readFileSync(__dirname + '/../js/edit.js', 'utf8').replace(/\r\n/g, '\n');
+const drawSrc = fs.readFileSync(__dirname + '/../js/draw.js', 'utf8').replace(/\r\n/g, '\n');
 const fnSrc = [
   cut(editSrc, 'function expandSelToGroups('),
   cut(editSrc, 'function selExpandMessage('),

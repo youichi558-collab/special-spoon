@@ -23,7 +23,7 @@ let ng = 0;
 const ok = (cond, m) => { if (!cond) { ng++; console.log('  NG', m); } else console.log('  OK', m); };
 const near = (a, b, m, tol = 1e-9) => ok(Math.abs(a - b) <= tol, `${m} (期待 ${b}, 実際 ${a})`);
 
-const uiSrc = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8');
+const uiSrc = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8').replace(/\r\n/g, '\n');
 const grab = (name) => {
   const start = uiSrc.indexOf(`function ${name}(`);
   if (start < 0) throw new Error(`関数 ${name} が見つかりません`);

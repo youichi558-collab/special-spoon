@@ -11,7 +11,7 @@ const fs = require('fs');
 const vm = require('vm');
 let ng = 0;
 const eq = (a, b, m) => { if (JSON.stringify(a) !== JSON.stringify(b)) { ng++; console.log('  NG', m, '期待', JSON.stringify(b), '実際', JSON.stringify(a)); } else console.log('  OK', m); };
-const E = fs.readFileSync(__dirname + '/../js/edit.js', 'utf8');
+const E = fs.readFileSync(__dirname + '/../js/edit.js', 'utf8').replace(/\r\n/g, '\n');
 const pick = re => { const m = E.match(re); if (!m) throw new Error('見つからない ' + re); return m[0]; };
 
 // 文字幅は「文字数×サイズ×0.6」(bold は 0.7)で測る作り物
@@ -78,7 +78,7 @@ const mk = () => {
   const at = pick(/function alignTexts\(\) \{[\s\S]{0,400}/);
   eq(/_symTextItems\(el\)\.length\);\n  if \(syms\.length\) \{ alignSymTexts\(syms\); return; \}/.test(at), true, '★シンボル(文字を出しているもの)を選んでいれば alignSymTexts');
   eq(/const texts = state\.elements\.filter\(el => state\.sel\.els\.has\(el\.id\) && el\.type === 'text'\);/.test(at), true, '独立テキストの揃えはそのまま残す');
-  eq(/<input[^>]*id="pp-lalign"|labelAlign/.test(fs.readFileSync(__dirname + '/../js/ui.js', 'utf8')), true, 'プロパティの仕様の「文字揃え」も残す');
+  eq(/<input[^>]*id="pp-lalign"|labelAlign/.test(fs.readFileSync(__dirname + '/../js/ui.js', 'utf8').replace(/\r\n/g, '\n')), true, 'プロパティの仕様の「文字揃え」も残す');
 
   console.log(ng ? `\nNG ${ng} 件` : '\nすべてOK');
   process.exit(ng ? 1 : 0);

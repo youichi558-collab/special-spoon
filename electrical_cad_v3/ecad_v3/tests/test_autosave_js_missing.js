@@ -27,8 +27,8 @@ let ng = 0;
 const ok = (cond, m) => { if (!cond) { ng++; console.log('  NG', m); } else console.log('  OK', m); };
 
 const root = path.join(__dirname, '..');
-const src  = fs.readFileSync(path.join(root, 'js/autosave.js'), 'utf8');
-const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const src  = fs.readFileSync(path.join(root, 'js/autosave.js'), 'utf8').replace(/\r\n/g, '\n');
+const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
 
 // index.html が読み込む自前のJS一覧(他所のライブラリは除く)
 const THIRD = ['jszip.min.js'];   // jspdf は 2026-10-09 に消した(画像の PDF をやめた)
@@ -43,13 +43,13 @@ console.log('  ← 付け忘れると、そのファイルは常に「欠けて�
   const noMark = ourFiles.filter(f => {
     const p = path.join(root, 'js', f);
     if (!fs.existsSync(p)) return true;
-    return !fs.readFileSync(p, 'utf8').includes(`__ecadLoaded`);
+    return !fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n').includes(`__ecadLoaded`);
   });
   ok(noMark.length === 0, `全ファイルに目印がある${noMark.length ? '（無い: ' + noMark.join(', ') + '）' : ''}`);
 
   // 目印に書いた名前が、タグのファイル名と一致しているか(コピペ間違いの検出)
   const wrongName = ourFiles.filter(f => {
-    const s = fs.readFileSync(path.join(root, 'js', f), 'utf8');
+    const s = fs.readFileSync(path.join(root, 'js', f), 'utf8').replace(/\r\n/g, '\n');
     return !s.includes(`['${f}'] = 1`);
   });
   ok(wrongName.length === 0, `目印の名前がファイル名と一致${wrongName.length ? '（不一致: ' + wrongName.join(', ') + '）' : ''}`);

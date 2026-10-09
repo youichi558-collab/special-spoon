@@ -24,9 +24,9 @@ const eq = (a, b, m) => {
 };
 const ok = (cond, m) => { if (!cond) { ng++; console.log('  NG', m); } else console.log('  OK', m); };
 
-const SRC = fs.readFileSync(__dirname + '/../js/parts_db.js', 'utf8');
+const SRC = fs.readFileSync(__dirname + '/../js/parts_db.js', 'utf8').replace(/\r\n/g, '\n');
 const BANNER_SRC = (() => {
-  const m = fs.readFileSync(__dirname + '/../js/state.js', 'utf8')
+  const m = fs.readFileSync(__dirname + '/../js/state.js', 'utf8').replace(/\r\n/g, '\n')
     .match(/function showTopBanner\([\s\S]*?\n\}/);
   if (!m) throw new Error('js/state.js に showTopBanner が見つかりません');
   return m[0];

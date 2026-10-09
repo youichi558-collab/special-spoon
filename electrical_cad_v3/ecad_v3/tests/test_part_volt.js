@@ -2,7 +2,7 @@
 //   node tests/test_part_volt.js
 // js/ui.js から実装を読み込んで実行するので、実装を変えたらここも自動で追従する。
 const fs=require('fs');
-const ui=fs.readFileSync(__dirname+'/../js/ui.js','utf8');
+const ui=fs.readFileSync(__dirname+'/../js/ui.js','utf8').replace(/\r\n/g, '\n');
 const pick=(re)=>{const m=ui.match(re);if(!m)throw new Error('実装が見つかりません: '+re);return m[0];};
 const IMPL=[
   pick(/const COIL_VOLT_TYPES = \[[\s\S]*?\];/),

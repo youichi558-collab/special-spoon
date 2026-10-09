@@ -38,11 +38,11 @@ const sandbox = {
   getDef: () => ({ w: 20 }), escH: require('./_esch.js').escH,
 };
 vm.createContext(sandbox);
-vm.runInContext(fs.readFileSync(__dirname + '/../js/report.js', 'utf8'), sandbox);
+vm.runInContext(fs.readFileSync(__dirname + '/../js/report.js', 'utf8').replace(/\r\n/g, '\n'), sandbox);
 // CSVのファイル名は js/edit.js の _csvName(図面名_用途.csv) をそのまま使う
-{ const e = fs.readFileSync(__dirname + '/../js/edit.js', 'utf8'); const s = e.indexOf('function _csvName(');
+{ const e = fs.readFileSync(__dirname + '/../js/edit.js', 'utf8').replace(/\r\n/g, '\n'); const s = e.indexOf('function _csvName(');
   vm.runInContext(e.slice(s, e.indexOf('\n}', s) + 2), sandbox); }
-vm.runInContext(fs.readFileSync(__dirname + '/../js/conn_table.js', 'utf8'), sandbox);
+vm.runInContext(fs.readFileSync(__dirname + '/../js/conn_table.js', 'utf8').replace(/\r\n/g, '\n'), sandbox);
 
 // 2ページぶん。端子は端子台(junction)とカスタムシンボルの両方を用意する。
 sandbox.state = {
@@ -194,15 +194,15 @@ console.log('【未接続の端子: 接続チェックと同じ作り(全ペー�
   domEls['report-csv-btn'].onclick();
   ok(lastCsv.content.includes('"MC1:14","未接続の端子(配線の端が来ていない)"') && lastCsv.content.includes('"MC2:14"'), 'CSVの末尾にも未接続の端子が出る');
   // ツールバーの「⚠未接続」: 全ページの結果を持ち、接続チェックの表を開く(alertは出さない)
-  vm.runInContext(fs.readFileSync(__dirname + '/../js/conn_check.js', 'utf8'), sandbox);
+  vm.runInContext(fs.readFileSync(__dirname + '/../js/conn_check.js', 'utf8').replace(/\r\n/g, '\n'), sandbox);
   let alerted = 0; sandbox.alert = () => { alerted++; };
   sandbox.syncUnconnectedBtn = () => {}; sandbox.state.showUnconnected = false; sandbox.state._unconnectedResults = [];
   domEls['report-title'].textContent = '';
   sandbox.runUnconnectedCheck();
   ok(sandbox.state.showUnconnected === true && sandbox.state._unconnectedResults.length === 2, 'ボタンで結果を持ち、マーカー表示をONにする');
   ok(domEls['report-title'].textContent === '接続チェック' && alerted === 0, '一覧(接続チェックの表)を開く。alertは出さない');
-  ok(fs.readFileSync(__dirname + '/../js/draw.js', 'utf8').includes('r.pageIdx === state.currentPage'), 'マーカーは今のページの分だけ描く(結果は全ページ分を持つ)');
-  ok(!/Math\.hypot|cS\.terminals/.test(fs.readFileSync(__dirname + '/../js/conn_check.js', 'utf8').replace(/\/\/.*$/gm, '')), 'conn_check.js に独自の座標計算は無い(計算は conn_table.js に1つ)');
+  ok(fs.readFileSync(__dirname + '/../js/draw.js', 'utf8').replace(/\r\n/g, '\n').includes('r.pageIdx === state.currentPage'), 'マーカーは今のページの分だけ描く(結果は全ページ分を持つ)');
+  ok(!/Math\.hypot|cS\.terminals/.test(fs.readFileSync(__dirname + '/../js/conn_check.js', 'utf8').replace(/\r\n/g, '\n').replace(/\/\/.*$/gm, '')), 'conn_check.js に独自の座標計算は無い(計算は conn_table.js に1つ)');
 }
 
 console.log(ng ? `\n${ng}件失敗` : '\n全て成功');

@@ -5,8 +5,8 @@
 // 書き出す(2026-10-06)。旧実装は固定色(CIRCUIT=2黄・FRAME=4水色)が優先され、
 // TrueViewでカラー印刷すると画面と違う色で出ていた。実コードを切り出して検証する。
 const fs=require('fs');
-const dx=fs.readFileSync(__dirname+'/../js/dxf_export.js','utf8');
-const ac=fs.readFileSync(__dirname+'/../js/aci_colors.js','utf8');
+const dx=fs.readFileSync(__dirname+'/../js/dxf_export.js','utf8').replace(/\r\n/g, '\n');
+const ac=fs.readFileSync(__dirname+'/../js/aci_colors.js','utf8').replace(/\r\n/g, '\n');
 const pick=(s,re)=>{const m=s.match(re);if(!m)throw new Error('見つからない:'+re);return m[0];};
 const mapSrc=pick(dx,/const DXF_LAYER_MAP = \{[\s\S]*?\};\nfunction dxfLayer\([^\n]*/);
 const defsSrc=pick(dx,/const LAYER_DEFS = \[[\s\S]*?\];/);

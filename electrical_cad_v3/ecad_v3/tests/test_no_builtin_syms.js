@@ -23,7 +23,7 @@
 const fs = require('fs');
 let ng = 0;
 function ok(cond, msg) { console.log((cond ? '  OK  ' : '  NG  ') + msg); if (!cond) ng++; }
-const R = f => fs.readFileSync(__dirname + '/../' + f, 'utf8');
+const R = f => fs.readFileSync(__dirname + '/../' + f, 'utf8').replace(/\r\n/g, '\n');
 
 const STD = ['battery','ac','ground','resistor','capacitor','inductor','diode',
   'sw_no','sw_nc','timer_no','timer_nc','push_no','coil','timer_coil','motor',

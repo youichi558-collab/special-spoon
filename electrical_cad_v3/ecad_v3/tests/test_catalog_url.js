@@ -29,7 +29,7 @@ const root = path.join(__dirname, '..');
 console.log('【http/https 以外はリンクにしない】');
 console.log('  ← 部品DBは外から来るCSVを読む。javascript: を図面側で開かせない');
 {
-  const ui = fs.readFileSync(path.join(root, 'js/ui.js'), 'utf8');
+  const ui = fs.readFileSync(path.join(root, 'js/ui.js'), 'utf8').replace(/\r\n/g, '\n');
   const hasGuard = /\/\^https\?:\\\/\\\/\/\.test\(p\.catalogUrl/.test(ui);
   ok(hasGuard, 'ui.js が catalogUrl を http/https で絞っている');
   ok(/rel="noopener noreferrer"/.test(ui), 'リンクに rel="noopener noreferrer" が付いている');
@@ -47,7 +47,7 @@ console.log('  ← 部品DBは外から来るCSVを読む。javascript: を図�
 // ---- CSV取り込み側 ----
 console.log('【CSVの列の読み方】');
 {
-  const pp = fs.readFileSync(path.join(root, 'js/parts_page.js'), 'utf8');
+  const pp = fs.readFileSync(path.join(root, 'js/parts_page.js'), 'utf8').replace(/\r\n/g, '\n');
   ok(/const \[maker, ref, type, volt, amp, terminals, contacts, note, source, catalogUrl\]/.test(pp),
      '10列目を catalogUrl として受けている');
   const n = (pp.match(/catalogUrl:/g) || []).length;
@@ -59,7 +59,7 @@ console.log('【CSVの列の読み方】');
 console.log('【列数の検証が「8列以上」になっている】');
 console.log('  ← 仕様は2026-09-03に「ちょうど8列」から変わったのに、生成側が追随していなかった');
 {
-  const g = fs.readFileSync(path.join(root, 'tools/generate_catalog_index.py'), 'utf8');
+  const g = fs.readFileSync(path.join(root, 'tools/generate_catalog_index.py'), 'utf8').replace(/\r\n/g, '\n');
   ok(/len\(r\) < 8/.test(g), '8列未満だけを異常として扱う');
   ok(!/len\(r\) != 8/.test(g), '「ちょうど8列」の判定が残っていない');
 }
@@ -69,7 +69,7 @@ console.log('【mitsubishi_inverter_batch1.csv が仕様どおり】');
 {
   const p = path.join(root, 'catalog_pending/mitsubishi_inverter_batch1.csv');
   ok(fs.existsSync(p), 'ファイルがある');
-  const lines = fs.readFileSync(p, 'utf8').split('\n').filter(l => l.trim());
+  const lines = fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n').split('\n').filter(l => l.trim());
   ok(lines.length === 30, `30型番ある（実際 ${lines.length}）`);
 
   // csvの素朴なパース(クォート対応)
@@ -102,7 +102,7 @@ console.log('【mitsubishi_inverter_batch1.csv が仕様どおり】');
   ok(refs.size === 30, `型番が重複していない（${refs.size}種）`);
 
   // 種別コードが CAD 側に存在すること
-  const pt = fs.readFileSync(path.join(root, 'js/part_types.js'), 'utf8');
+  const pt = fs.readFileSync(path.join(root, 'js/part_types.js'), 'utf8').replace(/\r\n/g, '\n');
   ok(/'inverter'/.test(pt), 'inverter が PART_TYPE_CODES にある');
 }
 

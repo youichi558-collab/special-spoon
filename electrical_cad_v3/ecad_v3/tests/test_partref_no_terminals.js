@@ -7,7 +7,7 @@
 // 実装(js/ui.js の onPartRefChanged)をそのまま動かして確かめる。
 const fs = require('fs');
 const vm = require('vm');
-const ui = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8');
+const ui = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8').replace(/\r\n/g, '\n');
 const grab = (name) => {
   const s = ui.indexOf(`function ${name}(`);
   if (s < 0) throw new Error(`関数 ${name} が見つかりません`);

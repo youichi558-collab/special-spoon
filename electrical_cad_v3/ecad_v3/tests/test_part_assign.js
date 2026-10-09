@@ -5,7 +5,7 @@
 // 以前は挙動を書き写したテストにしていたため、pushUndo()という
 // 存在しない関数を呼んでいたバグ(例外で描画されない)を見逃した。
 const fs=require('fs');
-const ui=fs.readFileSync(__dirname+'/../js/ui.js','utf8');
+const ui=fs.readFileSync(__dirname+'/../js/ui.js','utf8').replace(/\r\n/g, '\n');
 const pick=re=>{const m=ui.match(re);if(!m)throw new Error('見つからない: '+re);return m[0];};
 
 // --- 依存の最小スタブ ---

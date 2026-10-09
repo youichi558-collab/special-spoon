@@ -39,7 +39,7 @@ const ok = (cond, m) => { if (!cond) { ng++; console.log('  NG', m); } else cons
 // ------------------------------------------------------------------
 // ①②: js/ui.js の該当関数を実コードのままevalして検証
 // ------------------------------------------------------------------
-const uiSrc = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8');
+const uiSrc = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8').replace(/\r\n/g, '\n');
 const grab = (name) => {
   const start = uiSrc.indexOf(`function ${name}(`);
   if (start < 0) throw new Error(`関数 ${name} が見つかりません`);
@@ -144,7 +144,7 @@ console.log('【④js/symbols.js: 配置済みシンボルの本描画がlineSty
     applyLineStyle: (ctx, style, zoom) => { styleCalls.push(style); },
   };
   vm.createContext(symSandbox);
-  vm.runInContext(fs.readFileSync(__dirname + '/../js/symbols.js', 'utf8'), symSandbox);
+  vm.runInContext(fs.readFileSync(__dirname + '/../js/symbols.js', 'utf8').replace(/\r\n/g, '\n'), symSandbox);
   symSandbox.drawSym('my_sym', 0, 0, false, 0, false, false, '#000', null, null, 1);
   eq(styleCalls, ['dash', undefined], '図形ごとにapplyLineStyleへ各shapeのlineStyleが渡る');
   ok(dashResetCount >= 1, 'ループ後にsetLineDash([])でリセットする(後続描画への漏れ防止)');
@@ -153,7 +153,7 @@ console.log('【④js/symbols.js: 配置済みシンボルの本描画がlineSty
 // ------------------------------------------------------------------
 console.log('【⑤js/dxf_export.js: customSyms出力でlineStyleがDXF線種名に変換されて渡る】');
 {
-  const src = fs.readFileSync(__dirname + '/../js/dxf_export.js', 'utf8');
+  const src = fs.readFileSync(__dirname + '/../js/dxf_export.js', 'utf8').replace(/\r\n/g, '\n');
   const start = src.indexOf('  customSyms.forEach((s,i)=>{', src.indexOf('  customSyms.forEach((s,i)=>{') + 1);
   if (start < 0) throw new Error('該当ブロックが見つかりません');
   const end = src.indexOf('\n  });', start) + 6;

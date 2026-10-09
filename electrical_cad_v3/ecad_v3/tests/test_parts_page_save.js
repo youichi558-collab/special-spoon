@@ -25,7 +25,7 @@ const eq = (a, b, m) => {
 };
 const ok = (cond, m) => { if (!cond) { ng++; console.log('  NG', m); } else console.log('  OK', m); };
 
-const SRC = fs.readFileSync(__dirname + '/../js/parts_page.js', 'utf8');
+const SRC = fs.readFileSync(__dirname + '/../js/parts_page.js', 'utf8').replace(/\r\n/g, '\n');
 
 const mkParts = n => Array.from({ length: n }, (_, i) => ({ ref: 'P' + i, maker: 'M' }));
 

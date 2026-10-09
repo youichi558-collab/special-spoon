@@ -9,11 +9,11 @@ const vm = require('vm');
 let ng = 0;
 const eq = (a, b, m) => { if (JSON.stringify(a) !== JSON.stringify(b)) { ng++; console.log('  NG', m, '期待', JSON.stringify(b), '実際', JSON.stringify(a)); } else console.log('  OK', m); };
 
-const src = fs.readFileSync(__dirname + '/../js/hit_test.js', 'utf8');
+const src = fs.readFileSync(__dirname + '/../js/hit_test.js', 'utf8').replace(/\r\n/g, '\n');
 const s = src.indexOf('function hitTest('), e = src.indexOf('\nfunction hitTestWire(');
-const pg = JSON.parse(fs.readFileSync(__dirname + '/../drawings/仕様２1002_Sheet3.json', 'utf8')).pages[0];
+const pg = JSON.parse(fs.readFileSync(__dirname + '/../drawings/仕様２1002_Sheet3.json', 'utf8').replace(/\r\n/g, '\n')).pages[0];
 const defs = {};   // 図面に入っているシンボルの写し(大きさだけ使う)
-for (const d of JSON.parse(fs.readFileSync(__dirname + '/../drawings/仕様２1002_Sheet3.json', 'utf8')).customSymbols || []) defs[d.type] = d;
+for (const d of JSON.parse(fs.readFileSync(__dirname + '/../drawings/仕様２1002_Sheet3.json', 'utf8').replace(/\r\n/g, '\n')).customSymbols || []) defs[d.type] = d;
 const sb = { console, LAYERS: [], state: { zoom: 1, elements: pg.elements, showPartRef: true }, getDef: t => defs[t] || null, distToSeg() { return Infinity; } };
 vm.createContext(sb);
 vm.runInContext(src.slice(s, e), sb);

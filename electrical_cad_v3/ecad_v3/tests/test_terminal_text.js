@@ -2,7 +2,7 @@
 const fs=require('fs'), vm=require('vm');
 let ng=0; const eq=(a,b,m)=>{ if(JSON.stringify(a)!==JSON.stringify(b)){ng++;console.log('  NG',m,'期待',JSON.stringify(b),'実際',JSON.stringify(a));}else console.log('  OK',m); };
 
-const src=fs.readFileSync(__dirname+'/../js/draw.js','utf8');
+const src=fs.readFileSync(__dirname+'/../js/draw.js','utf8').replace(/\r\n/g, '\n');
 const m=src.match(/function drawJunctionEl\([\s\S]*?\n\}/);
 const drawn=[];
 const ctx=new Proxy({},{get:(t,p)=>{ if(p==='fillText') return (txt,x,y)=>drawn.push({txt,x,y,font:t.font}); if(p in t) return t[p]; return ()=>{}; },set:(t,p,v)=>{t[p]=v;return true;}});

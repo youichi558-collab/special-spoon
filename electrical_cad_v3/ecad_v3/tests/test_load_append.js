@@ -89,7 +89,7 @@ console.log('\n【呼び出し側】');
   ok(/_askLoadMode\(\{ name, filePages/.test(edit) && /mode === 'append'/.test(edit) && /appendProjectData\(d\)/.test(edit), 'loadProject が、選ばれた方法で置き換え／追加を呼び分ける');
   ok(/const \{ fixedIds, zeroWires \} = applyProjectData\(d\)/.test(edit), '置き換えは従来どおり applyProjectData');
   ok(/const cur = state\.page, wasDirty = cur\.dirty;\s*pushH\(\);\s*cur\.dirty = wasDirty;/.test(edit), '追加では今のページに未保存マークを付けない');
-  const backup = fs.readFileSync(__dirname + '/../js/backup.js', 'utf8');
+  const backup = fs.readFileSync(__dirname + '/../js/backup.js', 'utf8').replace(/\r\n/g, '\n');
   ok(/applyProjectData\(j\.data\)/.test(backup), 'バックアップの復元は、これまでどおり置き換え(applyProjectData)');
 }
 

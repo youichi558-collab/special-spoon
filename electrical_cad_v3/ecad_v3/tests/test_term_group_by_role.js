@@ -40,7 +40,7 @@ const vm = require('vm');
 let ng = 0;
 const ok = (cond, m) => { if (!cond) { ng++; console.log('  NG', m); } else console.log('  OK', m); };
 
-const src = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8');
+const src = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8').replace(/\r\n/g, '\n');
 const grab = (name) => {
   const start = src.indexOf(`function ${name}(`);
   if (start < 0) throw new Error(`関数 ${name} が見つかりません`);
@@ -294,14 +294,14 @@ console.log('    フラットなデータは今後も混ざるので、従来ど
     ok(!pat.includes(r), `★${r} を種別として復活させていない(接点は接点)`)
   );
 
-  const html = require('fs').readFileSync(__dirname + '/../index.html', 'utf8');
+  const html = require('fs').readFileSync(__dirname + '/../index.html', 'utf8').replace(/\r\n/g, '\n');
   ok((html.match(/value="tentative"/g) || []).length === 2,
      '仮設定が種別の選択肢2箇所(登録・端子編集)に揃っている');
   ['contact_thermal', 'contact_timer', 'contact_num', 'ctrl_in'].forEach(r =>
     ok(!html.includes(`value="${r}"`), `★${r} が選択肢に復活していない`)
   );
 
-  const rep = require('fs').readFileSync(__dirname + '/../js/report.js', 'utf8');
+  const rep = require('fs').readFileSync(__dirname + '/../js/report.js', 'utf8').replace(/\r\n/g, '\n');
   const roles = rep.match(/const REF_CONTACT_ROLES = \[([^\]]*)\]/)[1];
   ok(!/tentative/.test(roles), '仮設定は接点数に数えない');
   ['contact_thermal', 'contact_timer', 'contact_num'].forEach(r =>

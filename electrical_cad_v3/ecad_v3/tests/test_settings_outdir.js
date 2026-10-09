@@ -20,7 +20,7 @@ let confirmAsked = 0;
 const sb = { console, window: {}, document: { getElementById: id => (id === 's-hint' ? hintEl : null) },
   confirm: () => { confirmAsked++; return true; } };
 vm.createContext(sb);
-const SRC = fs.readFileSync(__dirname + '/../js/settings.js', 'utf8');
+const SRC = fs.readFileSync(__dirname + '/../js/settings.js', 'utf8').replace(/\r\n/g, '\n');
 vm.runInContext(SRC + '\nthis.__setLast = h => { _stLastHandle = h; }; this.__getLast = () => _stLastHandle;', sb);
 
 // ファイルの鍵の偽物
@@ -88,7 +88,7 @@ const abort = () => { const e = new Error('cancel'); e.name = 'AbortError'; thro
   console.log('\n【窓を開くまで待たない(押した直後に開く)】');
   { const body = SRC.slice(SRC.indexOf('async function stWriteOut('), SRC.indexOf('fh = await window.showSaveFilePicker(opt)'));
     eq((body.match(/await /g) || []).length, 0, 'stWriteOut は窓を開く前に await しない');
-    const edit = fs.readFileSync(__dirname + '/../js/edit.js', 'utf8');
+    const edit = fs.readFileSync(__dirname + '/../js/edit.js', 'utf8').replace(/\r\n/g, '\n');
     const sp = edit.slice(edit.indexOf('function saveProject(asNew)'), edit.indexOf('function saveAllProject()'));
     ok(/if \(!window\.showSaveFilePicker\) \{\s*const name = prompt\(/.test(sp), '保存: 窓が使えるときは名前の入力窓を先に出さない');
     // PDF は 2026-10-09 からベクター(ブラウザの印刷の窓で保存。js/pdf_vector.js)なので、ここ(保存の窓)は通らない

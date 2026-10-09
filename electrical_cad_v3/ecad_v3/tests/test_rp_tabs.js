@@ -137,7 +137,7 @@ console.log('\n【組み込み】');
   eq((s.match(/html \+= rpPaneClose\(\)/g) || []).length, 5, '5つとも閉じている(閉じ忘れると以降が崩れる)');
   ok(/pp-xshow[\s\S]*pp-xox[\s\S]*pp-xoy[\s\S]*pp-xmul/.test(s) && /el\.xrefHide = /.test(s) && /el\.xrefMul = /.test(s), 'CRタブの欄と、保存(applyRightPanel)がある');
   ok(/rpApplyTab\(\);/.test(s), '描画のあとに選択中のタブを反映する');
-  ok(/\.rp-pane\{display:none\}/.test(fs.readFileSync(__dirname + '/../css/style.css', 'utf8')), 'CSSで非選択のタブを隠す(DOMには残す)');
+  ok(/\.rp-pane\{display:none\}/.test(fs.readFileSync(__dirname + '/../css/style.css', 'utf8').replace(/\r\n/g, '\n')), 'CSSで非選択のタブを隠す(DOMには残す)');
 }
 
 console.log(ng ? `\n失敗 ${ng}件` : '\n全て成功');

@@ -20,7 +20,7 @@ vm.runInContext(['srContentBox', 'srRangeFit', 'srClipSeg', 'srClipArc', 'srClip
 const r2 = v => Math.round(v * 100) / 100;
 
 console.log('【範囲は図形全体を囲み、刻みに乗る】');
-const elb = JSON.parse(fs.readFileSync(__dirname + '/fixtures/elb_shapes.json', 'utf8'));
+const elb = JSON.parse(fs.readFileSync(__dirname + '/fixtures/elb_shapes.json', 'utf8').replace(/\r\n/g, '\n'));
 eq(sb.srRangeFit(elb.shapes, 5), { x1: -40, y1: -30, x2: 40, y2: 30 }, '漏電ブレーカー: 5刻み');
 eq(sb.srRangeFit(elb.shapes, 10), { x1: -40, y1: -30, x2: 40, y2: 30 }, '10刻み');
 eq(sb.srClipShapes(elb.shapes, sb.srRangeFit(elb.shapes, 5)).length, elb.shapes.length, '最初の範囲では何も切らない');
@@ -55,7 +55,7 @@ console.log('\n【登録するとき範囲で切り、外の端子は登録し�
   const fn = pick(/function saveCustomSymbol\(\)[\s\S]*?\n\}/);
   ok(/const shapesR = srClipShapes\(_srShapes, _srRange\);/.test(fn) && /shapes:shapesR, terminals:termsR/.test(fn), '★登録する図形は範囲で切ったもの');
   ok(/_srTerms\.filter\(t => _srIn\(_srRange, t\.x, t\.y\)\)/.test(fn), '範囲の外の端子は登録しない');
-  const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
+  const html = fs.readFileSync(__dirname + '/../index.html', 'utf8').replace(/\r\n/g, '\n');
   ok(/id="sr-rstep"[^>]*><option value="5">5<\/option><option value="10">10<\/option>/.test(html), '刻み 5/10 を選べる');
 }
 
@@ -66,7 +66,7 @@ console.log('\n【置き換えて登録(2026-10-05 盛田さん「a でいい」
   ok(/state\.customSymbols\[i\] = sym;/.test(fn) && /symStorePut\(\[sym\], \{ register: true \}\)/.test(fn), '★中身を置き換えて登録シンボルに書く(新しく増やさない)');
   ok(/confirm\(`「\$\{nm\}」をこの形に置き換えます。/.test(fn) && /symConfirmTermMove\(repType, repOld, termsR\)/.test(fn), '置き換える前に確かめ、端子の位置が変わるなら使っている数を見せる');
   ok(/symMovedNotice\(\{ \[type\]: repOld \}, null, true\)/.test(fn), '置き換えで端子の位置が変わったら、この画面の記号を知らせる');
-  const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
+  const html = fs.readFileSync(__dirname + '/../index.html', 'utf8').replace(/\r\n/g, '\n');
   ok(/<select id="sr-replace"[^>]*><option value="">新しいシンボルとして登録<\/option><\/select>/.test(html), '「登録のしかた」= 新しいシンボル/置き換える(新しい登録も残る)');
   ok(/srFillReplaceList\(\);/.test(pick(/function srClear\(\)[\s\S]*?\n\}/)), '登録画面を開くたびに置き換える先の一覧を作る');
 }

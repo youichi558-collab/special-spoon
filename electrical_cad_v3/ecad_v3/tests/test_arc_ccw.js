@@ -33,7 +33,7 @@ const ok = (cond, m) => { if (!cond) { ng++; console.log('  NG', m); } else cons
 // ------------------------------------------------------------------
 // ①②③④: js/ui.js の該当関数を実コードのままevalして検証
 // ------------------------------------------------------------------
-const uiSrc = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8');
+const uiSrc = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8').replace(/\r\n/g, '\n');
 const grab = (name) => {
   const start = uiSrc.indexOf(`function ${name}(`);
   if (start < 0) throw new Error(`関数 ${name} が見つかりません`);
@@ -119,7 +119,7 @@ console.log('【⑤js/symbols.js: 配置済みシンボルの本描画がccwを�
     applyLineStyle: () => {},
   };
   vm.createContext(symSandbox);
-  vm.runInContext(fs.readFileSync(__dirname + '/../js/symbols.js', 'utf8'), symSandbox);
+  vm.runInContext(fs.readFileSync(__dirname + '/../js/symbols.js', 'utf8').replace(/\r\n/g, '\n'), symSandbox);
   symSandbox.drawSym('my_breaker', 0, 0, false, 0, false, false, '#000', null, null, 1);
   eq(arcCalls.map(a => a.ccw), [true, false], '配置描画でも各弧のccwがそのまま使われる(固定falseにならない)');
 }

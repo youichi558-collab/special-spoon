@@ -5,7 +5,7 @@
 // 全部デバイスのみ、という使い方があるため、両者を独立して切れる必要がある。
 // 消すのではなく表示だけ切る(値を消すと部品表からも消えてしまう)。
 const fs=require('fs');
-const dr=fs.readFileSync(__dirname+'/../js/draw.js','utf8');
+const dr=fs.readFileSync(__dirname+'/../js/draw.js','utf8').replace(/\r\n/g, '\n');
 let ng=0;
 const eq=(a,b,m)=>{if(JSON.stringify(a)!==JSON.stringify(b)){ng++;console.log('  NG',m,'期待',JSON.stringify(b),'実際',JSON.stringify(a));}else console.log('  OK',m);};
 // 描画条件を実コードから取り出して評価

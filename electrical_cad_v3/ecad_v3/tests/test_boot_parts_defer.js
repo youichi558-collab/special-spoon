@@ -25,7 +25,7 @@
 const fs = require('fs');
 let ng = 0;
 const ok = (c, m) => { if (!c) { ng++; console.log('  NG ' + m); } else console.log('  OK ' + m); };
-const R = f => fs.readFileSync(__dirname + '/../' + f, 'utf8');
+const R = f => fs.readFileSync(__dirname + '/../' + f, 'utf8').replace(/\r\n/g, '\n');
 
 const boot = R('js/boot.js');
 // init() の中身(即時実行される部分)だけを取り出す

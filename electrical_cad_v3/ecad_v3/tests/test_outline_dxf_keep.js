@@ -27,7 +27,7 @@ const eq = (a, b, m) => {
 };
 const ok = (cond, m) => { if (!cond) { ng++; console.log('  NG', m); } else console.log('  OK', m); };
 
-const ui = fs.readFileSync(__dirname + '/../js/parts_page.js', 'utf8');
+const ui = fs.readFileSync(__dirname + '/../js/parts_page.js', 'utf8').replace(/\r\n/g, '\n');
 const pick = re => { const m = ui.match(re); if (!m) throw new Error('見つからない:' + re); return m[0]; };
 
 // ------------------------------------------------------------------

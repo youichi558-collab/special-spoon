@@ -58,7 +58,7 @@ const sandbox = {
   SR_GRID: 5,   // 実体は js/ui.js。ブラウザでは ui.js → pin_editor.js の順で読まれる
 };
 vm.createContext(sandbox);
-vm.runInContext(fs.readFileSync(__dirname + '/../js/pin_editor.js', 'utf8'), sandbox);
+vm.runInContext(fs.readFileSync(__dirname + '/../js/pin_editor.js', 'utf8').replace(/\r\n/g, '\n'), sandbox);
 
 // パネルを開く(実コードのopenPinEditorを実行。bbox計算・zoom計算等も本物を通す)
 sandbox.openPinEditor('testsym');
@@ -111,7 +111,7 @@ const state2 = {
 function getDef() { return {}; }
 const sandbox2 = { state: state2, getDef, console };
 vm.createContext(sandbox2);
-vm.runInContext(fs.readFileSync(__dirname + '/../js/conn_table.js', 'utf8'), sandbox2);
+vm.runInContext(fs.readFileSync(__dirname + '/../js/conn_table.js', 'utf8').replace(/\r\n/g, '\n'), sandbox2);
 
 // ケースA: 部品未割当(el.terminalsが空) → シンボル定義側のlabel('13','14')が出る
 const elNoAssign = { id: 'e1', type: 'contact_a_test', x: 0, y: 0, rot: 0, terminals: '' };

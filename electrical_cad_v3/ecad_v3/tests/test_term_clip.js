@@ -12,7 +12,7 @@ const vm = require('vm');
 let ng = 0;
 const eq = (a, b, m) => { if (JSON.stringify(a) !== JSON.stringify(b)) { ng++; console.log('  NG', m, '\n    期待', JSON.stringify(b), '\n    実際', JSON.stringify(a)); } else console.log('  OK', m); };
 const ok = (c, m) => eq(!!c, true, m);
-const R = f => fs.readFileSync(__dirname + '/../' + f, 'utf8');
+const R = f => fs.readFileSync(__dirname + '/../' + f, 'utf8').replace(/\r\n/g, '\n');
 const pick = (src, name) => { const i = src.indexOf('function ' + name + '('); if (i < 0) throw new Error('無い: ' + name); return src.slice(i, src.indexOf('\n}\n', i) + 2); };
 const r1 = pts => pts.map(pl => pl.map(p => [Math.round(p.x * 100) / 100, Math.round(p.y * 100) / 100]));
 

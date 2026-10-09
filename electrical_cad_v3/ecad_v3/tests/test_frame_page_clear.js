@@ -8,7 +8,7 @@ const fs = require('fs');
 const vm = require('vm');
 let ng = 0;
 const eq = (a, b, m) => { if (JSON.stringify(a) !== JSON.stringify(b)) { ng++; console.log('  NG', m, '\n    期待', JSON.stringify(b), '\n    実際', JSON.stringify(a)); } else console.log('  OK', m); };
-const src = fs.readFileSync(__dirname + '/../js/frame.js', 'utf8');
+const src = fs.readFileSync(__dirname + '/../js/frame.js', 'utf8').replace(/\r\n/g, '\n');
 const pick = name => { const i = src.indexOf('function ' + name + '('); return src.slice(i, src.indexOf('\n}\n', i) + 2); };
 
 const vals = { 'frame-scale': '2', 'frame-w': '420', 'frame-h': '297', 'frame-mg': '10', 'frame-th': '30', 'frame-cols': '12', 'frame-rows': '4', 'frame-tbtpl': 'standard' };

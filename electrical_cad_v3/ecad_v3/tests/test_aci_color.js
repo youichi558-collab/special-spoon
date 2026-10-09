@@ -5,7 +5,7 @@
 // 変換していたため、メーカー外形図(全実体がレイヤー0=ACI 7)を取り込むと
 // 図形が純白になり「白く壊れて見える」状態だった。
 const fs=require('fs');
-eval(fs.readFileSync(__dirname+'/../js/aci_colors.js','utf8'));
+eval(fs.readFileSync(__dirname+'/../js/aci_colors.js','utf8').replace(/\r\n/g, '\n'));
 let ng=0;
 const eq=(a,b,m)=>{if(a!==b){ng++;console.log('  NG',m,'期待',b,'実際',a);}else console.log('  OK',m);};
 console.log('【ACI 7 は背景に応じた色】');

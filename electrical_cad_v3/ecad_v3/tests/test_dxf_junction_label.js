@@ -4,8 +4,8 @@
 // 画面(draw.js)は左揃え・基準線 y+4。DXFだけ中央揃え・+4なしで、番号が左上にずれて
 // 線番に重なっていた(2026-10-06、TrueViewのPDF)。DXFの実コードを切り出し、画面と同じ位置・揃えか見る。
 const fs=require('fs');
-const dx=fs.readFileSync(__dirname+'/../js/dxf_export.js','utf8');
-const dr=fs.readFileSync(__dirname+'/../js/draw.js','utf8');
+const dx=fs.readFileSync(__dirname+'/../js/dxf_export.js','utf8').replace(/\r\n/g, '\n');
+const dr=fs.readFileSync(__dirname+'/../js/draw.js','utf8').replace(/\r\n/g, '\n');
 const m=dx.match(/\n\s*(if\(el\.label && el\.style!=='dot'\) eText\([^\n]*)/);
 if(!m)throw new Error('DXFの端子番号の処理が見つからない');
 const dm=dr.match(/ctx\.textAlign = '(\w+)';\s*const lx = ([^;]+);\s*const ly = ([^;]+);/);

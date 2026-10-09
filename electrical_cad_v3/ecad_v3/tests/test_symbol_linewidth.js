@@ -5,7 +5,7 @@
 // 要素の線幅 > シンボル内図形の線幅 > 既定 の順で使われることを、
 // js/ui.js の実コードを動かして確認する。
 const fs=require('fs');
-const ui=fs.readFileSync(__dirname+'/../js/ui.js','utf8');
+const ui=fs.readFileSync(__dirname+'/../js/ui.js','utf8').replace(/\r\n/g, '\n');
 const pick=re=>{const m=ui.match(re);if(!m)throw new Error('見つからない:'+re);return m[0];};
 eval([pick(/const LINE_WIDTHS = \[[\s\S]*?\];/).replace('const','var'),
       pick(/const DEFAULT_LINE_WIDTH = [\d.]+;/).replace('const','var'),

@@ -44,8 +44,8 @@ const sandbox = {
   CONN_TABLE_TOL: 5,
 };
 vm.createContext(sandbox);
-vm.runInContext(fs.readFileSync(__dirname + '/../js/report.js', 'utf8'), sandbox);
-vm.runInContext(fs.readFileSync(__dirname + '/../js/conn_table.js', 'utf8'), sandbox);
+vm.runInContext(fs.readFileSync(__dirname + '/../js/report.js', 'utf8').replace(/\r\n/g, '\n'), sandbox);
+vm.runInContext(fs.readFileSync(__dirname + '/../js/conn_table.js', 'utf8').replace(/\r\n/g, '\n'), sandbox);
 
 // 端子2台ぶん。TB1=3点(型式そろい)、TB2=2点(型式バラバラ)
 const mkState = () => ({

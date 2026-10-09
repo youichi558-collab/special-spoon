@@ -15,8 +15,8 @@ const vm = require('vm');
 let ng = 0;
 const ok = (c, m) => { if (!c) { ng++; console.log('  NG', m); } else console.log('  OK', m); };
 
-const ui  = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8');
-const dxf = fs.readFileSync(__dirname + '/../js/dxf_export.js', 'utf8');
+const ui  = fs.readFileSync(__dirname + '/../js/ui.js', 'utf8').replace(/\r\n/g, '\n');
+const dxf = fs.readFileSync(__dirname + '/../js/dxf_export.js', 'utf8').replace(/\r\n/g, '\n');
 const grab = (name) => {
   const s = ui.indexOf(`function ${name}(`);
   return ui.slice(s, ui.indexOf('\n}', s) + 2);
