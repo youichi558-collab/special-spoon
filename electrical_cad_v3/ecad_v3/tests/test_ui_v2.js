@@ -94,5 +94,23 @@ console.log('\n【メニューのドロップダウンを縦に(2026-10-09 Claud
   ok(/#v2-menu-pop \.rb:active\{transform:none;\}/.test(C), '押しても行が縮まない');
 }
 
+console.log('\n【設定パネル: もう一度押すか、他のタブ/メニューを開いたら閉じる(2026-10-09 盛田さん)】');
+{
+  const sb = { document: { getElementById: () => sb.fp }, closeFP: id => { sb.closed = id; sb.fp.classList.on = false; } };
+  sb.fp = { classList: { on: false, contains() { return this.on; } } };
+  vm.createContext(sb);
+  vm.runInContext(S.slice(S.indexOf('function toggleSettingsPanel'), S.indexOf('function openSettingsPanel')) + '\nfunction openSettingsPanel(){ opened = (typeof opened === "number" ? opened : 0) + 1; fp.classList.on = true; }', sb);
+  const eq = (a, b, m) => ok(JSON.stringify(a) === JSON.stringify(b), m + ' ' + JSON.stringify(a));
+  sb.toggleSettingsPanel(); eq([sb.opened, sb.fp.classList.on], [1, true], '閉じていれば開く');
+  sb.toggleSettingsPanel(); eq([sb.opened, sb.closed, sb.fp.classList.on], [1, 'settings-p', false], '★開いていればもう一度押すと閉じる');
+  ok(/switchRibbon\('settings',this\);toggleSettingsPanel\(\)">設定</.test(H), '今の画面: リボンの「設定」タブはもう一度押すと閉じる');
+  ok(/if \(name !== 'settings' && typeof closeSettingsPanel === 'function'\) closeSettingsPanel\(\);/.test(U), '今の画面: 他のタブを開いたら閉じる');
+  const o = V.slice(V.indexOf('function uiV2OpenMenu'), V.indexOf('function uiV2CloseMenu'));
+  ok(/dataset\.act === 'settings'\) \{ if \(typeof toggleSettingsPanel === 'function'\) toggleSettingsPanel\(\); return; \}\n\s*if \(typeof closeSettingsPanel === 'function'\) closeSettingsPanel\(\);/.test(o), '新しい画面: 「設定」はもう一度押すと閉じる・他のメニューを開いたら閉じる');
+  const f = U.slice(U.indexOf('function openFP'), U.indexOf('function closeFP'));
+  ok(/getElementById\(v2 \? 'v2-tbar' : 'quickbar'\)/.test(f) && /getElementById\(v2 \? 'v2-bottom' : 'page-bar'\)/.test(f),
+    '★新しい画面ではパネルを上のバーの下に出す(隠れたクイックバーで測ると上端12px=メニューの「設定」に被って押せなかった・高さも160pxに詰まった)');
+}
+
 console.log(ng ? `\nNG ${ng} 件` : '\nすべてOK');
 process.exit(ng ? 1 : 0);

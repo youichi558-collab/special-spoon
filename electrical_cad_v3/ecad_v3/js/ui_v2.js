@@ -218,7 +218,9 @@ function uiV2OpenMenu(btn) {
   const same = _uiV2Menu && _uiV2Menu.btn === btn;
   uiV2CloseMenu(); _uiV2ClosePops();
   if (same) return;   // 開いているメニューをもう一度押したら閉じる
-  if (btn.dataset.act === 'settings') { if (typeof openSettingsPanel === 'function') openSettingsPanel(); return; }
+  // 「設定」はもう一度押したら閉じる。他のメニューを開いたら設定パネルを閉じる(2026-10-09 盛田さん)
+  if (btn.dataset.act === 'settings') { if (typeof toggleSettingsPanel === 'function') toggleSettingsPanel(); return; }
+  if (typeof closeSettingsPanel === 'function') closeSettingsPanel();
   const wrap = document.getElementById('rp-' + tab);
   const pop = document.getElementById('v2-menu-pop');
   if (!wrap || !pop) return;

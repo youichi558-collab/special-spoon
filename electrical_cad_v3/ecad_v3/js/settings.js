@@ -210,6 +210,13 @@ async function stRenderRibbon() {
 
 // 【2026-10-04】設定タブを押すと「設定」パネル(#settings-p)を開き、全部の項目(保存先・部品DBの場所・線番・バックアップ)を出す
 // (盛田さん「設定のリボンを押したらフロートパネル開いてそこに全部の項目を出すイメージ」)。sectionId を渡すとその項目まで送る
+// 設定タブ(リボンの「設定」・新しい画面の「設定」メニュー)から: 開いていたら閉じる。
+// 他のタブ・メニューを開いたときは closeSettingsPanel で閉じる(2026-10-09 盛田さん「設定をもう一度押す又は他のタブを開いたら消えるように」)
+function toggleSettingsPanel() {
+  if (document.getElementById('settings-p')?.classList.contains('open')) { closeSettingsPanel(); return; }
+  openSettingsPanel();
+}
+function closeSettingsPanel() { if (typeof closeFP === 'function') closeFP('settings-p'); }
 function openSettingsPanel(sectionId) {
   stRenderRibbon();   // 保存先と部品DBの場所
   if (typeof wireNoSettingsFill === 'function') wireNoSettingsFill();

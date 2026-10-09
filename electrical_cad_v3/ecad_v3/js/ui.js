@@ -16,6 +16,7 @@ function switchRibbon(name, el) {
   const t = document.getElementById('rp-' + name); if (t) t.style.display = 'flex';
   document.querySelectorAll('.rtab').forEach(e => e.classList.remove('on'));
   el.classList.add('on');
+  if (name !== 'settings' && typeof closeSettingsPanel === 'function') closeSettingsPanel();   // 他のタブを開いたら設定パネルを閉じる
   syncRibbonHeight();
 }
 
@@ -3833,8 +3834,11 @@ function openFP(id) {
   // 【2026-10-04】**上端はどのパネルも同じ位置**(キャンバス領域の上端から12px)。盛田さん「フロートパネルの出る高さがタブごとに変わるのはやめてくれ、
   // 外面に出すとき上部の位置は同じにしろ」。以前は高さの真ん中で合わせていた(translate(-50%,-50%))ので、帳票のタブや設定のタブで中身の高さが
   // 変わるたびに上端が上下した。今は横だけ中央(css .fp の translate(-50%,0))で、中身が増えると下に伸びる。下は下のバー(#page-bar)から8px空けた所まで(超えたら中でスクロール)
-  const areaTop = document.getElementById('quickbar')?.getBoundingClientRect().bottom || 0;
-  const barTop  = document.getElementById('page-bar')?.getBoundingClientRect().top || window.innerHeight;
+  // 【2026-10-09】新しい画面(js/ui_v2.js)ではクイックバー・ページバーが隠れていて上下とも 0 になり、パネルが上のバー(メニュー・設定)に被り、
+  // 高さも 160px に詰まっていた。新しい画面ではツール設定帯(#v2-tbar)の下・下のバー(#v2-bottom)の上で測る
+  const v2 = document.body.classList.contains('ui-v2');
+  const areaTop = document.getElementById(v2 ? 'v2-tbar' : 'quickbar')?.getBoundingClientRect().bottom || 0;
+  const barTop  = document.getElementById(v2 ? 'v2-bottom' : 'page-bar')?.getBoundingClientRect().top || window.innerHeight;
   const top = areaTop + 12;
   el.style.top = top + 'px';
   el.style.maxHeight = Math.max(160, barTop - 8 - top) + 'px';
