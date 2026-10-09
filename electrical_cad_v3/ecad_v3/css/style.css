@@ -510,3 +510,13 @@ body.ui-v2 #lp .lt-dock{margin-top:auto;}
 #v2-menu-pop .rg-btns > :not(.rb){padding:4px 10px;min-height:28px;display:flex;align-items:center;gap:6px;}
 /* ショートカットを右端に(index.html の該当ボタンの data-key。ボタンの処理は変えない) */
 #v2-menu-pop .rb[data-key]::after{content:attr(data-key);margin-left:auto;padding-left:16px;font:10.5px ui-monospace,monospace;color:var(--v2-fg4);}
+/* ── メニュー:6a との差を直す(2026-10-09 Claude Design MENU_A_FIX.md) ──
+   アイコンは灰色・ON の点灯を見せる(上の transparent!important が .on/.pressed まで消していた)・押しても縮まない */
+#v2-menu-pop{color:var(--v2-fg);}
+#v2-menu-pop .rg-wrap{min-width:240px;}
+#v2-menu-pop .rg-label{margin:0;}
+#v2-menu-pop .rb{color:var(--v2-fg);}                       /* 削除・全消去の赤(インラインの style)はそのまま勝つ */
+#v2-menu-pop .rb:not([style*="color"]) svg{color:var(--v2-icon);}
+#v2-menu-pop .rb:active{transform:none;}
+#v2-menu-pop .rb.on, #v2-menu-pop .rb.pressed{background:var(--v2-fill)!important;color:var(--v2-acc)!important;}
+#v2-menu-pop .rb.on svg{color:var(--v2-acc);}

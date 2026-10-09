@@ -88,6 +88,10 @@ console.log('\n【メニューのドロップダウンを縦に(2026-10-09 Claud
   const keys = ['Ctrl+Z', 'Ctrl+Y', 'Ctrl+C', 'Ctrl+X', 'Ctrl+V', 'Del', 'R', 'Ctrl+G', 'Ctrl+Shift+G'];
   ok(keys.every(k => new RegExp(`class="rb[^"]*"[^>]*data-key="${k.replace(/\+/g, '\\+')}"`).test(H)), 'ショートカットを右端に出すボタン9個に data-key');
   ok(/#v2-menu-pop \.rb\[data-key\]::after\{content:attr\(data-key\)/.test(C), 'data-key を右端に出す');
+  // 6a との差を直す(MENU_A_FIX.md): transparent!important が ON の点灯まで消していた
+  ok(/#v2-menu-pop \.rb\.on, #v2-menu-pop \.rb\.pressed\{background:var\(--v2-fill\)!important;color:var\(--v2-acc\)!important;\}/.test(C), '★メニューの中でも ON/押下 の点灯が見える');
+  ok(/#v2-menu-pop \.rb:not\(\[style\*="color"\]\) svg\{color:var\(--v2-icon\);\}/.test(C), 'アイコンは灰色(削除・全消去の赤はそのまま)');
+  ok(/#v2-menu-pop \.rb:active\{transform:none;\}/.test(C), '押しても行が縮まない');
 }
 
 console.log(ng ? `\nNG ${ng} 件` : '\nすべてOK');
