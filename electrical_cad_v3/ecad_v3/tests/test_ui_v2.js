@@ -1,6 +1,6 @@
 // 新しい画面(UI v2)の段階0・1(2026-10-07 js/ui_v2.js・css/style.css body.ui-v2・index.html #v2-*)
 //   node tests/test_ui_v2.js
-// Claude Design の案 5a/5b。盛田さん「おすすめでいい、進めて」。設定の「画面」で切り替え、既定は今の画面。
+// Claude Design の案 5a/5b。盛田さん「おすすめでいい、進めて」。設定の「画面」で切り替え。既定は 2026-10-09 から新しい画面。
 // ボタンは作り直さず今のボタンを移す(点灯の処理を1か所のまま)。ブラウザでの動きは playwright で確認済み(HANDOFF)。
 const fs = require('fs');
 const vm = require('vm');
@@ -36,7 +36,7 @@ ok(/>CR倍率<input type="number" id="xref-scale"/.test(H) && /id="rb-xref-refre
 ok(/_uiV2Move\('active-layer-sel', lay\)/.test(V), '★今のレイヤーの選択(クイックバーにあった)も下のバーへ移す=案に無かったが消えると困る');
 
 console.log('\n【切り替えの仕組み】');
-ok(/stSetPref\('uiV2', on \? true : null\)/.test(V) && /uiV2Apply\(p\.uiV2 === true\)/.test(S), '★設定に覚え、起動時に戻す。既定は今の画面');
+ok(/stSetPref\('uiV2', !!on\)/.test(V) && /uiV2Apply\(p\.uiV2 !== false\)/.test(S), '★設定に覚え、起動時に戻す。既定は新しい画面(今の画面を選んだときだけ false。2026-10-09 盛田さん「既定でいい」)');
 ok(/id="ui-v2-on"[^>]*uiV2Set\(true\)/.test(H) && /id="ui-v2-off"[^>]*uiV2Set\(false\)/.test(H) && /data-sec="set-sec-ui"/.test(H), '設定パネルの「画面」タブ');
 ok(/body:not\(\.ui-v2\) \.v2-only\{display:none!important;\}/.test(C), '今の画面では新しいバーを隠す');
 ok(/body\.ui-v2 #ribbon, body\.ui-v2 #quickbar, body\.ui-v2 #page-bar\{display:none!important;\}/.test(C), '新しい画面ではリボン・クイックバーを隠す(消さない)');
@@ -62,7 +62,7 @@ console.log('\n【段階2 右パネル】');
 ok(/id="rp-v2head" class="v2-only"/.test(H) && /_uiV2Move\('rp-toggle', document\.getElementById\('rp-v2head'\)\)/.test(V), '見出し(アイコン・デバイス名・補足)。畳むボタンは今のものを見出しへ移す');
 ok(/new MutationObserver\(\(\) => \{ if \(_uiV2On\) uiV2SyncRpHead\(\); \}\)\.observe\(rpb/.test(V) && !/uiV2SyncRpHead/.test(U), '★右パネルの中身・処理(ui.js)は変えず、描き直されたら見出しだけ付け直す');
 ok(/const UIV2_RP_W = 272;/.test(V) && /if \(!prefs\.rpWidth && typeof rpSetWidth === 'function'\) rpSetWidth\(on \? UIV2_RP_W : RP_W_DEF, false\)/.test(V), '幅の既定は 272(自分で幅を変えていればそのまま)');
-ok(/rpSetWidth\(p\.rpWidth \|\| \(p\.uiV2 === true && typeof UIV2_RP_W !== 'undefined' \? UIV2_RP_W : RP_W_DEF\), false\)/.test(S), '起動時も同じ(前回値が無ければ新しい画面は 272)');
+ok(/rpSetWidth\(p\.rpWidth \|\| \(p\.uiV2 !== false && typeof UIV2_RP_W !== 'undefined' \? UIV2_RP_W : RP_W_DEF\), false\)/.test(S), '起動時も同じ(前回値が無ければ新しい画面は 272)');
 ok(/body\.ui-v2 #rp \.rp-tab\.on\{[^}]*font-weight:600/.test(C) && /body\.ui-v2 #rp > h4\{display:none;\}/.test(C), 'タブの見た目・今の見出し(プロパティ)は隠す');
 ok(/body\.ui-v2 #rp \.pp-zone:has\(input:checked\)\{border-color:var\(--red\);\}/.test(C), '部品表の対象外のチェック時の赤はそのまま');
 
@@ -76,8 +76,8 @@ console.log('\n【段階4】');
 {
   const D = R('js/draw.js'), F = R('js/frame.js');
   ok(!/v2paper/.test(D) && !/v2paper/.test(F), '★机の上の用紙の見せ方はやめた(盛田さん「戻した方がいい」=枠の外に逃がすときグリッドが要る)。背景は今まで通り');
-  ok(/id="v2-zoom" class="v2-only"/.test(H) && /onclick="doZoom\(0\.8\)"/.test(H) && /onclick="resetView\(\)" title="全体表示 0"/.test(H), '左下に浮かせたズームは残す(− ％ ＋ ｜ 全体。処理は今の doZoom・resetView)');
-  ok(/getElementById\('v2-zoom-pct'\)/.test(D), 'ズームの％は描くたびに更新');
+  ok(!/id="v2-zoom"/.test(H) && !/#v2-zoom/.test(R('css/style.css')), '左下のズームは消した(2026-10-09 盛田さん「ズームは使ってないな」)');
+  ok(!/v2-zoom-pct/.test(D), '描くたびの％の更新も消した');
 }
 
 console.log(ng ? `\nNG ${ng} 件` : '\nすべてOK');

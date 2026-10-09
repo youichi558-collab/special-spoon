@@ -124,7 +124,6 @@ function draw() {
 
   // ステータス更新
   document.getElementById('s-zoom').textContent = Math.round(state.zoom * 100) + '%';
-  { const vz = document.getElementById('v2-zoom-pct'); if (vz) vz.textContent = Math.round(state.zoom * 100) + '%'; }   // 新しい画面の左下のズーム(段階4)
   document.getElementById('s-cnt').textContent  = state.elements.length + state.wires.length;
   document.getElementById('s-sel').textContent  = state.sel.els.size + state.sel.wires.size;
   document.getElementById('s-pos').textContent  = `${Math.round(state.mouse.wx)}, ${Math.round(state.mouse.wy)}`;

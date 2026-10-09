@@ -3,6 +3,7 @@
 // ================================================================
 // 【2026-10-07】Claude Design の案(5a 明るい表示 / 5b ダーク表示)の段階0・1。盛田さん「おすすめでいい、進めて」。
 //   段階0: 設定の「画面」で「新しい画面／今の画面」を選ぶ(stSetPref('uiV2'))。既定は今の画面。
+//   【2026-10-09】既定を新しい画面にした(盛田さん「既定でいい」)。今の画面を選んだときは false を覚える(以前は覚えを消していて「未選択」と区別できなかった)
 //          新しい画面のときは body に ui-v2 を付け、見た目は css/style.css の body.ui-v2 の下だけに書く。
 //   段階1: リボンとクイックバーを隠し、上のバー(#v2-top)・ツール設定帯(#v2-tbar)・下のバー(#v2-bottom)に置き換える。
 //
@@ -76,7 +77,7 @@ function _uiV2RestoreAll() {
 
 // 画面を切り替える(設定パネルから)
 function uiV2Set(on) {
-  if (typeof stSetPref === 'function') stSetPref('uiV2', on ? true : null);
+  if (typeof stSetPref === 'function') stSetPref('uiV2', !!on);
   uiV2Apply(on);
 }
 
