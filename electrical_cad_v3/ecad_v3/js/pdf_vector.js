@@ -5,7 +5,7 @@
 // ここでは描く先(ctx)を「描いたものを SVG として書き留める ctx」(SvgCtx)に差し替えて、いつもの draw() で描く
 // (描く処理は1行も変えない。PDF と同じ pdfMode・ダークを外す・pdfWrapCtx の白黒/カラー)。
 // できた SVG を全ページ並べてブラウザの印刷を開き、「PDFに保存」で保存してもらう(日本語フォントを埋め込んだベクター PDF になる)。
-// 今の画像の PDF はそのまま残す(PDF出力設定に別のボタン)。
+// 【2026-10-09】画像の PDF は消した(盛田さん「古いpdf出力いらなくないか？」)。PDF はここだけ。
 // 描画が使う ctx の命令: beginPath/moveTo/lineTo/arc/closePath/stroke/fill/fillText/strokeText/fillRect/strokeRect/clearRect/
 //   save/restore/translate/scale/rotate/setLineDash/measureText/globalAlpha/bezierCurveTo。clip・画像の貼り付けは使っていない(2026-10-08 確認)
 // 試作(Sheet3)で今の PDF と画素で比べて、違いは紙の下端の1画素の丸めだけだった。
@@ -112,7 +112,7 @@ function _svR(v) { return Math.round(v * 100) / 100; }
 function _svEsc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 function _svCol(c) { return (typeof c === 'string' && c) ? c : '#000000'; }
 
-// ---- ページを SVG にする(_buildPDF と同じ計算・同じ状態の切り替え) ----
+// ---- ページを SVG にする(消した画像の PDF _buildPDF と同じ計算・同じ状態の切り替え) ----
 // 戻り値 { svg, wMM, hMM }。描くものが無いページは null
 function vecPDFPageSVG(idx) {
   const pg = state.pages[idx];

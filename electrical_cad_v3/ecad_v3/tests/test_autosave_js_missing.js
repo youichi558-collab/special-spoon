@@ -31,7 +31,7 @@ const src  = fs.readFileSync(path.join(root, 'js/autosave.js'), 'utf8');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
 // index.html が読み込む自前のJS一覧(他所のライブラリは除く)
-const THIRD = ['jspdf.umd.min.js', 'jszip.min.js'];
+const THIRD = ['jszip.min.js'];   // jspdf は 2026-10-09 に消した(画像の PDF をやめた)
 const tagFiles = [...html.matchAll(/<script src="js\/([^"]+\.js)"><\/script>/g)].map(m => m[1]);
 const ourFiles = tagFiles.filter(f => !THIRD.includes(f));
 

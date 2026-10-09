@@ -291,8 +291,6 @@ function stApplyPrefs() {
   document.getElementById('rb-snapend')?.classList.toggle('on', !!state.snapEnd);
   document.getElementById('rb-snapmid')?.classList.toggle('on', !!state.snapMid);
   if (p.drawLw != null && setSel('draw-lw', p.drawLw)) state.drawLineWidth = p.drawLw === '' ? null : parseFloat(p.drawLw);
-  if (p.pdfDpi != null) setSel('pdf-dpi', p.pdfDpi);
-  if (p.pdfFmt != null) setSel('pdf-fmt', p.pdfFmt);
   if (p.pdfColor === 'mono' || p.pdfColor === 'color') { state.pdfColor = p.pdfColor; setSel('pdf-color', p.pdfColor); }   // PDF の色(2026-10-06 js/pdf_export.js pdfWrapCtx)
   if (p.xrefScale >= 0.3 && p.xrefScale <= 2) state.xrefScale = +p.xrefScale;   // クロスリファレンスの表示(js/xref.js)
   // 右パネル(プロパティ)の幅(2026-10-02、ui.js applyRpLayout)。前回値が無くてもキャンバスの右端をパネルに合わせる

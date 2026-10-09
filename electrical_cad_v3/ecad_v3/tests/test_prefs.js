@@ -26,8 +26,6 @@ const sel = (vals, v) => ({ value: v, options: vals.map(x => ({ value: x })), cl
 const dom = {
   'grid-sel': sel(['1', '2', '5', '10', '20', '40'], '10'),
   'draw-lw': sel(['', '0.13', '0.18', '0.25', '0.35', '0.5'], ''),
-  'pdf-dpi': sel(['96', '150', '300'], '150'),
-  'pdf-fmt': sel(['png', 'jpeg'], 'png'),
   'rb-snapend': { classList: { toggle(c, on) { dom['rb-snapend'].on = on; } } },
   'rb-snapmid': { classList: { toggle(c, on) { dom['rb-snapmid'].on = on; } } },
 };
@@ -81,13 +79,13 @@ console.log('【部品の選択: 型番に関係なく前回値】');
 console.log('\n【作図・出力: 起動時に戻す】');
 {
   sb.stSetPref('grid', 5); sb.stSetPref('snapEnd', false); sb.stSetPref('snapMid', true);
-  sb.stSetPref('drawLw', '0.5'); sb.stSetPref('pdfDpi', '300'); sb.stSetPref('pdfFmt', 'jpeg');
+  sb.stSetPref('drawLw', '0.5');
   sb.stApplyPrefs();
   eq([sb.state.G, dom['grid-sel'].value], [5, '5'], 'グリッド');
   eq([sb.state.snapEnd, dom['rb-snapend'].on], [false, false], '端点Snap(OFF)とボタンの表示');
   eq([sb.state.snapMid, dom['rb-snapmid'].on], [true, true], '中点Snap');
   eq([sb.state.drawLineWidth, dom['draw-lw'].value], [0.5, '0.5'], '線幅(作図)');
-  eq([dom['pdf-dpi'].value, dom['pdf-fmt'].value], ['300', 'jpeg'], 'PDFの解像度・形式');
+  // PDFの解像度・形式は 2026-10-09 に消した(画像の PDF をやめた。js/pdf_vector.js)
   sb.stSetPref('grid', 7); sb.state.G = 10; dom['grid-sel'].value = '10'; sb.stApplyPrefs();
   eq(sb.state.G, 10, '画面に無い値(G:7)が残っていても使わない');
 }
@@ -98,7 +96,7 @@ console.log('\n【置き場所・つなぎ込み】');
   const as = R('js/autosave.js');
   ok(!/ecad_prefs|stPrefs/.test(as), '自動保存(図面データ)には入れない');
   const html = R('index.html');
-  ['grid-sel', 'draw-lw', 'pdf-dpi', 'pdf-fmt'].forEach(id =>
+  ['grid-sel', 'draw-lw', 'pdf-color'].forEach(id =>
     ok(new RegExp(`id="${id}"[^>]*stSetPref`).test(html), `${id} を変えたら覚える`));
   const inp = R('js/input.js');
   ok(/state\.snapEnd = !state\.snapEnd;[\s\S]{0,200}stSetPref\('snapEnd'/.test(inp), '端点Snapを切り替えたら覚える');

@@ -48,7 +48,8 @@ sb.state.pdfColor = 'color'; c = new Ctx(); sb.pdfWrapCtx(c); c.fillStyle = '#12
 eq(c.log[0][2], '#123456', '設定(state.pdfColor)に従う');
 
 console.log('\n【組み込み】');
-eq((P.match(/const octx = (pvc|oc)\.getContext\('2d'\);\n\s*pdfWrapCtx\(octx\);/g) || []).length, 3, '★プレビュー・PDF・SVG の3か所で使う');
+eq((P.match(/const octx = (pvc|oc)\.getContext\('2d'\);\n\s*pdfWrapCtx\(octx\);/g) || []).length, 2, '★プレビュー・SVG で使う');
+eq(/pdfWrapCtx\(sctx\)/.test(R('js/pdf_vector.js')), true, '★PDF(ベクター js/pdf_vector.js)でも使う(2026-10-09 画像の PDF は消した)');
 eq(/const origPdfMode = state\.pdfMode;\n  state\.pdfMode = true;/.test(P) && /state\.pdfMode     = origPdfMode;/.test(P), true, '★プレビューも紙の描き方(方眼なし・○の中は白)で、終わったら戻す');
 eq(/const origDarkSvg = state\.darkMode;\n  state\.darkMode = false;/.test(P) && /try \{ draw\(\); \} finally \{ state\.darkMode = origDarkSvg; \}/.test(P), true, '★SVG も紙の色(ダークモードを外す)で描く(以前は背景が暗い灰色→白黒で全面が黒になった。盛田さんの 仕様２ 1006.svg)');
 const D = R('js/draw.js');

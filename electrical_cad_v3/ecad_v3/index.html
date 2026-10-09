@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>電気回路図エディタ v11</title>
 <link rel="stylesheet" href="css/style.css">
-<script src="js/jspdf.umd.min.js"></script>
 <script src="js/jszip.min.js"></script>
 </head>
 <body>
@@ -307,7 +306,7 @@
         <div class="rg-btns">
           <div class="rb rb-sm" onclick="showPDFPreview()"><svg viewBox="0 0 14 14"><rect x="2" y="1" width="10" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4 4h6M4 7h6M4 10h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="10" cy="10" r="3" fill="var(--bg)" stroke="currentColor" stroke-width="1.2"/><path d="M9 10l.8.8 1.4-1.4" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/></svg>プレビュー</div>
           <div class="rb rb-sm" onclick="openFP('pdf-opt-p')"><svg viewBox="0 0 14 14"><rect x="2" y="1" width="10" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4 4h6M4 7h6M4 10h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>PDF出力</div>
-          <div class="rb rb-sm" onclick="confirmAllPDF()"><svg viewBox="0 0 14 14"><rect x="2" y="1" width="10" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4 4h6M4 7h6M4 10h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>一括PDF</div>
+          <div class="rb rb-sm" onclick="exportVectorPDF(true)" title="全ページを1つのPDFに(印刷の窓で「PDF に保存」)"><svg viewBox="0 0 14 14"><rect x="2" y="1" width="10" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4 4h6M4 7h6M4 10h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>一括PDF</div>
           <div class="rb rb-sm" onclick="exportSVG()"><svg viewBox="0 0 14 14"><rect x="2" y="2" width="10" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5 5h4M5 7h2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><text x="7" y="11" font-size="4" fill="currentColor" text-anchor="middle">SVG</text></svg>SVG出力</div>
         </div>
         <!-- 【2026-09-19】旧称「帳票出力」。中身は帳票ではなく図面のPDF/SVG出力なので改名した
@@ -546,39 +545,18 @@
     <div class="fp" id="pdf-opt-p" style="width:280px">
       <h3>PDF出力設定</h3>
       <div class="fr" style="margin-bottom:10px">
-        <label>解像度</label>
-        <select id="pdf-dpi" onchange="stSetPref('pdfDpi',this.value)">
-          <option value="96">標準 (96dpi) - 画面品質</option>
-          <option value="150" selected>高解像度 (150dpi) - 印刷用</option>
-          <option value="300">最高解像度 (300dpi) - 高精細印刷</option>
-        </select>
-      </div>
-      <div class="fr" style="margin-bottom:10px">
-        <label>形式</label>
-        <select id="pdf-fmt" onchange="stSetPref('pdfFmt',this.value)">
-          <option value="png" selected>PNG (高品質・線がきれい)</option>
-          <option value="jpeg">JPEG (ファイル小さめ)</option>
-        </select>
-      </div>
-      <div class="fr" style="margin-bottom:10px">
         <label>色</label>
         <select id="pdf-color" onchange="state.pdfColor=this.value;stSetPref('pdfColor',this.value)" title="白黒: 線・記号・文字をすべて黒で出す。カラー: 画面と同じ色で出す(白い文字だけは紙で消えないよう黒にする)。図面の色・画面の見た目は変わりません">
           <option value="mono" selected>白黒 (全部黒)</option>
           <option value="color">カラー (画面と同じ色)</option>
         </select>
       </div>
-      <div style="display:flex;gap:6px;margin-top:8px">
-        <button class="fp-btn primary" onclick="runExportPDF()">出力</button>
+      <!-- 【2026-10-09】PDF はベクターだけ(js/pdf_vector.js)。画像の PDF・解像度・形式は消した。印刷の窓で「PDF に保存」 -->
+      <div style="font-size:10px;color:var(--fg3);margin-bottom:6px">印刷の窓が開くので、送信先は<b>「PDF に保存」</b>を選んで保存してください（「Microsoft Print to PDF」だと画像になり、A4 に縮みます）。拡大してもくっきり・文字を検索できるPDFになります</div>
+      <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+        <button class="fp-btn primary" onclick="exportVectorPDF(false)">このページ</button>
+        <button class="fp-btn" onclick="exportVectorPDF(true)">全ページ（1ファイル）</button>
         <button class="fp-btn" onclick="closeFP('pdf-opt-p')">キャンセル</button>
-      </div>
-      <!-- 【2026-10-08】ベクター PDF(js/pdf_vector.js)。拡大してもくっきり・文字を検索できる。ブラウザの印刷の窓で「PDFに保存」 -->
-      <div style="border-top:1px solid var(--bd2);margin-top:10px;padding-top:8px">
-        <div style="font-size:11px;font-weight:600;margin-bottom:2px">ベクター PDF</div>
-        <div style="font-size:10px;color:var(--fg3);margin-bottom:6px">拡大してもくっきり・文字を検索できる。印刷の窓が開くので、送信先は<b>「PDF に保存」</b>を選んで保存してください（「Microsoft Print to PDF」だと画像になり、A4 に縮みます）。色は上の設定。解像度・形式は関係ありません</div>
-        <div style="display:flex;gap:6px">
-          <button class="fp-btn" onclick="exportVectorPDF(false)">このページ</button>
-          <button class="fp-btn" onclick="exportVectorPDF(true)">全ページ（1ファイル）</button>
-        </div>
       </div>
     </div>
 
@@ -967,7 +945,7 @@
       <span id="pv-page-info" style="font-size:12px;color:var(--fg2)"></span>
       <button onclick="pvChangePage(-1)" style="padding:3px 10px;border-radius:4px;border:1px solid var(--bd);background:var(--bg);color:var(--fg);cursor:pointer">◀</button>
       <button onclick="pvChangePage(1)"  style="padding:3px 10px;border-radius:4px;border:1px solid var(--bd);background:var(--bg);color:var(--fg);cursor:pointer">▶</button>
-      <button onclick="runExportPDF()" style="padding:4px 14px;border-radius:4px;border:none;background:var(--acc);color:#fff;cursor:pointer;font-weight:600">PDF出力</button>
+      <button onclick="closePDFPreview();exportVectorPDF(false)" style="padding:4px 14px;border-radius:4px;border:none;background:var(--acc);color:#fff;cursor:pointer;font-weight:600">PDF出力</button>
       <button onclick="closePDFPreview()" style="padding:4px 10px;border-radius:4px;border:1px solid var(--bd);background:var(--bg);color:var(--fg);cursor:pointer">✕ 閉じる</button>
     </div>
     <canvas id="pdf-preview-canvas" style="border:1px solid var(--bd);background:#fff;max-width:85vw;max-height:80vh;"></canvas>

@@ -91,8 +91,8 @@ const abort = () => { const e = new Error('cancel'); e.name = 'AbortError'; thro
     const edit = fs.readFileSync(__dirname + '/../js/edit.js', 'utf8');
     const sp = edit.slice(edit.indexOf('function saveProject(asNew)'), edit.indexOf('function saveAllProject()'));
     ok(/if \(!window\.showSaveFilePicker\) \{\s*const name = prompt\(/.test(sp), '保存: 窓が使えるときは名前の入力窓を先に出さない');
-    const pdf = fs.readFileSync(__dirname + '/../js/pdf_export.js', 'utf8');
-    ok(/stWriteOut\(filename, \(\) => \{ const p = make\(\)/.test(pdf), 'PDF: 窓を先に開き、選んでから描く'); }
+    // PDF は 2026-10-09 からベクター(ブラウザの印刷の窓で保存。js/pdf_vector.js)なので、ここ(保存の窓)は通らない
+  }
 
   console.log(ng ? `\n失敗 ${ng}件` : '\n全て成功');
   process.exit(ng ? 1 : 0);

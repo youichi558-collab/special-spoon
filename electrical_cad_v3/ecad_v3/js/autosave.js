@@ -49,9 +49,9 @@ let _asBlockedCount = 0;
 // 増やしても減らしてもこの関数を直す必要が無い(代表的な関数名を並べる
 // やり方だと、関数名を変えたときに黙って検出できなくなる)。
 //
-// jspdf/jszipは他所のライブラリで目印を入れられないため対象外。
+// jszipは他所のライブラリで目印を入れられないため対象外(jspdf は 2026-10-09 に消した)。
 // この2つが落ちてもPDF出力が使えなくなるだけで、図面データには影響しない。
-const AS_THIRD_PARTY_JS = ['jspdf.umd.min.js', 'jszip.min.js'];
+const AS_THIRD_PARTY_JS = ['jszip.min.js'];   // jspdf は 2026-10-09 に消した(画像の PDF をやめた)
 function _asMissingScripts() {
   // テスト環境など、DOMが無い/簡易スタブの場合は判定しない(誤検出で
   // 自動保存を止める方が、検出できないことより危険なため)
