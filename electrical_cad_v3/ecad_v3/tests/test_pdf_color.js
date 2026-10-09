@@ -48,10 +48,10 @@ sb.state.pdfColor = 'color'; c = new Ctx(); sb.pdfWrapCtx(c); c.fillStyle = '#12
 eq(c.log[0][2], '#123456', '設定(state.pdfColor)に従う');
 
 console.log('\n【組み込み】');
-eq((P.match(/const octx = (pvc|oc)\.getContext\('2d'\);\n\s*pdfWrapCtx\(octx\);/g) || []).length, 2, '★プレビュー・SVG で使う');
-eq(/pdfWrapCtx\(sctx\)/.test(R('js/pdf_vector.js')), true, '★PDF(ベクター js/pdf_vector.js)でも使う(2026-10-09 画像の PDF は消した)');
+eq((P.match(/const octx = (pvc|oc)\.getContext\('2d'\);\n\s*pdfWrapCtx\(octx\);/g) || []).length, 1, '★プレビューで使う');
+eq(/pdfWrapCtx\(sctx\)/.test(R('js/pdf_vector.js')) && /function exportSVG\(\)[\s\S]*?vecPDFPageSVG\(/.test(P), true, '★PDF・SVG(どちらもベクター js/pdf_vector.js vecPDFPageSVG)でも使う(2026-10-09)');
 eq(/const origPdfMode = state\.pdfMode;\n  state\.pdfMode = true;/.test(P) && /state\.pdfMode     = origPdfMode;/.test(P), true, '★プレビューも紙の描き方(方眼なし・○の中は白)で、終わったら戻す');
-eq(/const origDarkSvg = state\.darkMode;\n  state\.darkMode = false;/.test(P) && /try \{ draw\(\); \} finally \{ state\.darkMode = origDarkSvg; \}/.test(P), true, '★SVG も紙の色(ダークモードを外す)で描く(以前は背景が暗い灰色→白黒で全面が黒になった。盛田さんの 仕様２ 1006.svg)');
+eq(/function exportSVG\(\)[\s\S]*?state\.darkMode = false;\n  try \{ p = vecPDFPageSVG\(state\.currentPage\); \}\n  finally \{ state\.darkMode = origDark; draw\(\); \}/.test(P), true, '★SVG も紙の色(ダークモードを外す)で描く(以前は背景が暗い灰色→白黒で全面が黒になった。盛田さんの 仕様２ 1006.svg)');
 const D = R('js/draw.js');
 eq(/if \(!state\.pdfMode\) drawPreview\(\);\n  if \(!state\.pdfMode\) drawSnapMarker\(\);/.test(D), true, '★紙に描くときは、カーソルの印(＋)とシンボルの仮表示を描かない(PDF の C6 に＋が出た)');
 const H = R('index.html');

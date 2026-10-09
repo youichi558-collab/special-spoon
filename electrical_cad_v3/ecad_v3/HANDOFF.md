@@ -59,6 +59,11 @@ CSV作成作業の状況は、同じ問題(静的な引き継ぎ文書が実際�
   → **やめた(同日)**: 盛田さん「見た目は良いんだが戻した方がいいかもな、シンボル置きなおしたりするとき今書いてるのを枠外に移動させて一旦逃がしたりすることがある」。机にもグリッドを出す案は「あんまり変わらなくないか？」→ 机と用紙の描き分け(draw.js・frame.js)を元に戻した。**左下のズーム(#v2-zoom)だけ残した**(要らなければ消す)。
 **新しい画面は段階1〜3＋左下のズーム。あとは使ってもらって直す**。
 
+### 2026-10-09 SVG 出力もベクターにした(盛田さん「svgもベクターで」)— 実機未確認
+- 以前の SVG は中身が 600dpi の画像1枚だった。**PDF と同じ js/pdf_vector.js vecPDFPageSVG** で描く(js/pdf_export.js exportSVG)。線・円・文字がそのまま SVG の図形・文字になる(Inkscape・Illustrator 等で線や文字を直せる)。紙の色(ダークを外す)・「色」(白黒/カラー)は前と同じ。今のページだけ。文字の書体は開いたソフトの sans-serif。
+- 確かめたこと(playwright): リボンの「SVG出力」で Sheet3 → 画像0・図形390・文字168、XML として正しい、ブラウザで開くと図面どおり、ダーク表示が戻る、JS エラー無し。tests/test_pdf_color.js を今の作りに合わせた。
+  - この試験環境ではダウンロード名が「download」になる(edit.js dl のコメントにある Chromium の既知の現象。実機は保存の窓)。
+
 ### 2026-10-09 古い(画像の)PDF 出力を消した(盛田さん「古いpdf出力いらなくないか？」→「それでいい、消して」)
 - 画像の PDF にしかできなかったのは「印刷の窓を通さずそのまま保存」だけ(解像度・形式の欄は元から効いていなかった)と伝えて決まった。
 - **消したもの**: js/pdf_export.js の runExportPDF・confirmAllPDF・runExportAllPDF・runExportAllPDFSeparate(どのボタンからも呼ばれていなかった)・_exportPDFPages・_buildPDF/js/jspdf.umd.min.js(jsPDF)と読み込み/PDF出力設定の「解像度」「形式」(と設定の覚え pdfDpi・pdfFmt)。
