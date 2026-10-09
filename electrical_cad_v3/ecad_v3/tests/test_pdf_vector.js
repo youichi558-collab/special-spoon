@@ -83,6 +83,8 @@ console.log('\n【組み込み】');
   ok(/onclick="exportVectorPDF\(false\)">このページ/.test(html) && /onclick="exportVectorPDF\(true\)">全ページ/.test(html), 'PDF出力設定に「このページ」「全ページ（1ファイル）」');
   ok(/__ecadLoaded[^\n]*'pdf_vector.js'/.test(R('js/pdf_vector.js')), '読み込めた目印(自動保存の点検)');
   ok(/Microsoft Print to PDF/.test(R('js/pdf_vector.js')) && /Microsoft Print to PDF/.test(html), '案内: 「Microsoft Print to PDF」ではなく「PDF に保存」(2026-10-09 実機で取り違えた)');
+  ok(/Microsoft Print to PDF[^\n]*'warn', \{ noHint: true \}\)/.test(R('js/pdf_vector.js')) && /if \(h && !\(opts && opts\.noHint\)\) h\.textContent = msg;/.test(R('js/settings.js')),
+    'その知らせは操作の案内の欄に残さない(吹き出しだけ。盛田さん「これずっと出るのか？」)');
   ok(!/\bctx\.\w+\s*=[^=]|\bdraw\s*=[^=]/.test(R('js/pdf_vector.js')), '描く処理(draw.js 等)には手を入れていない(ctx を差し替えるだけ)');
 }
 

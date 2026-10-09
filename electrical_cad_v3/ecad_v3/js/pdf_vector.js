@@ -190,7 +190,7 @@ function exportVectorPDF(all) {
   fr.onload = () => {
     // 保存の窓のファイル名はページの題名から付く
     document.title = title;
-    if (typeof stToast === 'function') stToast('印刷の窓の送信先は「PDF に保存」を選んでください。「Microsoft Print to PDF」だと画像になり、A4 に縮みます', 'warn');   // 2026-10-09 実機で取り違えた
+    if (typeof stToast === 'function') stToast('印刷の窓の送信先は「PDF に保存」を選んでください。「Microsoft Print to PDF」だと画像になり、A4 に縮みます', 'warn', { noHint: true });   // 案内の欄には残さない(盛田さん「これずっと出るのか？」)   // 2026-10-09 実機で取り違えた
     try { fr.contentWindow.focus(); fr.contentWindow.print(); }
     finally { setTimeout(() => { document.title = docTitle; fr.remove(); }, 1000); }
   };

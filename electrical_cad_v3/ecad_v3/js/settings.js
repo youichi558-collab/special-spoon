@@ -73,8 +73,9 @@ async function stOutDirStatus() {
 
 // 画面の通知。フォルダへ直接書くとブラウザのダウンロード表示が出ないため、
 // 「本当に出力されたのか」が分からなくなる(盛田さん指摘)。数秒だけ目立つ位置に出す。
-function stToast(msg, kind) {
-  const h = document.getElementById('s-hint'); if (h) h.textContent = msg;
+// opts.noHint: 操作の案内の欄(#s-hint)には書かない(吹き出しだけ)。案内の欄の文は次の案内まで残るので、毎回読まなくてよい知らせに使う(2026-10-09)
+function stToast(msg, kind, opts) {
+  const h = document.getElementById('s-hint'); if (h && !(opts && opts.noHint)) h.textContent = msg;
   if (!document.body || !document.createElement) return;
   let t = document.getElementById('st-toast');
   if (!t) {
