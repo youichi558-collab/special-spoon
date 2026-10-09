@@ -64,6 +64,7 @@ CSV作成作業の状況は、同じ問題(静的な引き継ぎ文書が実際�
 - **消したもの**: js/pdf_export.js の runExportPDF・confirmAllPDF・runExportAllPDF・runExportAllPDFSeparate(どのボタンからも呼ばれていなかった)・_exportPDFPages・_buildPDF/js/jspdf.umd.min.js(jsPDF)と読み込み/PDF出力設定の「解像度」「形式」(と設定の覚え pdfDpi・pdfFmt)。
 - **つなぎ替え**: PDF出力設定の「このページ」(主ボタン)「全ページ（1ファイル）」・リボンの「一括PDF」・プレビュー画面の「PDF出力」→ すべて exportVectorPDF。「色」は残した。**SVG 出力とプレビューは今まで通り**(pdf_export.js に残っている)。
 - テストを今の作りに合わせた(test_prefs・test_pdf_color・test_settings_outdir・test_autosave_js_missing。消した欄・jsPDF・保存の窓の確認を外し、ベクターで pdfWrapCtx を使うことの確認を足した)。
+- **実機(10-09 盛田さんの 仕様１-①1006_Sheet1.pdf。クロスリファレンス表示あり)**: Edge の「PDF に保存」で A3 横・画像0枚・文字を検索できる。コイルの下のクロスリファレンスの小さい文字(a 9-5 (1/6B) など)も 600dpi に拡大してくっきり読めた。
 - 確かめたこと(playwright): 起動で JS エラー無し・読み込めていない JS 無し(自動保存の点検)・jsPDF 無し、PDF出力設定のボタンは「このページ／全ページ／キャンセル」、3か所ともベクターの印刷に渡る(題名 仕様２1002_Sheet3 / _全ページ)、SVG 出力はダウンロードされる。
 
 ### 2026-10-09 ベクターPDF をアプリに組み込んだ(盛田さん「組み込んで」)— 実機未確認
