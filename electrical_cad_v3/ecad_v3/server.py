@@ -676,7 +676,7 @@ def parse_open_arg(argv):
 def main():
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     open_path = parse_open_arg(sys.argv[1:])
-    print(f"電気回路図エディタ サーバー起動: http://localhost:{PORT}")
+    print(f"Kuvemo サーバー起動: http://localhost:{PORT}")
     if HOST not in ('127.0.0.1', 'localhost', '::1'):
         print(f"警告: {HOST} で待ち受けています。同一LAN上の別PCから図面・部品データが"
               f"見える状態です(ECAD_HOSTを外すと このPCからのみ になります)")
