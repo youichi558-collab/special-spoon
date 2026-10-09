@@ -40,6 +40,8 @@ let _asBlockedCount = 0;
 // 自動保存は一度止まるとリロードするまで止まったままなので、帯も消さない。案内の欄にも今まで通り書く。
 const AS_BANNER_ID = 'autosave-banner';
 function _asBanner(msg) { if (typeof showTopBanner === 'function') showTopBanner(AS_BANNER_ID, msg); }
+// 自動保存データが壊れていて復元できなかったときの帯。止まってはいないので別の帯にし、図面を開いたら消す
+const AS_BROKEN_BANNER_ID = 'autosave-broken-banner';
 
 // 【2026-09-19 追加】JSが虫食いで読み込めていない状態を検出する。
 //
@@ -255,6 +257,11 @@ function restoreAutosave() {
       const h = document.getElementById('s-hint');
       if (h) h.textContent = '⚠ 自動保存データが壊れていたため復元できませんでした'
         + '（データは ecad_autosave_broken に退避してあります）';
+      // 【2026-10-09】画面が空で起動するので、赤い帯にも出す(盛田さん「赤い帯でいい」「壊れてるってわかればひとつ前を自分で開く」)。
+      // 自動保存は止まっていないので、止まった帯(autosave-banner)とは別にし、図面を開いたら消す(js/edit.js applyProjectData)
+      if (typeof showTopBanner === 'function') showTopBanner(AS_BROKEN_BANNER_ID,
+        '⚠ 自動保存データが壊れていたため、前回の作業を復元できませんでした。'
+        + '設定 → バックアップ から直前のバックアップを開くか、保存した図面ファイルを開いてください');
     }, 0);
     return;
   }

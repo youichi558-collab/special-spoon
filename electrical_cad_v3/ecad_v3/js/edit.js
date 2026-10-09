@@ -398,6 +398,7 @@ function _legacyProjectPages(d) {
 // 戻り値: { fixedIds } — 修復した重複IDの件数(呼び出し側が知らせるのに使う)
 function applyProjectData(d) {
       if (typeof xrefReset === 'function') xrefReset();   // 別の図面に置き換わるので、クロスリファレンスの結果は捨てる(自動では出し直さない)
+      if (typeof showTopBanner === 'function') showTopBanner('autosave-broken-banner', '');   // 「自動保存データが壊れていた」の帯は、図面を開いたら役目を終える(js/autosave.js)
       // バージョン別マイグレーション
       if (d.version === 2) {
         state.pages        = d.pages || [{ name:'Sheet1', elements:[], wires:[], groups:[], guides:[], frameObj:null }];

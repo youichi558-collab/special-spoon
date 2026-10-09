@@ -9,6 +9,7 @@
 //   ・自動保存: 止まったらリロードするまで止まったままなので、帯も消さない
 //   ・バックアップ: 次に取れたら消す。バックアップを切っても消す
 //   ・止まったわけではない知らせ(前回の作業を自動復元しました 等)は帯にしない
+//   ・自動保存データが壊れていて復元できなかったときは、別の帯(autosave-broken-banner)。図面を開いたら消す(盛田さん「赤い帯でいい」)
 const fs = require('fs');
 const vm = require('vm');
 
@@ -104,6 +105,41 @@ console.log('【自動保存: JS が読み込めていないとき・前回を�
   sb.restoreAutosave();
   ok(/復元処理でエラー/.test(banner(doc, AS) || ''), '復元処理で落ちたときも帯が出る');
   ok(sb.localStorage.getItem('ecad_autosave') === stored, '(前提)保存済みのデータには触らない');
+}
+
+console.log('【自動保存: データが壊れていて復元できなかったら、別の赤い帯を出し、図面を開いたら消す】');
+{
+  const { sb, doc } = autosaveSandbox([PAGE(0)], { ecad_autosave: '{"version":2,"pages":[壊れ', ecad_autosave_prev: JSON.stringify({ version: 2, pages: [PAGE(4)] }) });
+  sb.restoreAutosave();
+  const t = banner(doc, 'autosave-broken-banner') || '';
+  ok(/壊れていたため/.test(t), '★壊れていたら帯が出る(盛田さん「赤い帯でいい」)');
+  ok(/設定 → バックアップ/.test(t) && /図面ファイルを開いて/.test(t), '★自分で開き直す先(バックアップ・図面ファイル)を帯に書く');
+  ok(banner(doc, AS) === null, '自動保存は止まっていないので、止まった帯は出さない');
+  ok(sb.localStorage.getItem('ecad_autosave_broken') === '{"version":2,"pages":[壊れ', '(前提)壊れたデータは消さずに退避してある');
+  ok(!!sb.localStorage.getItem('ecad_autosave_prev'), '(前提)1つ前の版も消えずに残る');
+  // 図面を開いたら(ファイル・バックアップのどちらも js/edit.js applyProjectData を通る)帯は消える
+  const edit = R('js/edit.js');
+  const ap = edit.match(/function applyProjectData\([\s\S]*?\n\}/)[0];
+  const noop = () => 0;
+  Object.assign(sb, { stripLegacyColors: noop, repairLayers: noop, dedupeIds: noop, removeZeroLengthWires: noop, pruneGroups: noop,
+    _mergeOrSetCustomParts: noop, renderSymFloat: noop, renderPartsAll: noop, renderPageTabs: noop, draw: noop, updateRightPanel: noop });
+  sb.state.sel = { els: new Set(), wires: new Set() };
+  vm.runInContext(ap, sb);
+  sb.applyProjectData({ version: 2, pages: [PAGE(2)] });
+  ok(banner(doc, 'autosave-broken-banner') === null, '★図面を開いたら「壊れていた」の帯は消える');
+}
+{
+  // 止まった帯は、図面を開いても消さない(自動保存は止まったまま)
+  const { sb, doc } = autosaveSandbox([PAGE(3)], {}, { quota: true });
+  sb.doAutosave();
+  const ap = R('js/edit.js').match(/function applyProjectData\([\s\S]*?\n\}/)[0];
+  const noop = () => 0;
+  Object.assign(sb, { stripLegacyColors: noop, repairLayers: noop, dedupeIds: noop, removeZeroLengthWires: noop, pruneGroups: noop,
+    _mergeOrSetCustomParts: noop, renderSymFloat: noop, renderPartsAll: noop, renderPageTabs: noop, draw: noop, updateRightPanel: noop });
+  sb.state.sel = { els: new Set(), wires: new Set() };
+  vm.runInContext(ap, sb);
+  sb.applyProjectData({ version: 2, pages: [PAGE(2)] });
+  ok(/容量超過で停止/.test(banner(doc, AS) || ''), '止まった帯は、図面を開いても消えない');
 }
 
 console.log('【自動保存: 止まっていないときは帯を出さない】');
