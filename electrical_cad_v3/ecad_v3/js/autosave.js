@@ -43,6 +43,31 @@ function _asBanner(msg) { if (typeof showTopBanner === 'function') showTopBanner
 // 自動保存データが壊れていて復元できなかったときの帯。止まってはいないので別の帯にし、図面を開いたら消す
 const AS_BROKEN_BANNER_ID = 'autosave-broken-banner';
 
+// 【2026-10-10 追加】CADを2つのタブで開いたとき、古いタブが新しいタブの作業を上書きしないようにする。
+// 自動保存の置き場所(localStorage)はタブどうしで1つを共有している。以前はタブを隠した・閉じたときに、
+// 変わっていなくても必ず書いていたので、「サーバーの窓を閉じてしまい start.bat を叩き直す → 新しいタブ(B)が開き、
+// 古いタブ(A)も残る → B で作業 → A を閉じる」と、A の古い図面で上書きされ、次に開くと B の作業が無かった
+// (全体レビューで再現。盛田さん「1から直して」)。対策は2つ:
+//   ①中身を変えて書くたびに「誰がいつ書いたか」の印(AUTOSAVE_STAMP_KEY)を置く
+//   ②書こうとした中身(ページ)が置いてあるものと違い、印がこのタブの知らないものに変わっていたら
+//     = 別のタブが書いていたら、このタブはもう書かず、赤い帯で知らせる(リロードするまでそのまま)
+//   中身(ページ)が同じなら書いても失うものが無いので書く(表示の位置など)。印は変えない(ほかのタブを止めない)
+const AUTOSAVE_STAMP_KEY = 'ecad_autosave_stamp';
+const AS_TAB_ID = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+const AS_OTHERTAB_BANNER_ID = 'autosave-othertab-banner';
+function _asStampNow() { try { return localStorage.getItem(AUTOSAVE_STAMP_KEY) || ''; } catch (e) { return ''; } }
+let _asKnownStamp = _asStampNow();   // このタブが最後に読んだ・書いた時点の印
+let _asOtherTab = false;             // 別のタブが書いたので、このタブは書かない
+function _asOtherTabStop() {
+  _asOtherTab = true;
+  const msg = '⚠ この図面は別のタブでも開かれていて、そちらで自動保存されました。'
+    + 'このタブの変更は自動保存しません（新しい方を古い内容で上書きしないため）。'
+    + 'このタブは閉じて、新しい方のタブで作業してください（このタブの変更が要るときは、先にファイルに保存してください）';
+  const h = document.getElementById('s-hint');
+  if (h) h.textContent = msg;
+  if (typeof showTopBanner === 'function') showTopBanner(AS_OTHERTAB_BANNER_ID, msg);
+}
+
 // 【2026-09-19 追加】JSが虫食いで読み込めていない状態を検出する。
 //
 // 【背景】盛田さんの「図面消えた」(2026-09-19)。サーバー(start.bat)が落ちた
@@ -103,8 +128,36 @@ function scheduleAutosave() {
   _asTimer = setTimeout(doAutosave, 1500);
 }
 
+// 自動保存に書く中身(savedAt は書くときに足す。変わったかどうかを savedAt 抜きで比べるため)
+function _asBuildData() {
+  return {
+    version: 2,
+    autosave: true,
+    saveFileName: state.saveFileName,
+    customSymbols: (typeof usedSymbolsForSave === 'function') ? usedSymbolsForSave(state.pages) : state.customSymbols,   // 使ったシンボルだけ(段階3)
+    // 使った型式の部品の写しだけ(2026-10-03。外形図DXFは入れないので容量は小さい。edit.js usedPartsForSave)
+    customParts:   (typeof usedPartsForSave === 'function') ? usedPartsForSave(state.pages) : undefined,
+    titleBlockTpls: (typeof usedTitleBlockTplsForSave === 'function') ? usedTitleBlockTplsForSave(state.pages) : undefined,   // 使った表題欄様式の写し(段階2)
+    wireNoRule:    state.wireNoRule,
+    wireNoFmt:    state.wireNoFmt,   // 線番の書式(2026-10-04 js/report.js wnFmt)
+    layers:        LAYERS,
+    pages:         state.pages,
+    currentPage:   state.currentPage,
+    zoom:          state.zoom,
+    pan:           state.pan,
+    darkMode:      state.darkMode,
+    // 端子番号の表示は図面の見た目(PDF・DXF出力にも出る)を決める設定なので、
+    // ダークモードと同じく保存する。未接続マーカー(showUnconnected)や
+    // 🔴端子(仮)(showSymPins)はその場限りの確認用なので保存しない。
+    showTermNo:    state.showTermNo,
+    // showPartRefは2026-08-07にトグル廃止・常時表示化したため保存しない
+    // (保存しても読込側で無視するので実害はないが、混乱防止のため削除)
+  };
+}
+
 function doAutosave() {
   if (_asDisabled) return;
+  if (_asOtherTab) { _asOtherTabStop(); return; }   // 別のタブが書いた(帯は出し直す)
   // 【2026-09-19 追加】JSが読み込めていない状態では絶対に書かない。
   // 欠けたまま起動したアプリのstateは信用できない。書かなければ
   // localStorageは無傷のまま残るので、start.batを起動し直して
@@ -150,30 +203,17 @@ function doAutosave() {
       }
     }
 
-    const data = {
-      version: 2,
-      autosave: true,
-      savedAt: Date.now(),
-      saveFileName: state.saveFileName,
-      customSymbols: (typeof usedSymbolsForSave === 'function') ? usedSymbolsForSave(state.pages) : state.customSymbols,   // 使ったシンボルだけ(段階3)
-      // 使った型式の部品の写しだけ(2026-10-03。外形図DXFは入れないので容量は小さい。edit.js usedPartsForSave)
-      customParts:   (typeof usedPartsForSave === 'function') ? usedPartsForSave(state.pages) : undefined,
-      titleBlockTpls: (typeof usedTitleBlockTplsForSave === 'function') ? usedTitleBlockTplsForSave(state.pages) : undefined,   // 使った表題欄様式の写し(段階2)
-      wireNoRule:    state.wireNoRule,
-      wireNoFmt:    state.wireNoFmt,   // 線番の書式(2026-10-04 js/report.js wnFmt)
-      layers:        LAYERS,
-      pages:         state.pages,
-      currentPage:   state.currentPage,
-      zoom:          state.zoom,
-      pan:           state.pan,
-      darkMode:      state.darkMode,
-      // 端子番号の表示は図面の見た目(PDF・DXF出力にも出る)を決める設定なので、
-      // ダークモードと同じく保存する。未接続マーカー(showUnconnected)や
-      // 🔴端子(仮)(showSymPins)はその場限りの確認用なので保存しない。
-      showTermNo:    state.showTermNo,
-      // showPartRefは2026-08-07にトグル廃止・常時表示化したため保存しない
-      // (保存しても読込側で無視するので実害はないが、混乱防止のため削除)
-    };
+    const data = _asBuildData();
+    // ①図面の中身(ページ)が置いてあるものと同じなら、書いても何も失われない。表示の位置などのために書くが、
+    //   「このタブが書いた」印は付けない(開いただけ・見ただけのタブが、閉じるときにほかのタブを止めないように)
+    // ②中身が違い、別のタブが書いていたら書かない(このタブの中身は古い。上書きすると新しいタブの作業が消える)
+    let samePages = false;
+    try {
+      const stored = localStorage.getItem(AUTOSAVE_KEY);
+      samePages = !!stored && JSON.stringify(JSON.parse(stored).pages) === JSON.stringify(data.pages);
+    } catch (e) { samePages = false; }
+    const stampNow = _asStampNow();
+    if (!samePages && stampNow !== _asKnownStamp) { _asOtherTabStop(); return; }
 
     // 中身のあるデータを書く前に、直前の版を退避しておく(1世代前まで戻せる)。
     // 容量超過のときは退避を諦めて本体の保存を優先する。
@@ -188,7 +228,12 @@ function doAutosave() {
       }
     }
 
+    data.savedAt = Date.now();
     localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
+    if (samePages) { _asKnownStamp = stampNow; return; }   // 中身は同じ = 置いてある印のまま(別のタブの印ならそれを知った扱い)
+    const stamp = data.savedAt + ':' + AS_TAB_ID;
+    localStorage.setItem(AUTOSAVE_STAMP_KEY, stamp);
+    _asKnownStamp = stamp;
   } catch (e) {
     // QuotaExceededError等 → 以後の自動保存を停止し一度だけ通知
     _asDisabled = true;
@@ -218,6 +263,7 @@ function restoreAutosave() {
   // 復元処理の途中で例外が出た場合も必ずロックがかかるようにしておく。
   // 成功したときだけ最後にこのフラグを下ろす。
   lockIfNeeded();
+  _asKnownStamp = _asStampNow();   // 読んだ時点の印(このあと別のタブが書いたら、このタブは書かない)
 
   let raw = null;
   try { raw = localStorage.getItem(AUTOSAVE_KEY); } catch (e) { return; }
@@ -355,6 +401,10 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') doAutosave();
 });
 window.addEventListener('pagehide', doAutosave);
+// 別のタブが自動保存したら、すぐに帯を出す(このタブで続けて作業しても自動保存されないことを先に知らせる)
+window.addEventListener('storage', e => {
+  if (e.key === AUTOSAVE_STAMP_KEY && e.newValue && e.newValue !== _asKnownStamp) _asOtherTabStop();
+});
 
 // ================================================================
 // 【2026-09-19】読み込めたことの目印。
