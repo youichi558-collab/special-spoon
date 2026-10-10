@@ -987,7 +987,8 @@ function commitPaste(dx, dy) {
   (state.clipboard.groups || []).forEach(g => {
     const elIds   = g.elIds.map(id => idMap[id]).filter(Boolean);
     const wireIds = g.wireIds.map(id => idMap[id]).filter(Boolean);
-    if (elIds.length + wireIds.length > 0) {
+    // 2個以上のときだけグループにする(1個だけのグループは意味が無く、開き直すと pruneGroups で消える。2026-10-10)
+    if (elIds.length + wireIds.length >= 2) {
       state.page.groups.push({ id: genId('g'), elIds, wireIds });
     }
   });
@@ -1221,7 +1222,7 @@ function duplicateSelection(dx, dy) {
   groups.forEach(g => {
     const elIds   = g.elIds.map(id => idMap[id]).filter(Boolean);
     const wireIds = g.wireIds.map(id => idMap[id]).filter(Boolean);
-    if (elIds.length + wireIds.length > 0) state.page.groups.push({ id: genId('g'), elIds, wireIds });
+    if (elIds.length + wireIds.length >= 2) state.page.groups.push({ id: genId('g'), elIds, wireIds });   // 2個以上だけ(commitPaste と同じ)
   });
   return { newEls, newWires };
 }
@@ -1454,7 +1455,9 @@ function dissolveGroupsMessage(dissolved, expanded) {
 function groupSelected() {
   const elIds   = [...state.sel.els];
   const wireIds = [...state.sel.wires];
-  if (!elIds.length && !wireIds.length) return;
+  // 【2026-10-10】1個だけではグループにしない。1個だけのグループは何の働きも無く、開き直すと pruneGroups で消えて
+  // 「保存して開き直すと中身が変わる」になっていた(tests/test_edit_fuzz.js で見つけた。盛田さん「Bで進めて」)
+  if (elIds.length + wireIds.length < 2) return;
   state.page.groups = state.page.groups || [];
   // 既存グループを黙って解体しない。掛かっているものがあれば中身を示して確認する。
   const dissolved = groupsDissolvedBy(state.sel, state.page.groups);
