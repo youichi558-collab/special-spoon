@@ -268,7 +268,7 @@ async function bkRestore(name) {
   try {
     const j = await (await fetch('/api/backup/get?name=' + encodeURIComponent(name))).json();
     if (!j.ok) throw new Error(j.error || '読めませんでした');
-    pushH();
+    pushH({ doc: true });   // Ctrl+Z で前の図面ごと戻せるように、図面の設定も控える(js/edit.js _histDocSnap)
     const { fixedIds, zeroWires } = applyProjectData(j.data);
     const dm = (typeof devAfterLoad === 'function') ? devAfterLoad({ defer: true }) : null;   // デバイスの点検(js/devices.js)
     closeFP('settings-p');   // バックアップは設定パネルの中(2026-10-04)

@@ -13,11 +13,13 @@ document.addEventListener('keyup', e => {
 // ----------------------------------------------------------------
 // Undo / Redo
 // ----------------------------------------------------------------
-function pushH() {
+// opts.doc: 図面ごと置き換える操作(読込の置き換え・バックアップから開く)の前に true で呼ぶ。ページだけでなく図面の設定も控える(_histDocSnap)
+function pushH(opts) {
   const snap = {
     pages:      JSON.parse(JSON.stringify(state.pages)),
     currentPage:state.currentPage,
   };
+  if (opts && opts.doc === true) snap.doc = _histDocSnap();
   state.hist.push(snap);
   if (state.hist.length > 80) state.hist.shift();
   state.redoHist = [];
@@ -45,34 +47,61 @@ function _histDirty(snapPages, curPages) {
   });
 }
 
-function undo() {
-  if (!state.hist.length) return;
-  const snap = state.hist.pop();
-  state.redoHist.push({
-    pages:      JSON.parse(JSON.stringify(state.pages)),
-    currentPage:state.currentPage,
-  });
-  _histDirty(snap.pages, state.pages);
+// 【2026-10-11】図面ごと置き換える操作(読込の置き換え・バックアップから開く)の取り消し。
+// 以前は Ctrl+Z でページだけが前の図面に戻り、保存ファイル名・レイヤー・シンボル・線番の規則などは読み込んだ図面のままだった
+// (全体レビューで再現。レイヤーが違うと前の図面の線が「レイヤー不明」で白っぽくなる。盛田さん「3も直して」)。
+// 置き換える前に pushH({ doc: true }) で、ページ以外に applyProjectData が置き換えるものも控え、Undo/Redo で戻す。
+// プロジェクトのフォルダ(読込で外す・替える)は戻さない(フォルダの許可や台帳に関わるため)。
+function _histDocSnap() {
+  return JSON.parse(JSON.stringify({
+    saveFileName:  state.saveFileName,
+    wireNoRule:    state.wireNoRule,
+    wireNoFmt:     state.wireNoFmt,
+    layers:        LAYERS,
+    customSymbols: state.customSymbols || [],
+    drawingSymbols:state.drawingSymbols || {},
+    drawingTbTpls: state.drawingTbTpls || {},
+    customParts:   state.customParts || [],
+  }));
+}
+function _histDocApply(doc) {
+  state.saveFileName  = doc.saveFileName;
+  state.wireNoRule    = doc.wireNoRule;
+  state.wireNoFmt     = doc.wireNoFmt;
+  LAYERS.length = 0; (doc.layers || []).forEach(l => LAYERS.push(l));
+  state.customSymbols = doc.customSymbols;
+  state.customSymbols.forEach(s => { DEFS[s.type] = s; });
+  state.drawingSymbols = doc.drawingSymbols;
+  state.drawingTbTpls = doc.drawingTbTpls;
+  state.customParts   = doc.customParts;
+  if (typeof xrefReset === 'function') xrefReset();   // 別の図面に戻るので、クロスリファレンスの結果は捨てる(applyProjectData と同じ)
+}
+// Undo/Redo で控えを1つ戻す。反対側の履歴(戻すなら Redo、進むなら Undo)へ今の状態を積んでから入れ替える
+function _histSwap(snap, other) {
+  const cur = { pages: JSON.parse(JSON.stringify(state.pages)), currentPage: state.currentPage };
+  if (snap.doc) cur.doc = _histDocSnap();
+  other.push(cur);
+  // 図面ごと入れ替えるときは、控えの未保存の印をそのまま使う(別の図面どうしを比べても意味が無い。
+  // 置き換えたあとに保存したのは読み込んだ方の図面なので、前の図面の印は控えたときのままで正しい)
+  if (!snap.doc) _histDirty(snap.pages, state.pages);
+  if (snap.doc) _histDocApply(snap.doc);
   state.pages       = snap.pages;
   state.currentPage = snap.currentPage;
   state.sel.els.clear(); state.sel.wires.clear();
+  if (snap.doc && typeof rebuildSymbolPalette === 'function') rebuildSymbolPalette();   // 戻した図面のシンボルでパレットを組み直す
+  if (snap.doc && typeof renderPartsAll === 'function') renderPartsAll();
   renderPageTabs(); draw(); updateRightPanel();
   if (typeof scheduleAutosave === 'function') scheduleAutosave();
 }
 
+function undo() {
+  if (!state.hist.length) return;
+  _histSwap(state.hist.pop(), state.redoHist);
+}
+
 function redo() {
   if (!state.redoHist.length) return;
-  const snap = state.redoHist.pop();
-  state.hist.push({
-    pages:      JSON.parse(JSON.stringify(state.pages)),
-    currentPage:state.currentPage,
-  });
-  _histDirty(snap.pages, state.pages);
-  state.pages       = snap.pages;
-  state.currentPage = snap.currentPage;
-  state.sel.els.clear(); state.sel.wires.clear();
-  renderPageTabs(); draw(); updateRightPanel();
-  if (typeof scheduleAutosave === 'function') scheduleAutosave();
+  _histSwap(state.redoHist.pop(), state.hist);
 }
 
 // ----------------------------------------------------------------
@@ -617,7 +646,7 @@ function loadProjectText(text, name, mode0, opts) {
             + `\n取り消し(Ctrl+Z)で元に戻せます。`);
           return true;
         }
-        pushH();
+        pushH({ doc: true });   // Ctrl+Z で前の図面ごと戻せるように、図面の設定も控える
         const { fixedIds, zeroWires } = applyProjectData(d);
         // 【2026-10-06】「読込」で置き換えて開いたら、プロジェクトのフォルダを外す(js/proj_tree.js ptreeDetach)。
         // ツリーから開いたとき(mode0 あり)は外さない。読込の図面がどのフォルダのものか分からず、別のフォルダの図面まで集計していたため(盛田さん)

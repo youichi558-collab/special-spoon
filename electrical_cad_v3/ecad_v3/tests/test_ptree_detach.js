@@ -49,7 +49,7 @@ const tick = () => new Promise(r => setTimeout(r, 10));
   const E = R('js/edit.js');
   const run = E.slice(E.indexOf('function loadProjectText('), E.indexOf('function dl('));
   eq(/applyProjectData\(d\);[\s\S]{0,400}if \(!mode0 && typeof ptreeDetach === 'function'\) ptreeDetach\(\);/.test(run), true, '★置き換えのときだけ、ツリーからでない(mode0 なし=読込)ときに外す');
-  eq(run.slice(run.indexOf("if (mode === 'append')"), run.indexOf('pushH();\n        const { fixedIds')).includes('ptreeDetach'), false, '★読込の「追加」では外さない');
+  eq(run.slice(run.indexOf("if (mode === 'append')"), run.indexOf('pushH({ doc: true });')).includes('ptreeDetach'), false, '★読込の「追加」では外さない');
 
   console.log(ng ? `\nNG ${ng} 件` : '\nすべてOK');
   process.exit(ng ? 1 : 0);
