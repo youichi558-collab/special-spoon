@@ -28,6 +28,23 @@ function pushH() {
   if (typeof scheduleAutosave === 'function') scheduleAutosave();
 }
 
+// 【2026-10-11】Undo/Redo で戻すページの「未保存の印(dirty)」を、控えに入っていたままにしない。
+// 控えは保存より前に取ったものなので、「直す → 保存 → Ctrl+Z」で、保存したファイルと中身が違うのに●が消えていた
+// (全体レビューで再現。盛田さん「2も直して」)。ページごとに、今のページと比べて決める:
+//   ・中身が同じ → 今の印のまま
+//   ・中身が違い、今のページが保存済み(●なし) → ●を付ける(ファイルと違う)
+//   ・中身が違い、今のページも未保存 → 控えの印(保存を挟んでいなければ控えの印は正しい。開く→直す→Ctrl+Z で●が消えるのは今まで通り)
+//   ・今に無いページ → ●を付ける
+function _histDirty(snapPages, curPages) {
+  const body = pg => JSON.stringify(pg, (k, v) => k === 'dirty' ? undefined : v);
+  snapPages.forEach((pg, i) => {
+    const cur = curPages[i];
+    if (!cur) pg.dirty = true;
+    else if (body(cur) === body(pg)) pg.dirty = !!cur.dirty;
+    else pg.dirty = cur.dirty ? !!pg.dirty : true;
+  });
+}
+
 function undo() {
   if (!state.hist.length) return;
   const snap = state.hist.pop();
@@ -35,6 +52,7 @@ function undo() {
     pages:      JSON.parse(JSON.stringify(state.pages)),
     currentPage:state.currentPage,
   });
+  _histDirty(snap.pages, state.pages);
   state.pages       = snap.pages;
   state.currentPage = snap.currentPage;
   state.sel.els.clear(); state.sel.wires.clear();
@@ -49,6 +67,7 @@ function redo() {
     pages:      JSON.parse(JSON.stringify(state.pages)),
     currentPage:state.currentPage,
   });
+  _histDirty(snap.pages, state.pages);
   state.pages       = snap.pages;
   state.currentPage = snap.currentPage;
   state.sel.els.clear(); state.sel.wires.clear();
